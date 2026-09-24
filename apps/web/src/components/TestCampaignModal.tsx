@@ -196,6 +196,7 @@ export function setTestRuntimeSession(
 	testTouchpointBehaviorQueue.cancelStale();
 	for (const listener of testRuntimeListeners) listener();
 }
+
 export function clearTestRuntimeSession(): void {
 	invalidateRetainedTestRuntime();
 	unpublishTestRuntimeSession();
@@ -631,7 +632,9 @@ export async function recordTestAcceptance(
 	).then(response => { input.attempt?.report(response.ok ? "success" : "failed"); return response; }, error => { input.attempt?.report(signal?.aborted ? "unknown" : "failed"); throw error; });
 	if (!response.ok)
 		throw new Error(`touchpoint_test_acceptance_http_${response.status}`);
-	return response.json().catch(() => undefined);
+	const result = await response.json().catch(() => undefined);
+	signal?.throwIfAborted();
+	return result;
 }
 
 /** Called only after a current Test placement has mounted and become visible. */
@@ -886,6 +889,57 @@ export async function completeCampaignAction(
 ): Promise<void> {
 	requireCampaignAction(await accepted);
 	if (stillCurrent()) requestClose?.();
+}
+
+/** At most three attempts per visibility event, each with a ten-second deadline.
+ * Only transport/server failures retry; the server remains the acceptance gate.
+ */
+async function deliverTestAcceptance(
+	input: Parameters<typeof recordTestAcceptance>[0],
+	signal: AbortSignal,
+	isCurrent: () => boolean,
+): Promise<boolean> {
+	for (let attempt = 0; attempt < 3 && isCurrent(); attempt++) {
+		if (attempt > 0) {
+			await new Promise<void>((resolve) => {
+				const finish = () => {
+					clearTimeout(timer);
+					signal.removeEventListener("abort", finish);
+					resolve();
+				};
+				const timer = setTimeout(finish, attempt === 1 ? 1_000 : 3_000);
+				signal.addEventListener("abort", finish, { once: true });
+				if (signal.aborted) finish();
+			});
+			if (!isCurrent()) return false;
+		}
+		const request = new AbortController();
+		const cancel = () => request.abort();
+		signal.addEventListener("abort", cancel, { once: true });
+		const timeout = setTimeout(cancel, 10_000);
+		try {
+			await recordTestAcceptance(input, request.signal);
+			return isCurrent();
+		} catch (error) {
+			if (!isCurrent()) return false;
+			const code =
+				error instanceof Error
+					? error.message
+					: "touchpoint_test_acceptance_failed";
+			emitWebTouchpointDiagnostic({ code });
+			const status = /^touchpoint_test_acceptance_http_(\d+)$/.exec(code);
+			if (
+				status &&
+				Number(status[1]) < 500 &&
+				![408, 429].includes(Number(status[1]))
+			)
+				return false;
+		} finally {
+			clearTimeout(timeout);
+			signal.removeEventListener("abort", cancel);
+		}
+	}
+	return false;
 }
 
 export type TestTouchpointMountProps = Readonly<{
