@@ -942,6 +942,19 @@ async function deliverTestAcceptance(
 	return false;
 }
 
+/**
+ * A campaign CTA hands the user to its target and ends the presentation with
+ * it: an accepted action closes the host modal, while a refused, expired or
+ * failed one rejects to the component and leaves the modal where it is.
+ */
+export async function completeCampaignAction(
+	accepted: Promise<boolean>,
+	requestClose: (() => void) | undefined,
+): Promise<void> {
+	requireCampaignAction(await accepted);
+	requestClose?.();
+}
+
 export type TestTouchpointMountProps = Readonly<{
 	decision: TestDecision;
 	placementKey: TestCampaignPlacement;
