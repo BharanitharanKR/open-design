@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TestRuntimeDeploymentCatalogPage } from "@open-design/contracts/api/touchpointTestRuntime";
 import { emitWebTouchpointDiagnostic } from "./touchpoint-component";
+import { RETRY_BACKOFF_MS } from "./touchpoint-lifecycle";
 import type { TouchpointStaticAction } from "./touchpoint-static-actions";
 
 export const TEST_CAMPAIGN_PLACEMENTS = [
@@ -152,10 +153,21 @@ export function useTestDeploymentSelection({
 		let disposed = false;
 		let request: AbortController | null = null;
 		let timeout: ReturnType<typeof setTimeout> | undefined;
+		let retry: ReturnType<typeof setTimeout> | undefined;
+		let retryIndex = 0;
 		const cancel = () => {
 			request?.abort();
 			request = null;
 			clearTimeout(timeout);
+			clearTimeout(retry);
+		};
+		// A failed read on a fresh home mount must not leave the entry blank until the next poll.
+		const retrySoon = () => {
+			const delay = RETRY_BACKOFF_MS[retryIndex];
+			if (disposed || delay === undefined || navigator.onLine === false) return;
+			retryIndex += 1;
+			clearTimeout(retry);
+			retry = setTimeout(() => void refresh(), delay);
 		};
 		const pause = () => {
 			onRequestResult?.(true);
