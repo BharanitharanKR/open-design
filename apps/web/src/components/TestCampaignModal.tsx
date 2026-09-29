@@ -950,9 +950,10 @@ async function deliverTestAcceptance(
 export async function completeCampaignAction(
 	accepted: Promise<boolean>,
 	requestClose: (() => void) | undefined,
+	stillCurrent: () => boolean,
 ): Promise<void> {
 	requireCampaignAction(await accepted);
-	requestClose?.();
+	if (stillCurrent()) requestClose?.();
 }
 
 export type TestTouchpointMountProps = Readonly<{
