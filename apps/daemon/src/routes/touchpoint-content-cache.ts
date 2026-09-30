@@ -1342,9 +1342,10 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
    */
   function writeFresh(key: TouchpointContentKey, record: AssemblyRecord): void {
     const file = assemblyFile(key);
-    writeFileAtomically(file, JSON.stringify(record));
-    marks.set(file, { wall: record.clock.fetchedAt, at: performance.now() });
-    armExpiryForFresh(file, record.schedule);
+    const clock = { ...record.clock, observedAt: Math.max(record.clock.observedAt, nowEstimate()) };
+    writeFileAtomically(file, JSON.stringify({ ...record, clock }));
+    marks.set(file, { wall: clock.observedAt, at: performance.now() });
+    armExpiryForFresh(file, record.schedule, Math.max(0, nowEstimate() - clock.fetchedAt));
   }
 
   /**
@@ -1362,17 +1363,17 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
     record: AssemblyRecord,
     full: Record<string, unknown>,
     trimmed: Record<string, unknown>,
+    clock: CachedClock,
   ): void {
     try {
       const identity = touchpointCachedIdentityOf(full);
       if (answerPredatesRevocation(key.scope, identity, trimmed.serverTime)) return;
       if (answerPredatesStored(key, trimmed.serverTime, record)) return;
-      const fetchedAt = nowEstimate();
       writeFresh(key, {
         ...record,
         schedule: touchpointScheduleOf(trimmed),
         identity,
-        clock: { fetchedAt, observedAt: fetchedAt },
+        clock,
         envelope: envelopeOf(trimmed),
       });
     } catch {
