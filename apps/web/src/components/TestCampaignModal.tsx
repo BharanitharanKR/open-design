@@ -31,7 +31,9 @@ import {
 	requireCampaignAction,
 } from "./touchpoint-navigation";
 import {
+	REQUEST_TIMEOUT_MS,
 	TEST_MAX_AUTHORIZATION_MS,
+	TOUCHPOINT_POLL_MS,
 	type TouchpointLifecycleLoad,
 	resolveAuthorizationDeadline,
 	touchpointWithdrawsDisplay,
