@@ -1366,7 +1366,7 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
     try {
       const identity = touchpointCachedIdentityOf(full);
       if (answerPredatesRevocation(key.scope, identity, trimmed.serverTime)) return;
-      if (answerPredatesStored(key, trimmed.serverTime)) return;
+      if (answerPredatesStored(key, trimmed.serverTime, record)) return;
       const fetchedAt = nowEstimate();
       writeFresh(key, {
         ...record,

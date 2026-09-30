@@ -31,9 +31,7 @@ import {
 	requireCampaignAction,
 } from "./touchpoint-navigation";
 import {
-	REQUEST_TIMEOUT_MS,
 	TEST_MAX_AUTHORIZATION_MS,
-	TOUCHPOINT_POLL_MS,
 	type TouchpointLifecycleLoad,
 	resolveAuthorizationDeadline,
 	touchpointWithdrawsDisplay,
@@ -1695,7 +1693,6 @@ export function TestCampaignModal({
 						? [selectedContext.contextId, selectedContext.generation, selectedContext.contextToken]
 						: [selectedContext.updatedAt]),
 					selectedContext.testerMemberId ?? null,
-					presented,
 				]),
 				// Convert the remaining placement grants to the lifecycle's load-start baseline.
 				validForMs: Math.max(...authorized.map(remaining)) + testElapsed(started),
