@@ -967,7 +967,6 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
           !touchpointWithdrawalReclaims(withdrawal.body, record.identity)) continue;
         if (!retireReplay(file, record)) persisted = false;
         recordRevocation(record, withdrawal.observedAt);
-        fenceGroup(`${scope}\u0000${path.basename(file, '.json')}`, withdrawal.through);
         reclaim(file, record);
       }
       if (persisted) pendingWithdrawals.delete(name);
