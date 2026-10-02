@@ -1371,6 +1371,7 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       if (answerPredatesStored(key, trimmed.serverTime, record)) return;
       writeFresh(key, {
         ...record,
+        replayRefused: false,
         schedule: touchpointScheduleOf(trimmed),
         identity,
         clock,
