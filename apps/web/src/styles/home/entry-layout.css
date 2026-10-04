@@ -8406,10 +8406,13 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   border-color: var(--accent);
 }
 .entry-invite__panel--split .entry-invite__label { margin-bottom: 0; }
-/* DEV-ONLY seat-free review mock: chip email field beside the role picker;
-   the role stays pinned to the first line while the chips wrap. */
-.entry-invite__fields--chips { align-items: flex-start; }
-.entry-invite__fields--chips > [data-testid='seatfree-email-chips'] { flex: 1 1 0; min-width: 0; }
+/* DEV-ONLY seat-free review mock: later rows share the first row's role, so
+   they hold the role column empty to keep every email input the same width. */
+.entry-invite__role-spacer { flex: 0 0 150px; }
+.entry-invite__panel--seatfree .entry-invite__role-picker .entry-invite__role { width: 100%; }
+/* Rows grow a 32px remove button (+12px gap) once there are two; keep the
+   role label over the role column. */
+.entry-invite__panel--seatfree .entry-invite__field-labels--remove { padding-right: 44px; }
 .entry-invite__panel--split .entry-invite__input {
   flex: 1 1 0;
   min-width: 0;

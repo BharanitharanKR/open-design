@@ -1,18 +1,20 @@
 // DEV-ONLY review mock (`?mock=seatfree`): the closing onboarding step,
 // "invite teammates". Same cloud onboarding layout (pane + art) as the steps
-// before it: title, one line of body, the email field, one primary action and
-// a quiet skip. Sends nothing — the invite is mock data.
+// before it: title, one line of body, one email per row (three to start, more
+// on demand), one primary action and a quiet skip. Sends nothing.
 
 import { useState } from 'react';
 import { useT } from '../i18n';
 import { Icon } from './Icon';
 import { LanguageMenu } from './LanguageMenu';
-import { SeatFreeEmailChips, isEmailLike } from './SeatFreeEmailChips';
 import styles from './SeatFreeOnboardingInvite.module.css';
+
+const INITIAL_ROWS = 3;
+const isEmailLike = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
 export function SeatFreeOnboardingInvite({ onDone }: { onDone: () => void }) {
   const t = useT();
-  const [emails, setEmails] = useState<string[]>([]);
+  const [emails, setEmails] = useState<string[]>(() => Array(INITIAL_ROWS).fill(''));
   const [sent, setSent] = useState(false);
   const hasEmail = emails.some(isEmailLike);
 
@@ -27,14 +29,31 @@ export function SeatFreeOnboardingInvite({ onDone }: { onDone: () => void }) {
           <h1 className="onboarding-cloud__title">{t('seatFree.onboardInviteTitle')}</h1>
           <p className="onboarding-cloud__body">{t('seatFree.onboardInviteBody')}</p>
           <div className={styles.form}>
-            <SeatFreeEmailChips
-              size="lg"
-              emails={emails}
-              onChange={(next) => {
-                setEmails(next);
-                setSent(false);
-              }}
-            />
+            <div className={styles.rows}>
+              {emails.map((email, i) => (
+                <input
+                  key={i}
+                  className={styles.input}
+                  type="email"
+                  placeholder={t('seatFree.emailPlaceholder')}
+                  value={email}
+                  onChange={(e) => {
+                    const next = [...emails];
+                    next[i] = e.target.value;
+                    setEmails(next);
+                    setSent(false);
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className={styles.addRow}
+              onClick={() => setEmails([...emails, ''])}
+            >
+              <Icon name="plus" size={14} />
+              {t('seatFree.addEmailRow')}
+            </button>
             <button
               type="button"
               className="onboarding-cloud__primary"

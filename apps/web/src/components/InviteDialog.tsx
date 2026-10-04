@@ -23,7 +23,6 @@ import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { readSeatFreeMock } from '../mock/seat-free';
-import { SeatFreeEmailChips, isEmailLike } from './SeatFreeEmailChips';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackWorkspaceInviteClick,
@@ -106,8 +105,6 @@ export function InviteDialog({
   const analyticsPage = entryFrom === 'all_projects' ? 'all_projects' : 'home';
   const workspaceDimensions = workspaceAnalyticsDimensions(workspaceContext);
   const [rows, setRows] = useState<InviteRow[]>([{ email: '', role: DEFAULT_ROLE }]);
-  // DEV-ONLY review mock: chip-style addresses, one role for the whole batch.
-  const [mockEmails, setMockEmails] = useState<string[]>([]);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -231,9 +228,7 @@ export function InviteDialog({
   // non-emails from enabling submit; both the button state and the rows
   // passed to onSubmit use the same predicate.
   const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-  const hasValidEmail = readSeatFreeMock()
-    ? mockEmails.some(isEmailLike)
-    : rows.some((r) => isEmail(r.email));
+  const hasValidEmail = rows.some((r) => isEmail(r.email));
 
   function inviteErrorMessage(code: string | undefined): string {
     return t(workspaceInviteErrorMessageKey(code));
@@ -255,7 +250,6 @@ export function InviteDialog({
         autoCloseTimerRef.current = null;
         onClose();
         setRows([{ email: '', role: DEFAULT_ROLE }]);
-        setMockEmails([]);
         setSuccess(false);
       }, 1000);
       return;
@@ -375,7 +369,7 @@ export function InviteDialog({
   return (
     <div className="entry-invite" role="dialog" aria-modal="true" aria-label={t('workspaceInvite.dialogAria')}>
       <div className="entry-invite__backdrop" onClick={closeDialog} />
-      <div className="entry-invite__panel entry-invite__panel--split">
+      <div className={`entry-invite__panel entry-invite__panel--split${seatFreeMock ? ' entry-invite__panel--seatfree' : ''}`}>
         <button
           type="button"
           className="entry-invite__close"
@@ -413,29 +407,27 @@ export function InviteDialog({
             </Button>
           ) : null}
 
-          <div className="entry-invite__field-labels">
+          <div className={`entry-invite__field-labels${seatFreeMock && rows.length > 1 ? ' entry-invite__field-labels--remove' : ''}`}>
             <span className="entry-invite__label">{t('workspaceInvite.emailLabel')}</span>
             <span className="entry-invite__label entry-invite__label--role">
               {canAssignRoles ? t('workspaceInvite.roleLabel') : t('workspaceInvite.defaultRoleLabel')}
             </span>
           </div>
           <div className="entry-invite__rows" ref={rowsRef}>
-            {(seatFreeMock ? rows.slice(0, 1) : rows).map((row, i) => (
-              <div
-                className={`entry-invite__fields${seatFreeMock ? ' entry-invite__fields--chips' : ''}`}
-                key={i}
-              >
-                {seatFreeMock ? (
-                  <SeatFreeEmailChips emails={mockEmails} onChange={setMockEmails} />
+            {rows.map((row, i) => (
+              <div className="entry-invite__fields" key={i}>
+                <input
+                  className="entry-invite__input"
+                  type="email"
+                  placeholder={t('workspaceInvite.emailPlaceholder')}
+                  value={row.email}
+                  onChange={(e) => updateRow(i, { email: e.target.value })}
+                />
+                {/* DEV-ONLY review mock: one role for the whole batch — only the
+                    first row carries the picker; later rows keep its column. */}
+                {seatFreeMock && i > 0 ? (
+                  <span className="entry-invite__role-spacer" aria-hidden />
                 ) : (
-                  <input
-                    className="entry-invite__input"
-                    type="email"
-                    placeholder={t('workspaceInvite.emailPlaceholder')}
-                    value={row.email}
-                    onChange={(e) => updateRow(i, { email: e.target.value })}
-                  />
-                )}
                 <div className="entry-invite__role-picker">
                   <button
                     type="button"
@@ -493,7 +485,8 @@ export function InviteDialog({
                       )
                     : null}
                 </div>
-                {rows.length > 1 && !seatFreeMock ? (
+                )}
+                {rows.length > 1 ? (
                   <button
                     type="button"
                     className="entry-invite__row-remove"
@@ -506,11 +499,9 @@ export function InviteDialog({
               </div>
             ))}
           </div>
-          {seatFreeMock ? null : (
-            <button type="button" className="entry-invite__add-row" onClick={addRow}>
-              <Icon name="plus" size={14} /> {t('workspaceInvite.addMember')}
-            </button>
-          )}
+          <button type="button" className="entry-invite__add-row" onClick={addRow}>
+            <Icon name="plus" size={14} /> {t('workspaceInvite.addMember')}
+          </button>
 
           <button
             type="button"
