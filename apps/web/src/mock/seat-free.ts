@@ -148,8 +148,36 @@ export function seatFreePlanFromTier(tier: string | null | undefined): SeatFreeP
   return 'pro';
 }
 
-/** A shareable invite link for the mock (never resolves anywhere). */
-export const SEAT_FREE_MOCK_INVITE_LINK = 'https://open-design.ai/join/acme-7Kq2xP';
+const BANNER_DISMISSED_KEY = 'od.mock.seatfree.inviteBannerDismissed';
+
+/**
+ * Whether the one-member invite banner was dismissed. `?banner=reset` clears
+ * the remembered dismissal so the banner can be reviewed again.
+ */
+export function seatFreeInviteBannerDismissed(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('banner') === 'reset') {
+      window.localStorage.removeItem(BANNER_DISMISSED_KEY);
+      return false;
+    }
+    return window.localStorage.getItem(BANNER_DISMISSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function dismissSeatFreeInviteBanner(): void {
+  try {
+    window.localStorage.setItem(BANNER_DISMISSED_KEY, '1');
+  } catch {
+    // Storage blocked: the banner simply comes back next load.
+  }
+}
+
+export function openSeatFreeInvite(): void {
+  window.dispatchEvent(new Event(SEAT_FREE_OPEN_INVITE_EVENT));
+}
 
 /** Window event Home fires to open the rail's invite dialog (mock only). */
 export const SEAT_FREE_OPEN_INVITE_EVENT = 'open-design:seatfree-open-invite';

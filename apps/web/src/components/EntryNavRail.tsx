@@ -70,8 +70,8 @@ import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
 import { MarqueeLabel } from './MarqueeLabel';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
-import { SeatFreeRailSummary } from './SeatFreeRailSummary';
-import { readSeatFreeMock, SEAT_FREE_OPEN_INVITE_EVENT } from '../mock/seat-free';
+import { SeatFreeCreditsPanelBody } from './SeatFreeCreditsPanel';
+import { openSeatFreeInvite, readSeatFreeMock, SEAT_FREE_OPEN_INVITE_EVENT } from '../mock/seat-free';
 import {
   closeRailRecentRowMenu,
   openRailRecentRowMenu,
@@ -1392,7 +1392,12 @@ export function EntryTopRightCluster({
   // billing card under it); what it SAYS follows the zero-balance ruling
   // above — a subscriber at $0.00 keeps the plan wordmark and drops the
   // number, so the card stays reachable without a permanent zero next to it.
-  const showCreditsPill = Boolean(billing || balanceLabel);
+  // DEV-ONLY review mock (`?mock=seatfree`): the shared workspace credits live
+  // behind this pill, so it is always there; only the Owner is sold 升级.
+  const seatFreeMock = readSeatFreeMock();
+  const showCreditsPill = seatFreeMock ? true : Boolean(billing || balanceLabel);
+  const pillSellsUpgrade = seatFreeMock ? false : isFreePlan;
+  const panelShowsUpgrade = seatFreeMock ? seatFreeMock.role === 'owner' : canUpgrade;
 
   function openBillingUpgrade() {
     if (!billingUpgradeUrl) return;
@@ -1465,6 +1470,18 @@ export function EntryTopRightCluster({
               anchor around it owns the hover region for the billing panel
               below: the panel is a DOM child, so crossing from the pill into
               it never leaves the anchor and never arms the close. */}
+          {/* DEV-ONLY review mock: standing 邀请 entry beside the credits pill. */}
+          {context && seatFreeMock ? (
+            <button
+              type="button"
+              className="entry-top-right-invite"
+              data-testid="entry-top-right-invite"
+              onClick={openSeatFreeInvite}
+            >
+              <Icon name="users" size={14} />
+              <span>{t('seatFree.inviteCta')}</span>
+            </button>
+          ) : null}
           {context && showCreditsPill ? (
             <div
               ref={creditsAnchorRef}
@@ -1477,7 +1494,7 @@ export function EntryTopRightCluster({
               }}
             >
               <div
-                className={`entry-top-right-account-pill${isFreePlan ? ' entry-top-right-account-pill--upgrade' : ''}`}
+                className={`entry-top-right-account-pill${pillSellsUpgrade ? ' entry-top-right-account-pill--upgrade' : ''}`}
               >
                 <button
                   type="button"
@@ -1486,8 +1503,12 @@ export function EntryTopRightCluster({
                   aria-haspopup="dialog"
                   aria-expanded={creditsPanelOpen}
                   aria-controls={creditsPanelOpen ? creditsPanelId : undefined}
-                  aria-label={isFreePlan ? t('entry.creditsUpgrade') : t('entry.credits')}
+                  aria-label={pillSellsUpgrade ? t('entry.creditsUpgrade') : t('entry.credits')}
                   onClick={() => {
+                    if (seatFreeMock) {
+                      setCreditsPanelOpen((v) => !v);
+                      return;
+                    }
                     // The free pill IS the upgrade CTA, so it opens the upgrade
                     // flow when this member is allowed to buy. Without that
                     // permission (or without an upgrade URL) it falls back to
@@ -1503,7 +1524,7 @@ export function EntryTopRightCluster({
                     }
                   }}
                 >
-                  {isFreePlan ? (
+                  {pillSellsUpgrade ? (
                     /* Free plan: the pill stops reporting a balance that is only
                        ever 0.00 and sells the upgrade instead — spark mark plus
                        the same 升级 / Upgrade label the billing card uses, on
@@ -1562,7 +1583,7 @@ export function EntryTopRightCluster({
                           <PlanWordmark tier={planTier} height={planTier === 'team' ? 11 : 20} />
                         ) : null}
                       </span>
-                      {canUpgrade && !canManageTopTierBilling ? (
+                      {panelShowsUpgrade && !canManageTopTierBilling ? (
                         <button
                           type="button"
                           className="entry-nav-rail__menu-credits-upgrade"
@@ -1590,7 +1611,9 @@ export function EntryTopRightCluster({
                         </button>
                       ) : null}
                     </div>
-                    {planTier !== 'team' ? (
+                    {seatFreeMock ? (
+                      <SeatFreeCreditsPanelBody mock={seatFreeMock} />
+                    ) : planTier !== 'team' ? (
                       <CodingPlanUsage
                         context={context}
                         planTier={planTier}
@@ -2559,9 +2582,6 @@ export function EntryNavRail({
               </>
             ) : null}
           </div>
-        ) : null}
-        {context && seatFreeMock ? (
-          <SeatFreeRailSummary mock={seatFreeMock} onInvite={() => setInviteOpen(true)} />
         ) : null}
 
         {/* No search row here any more (per product: 搜索和收起跟 home icon 一起

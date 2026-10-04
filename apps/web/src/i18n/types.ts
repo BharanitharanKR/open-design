@@ -30,23 +30,23 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
-  'seatFree.onboardStep': string;
+  'seatFree.sharedByAll': string;
+  'seatFree.bannerText': string;
+  'seatFree.inviteCta': string;
+  'seatFree.dismiss': string;
+  'seatFree.emailChipsPlaceholder': string;
+  'seatFree.removeEmail': string;
   'seatFree.onboardInviteTitle': string;
   'seatFree.onboardInviteBody': string;
   'seatFree.emailPlaceholder': string;
   'seatFree.sendInvites': string;
   'seatFree.invitesSent': string;
-  'seatFree.inviteLinkLabel': string;
-  'seatFree.copyLink': string;
-  'seatFree.linkCopied': string;
   'seatFree.skip': string;
-  'seatFree.homeInvite': string;
   'seatFree.planFree': string;
   'seatFree.planPro': string;
   'seatFree.perMonth': string;
   'seatFree.members': string;
   'seatFree.workspaceCredits': string;
-  'seatFree.railCreditsLeft': string;
   'seatFree.creditsLeft': string;
   'seatFree.inviteTitle': string;
   'seatFree.inviteBody': string;

@@ -23,7 +23,7 @@ import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { readSeatFreeMock } from '../mock/seat-free';
-import { SeatFreeInviteLink } from './SeatFreeOnboardingInvite';
+import { SeatFreeEmailChips, isEmailLike } from './SeatFreeEmailChips';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackWorkspaceInviteClick,
@@ -106,6 +106,8 @@ export function InviteDialog({
   const analyticsPage = entryFrom === 'all_projects' ? 'all_projects' : 'home';
   const workspaceDimensions = workspaceAnalyticsDimensions(workspaceContext);
   const [rows, setRows] = useState<InviteRow[]>([{ email: '', role: DEFAULT_ROLE }]);
+  // DEV-ONLY review mock: chip-style addresses, one role for the whole batch.
+  const [mockEmails, setMockEmails] = useState<string[]>([]);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -229,7 +231,9 @@ export function InviteDialog({
   // non-emails from enabling submit; both the button state and the rows
   // passed to onSubmit use the same predicate.
   const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-  const hasValidEmail = rows.some((r) => isEmail(r.email));
+  const hasValidEmail = readSeatFreeMock()
+    ? mockEmails.some(isEmailLike)
+    : rows.some((r) => isEmail(r.email));
 
   function inviteErrorMessage(code: string | undefined): string {
     return t(workspaceInviteErrorMessageKey(code));
@@ -243,19 +247,21 @@ export function InviteDialog({
   const seatsExhausted = !seatFreeMock && availableSeats !== undefined && availableSeats <= 0;
 
   async function handleConfirm() {
-    const valid = rows.filter((r) => isEmail(r.email));
-    if (valid.length === 0 || submitting || success || seatsExhausted) return;
     if (seatFreeMock) {
+      if (!hasValidEmail || success) return;
       // Mock: pretend the batch went out; nothing reaches the daemon.
       setSuccess(true);
       autoCloseTimerRef.current = window.setTimeout(() => {
         autoCloseTimerRef.current = null;
         onClose();
         setRows([{ email: '', role: DEFAULT_ROLE }]);
+        setMockEmails([]);
         setSuccess(false);
       }, 1000);
       return;
     }
+    const valid = rows.filter((r) => isEmail(r.email));
+    if (valid.length === 0 || submitting || success || seatsExhausted) return;
     if (!workspaceContext) {
       setError(t('workspaceInvite.submitFailed'));
       return;
@@ -414,15 +420,22 @@ export function InviteDialog({
             </span>
           </div>
           <div className="entry-invite__rows" ref={rowsRef}>
-            {rows.map((row, i) => (
-              <div className="entry-invite__fields" key={i}>
-                <input
-                  className="entry-invite__input"
-                  type="email"
-                  placeholder={t('workspaceInvite.emailPlaceholder')}
-                  value={row.email}
-                  onChange={(e) => updateRow(i, { email: e.target.value })}
-                />
+            {(seatFreeMock ? rows.slice(0, 1) : rows).map((row, i) => (
+              <div
+                className={`entry-invite__fields${seatFreeMock ? ' entry-invite__fields--chips' : ''}`}
+                key={i}
+              >
+                {seatFreeMock ? (
+                  <SeatFreeEmailChips emails={mockEmails} onChange={setMockEmails} />
+                ) : (
+                  <input
+                    className="entry-invite__input"
+                    type="email"
+                    placeholder={t('workspaceInvite.emailPlaceholder')}
+                    value={row.email}
+                    onChange={(e) => updateRow(i, { email: e.target.value })}
+                  />
+                )}
                 <div className="entry-invite__role-picker">
                   <button
                     type="button"
@@ -480,7 +493,7 @@ export function InviteDialog({
                       )
                     : null}
                 </div>
-                {rows.length > 1 ? (
+                {rows.length > 1 && !seatFreeMock ? (
                   <button
                     type="button"
                     className="entry-invite__row-remove"
@@ -493,17 +506,11 @@ export function InviteDialog({
               </div>
             ))}
           </div>
-          <button type="button" className="entry-invite__add-row" onClick={addRow}>
-            <Icon name="plus" size={14} /> {t('workspaceInvite.addMember')}
-          </button>
-          {seatFreeMock ? (
-            <>
-              <span className="entry-invite__label entry-invite__label--link">
-                {t('seatFree.inviteLinkLabel')}
-              </span>
-              <SeatFreeInviteLink className="entry-invite__link-row" />
-            </>
-          ) : null}
+          {seatFreeMock ? null : (
+            <button type="button" className="entry-invite__add-row" onClick={addRow}>
+              <Icon name="plus" size={14} /> {t('workspaceInvite.addMember')}
+            </button>
+          )}
 
           <button
             type="button"

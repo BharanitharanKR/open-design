@@ -1,0 +1,73 @@
+/* DEV-ONLY seat-free review mock: one-member invite strip on Home. Matches the
+ * hero column width so it lines up with the composer card below. */
+
+.banner {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 820px;
+  min-height: 44px;
+  margin: 0 0 4px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--text-strong);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.invite {
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--text-strong);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.invite:hover {
+  background: var(--text-strong);
+  opacity: 0.88;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}

@@ -6727,6 +6727,34 @@
 .entry-top-right-github:hover {
   border-color: var(--border-strong);
 }
+/* DEV-ONLY seat-free review mock: standing 邀请 chip, same capsule as the
+   GitHub chip so the cluster reads as one row. */
+.entry-top-right-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--material-separator);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+  box-shadow: var(--shadow-xs);
+  color: var(--text-strong);
+  font-size: var(--font-size-13);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.entry-top-right-invite svg {
+  color: var(--text-soft);
+}
+.entry-top-right-invite:hover {
+  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+}
 
 /* Hover region + positioning context for the billing panel that hangs under
    the credits / 升级 pill (per product: 黑色卡片在右上角的升级下边显示). The
@@ -8378,12 +8406,10 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   border-color: var(--accent);
 }
 .entry-invite__panel--split .entry-invite__label { margin-bottom: 0; }
-/* DEV-ONLY seat-free review mock: invite-link row under the email rows. */
-.entry-invite__label--link { margin-top: 6px; }
-.entry-invite__link-row.entry-invite__link-row {
-  margin-top: 0;
-  border-radius: var(--radius-sm, 8px);
-}
+/* DEV-ONLY seat-free review mock: chip email field beside the role picker;
+   the role stays pinned to the first line while the chips wrap. */
+.entry-invite__fields--chips { align-items: flex-start; }
+.entry-invite__fields--chips > [data-testid='seatfree-email-chips'] { flex: 1 1 0; min-width: 0; }
 .entry-invite__panel--split .entry-invite__input {
   flex: 1 1 0;
   min-width: 0;
