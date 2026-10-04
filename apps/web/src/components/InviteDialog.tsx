@@ -22,6 +22,8 @@ import { Icon } from './Icon';
 import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
+import { readSeatFreeMock } from '../mock/seat-free';
+import { SeatFreeInviteLink } from './SeatFreeOnboardingInvite';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackWorkspaceInviteClick,
@@ -236,11 +238,24 @@ export function InviteDialog({
   // Seats are the gate B enforces anyway; checking here turns a post-send row
   // failure into an up-front reason the user can act on. Unknown (undefined)
   // stays permissive — see the prop docs.
-  const seatsExhausted = availableSeats !== undefined && availableSeats <= 0;
+  // DEV-ONLY review mock (`?mock=seatfree`): no seats, so nothing is ever full.
+  const seatFreeMock = readSeatFreeMock();
+  const seatsExhausted = !seatFreeMock && availableSeats !== undefined && availableSeats <= 0;
 
   async function handleConfirm() {
     const valid = rows.filter((r) => isEmail(r.email));
     if (valid.length === 0 || submitting || success || seatsExhausted) return;
+    if (seatFreeMock) {
+      // Mock: pretend the batch went out; nothing reaches the daemon.
+      setSuccess(true);
+      autoCloseTimerRef.current = window.setTimeout(() => {
+        autoCloseTimerRef.current = null;
+        onClose();
+        setRows([{ email: '', role: DEFAULT_ROLE }]);
+        setSuccess(false);
+      }, 1000);
+      return;
+    }
     if (!workspaceContext) {
       setError(t('workspaceInvite.submitFailed'));
       return;
@@ -365,9 +380,13 @@ export function InviteDialog({
         </button>
 
         <div className="entry-invite__form">
-          <h2 className="entry-invite__title">{t('workspaceInvite.title')}</h2>
+          <h2 className="entry-invite__title">
+            {seatFreeMock ? t('seatFree.inviteTitle') : t('workspaceInvite.title')}
+          </h2>
           <p className="entry-invite__teamsize">
-            {seatsExhausted
+            {seatFreeMock
+              ? t('seatFree.inviteBody')
+              : seatsExhausted
               ? t('workspaceInvite.seatsExhaustedBody')
               : freePlan
                 ? t('workspaceInvite.freePlanBody')
@@ -477,6 +496,14 @@ export function InviteDialog({
           <button type="button" className="entry-invite__add-row" onClick={addRow}>
             <Icon name="plus" size={14} /> {t('workspaceInvite.addMember')}
           </button>
+          {seatFreeMock ? (
+            <>
+              <span className="entry-invite__label entry-invite__label--link">
+                {t('seatFree.inviteLinkLabel')}
+              </span>
+              <SeatFreeInviteLink className="entry-invite__link-row" />
+            </>
+          ) : null}
 
           <button
             type="button"

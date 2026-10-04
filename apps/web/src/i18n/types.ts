@@ -30,6 +30,40 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'seatFree.onboardStep': string;
+  'seatFree.onboardInviteTitle': string;
+  'seatFree.onboardInviteBody': string;
+  'seatFree.emailPlaceholder': string;
+  'seatFree.sendInvites': string;
+  'seatFree.invitesSent': string;
+  'seatFree.inviteLinkLabel': string;
+  'seatFree.copyLink': string;
+  'seatFree.linkCopied': string;
+  'seatFree.skip': string;
+  'seatFree.homeInvite': string;
+  'seatFree.planFree': string;
+  'seatFree.planPro': string;
+  'seatFree.perMonth': string;
+  'seatFree.members': string;
+  'seatFree.workspaceCredits': string;
+  'seatFree.railCreditsLeft': string;
+  'seatFree.creditsLeft': string;
+  'seatFree.inviteTitle': string;
+  'seatFree.inviteBody': string;
+  'seatFree.shareWorkspace': string;
+  'seatFree.shareWorkspaceHint': string;
+  'seatFree.outTitle': string;
+  'seatFree.outBodyOwnerPro': string;
+  'seatFree.outBodyOwnerFree': string;
+  'seatFree.chooseQuota': string;
+  'seatFree.currentQuota': string;
+  'seatFree.upgradeCta': string;
+  'seatFree.upgradeToProCta': string;
+  'seatFree.topUpCta': string;
+  'seatFree.laterCta': string;
+  'seatFree.outBodyMember': string;
+  'seatFree.ownerLabel': string;
+  'seatFree.gotIt': string;
   'billing.wallet': string;
   /** The product name of the allowance pool; kept untranslated in every locale. */
   'billing.codingPlanDesignPlan': string;

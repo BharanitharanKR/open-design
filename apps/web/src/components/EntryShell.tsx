@@ -246,6 +246,8 @@ import {
 import { resolveByokModelPreference } from './byok/validation';
 import onboardingSourceStyles from './OnboardingModelSource.module.css';
 import onboardingWelcomeStyles from './OnboardingWelcome.module.css';
+import { readSeatFreeMock } from '../mock/seat-free';
+import { SeatFreeOnboardingInvite } from './SeatFreeOnboardingInvite';
 
 // Persist the entry nav-rail open/collapsed state so it survives both a
 // home -> project -> home navigation (EntryShell unmounts on the project
@@ -703,7 +705,9 @@ export function EntryShell({
     amrLoggedIn,
     amrSessionState,
   );
-  const railWorkspaceContext = accountFooterState === 'sign-in'
+  // DEV-ONLY review mock (`?mock=seatfree`): keep the mocked workspace on the rail.
+  const seatFreeMock = readSeatFreeMock();
+  const railWorkspaceContext = accountFooterState === 'sign-in' && !seatFreeMock
     ? null
     : workspaceContext;
   const usesOpenDesignCloud = config.mode === 'daemon' && config.agentId === 'amr';
@@ -728,7 +732,7 @@ export function EntryShell({
     accountFooterNotice = <RailAccountSyncTip />;
   } else if (accountFooterState === 'recovering') {
     accountFooterNotice = <RailAccountRecoveryTip />;
-  } else if (accountFooterState === 'sign-in') {
+  } else if (accountFooterState === 'sign-in' && !seatFreeMock) {
     accountFooterNotice = <CloudSignInTip />;
   }
   const workspaceContextRef = useRef(workspaceContext);
@@ -2211,7 +2215,16 @@ function OnboardingView({
 }) {
   const t = useT();
   const analytics = useAnalytics();
-  const [step, setStep] = useState(0);
+  // DEV-ONLY review mock: `?mock=seatfree&onboard=invite` opens the invite step
+  // (3) directly; with the mock on, finishing onboarding passes through it.
+  const [step, setStep] = useState(() => (readSeatFreeMock()?.onboardInvite ? 3 : 0));
+  const finishOnboardingOrInvite = () => {
+    if (readSeatFreeMock()) {
+      setStep(3);
+      return;
+    }
+    onFinish();
+  };
   const [runtime, setRuntime] = useState<'amr' | 'local' | 'byok' | null>(null);
   const [runtimeSetupEntry, setRuntimeSetupEntry] = useState<'cloud' | 'chooser'>('chooser');
   const [modelSource, setModelSource] = useState<'amr' | 'local' | 'byok'>('amr');
@@ -2511,6 +2524,7 @@ function OnboardingView({
       || !hasRestorableModelSourceConfig
       || (config.mode === 'daemon' && config.agentId !== 'amr' && agentsLoading)
       || passiveReauthCompletedRef.current
+      || readSeatFreeMock()
     ) {
       return;
     }
@@ -2849,7 +2863,7 @@ function OnboardingView({
       runtimeType,
     });
     clearOnboardingSessionId();
-    onFinish();
+    finishOnboardingOrInvite();
   }
 
   function continueAfterCloudSignIn(): void {
@@ -2857,7 +2871,7 @@ function OnboardingView({
       if (passiveReauthCompletedRef.current) return;
       passiveReauthCompletedRef.current = true;
       clearOnboardingSessionId();
-      onFinish();
+      finishOnboardingOrInvite();
       return;
     }
     setStep(1);
@@ -3629,6 +3643,11 @@ function OnboardingView({
   }, [runtime, runtimeValidationConsumable]);
 
   const primaryActionLabel = t('settings.onboardingContinue');
+
+  // DEV-ONLY review mock: the closing "invite teammates" step.
+  if (step === 3) {
+    return <SeatFreeOnboardingInvite onDone={onFinish} />;
+  }
 
   // Cloud remains the primary identity path. Local CLI and BYOK are independent
   // direct setup paths; authenticated users keep the full source chooser.

@@ -36,6 +36,7 @@ import type {
 import { DesignSystemPicker } from './DesignSystemPicker';
 import type { SkillSummary } from '../types';
 import { Icon, type IconName } from './Icon';
+import { readSeatFreeMock, SEAT_FREE_OPEN_INVITE_EVENT } from '../mock/seat-free';
 import {
   FileTypeIcon,
   fileTypePreviewKind,
@@ -1595,6 +1596,19 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           </h1>
           {/* One quiet line under the headline (per product). */}
           <p className="home-hero__subtitle">{t('homeHero.subtitle')}</p>
+          {/* DEV-ONLY review mock (`?mock=seatfree`): a standing 邀请同事 entry
+              on Home — inviting is free and unlimited, so it is always here. */}
+          {readSeatFreeMock() ? (
+            <button
+              type="button"
+              className="home-hero__invite"
+              data-testid="home-hero-invite"
+              onClick={() => window.dispatchEvent(new Event(SEAT_FREE_OPEN_INVITE_EVENT))}
+            >
+              <Icon name="users" size={14} />
+              {t('seatFree.homeInvite')}
+            </button>
+          ) : null}
         </>
       )}
 

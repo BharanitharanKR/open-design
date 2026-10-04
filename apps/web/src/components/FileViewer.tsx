@@ -309,6 +309,17 @@ import {
   invalidateHtmlSourceSnapshotProject,
   setHtmlSourceSnapshot,
 } from './html-source-snapshot-cache';
+import { readSeatFreeMock } from '../mock/seat-free';
+
+/**
+ * DEV-ONLY review mock (`?mock=seatfree`): every account owns a workspace, so
+ * the "members" access option reads as sharing with everyone in it.
+ */
+function workspaceMembersAccessLabel(
+  t: (key: 'seatFree.shareWorkspace' | 'fileViewer.workspaceAccessMembers') => string,
+): string {
+  return readSeatFreeMock() ? t('seatFree.shareWorkspace') : t('fileViewer.workspaceAccessMembers');
+}
 
 function resolveChromeActionsHost(): HTMLElement | null {
   return document.querySelector<HTMLElement>(APP_CHROME_FILE_ACTIONS_SELECTOR)
@@ -6781,6 +6792,11 @@ function ReactComponentViewer({
   function setWorkspaceShareAccess(nextAccess: 'private' | 'workspace') {
     setShareAccessMenuOpen(false);
     if (nextAccess === shareAccess || shareAccessBusy || viewerOnly) return;
+    // DEV-ONLY review mock (`?mock=seatfree`): flip locally, no daemon write.
+    if (readSeatFreeMock()) {
+      setShareAccess(nextAccess);
+      return;
+    }
     if (moveConfirmSkipped()) {
       void commitWorkspaceShareAccess(nextAccess);
       return;
@@ -6945,7 +6961,7 @@ function ReactComponentViewer({
                             not be the wider `workspaceContextHasWorkspaceIdentity` gate the
                             public single-file publish card below uses; that one is
                             deliberately workspace-agnostic. */}
-                        {workspaceContextHasTeamIdentity(workspaceContext) ? (
+                        {(readSeatFreeMock() || workspaceContextHasTeamIdentity(workspaceContext)) ? (
                         <>
                         {/* Access control gets the same section-label + row treatment as the
                             publish / deploy / save tiers below; its explanation moves into the
@@ -6996,7 +7012,7 @@ function ReactComponentViewer({
                               <span>
                                 {shareAccess === 'private'
                                   ? t('fileViewer.workspaceAccessPrivate')
-                                  : t('fileViewer.workspaceAccessMembers')}
+                                  : workspaceMembersAccessLabel(t)}
                               </span>
                               <RemixIcon name="arrow-down-s-line" size={16} />
                             </button>
@@ -7004,7 +7020,7 @@ function ReactComponentViewer({
                               <div className="chrome-access-options" role="listbox">
                                 {([
                                   ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                  ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                  ['workspace', 'team-line', workspaceMembersAccessLabel(t)],
                                 ] as const).map(([value, icon, label]) => (
                                   <button
                                     key={value}
@@ -8230,6 +8246,11 @@ function HtmlViewer({
   function setWorkspaceShareAccess(nextAccess: 'private' | 'workspace') {
     setShareAccessMenuOpen(false);
     if (nextAccess === shareAccess || shareAccessBusy || viewerOnly) return;
+    // DEV-ONLY review mock (`?mock=seatfree`): flip locally, no daemon write.
+    if (readSeatFreeMock()) {
+      setShareAccess(nextAccess);
+      return;
+    }
     if (moveConfirmSkipped()) {
       void commitWorkspaceShareAccess(nextAccess);
       return;
@@ -17040,7 +17061,7 @@ function HtmlViewer({
                       <div className="chrome-unified-panel chrome-unified-panel--share">
                       {/* Team-only, same as ReactComponentViewer's copy of this card above —
                           see the comment there (recvq5bM78HWCE). */}
-                      {menuOrigin === 'toolbar' && workspaceContextHasTeamIdentity(workspaceContext) ? (
+                      {menuOrigin === 'toolbar' && (readSeatFreeMock() || workspaceContextHasTeamIdentity(workspaceContext)) ? (
                       <>
                       {/* Access control gets the same section-label + row treatment as the
                           publish / deploy / save tiers below; its explanation moves into the
@@ -17090,7 +17111,7 @@ function HtmlViewer({
                             <span>
                               {shareAccess === 'private'
                                 ? t('fileViewer.workspaceAccessPrivate')
-                                : t('fileViewer.workspaceAccessMembers')}
+                                : workspaceMembersAccessLabel(t)}
                             </span>
                             <RemixIcon name="arrow-down-s-line" size={16} />
                           </button>
@@ -17098,7 +17119,7 @@ function HtmlViewer({
                             <div className="chrome-access-options" role="listbox">
                               {([
                                 ['private', 'lock-line', t('fileViewer.workspaceAccessPrivate')],
-                                ['workspace', 'team-line', t('fileViewer.workspaceAccessMembers')],
+                                ['workspace', 'team-line', workspaceMembersAccessLabel(t)],
                               ] as const).map(([value, icon, label]) => (
                                 <button
                                   key={value}

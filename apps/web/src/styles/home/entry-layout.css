@@ -8378,6 +8378,12 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   border-color: var(--accent);
 }
 .entry-invite__panel--split .entry-invite__label { margin-bottom: 0; }
+/* DEV-ONLY seat-free review mock: invite-link row under the email rows. */
+.entry-invite__label--link { margin-top: 6px; }
+.entry-invite__link-row.entry-invite__link-row {
+  margin-top: 0;
+  border-radius: var(--radius-sm, 8px);
+}
 .entry-invite__panel--split .entry-invite__input {
   flex: 1 1 0;
   min-width: 0;

@@ -70,6 +70,8 @@ import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
 import { MarqueeLabel } from './MarqueeLabel';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
+import { SeatFreeRailSummary } from './SeatFreeRailSummary';
+import { readSeatFreeMock, SEAT_FREE_OPEN_INVITE_EVENT } from '../mock/seat-free';
 import {
   closeRailRecentRowMenu,
   openRailRecentRowMenu,
@@ -2135,7 +2137,10 @@ export function EntryNavRail({
   const isTeam = Boolean(context) && context!.workspaceType === 'team';
   const permissions = context?.permissions;
   const canInviteMembers = Boolean(permissions?.canInviteMembers);
-  const canAccessInviteFlow = canAccessWorkspaceInviteFlow(context);
+  // DEV-ONLY review mock (`?mock=seatfree`): members are unlimited and free,
+  // so every role reaches the local invite dialog on every plan.
+  const seatFreeMock = readSeatFreeMock();
+  const canAccessInviteFlow = seatFreeMock ? true : canAccessWorkspaceInviteFlow(context);
   const workspaceSettingsUrl = context?.workspaceSettingsUrl?.trim() || null;
 
   // Message-center panel for the SIGNED-OUT shell only (the bell on the local
@@ -2165,8 +2170,17 @@ export function EntryNavRail({
   const railIdentity = workspaceIdentityCacheKey(context);
   const [workspaceDirectoryLoading, setWorkspaceDirectoryLoading] = useState(false);
   const [workspaceSwitchingId, setWorkspaceSwitchingId] = useState<string | null>(null);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const inviteTarget = resolveWorkspaceInviteTarget(context);
+  const [inviteOpen, setInviteOpen] = useState(() => Boolean(seatFreeMock?.invite));
+  const inviteTarget: WorkspaceInviteTarget = seatFreeMock
+    ? { kind: 'local' }
+    : resolveWorkspaceInviteTarget(context);
+  // DEV-ONLY review mock: Home's 邀请同事 button opens this rail's dialog.
+  useEffect(() => {
+    if (!seatFreeMock) return;
+    const open = () => setInviteOpen(true);
+    window.addEventListener(SEAT_FREE_OPEN_INVITE_EVENT, open);
+    return () => window.removeEventListener(SEAT_FREE_OPEN_INVITE_EVENT, open);
+  }, [seatFreeMock]);
   // The invite dialog's seat-gate upgrade entry uses the same public Pricing
   // destination as the credits chip's twin decision in EntryTopRightCluster.
   const upgradeUrl = workspaceUpgradeUrl(context, billing);
@@ -2545,6 +2559,9 @@ export function EntryNavRail({
               </>
             ) : null}
           </div>
+        ) : null}
+        {context && seatFreeMock ? (
+          <SeatFreeRailSummary mock={seatFreeMock} onInvite={() => setInviteOpen(true)} />
         ) : null}
 
         {/* No search row here any more (per product: 搜索和收起跟 home icon 一起
