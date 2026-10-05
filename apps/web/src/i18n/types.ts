@@ -35,6 +35,10 @@ export interface Dict {
   'seatFree.inviteCta': string;
   'seatFree.dismiss': string;
   'seatFree.addEmailRow': string;
+  'seatFree.freeGrant': string;
+  'seatFree.freeGrantShort': string;
+  'seatFree.tierCredits': string;
+  'seatFree.outTitleMidrun': string;
   'seatFree.onboardInviteTitle': string;
   'seatFree.onboardInviteBody': string;
   'seatFree.emailPlaceholder': string;

@@ -5,7 +5,7 @@
 // the existing billing card unchanged.
 
 import { useT } from '../i18n';
-import { formatMockUsd, type SeatFreeMockState } from '../mock/seat-free';
+import { formatMockUsd, SEAT_FREE_TIER_CREDITS, type SeatFreeMockState } from '../mock/seat-free';
 import styles from './CodingPlanUsage.module.css';
 import ownStyles from './SeatFreeCreditsPanel.module.css';
 
@@ -15,9 +15,11 @@ export function SeatFreeCreditsPanelBody({ mock }: { mock: SeatFreeMockState }) 
   const percent = isPro
     ? Math.round(Math.max(0, Math.min(1, mock.balanceUsd / mock.quotaUsd)) * 100)
     : null;
+  const price = (n: number) => formatMockUsd(n).replace('.00', '');
+  // Pro: the tier and the credits it grants; Free: the one-off sign-up grant.
   const period = isPro
-    ? `${t('seatFree.perMonth', { amount: formatMockUsd(mock.quotaUsd).replace('.00', '') })} · ${t('seatFree.sharedByAll')}`
-    : t('seatFree.sharedByAll');
+    ? `${t('seatFree.perMonth', { amount: price(mock.quotaUsd) })} · ${t('seatFree.tierCredits', { amount: price(SEAT_FREE_TIER_CREDITS[mock.quotaUsd]) })} · ${t('seatFree.sharedByAll')}`
+    : `${t('seatFree.freeGrant')} · ${t('seatFree.sharedByAll')}`;
   return (
     <div className={styles.quota} data-testid="seatfree-credits-panel">
       <div className={styles.block}>
@@ -33,7 +35,7 @@ export function SeatFreeCreditsPanelBody({ mock }: { mock: SeatFreeMockState }) 
           </div>
         ) : null}
         <div className={`${styles.row} ${ownStyles.caption}`}>
-          <span className={styles.allowance}>{period}</span>
+          <span className={ownStyles.captionText}>{period}</span>
         </div>
       </div>
     </div>

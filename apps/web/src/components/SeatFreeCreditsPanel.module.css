@@ -1,5 +1,9 @@
 /* DEV-ONLY seat-free review mock: the quiet tier / "shared by everyone" line
  * under the shared-credit meter in the top-right billing card. */
+.captionText {
+  line-height: 1.45;
+}
+
 .caption {
   min-height: 0;
   margin-top: 8px;

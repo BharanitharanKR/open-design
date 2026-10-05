@@ -3668,12 +3668,13 @@ function OnboardingView({
                 <span className={onboardingWelcomeStyles.creditCorner}>
                   <span
                     className={`${onboardingWelcomeStyles.credits} od-tooltip`}
-                    data-tooltip={t('settings.onboardingFreeCreditsHint')}
-                    aria-label={t('settings.onboardingFreeCreditsHint')}
+                    data-tooltip={readSeatFreeMock() ? t('seatFree.freeGrant') : t('settings.onboardingFreeCreditsHint')}
+                    aria-label={readSeatFreeMock() ? t('seatFree.freeGrant') : t('settings.onboardingFreeCreditsHint')}
                     tabIndex={0}
                   >
                     <span className={onboardingWelcomeStyles.creditLabel}>
-                      {t('settings.onboardingFreeCredits')}
+                      {/* DEV-ONLY review mock: the one-off $0.5 sign-up grant. */}
+                      {readSeatFreeMock() ? t('seatFree.freeGrantShort') : t('settings.onboardingFreeCredits')}
                     </span>
                   </span>
                 </span>

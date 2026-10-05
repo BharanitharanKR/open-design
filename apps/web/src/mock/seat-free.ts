@@ -16,6 +16,15 @@ export type SeatFreeRole = 'owner' | 'admin' | 'member';
 export type SeatFreePlan = 'free' | 'pro';
 export const SEAT_FREE_QUOTAS = [10, 20, 100, 200] as const;
 export type SeatFreeQuota = (typeof SEAT_FREE_QUOTAS)[number];
+/** Monthly credits each Pro tier grants ($100 and $200 include a bonus). */
+export const SEAT_FREE_TIER_CREDITS: Record<SeatFreeQuota, number> = {
+  10: 10,
+  20: 20,
+  100: 120,
+  200: 300,
+};
+/** One-off free credits granted at sign-up. */
+export const SEAT_FREE_SIGNUP_GRANT_USD = 0.5;
 
 export interface SeatFreeMockState {
   role: SeatFreeRole;
@@ -29,8 +38,10 @@ export interface SeatFreeMockState {
   ownerName: string;
   /** Jump onboarding straight to the "invite teammates" step. */
   onboardInvite: boolean;
-  /** Open the out-of-credits dialog on Home. */
+  /** Open the out-of-credits dialog on load (`gate=1` or `gate=midrun`). */
   gate: boolean;
+  /** `gate=midrun`: a running task was stopped because credits ran out. */
+  midrun: boolean;
   /** Open the invite dialog on Home. */
   invite: boolean;
 }
@@ -71,7 +82,7 @@ export function readSeatFreeMock(): SeatFreeMockState | null {
     const quotaUsd = (SEAT_FREE_QUOTAS as readonly number[]).includes(quotaRaw)
       ? (quotaRaw as SeatFreeQuota)
       : 20;
-    const balanceRaw = Number(params.get('balance') ?? (plan === 'free' ? 1.2 : 12.4));
+    const balanceRaw = Number(params.get('balance') ?? (plan === 'free' ? 0.3 : 12.4));
     const membersRaw = Number(params.get('members') ?? 8);
     state = {
       role: role === 'admin' || role === 'member' ? role : 'owner',
@@ -82,7 +93,8 @@ export function readSeatFreeMock(): SeatFreeMockState | null {
       workspaceName: params.get('ws') || 'Acme Design',
       ownerName: params.get('owner') || 'Lin Zhou',
       onboardInvite: params.get('onboard') === 'invite',
-      gate: params.get('gate') === '1',
+      gate: params.get('gate') === '1' || params.get('gate') === 'midrun',
+      midrun: params.get('gate') === 'midrun',
       invite: params.get('invite') === '1',
     };
   }

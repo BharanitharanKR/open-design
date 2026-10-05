@@ -18,6 +18,7 @@ import { useT } from '../i18n';
 import {
   formatMockUsd,
   SEAT_FREE_QUOTAS,
+  SEAT_FREE_TIER_CREDITS,
   type SeatFreeMockState,
   type SeatFreeQuota,
 } from '../mock/seat-free';
@@ -44,14 +45,15 @@ export function SeatFreeOutOfCreditsDialog({
     ? (SEAT_FREE_QUOTAS.find((q) => q > mock.quotaUsd) ?? mock.quotaUsd)
     : 20;
   const [quota, setQuota] = useState<SeatFreeQuota>(nextQuota);
-  const title = t('seatFree.outTitle');
+  // `gate=midrun`: the run was cut off mid-task; same dialog, new headline.
+  const title = mock.midrun ? t('seatFree.outTitleMidrun') : t('seatFree.outTitle');
   const body = !isOwner
     ? t('seatFree.outBodyMember')
     : isPro
       ? t('seatFree.outBodyOwnerPro', {
-          quota: t('seatFree.perMonth', { amount: priceLabel(mock.quotaUsd) }),
+          credits: priceLabel(SEAT_FREE_TIER_CREDITS[mock.quotaUsd]),
         })
-      : t('seatFree.outBodyOwnerFree');
+      : t('seatFree.outBodyOwnerFree', { grant: t('seatFree.freeGrant') });
 
   const dialog = (
     <Dialog
@@ -88,7 +90,7 @@ export function SeatFreeOutOfCreditsDialog({
       <div className={styles.status}>
         <span className={styles.statusLabel}>
           <RemixIcon name="battery-charge-line" size={14} />
-          {t('seatFree.workspaceCredits')}
+          {isPro ? t('seatFree.workspaceCredits') : t('seatFree.freeGrant')}
         </span>
         <span className={styles.statusValue}>
           <bdi>{t('seatFree.creditsLeft', { amount: formatMockUsd(mock.balanceUsd) })}</bdi>
@@ -119,6 +121,9 @@ export function SeatFreeOutOfCreditsDialog({
                     <span className={styles.quotaPrice}>
                       {t('seatFree.perMonth', { amount: priceLabel(q) })}
                     </span>
+                    <span className={styles.quotaCredits}>
+                      {t('seatFree.tierCredits', { amount: priceLabel(SEAT_FREE_TIER_CREDITS[q]) })}
+                    </span>
                     {current ? (
                       <span className={styles.quotaCurrent}>{t('seatFree.currentQuota')}</span>
                     ) : null}
@@ -131,9 +136,12 @@ export function SeatFreeOutOfCreditsDialog({
             <Button variant="ghost" className={gateStyles.later} onClick={onClose}>
               {t('seatFree.laterCta')}
             </Button>
-            <Button variant="secondary" className={styles.topUp} onClick={onClose}>
-              {t('seatFree.topUpCta')}
-            </Button>
+            {/* Top-ups are a Pro feature; a Free owner can only upgrade. */}
+            {isPro ? (
+              <Button variant="secondary" className={styles.topUp} onClick={onClose}>
+                {t('seatFree.topUpCta')}
+              </Button>
+            ) : null}
             <Button
               variant="primary"
               className={gateStyles.cta}
