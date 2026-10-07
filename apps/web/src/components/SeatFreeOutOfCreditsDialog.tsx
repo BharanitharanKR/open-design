@@ -45,10 +45,19 @@ export function SeatFreeOutOfCreditsDialog({
     ? (SEAT_FREE_QUOTAS.find((q) => q > mock.quotaUsd) ?? mock.quotaUsd)
     : 20;
   const [quota, setQuota] = useState<SeatFreeQuota>(nextQuota);
+  // No downgrades: a Pro workspace only sees its own tier (marked 当前) and
+  // the tiers above it. On the top tier there is nothing to upgrade to, so
+  // the owner is offered a top-up alone.
+  const visibleQuotas = SEAT_FREE_QUOTAS.filter((q) => !isPro || q >= mock.quotaUsd);
+  const atTopTier = isPro && !SEAT_FREE_QUOTAS.some((q) => q > mock.quotaUsd);
   // `gate=midrun`: the run was cut off mid-task; same dialog, new headline.
   const title = mock.midrun ? t('seatFree.outTitleMidrun') : t('seatFree.outTitle');
   const body = !isOwner
     ? t('seatFree.outBodyMember')
+    : atTopTier
+      ? t('seatFree.outBodyOwnerTop', {
+          credits: priceLabel(SEAT_FREE_TIER_CREDITS[mock.quotaUsd]),
+        })
     : isPro
       ? t('seatFree.outBodyOwnerPro', {
           credits: priceLabel(SEAT_FREE_TIER_CREDITS[mock.quotaUsd]),
@@ -102,10 +111,14 @@ export function SeatFreeOutOfCreditsDialog({
 
       {isOwner ? (
         <>
+          {atTopTier ? null : (
           <div className={styles.quota} role="radiogroup" aria-label={t('seatFree.chooseQuota')}>
             <span className={styles.quotaTitle}>{t('seatFree.chooseQuota')}</span>
-            <div className={styles.quotaGrid}>
-              {SEAT_FREE_QUOTAS.map((q) => {
+            <div
+              className={styles.quotaGrid}
+              style={{ gridTemplateColumns: `repeat(${visibleQuotas.length}, minmax(0, 1fr))` }}
+            >
+              {visibleQuotas.map((q) => {
                 const current = isPro && q === mock.quotaUsd;
                 const selected = q === quota;
                 return (
@@ -114,9 +127,11 @@ export function SeatFreeOutOfCreditsDialog({
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    className={`${styles.quotaOption}${selected ? ` ${styles.selected}` : ''}`}
-                    disabled={isPro && q < mock.quotaUsd}
-                    onClick={() => setQuota(q)}
+                    className={`${styles.quotaOption}${selected ? ` ${styles.selected}` : ''}${current ? ` ${styles.current}` : ''}`}
+                    aria-disabled={current || undefined}
+                    onClick={() => {
+                      if (!current) setQuota(q);
+                    }}
                   >
                     <span className={styles.quotaPrice}>
                       {t('seatFree.perMonth', { amount: priceLabel(q) })}
@@ -132,16 +147,22 @@ export function SeatFreeOutOfCreditsDialog({
               })}
             </div>
           </div>
+          )}
           <div className={gateStyles.actions}>
             <Button variant="ghost" className={gateStyles.later} onClick={onClose}>
               {t('seatFree.laterCta')}
             </Button>
             {/* Top-ups are a Pro feature; a Free owner can only upgrade. */}
-            {isPro ? (
+            {isPro && !atTopTier ? (
               <Button variant="secondary" className={styles.topUp} onClick={onClose}>
                 {t('seatFree.topUpCta')}
               </Button>
             ) : null}
+            {atTopTier ? (
+              <Button variant="primary" className={gateStyles.cta} onClick={onClose}>
+                {t('seatFree.topUpCta')}
+              </Button>
+            ) : (
             <Button
               variant="primary"
               className={gateStyles.cta}
@@ -152,6 +173,7 @@ export function SeatFreeOutOfCreditsDialog({
               {' · '}
               {t('seatFree.perMonth', { amount: priceLabel(quota) })}
             </Button>
+            )}
           </div>
         </>
       ) : (

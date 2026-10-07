@@ -10,6 +10,7 @@ export const zhTW: Dict = {
   'seatFree.freeGrantShort': "$0.5 免费额度",
   'seatFree.tierCredits': "{amount} 额度",
   'seatFree.outTitleMidrun': "任务已中断：工作空间额度用完了",
+  'seatFree.outBodyOwnerTop': "本月 {credits} 额度已用完，全员暂停生成。充值后，大家马上就能继续。",
   'seatFree.onboardInviteTitle': "邀请同事一起用",
   'seatFree.onboardInviteBody': "成员不限、邀请免费，大家共用工作空间额度。",
   'seatFree.emailPlaceholder': "同事的邮箱",

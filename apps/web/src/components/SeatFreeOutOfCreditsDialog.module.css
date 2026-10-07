@@ -85,6 +85,14 @@
   cursor: default;
 }
 
+.quotaOption.current {
+  cursor: default;
+}
+
+.quotaOption.current:hover {
+  border-color: var(--border);
+}
+
 .quotaOption.selected {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));

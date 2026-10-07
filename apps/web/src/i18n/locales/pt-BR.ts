@@ -10,6 +10,7 @@ export const ptBR: Dict = {
   'seatFree.freeGrantShort': "$0.5 free credits",
   'seatFree.tierCredits': "{amount} credits",
   'seatFree.outTitleMidrun': "Task stopped: workspace credits are used up",
+  'seatFree.outBodyOwnerTop': "This month's {credits} of credits are used up, so everyone is paused. Top up once and the whole team can keep going.",
   'seatFree.onboardInviteTitle': "Invite your teammates",
   'seatFree.onboardInviteBody': "Unlimited members, free to invite. Everyone shares the workspace credits.",
   'seatFree.emailPlaceholder': "Teammate's email",
