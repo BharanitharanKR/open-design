@@ -36,6 +36,8 @@ export interface SeatFreeMockState {
   memberCount: number;
   workspaceName: string;
   ownerName: string;
+  /** Signed-in account (`account=`); per-account UI memory keys off it. */
+  accountId: string;
   /** Jump onboarding straight to the "invite teammates" step. */
   onboardInvite: boolean;
   /** Open the out-of-credits dialog on load (`gate=1` or `gate=midrun`). */
@@ -92,6 +94,7 @@ export function readSeatFreeMock(): SeatFreeMockState | null {
       memberCount: Number.isFinite(membersRaw) && membersRaw > 0 ? Math.round(membersRaw) : 8,
       workspaceName: params.get('ws') || 'Acme Design',
       ownerName: params.get('owner') || 'Lin Zhou',
+      accountId: params.get('account') || 'lin@acme.com',
       onboardInvite: params.get('onboard') === 'invite',
       gate: params.get('gate') === '1' || params.get('gate') === 'midrun',
       midrun: params.get('gate') === 'midrun',
@@ -123,7 +126,8 @@ export function seatFreeMockContext(state: SeatFreeMockState): WorkspaceCollabCo
   const isOwner = state.role === 'owner';
   const canManage = state.role !== 'member';
   const context: WorkspaceCollabContext = {
-    workspaceId: 'mock-ws-seatfree',
+    // Distinct per `ws=` so switching the mocked workspace is a real switch.
+    workspaceId: `mock-ws-${state.workspaceName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     workspaceType: 'team',
     workspaceMemberId: `mock-member-${state.role}`,
     role: state.role,
@@ -160,28 +164,31 @@ export function seatFreePlanFromTier(tier: string | null | undefined): SeatFreeP
   return 'pro';
 }
 
-const BANNER_DISMISSED_KEY = 'od.mock.seatfree.inviteBannerDismissed';
+// Keyed by ACCOUNT only: closing the banner once hides it in every workspace
+// that account opens.
+const bannerDismissedKey = (accountId: string) =>
+  `od.mock.seatfree.inviteBannerDismissed:${accountId}`;
 
 /**
  * Whether the one-member invite banner was dismissed. `?banner=reset` clears
  * the remembered dismissal so the banner can be reviewed again.
  */
-export function seatFreeInviteBannerDismissed(): boolean {
+export function seatFreeInviteBannerDismissed(accountId: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
     if (new URLSearchParams(window.location.search).get('banner') === 'reset') {
-      window.localStorage.removeItem(BANNER_DISMISSED_KEY);
+      window.localStorage.removeItem(bannerDismissedKey(accountId));
       return false;
     }
-    return window.localStorage.getItem(BANNER_DISMISSED_KEY) === '1';
+    return window.localStorage.getItem(bannerDismissedKey(accountId)) === '1';
   } catch {
     return false;
   }
 }
 
-export function dismissSeatFreeInviteBanner(): void {
+export function dismissSeatFreeInviteBanner(accountId: string): void {
   try {
-    window.localStorage.setItem(BANNER_DISMISSED_KEY, '1');
+    window.localStorage.setItem(bannerDismissedKey(accountId), '1');
   } catch {
     // Storage blocked: the banner simply comes back next load.
   }

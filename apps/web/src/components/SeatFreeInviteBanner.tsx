@@ -1,6 +1,7 @@
 // DEV-ONLY review mock (`?mock=seatfree`): a dismissible strip at the top of
-// Home, shown only while the workspace has a single member. Once closed it
-// stays closed (remembered in localStorage; `?banner=reset` brings it back).
+// Home, shown in every workspace regardless of member count or pending
+// invites. Closing it is remembered per ACCOUNT (localStorage), so it stays
+// gone in every workspace that account opens; `?banner=reset` brings it back.
 
 import { useState } from 'react';
 import { useT } from '../i18n';
@@ -16,8 +17,10 @@ import styles from './SeatFreeInviteBanner.module.css';
 export function SeatFreeInviteBanner() {
   const t = useT();
   const mock = readSeatFreeMock();
-  const [dismissed, setDismissed] = useState(() => seatFreeInviteBannerDismissed());
-  if (!mock || mock.memberCount !== 1 || dismissed) return null;
+  const [dismissed, setDismissed] = useState(() =>
+    mock ? seatFreeInviteBannerDismissed(mock.accountId) : true,
+  );
+  if (!mock || dismissed) return null;
   return (
     <div className={styles.banner} role="region" aria-label={t('seatFree.bannerText')} data-testid="seatfree-invite-banner">
       <span className={styles.icon} aria-hidden>
@@ -32,7 +35,7 @@ export function SeatFreeInviteBanner() {
         className={styles.close}
         aria-label={t('seatFree.dismiss')}
         onClick={() => {
-          dismissSeatFreeInviteBanner();
+          dismissSeatFreeInviteBanner(mock.accountId);
           setDismissed(true);
         }}
       >
