@@ -351,19 +351,32 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       }
     }
   };
+  const owns = (scope: string): boolean => authority(scope)?.generation != null;
+  const undurableRetirements = new Map<string, AssemblyRecord>();
+  const completed = new Map<string, Set<string>>();
+  // A failed owner can be replaced only after every dispatched operation has
+  // finished classification. No old response may write under its successor.
+  const inFlightAuthority = new Map<string, Set<string>>();
+  const writeFileAtomically = writeAuthorityFile;
 
   /** Retire authority before deleting bytes; a failed rename may still permit overwriting the record. */
   const retireReplay = (file: string, record: AssemblyRecord): boolean => {
     refusedFiles.add(file);
+    undurableRetirements.set(file, record);
     const retired = JSON.stringify({ ...record, replayRefused: true });
     try {
       writeFileAtomically(file, retired);
+      undurableRetirements.delete(file);
       return true;
     } catch {
       try {
         // This fallback only removes authority. A partial write is invalid JSON
         // and therefore a cache miss; it can never manufacture a fresh grant.
         fs.writeFileSync(file, retired);
+        const fd = fs.openSync(file, 'r+');
+        try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+        syncAuthorityDirectory(path.dirname(file));
+        undurableRetirements.delete(file);
         return true;
       } catch {
         return false;
@@ -935,7 +948,34 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
   };
 
   /** Recover all affected records together, so an unvisited locale cannot revive on restart. */
+  function isRefusalTombstone(file: string, scope: string): boolean {
+    try {
+      const value: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
+      return isRecord(value) && value.version === ASSEMBLY_VERSION &&
+        value.kind === 'replay-refusal' && value.replayRefused === true && value.scope === scope;
+    } catch { return false; }
+  }
+
   function retryRefusals(scope: string): void {
+    if (!owns(scope)) return;
+    for (const [file, key] of pendingKeyRefusals) {
+      if (key.scope !== scope) continue;
+      const record = parseAssembly(file, key);
+      if (record) {
+        if (retireReplay(file, record)) pendingKeyRefusals.delete(file);
+      } else {
+        // A temporarily unreadable record is not proof of absence. Replace its
+        // exact pathname with a tombstone before permitting journal settlement;
+        // this does not require enumerating other locales or reading old bytes.
+        try {
+          writeFileAtomically(file, JSON.stringify({ version: ASSEMBLY_VERSION, kind: 'replay-refusal', replayRefused: true, scope }));
+          pendingKeyRefusals.delete(file);
+        } catch { /* retain the obligation until durable replacement succeeds */ }
+      }
+    }
+    for (const [file, record] of [...undurableRetirements]) {
+      if (record.scope === scope) retireReplay(file, record);
+    }
     const account = refusedScopes.get(scope);
     const withdrawals = [...pendingWithdrawals.entries()].filter(([, value]) => value.scope === scope);
     if (!account && !withdrawals.length) return;
@@ -953,7 +993,7 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       let persisted = true;
       for (const { file, record } of entries) {
         if (account.has(file)) continue;
-        if (!record) { persisted = false; continue; }
+        if (!record) { if (!isRefusalTombstone(file, scope)) persisted = false; continue; }
         if (record.scope === scope && !retireReplay(file, record)) persisted = false;
       }
       if (persisted) refusedScopes.delete(scope);
@@ -962,7 +1002,7 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       let persisted = true;
       for (const { file, record } of entries) {
         if (withdrawal.renewed.has(file)) continue;
-        if (!record) { persisted = false; continue; }
+        if (!record) { if (!isRefusalTombstone(file, scope)) persisted = false; continue; }
         if (record.scope !== scope || record.placementKey !== withdrawal.placementKey ||
           !touchpointWithdrawalReclaims(withdrawal.body, record.identity)) continue;
         if (!retireReplay(file, record)) persisted = false;
@@ -972,6 +1012,17 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       if (persisted) pendingWithdrawals.delete(name);
     }
   }
+
+  const settleCompleted = (scope: string): void => {
+    retryRefusals(scope);
+    if (refusedScopes.has(scope) || [...pendingWithdrawals.values()].some(value => value.scope === scope) ||
+      [...pendingKeyRefusals.values()].some(value => value.scope === scope) ||
+      [...undurableRetirements.values()].some(value => value.scope === scope)) return;
+    const tokens = completed.get(scope);
+    if (!tokens) return;
+    for (const token of [...tokens]) if (authority(scope)?.settle(token)) tokens.delete(token);
+    if (!tokens.size) completed.delete(scope);
+  };
 
   return {
     beginAuthority(scope) {
@@ -1412,6 +1463,8 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       armExpiryForFresh(file, record.schedule, Math.max(0, nowEstimate() - clock.fetchedAt));
       throw error;
     }
+    undurableRetirements.delete(file);
+    pendingKeyRefusals.delete(file);
     refusedFiles.delete(file);
     refusedScopes.get(key.scope)?.add(file);
     for (const withdrawal of pendingWithdrawals.values()) {

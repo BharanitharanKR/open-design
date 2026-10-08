@@ -131,11 +131,11 @@ describe("OPEND-3436 offline cache acceptance", () => {
     const earlier = cache.ticket(key);
     cache.forgetWithdrawn(key, withdrawal);
     cache.remember(key, body(), earlier);
-    const replay = createTouchpointContentCache(dataDir).replayOffline(key, "upstream_unreachable");
+    const replay = replayFromDisk(key, "upstream_unreachable");
     expect(replay?.deploymentId).not.toBe("deployment-1");
     // A request sent after the 410 is an answer the server gave knowing about it.
     cache.remember(key, { ...body(), serverTime: iso(1) }, cache.ticket(key));
-    expect(createTouchpointContentCache(dataDir).replayOffline(key, "upstream_unreachable")?.deploymentId).toBe("deployment-1");
+    expect(replayFromDisk(key, "upstream_unreachable")?.deploymentId).toBe("deployment-1");
   });
   it("AC6 receipt for the retained UI credential clears the rotated cache credential's same delivery", () => {
     const cache = createTouchpointContentCache(dataDir); cache.remember(key, body());
