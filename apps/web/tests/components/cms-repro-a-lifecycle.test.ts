@@ -336,7 +336,7 @@ describe("OPEND-3436 Test channel", () => {
     fail(); await step(30_000);
     const calls = fetchMock.mock.calls.length;
     await step(120_000);
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
+    expect(fetchMock.mock.calls.length).toBe(calls);
     expect(probe.result.current?.decisions.size ?? 0).toBe(0);
     expect(probe.result.current?.isAuthorized() ?? false).toBe(false);
     recover(); await step(30_000);
