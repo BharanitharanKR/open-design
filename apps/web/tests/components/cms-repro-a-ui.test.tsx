@@ -20,6 +20,7 @@ import {
 } from "../../src/components/TestCampaignModal";
 import * as component from "../../src/components/touchpoint-component";
 import * as navigation from "../../src/components/touchpoint-navigation";
+import { TOUCHPOINT_POLL_MS } from "../../src/components/touchpoint-lifecycle";
 
 const cmsTrack = vi.hoisted(() => vi.fn());
 vi.mock("../../src/analytics/provider", () => ({
@@ -583,6 +584,9 @@ describe("OPEND-3298 context recovery and remaining P1", () => {
     const hoverMounts = () => mount.mock.calls.filter(([, , host]) => host.placementKey !== modal).length;
     const initialMounts = hoverMounts();
     const originalEntry = latest?.decisions.get(entry);
+    const modalDeadline = Date.parse(latest!.decisions.get(modal)!.authorizationExpiresAt);
+    const modalRequests = () => requests("/test-runtime").filter(([url]) => new URL(String(url), "http://localhost").searchParams.get("placementKey") === modal).length;
+    expect(modalRequests()).toBe(1);
     let hanging = true;
     decisionReply = (key, locale, id) => key === modal && hanging
       ? new Promise<Response>(() => {}) : Response.json(decision(key, locale, oldGeneration, id));
@@ -592,14 +596,24 @@ describe("OPEND-3298 context recovery and remaining P1", () => {
       expect(visibleEntry(), `hover at t=${second}s`).toBe(true);
       expect(hoverMounts(), `hover mounts at t=${second}s`).toBe(initialMounts);
       expect(latest?.decisions.get(entry)).toBe(originalEntry);
-      if (second < 60) expect(screen.queryByRole("dialog", { name: "Test campaign" })).not.toBeNull();
-      if (second >= 60 && second <= 90) {
+      if (Date.now() < modalDeadline) expect(screen.queryByRole("dialog", { name: "Test campaign" })).not.toBeNull();
+      else {
         expect(screen.queryByRole("dialog", { name: "Test campaign" })).toBeNull();
         expect(latest?.decisions.has(modal)).toBe(false);
       }
+      // Failed presentations stop automatic requests; only the healthy pair
+      // keeps polling. Merely changing the mock response cannot wake recovery.
+      if (Date.now() - epoch >= TOUCHPOINT_POLL_MS + TEST_PLACEMENT_REQUEST_TIMEOUT_MS)
+        expect(modalRequests(), `modal requests at t=${second}s`).toBe(2);
       if (second === 90) hanging = false;
     }
+    act(() => window.dispatchEvent(new Event("focus")));
+    await settle(32);
+    expect(modalRequests()).toBe(3);
     expect(latest?.decisions.has(modal)).toBe(true);
+    expect(visibleEntry()).toBe(true);
+    expect(hoverMounts()).toBe(initialMounts);
+    expect(latest?.decisions.get(entry)).toBe(originalEntry);
   });
 
   it("ages an answer from its own fetch completion while a sibling delays the round", async () => {
