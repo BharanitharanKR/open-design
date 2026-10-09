@@ -199,7 +199,9 @@ const clock = { t: 0 };
 tl.to(clock, { t: duration, duration, ease: 'none' }, 0);
 window.__timelines = { main: tl };
 // A procedural layer must draw from clock.t, not increment state each frame.
-// tl.eventCallback('onUpdate', () => drawWorld(clock.t));
+// Video export seeks with timeline callbacks suppressed, so draw from a
+// per-frame loop rather than from onUpdate alone:
+// (function render() { drawWorld(clock.t); requestAnimationFrame(render); })();
 </script>
 ```
 
@@ -213,6 +215,8 @@ Deterministic motion must survive forward/backward seeking: no Date.now-based
 scene state, unseeded randomness, simulation that only works after playing from
 zero, or independent CSS animation competing with the master timeline. Define
 positions and reveals as functions of time, or as seekable timeline tracks.
+Never make visible content depend on timeline callbacks (onUpdate, onComplete);
+the MP4 exporter seeks with them suppressed.
 Audio-reactive motion needs a precomputed envelope or known beat map when exact
 replay matters. Never imply that an arbitrary pulse is analysis of the music.
 
