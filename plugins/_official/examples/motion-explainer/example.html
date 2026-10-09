@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" data-od-preview-ready="false">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How noise-cancelling headphones work</title>
+<style>
+  :root {
+    --graphite: #14171a;
+    --graphite-2: #1c2126;
+    --cyan: #22d3ee;
+    --white: #f5f7f8;
+    --dim: #8a9aa3;
+    --font: "JetBrains Mono", "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+    --stroke: 4px;
+    --label-size: 40px;
+    --sub-size: 24px;
+    --title-size: 104px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0b0d0f; color: var(--white); font-family: var(--font); }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; overflow: hidden; }
+  #viewport { position: relative; width: 100vw; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #scaler { position: relative; width: 1920px; height: 1080px; flex: none; transform-origin: center center; }
+  #main {
+    position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden;
+    background-color: var(--graphite);
+    background-image:
+      linear-gradient(rgba(34,211,238,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34,211,238,0.06) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+  #main svg { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: visible; }
+  .ln { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: var(--stroke); }
+  .thin { stroke-width: 3px; }
+  .lbl { position: absolute; opacity: 0; white-space: nowrap; }
+  .lbl .name { display: block; font-size: var(--label-size); font-weight: 700; letter-spacing: 0.02em; line-height: 1.2; }
+  .lbl .sub { display: block; font-size: var(--sub-size); color: var(--dim); line-height: 1.4; margin-top: 4px; }
+  .lbl .idx { color: var(--cyan); }
+  #title { position: absolute; left: 0; right: 0; top: 770px; text-align: center; font-size: var(--title-size); font-weight: 700; letter-spacing: -0.01em; opacity: 0; line-height: 1.2; }
+  #title b { color: var(--cyan); font-weight: 700; }
+  #chiptxt { font-family: var(--font); font-size: 28px; font-weight: 700; fill: var(--white); text-anchor: middle; }
+  #chiptxt2 { font-family: var(--font); font-size: 22px; fill: var(--dim); text-anchor: middle; }
+  #controls { flex: none; display: flex; align-items: center; gap: 16px; padding: 0 0 16px; width: min(900px, 90vw); }
+  #controls button { background: var(--graphite-2); color: var(--white); border: 1px solid #36424b; font-family: var(--font); font-size: 14px; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+  #controls button:hover { border-color: var(--cyan); }
+  #controls button:focus-visible, #scrub:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  #scrub { flex: 1; accent-color: var(--cyan); }
+  #time { font-size: 14px; color: var(--dim); min-width: 90px; text-align: right; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="scaler">
+    <div id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <svg viewBox="0 0 1920 1080" aria-label="Noise-cancelling headphones diagram" role="img">
+        <!-- ear cup -->
+        <g id="ear">
+          <path id="earCup" class="ln" pathLength="1" stroke="#f5f7f8" d="M1480 330 Q1480 300 1510 300 H1650 Q1720 300 1720 370 V710 Q1720 780 1650 780 H1510 Q1480 780 1480 750 Z"/>
+          <circle id="earIn" class="ln thin" pathLength="1" cx="1610" cy="540" r="84" stroke="#22d3ee"/>
+          <circle id="earIn2" class="ln thin" pathLength="1" cx="1610" cy="540" r="40" stroke="#22d3ee" opacity="0.6"/>
+        </g>
+        <!-- wires -->
+        <path id="wire1" class="ln thin" pathLength="1" stroke="#22d3ee" stroke-dasharray="1 1" d="M700 380 V440 H560 V500"/>
+        <path id="wire2" class="ln thin" pathLength="1" stroke="#22d3ee" d="M660 560 H780"/>
+        <path id="wire3" class="ln thin" pathLength="1" stroke="#22d3ee" d="M980 560 H1040 V740"/>
+        <!-- mic -->
+        <g id="mic">
+          <rect x="676" y="236" width="48" height="64" rx="24" fill="none" stroke="#f5f7f8" stroke-width="4"/>
+          <path d="M660 276 Q660 322 700 322 Q740 322 740 276" fill="none" stroke="#f5f7f8" stroke-width="4" stroke-linecap="round"/>
+          <path d="M700 322 V344" fill="none" stroke="#f5f7f8" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <path id="sampleLine" class="ln thin" stroke="#22d3ee" stroke-dasharray="6 10" d="M700 346 V380"/>
+        <circle id="sampleDot" r="10" fill="#22d3ee"/>
+        <!-- scope -->
+        <g id="scope">
+          <rect x="460" y="500" width="200" height="120" fill="#14171a" stroke="#8a9aa3" stroke-width="3"/>
+          <path id="scopeTrace" class="ln thin" stroke="#22d3ee" d=""/>
+        </g>
+        <!-- chip -->
+        <g id="chip">
+          <rect x="780" y="500" width="200" height="120" rx="8" fill="#14171a" stroke="#f5f7f8" stroke-width="4"/>
+          <g stroke="#f5f7f8" stroke-width="4" stroke-linecap="round">
+            <path d="M820 500 V480 M880 500 V480 M940 500 V480 M820 620 V640 M880 620 V640 M940 620 V640"/>
+          </g>
+          <text id="chiptxt" x="880" y="548">× −1</text>
+          <text id="chiptxt2" x="880" y="590">invert phase</text>
+        </g>
+        <!-- waves -->
+        <path id="anti" class="ln" stroke="#22d3ee" d=""/>
+        <path id="noise" class="ln" stroke="#f5f7f8" d=""/>
+        <path id="sum" class="ln" stroke="#22d3ee" d=""/>
+        <line id="axisN" x1="100" x2="1440" y1="380" y2="380" stroke="#8a9aa3" stroke-width="1" stroke-dasharray="4 10" opacity="0"/>
+      </svg>
+
+      <div id="lNoise" class="lbl" style="left:120px;top:236px"><span class="name"><span class="idx">01</span> Noise</span><span class="sub">unwanted sound pressure</span></div>
+      <div id="lMic" class="lbl" style="left:772px;top:236px"><span class="name"><span class="idx">02</span> Microphone</span><span class="sub">samples the noise</span></div>
+      <div id="lAnti" class="lbl" style="left:1040px;top:880px"><span class="name"><span class="idx">03</span> Anti-noise</span><span class="sub">same wave, inverted</span></div>
+      <div id="lSil" class="lbl" style="left:120px;top:640px"><span class="name"><span class="idx">04</span> Silence</span><span class="sub">sum of both waves = 0</span></div>
+      <div id="title">Silence is <b>engineered.</b></div>
+    </div>
+  </div>
+</div>
+<div id="controls">
+  <button id="play" aria-label="Play or pause">Pause</button>
+  <button id="replay" aria-label="Replay from start">Replay</button>
+  <input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Scrub timeline">
+  <span id="time">0.00 / 20.00s</span>
+</div>
+
+<script src="assets/gsap.min.js"></script>
+<script>
+const CFG = {
+  duration: 20,
+  X0: 100, X1: 1440, MIC_X: 700,
+  noiseBase: 380, antiBase: 740, mergeBase: 540,
+  amp: 80, step: 6,
+  white: '#f5f7f8', cyan: '#22d3ee'
+};
+const $ = s => document.querySelector(s);
+const duration = CFG.duration;
+
+// ---- wave model: pure function of (x, t) ----
+const tri = p => Math.asin(Math.sin(p)) * 2 / Math.PI;
+function noiseAt(x, t) {
+  const env = Math.min(1, Math.max(0, (x - CFG.X0) / 120));
+  const e = env * env * (3 - 2 * env);
+  return CFG.amp * e * (0.6 * tri(x * 0.05 - 6 * t) + 0.35 * Math.sin(x * 0.13 - 9 * t + 1) + 0.2 * tri(x * 0.31 - 13 * t));
+}
+function wavePath(fn, base, front) {
+  const xe = Math.min(front, CFG.X1);
+  if (xe <= CFG.X0) return '';
+  let d = '';
+  for (let x = CFG.X0; x < xe; x += CFG.step) d += (d ? 'L' : 'M') + x + ' ' + (base + fn(x)).toFixed(1);
+  d += 'L' + xe + ' ' + (base + fn(xe)).toFixed(1);
+  return d;
+}
+
+// ---- animated state (driven by the master timeline) ----
+const S = { t: 0, nFront: CFG.X0, aFront: CFG.X0, nBase: CFG.noiseBase, aBase: CFG.antiBase, nOp: 1, aOp: 1, sumOp: 0, sumFront: CFG.X0 };
+const sampleOp = { v: 0 };
+
+function draw() {
+  const t = clock.t;
+  const nf = x => noiseAt(x, t);
+  const af = x => -noiseAt(x, t);
+  $('#noise').setAttribute('d', wavePath(nf, S.nBase, S.nFront));
+  $('#noise').style.opacity = S.nOp;
+  $('#anti').setAttribute('d', wavePath(af, S.aBase, S.aFront));
+  $('#anti').style.opacity = S.aOp;
+  $('#sum').setAttribute('d', wavePath(x => nf(x) + af(x), CFG.mergeBase, S.sumFront));
+  $('#sum').style.opacity = S.sumOp;
+  // sampling dot rides the noise wave at the mic
+  const dy = S.nBase + nf(CFG.MIC_X);
+  $('#sampleDot').setAttribute('cx', CFG.MIC_X);
+  $('#sampleDot').setAttribute('cy', dy.toFixed(1));
+  $('#sampleDot').style.opacity = sampleOp.v * S.nOp;
+  $('#sampleLine').setAttribute('d', 'M700 346 V' + Math.max(350, dy - 12).toFixed(1));
+  $('#sampleLine').style.opacity = sampleOp.v * S.nOp;
+  // scope trace: recent history of the sampled signal
+  let d = '';
+  for (let i = 0; i <= 50; i++) {
+    const x = 470 + i * 3.6;
+    const tt = t - (50 - i) * 0.012;
+    d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + (560 + noiseAt(CFG.MIC_X, tt) * 0.62).toFixed(1);
+  }
+  $('#scopeTrace').setAttribute('d', d);
+}
+
+// ---- timeline ----
+const tl = gsap.timeline({ paused: true });
+const clock = { t: 0 };
+tl.to(clock, { t: duration, duration, ease: 'none', onUpdate: () => { S.t = clock.t; } }, 0);
+
+// initial states
+gsap.set(['#lNoise', '#lMic', '#lAnti', '#lSil', '#title'], { opacity: 0 });
+gsap.set(['#mic', '#chip', '#scope'], { opacity: 0 });
+gsap.set(['#earCup', '#earIn', '#earIn2'], { strokeDasharray: 1, strokeDashoffset: 1 });
+gsap.set(['#wire1', '#wire2', '#wire3'], { strokeDasharray: 1, strokeDashoffset: 1 });
+gsap.set('#axisN', { opacity: 0 });
+
+const appear = (sel, at, dy = 16) => tl.fromTo(sel, { opacity: 0, y: dy }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, at);
+
+// Beat 1 (0 - 3.5): noise travels toward the ear
+tl.to(['#earCup'], { strokeDashoffset: 0, duration: 1.2, ease: 'power2.out' }, 0.2);
+tl.to(['#earIn', '#earIn2'], { strokeDashoffset: 0, duration: 0.9, ease: 'power2.out' }, 0.6);
+tl.fromTo(S, { nFront: CFG.X0 }, { nFront: CFG.X1, duration: 3.5, ease: 'none' }, 0);
+tl.to('#axisN', { opacity: 0.5, duration: 0.6 }, 0.4);
+appear('#lNoise', 0.6);
+
+// Beat 2 (3.5 - 8): microphone samples the wave
+appear('#mic', 3.6, -12);
+appear('#lMic', 3.8);
+tl.to(sampleOp, { v: 1, duration: 0.4, ease: 'power2.out' }, 4.2);
+tl.to('#wire1', { strokeDashoffset: 0, duration: 0.9, ease: 'power2.out' }, 5.0);
+appear('#scope', 5.4, 0);
+
+// Beat 3 (8 - 13): chip generates the inverted wave
+appear('#chip', 8.0, 0);
+tl.to('#wire2', { strokeDashoffset: 0, duration: 0.5, ease: 'power2.out' }, 8.2);
+tl.to('#wire3', { strokeDashoffset: 0, duration: 0.8, ease: 'power2.out' }, 8.9);
+tl.fromTo(S, { aFront: CFG.X0 }, { aFront: CFG.X1, duration: 3.2, ease: 'none' }, 9.4);
+appear('#lAnti', 9.6);
+
+// Beat 4 (13 - 17.5): waves meet and flatten into silence
+tl.to(S, { nBase: CFG.mergeBase, duration: 1.6, ease: 'power2.inOut' }, 13.0);
+tl.to(S, { aBase: CFG.mergeBase, duration: 1.6, ease: 'power2.inOut' }, 13.0);
+tl.to('#axisN', { opacity: 0, duration: 0.6 }, 13.0);
+tl.fromTo(S, { sumFront: CFG.X0 }, { sumFront: CFG.X1, duration: 1.6, ease: 'power2.inOut' }, 14.2);
+tl.to(S, { sumOp: 1, duration: 0.3 }, 14.2);
+tl.to(S, { nOp: 0.0, aOp: 0.0, duration: 1.2, ease: 'power1.inOut' }, 15.0);
+appear('#lSil', 14.6);
+tl.to('#sum', { attr: { stroke: CFG.white }, duration: 1.0 }, 15.6);
+
+// Beat 5 (17.5 - 20): resolve
+tl.to(['#mic', '#chip', '#scope', '#wire1', '#wire2', '#wire3', '#sampleLine', '#lNoise', '#lMic', '#lAnti'], { opacity: 0.12, duration: 0.8, ease: 'power2.inOut' }, 16.6);
+tl.to('#lSil', { y: -10, duration: 0.6, ease: 'power2.inOut' }, 16.8);
+tl.fromTo('#title', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, 17.2);
+
+tl.eventCallback('onUpdate', draw);
+window.__timelines = { main: tl };
+draw();
+
+// ---- preview shell (outside the composition) ----
+const scaler = $('#scaler'), vp = $('#viewport');
+function fit() {
+  const s = Math.min(vp.clientWidth / 1920, vp.clientHeight / 1080);
+  scaler.style.transform = 'scale(' + s + ')';
+  scaler.style.margin = (-(1080 * (1 - s)) / 2) + 'px ' + (-(1920 * (1 - s)) / 2) + 'px';
+}
+window.addEventListener('resize', fit); fit();
+
+const playBtn = $('#play'), scrub = $('#scrub'), timeEl = $('#time');
+function sync() {
+  scrub.value = tl.time();
+  timeEl.textContent = tl.time().toFixed(2) + ' / ' + duration.toFixed(2) + 's';
+  playBtn.textContent = tl.paused() ? 'Play' : 'Pause';
+}
+tl.eventCallback('onUpdate', () => { draw(); sync(); });
+tl.eventCallback('onComplete', sync);
+playBtn.addEventListener('click', () => {
+  if (tl.paused()) { if (tl.progress() >= 1) tl.restart(); else tl.play(); } else tl.pause();
+  sync();
+});
+$('#replay').addEventListener('click', () => { tl.restart(); sync(); });
+scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); draw(); sync(); });
+
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  tl.pause(); tl.time(19.5); draw(); sync();
+} else {
+  tl.play(); sync();
+}
+</script>
+<script>
+// Video export seeks with timeline callbacks suppressed, so the onUpdate
+// drawing also runs from a per-frame loop whenever the timeline time moves.
+(function install() {
+  var tls = window.__timelines;
+  var tl = tls && tls[Object.keys(tls)[0]];
+  if (!tl) { setTimeout(install, 50); return; }
+  var draw = tl.eventCallback('onUpdate');
+  if (!draw) return;
+  var drawnAt = null;
+  tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
+  (function loop() {
+    var t = tl.time();
+    if (t !== drawnAt) { drawnAt = t; draw(); }
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+<script>
+// Preview bake: mark ready once the timeline reaches the poster frame (9s).
+(function () {
+  var POSTER_AT = 9;
+  function check() {
+    var tls = window.__timelines;
+    var tl = tls && tls[Object.keys(tls)[0]];
+    if (tl && tl.time() >= POSTER_AT) {
+      document.documentElement.setAttribute('data-od-preview-ready', 'true');
+      return;
+    }
+    requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+})();
+</script>
+</body>
+</html>

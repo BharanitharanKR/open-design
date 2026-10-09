@@ -32,7 +32,7 @@ import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
 import { inferPluginPreview, type MediaPreviewSpec } from './plugins-home/preview';
 import { pluginSubfacetLabel } from './plugins-home/subfacetLabel';
 
-export type TemplateType = 'Prototype' | 'Live Artifact' | 'Slides' | 'Document' | 'Image' | 'Video' | 'HyperFrames' | 'Audio' | 'WebGL';
+export type TemplateType = 'Prototype' | 'Live Artifact' | 'Slides' | 'Document' | 'Image' | 'Motion design' | 'Video' | 'HyperFrames' | 'Audio' | 'WebGL';
 
 export type TemplateDemo = {
   id: string;
@@ -75,7 +75,7 @@ export const COMMUNITY_TAB_TYPES: readonly TemplateType[] = ['Prototype', 'Slide
  *  gets its entry and shows the empty state when picked, rather than vanishing
  *  and reappearing with the catalogue. Website clone is a Home-only entry and
  *  stays out of Community. */
-export const COMMUNITY_MORE_TYPES: readonly TemplateType[] = ['HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL'];
+export const COMMUNITY_MORE_TYPES: readonly TemplateType[] = ['Motion design', 'HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL'];
 
 export const TEMPLATE_TYPE_ORDER: TemplateType[] = [...COMMUNITY_TAB_TYPES, ...COMMUNITY_MORE_TYPES];
 
@@ -90,6 +90,7 @@ const FACET_CATEGORY_TYPE: Record<string, TemplateType> = {
   'document': 'Document',
   'live-artifact': 'Live Artifact',
   'image': 'Image',
+  'motion-design': 'Motion design',
   'video': 'Video',
   'hyperframes': 'HyperFrames',
   'audio': 'Audio',
@@ -105,6 +106,7 @@ export const TEMPLATE_TYPE_LABEL_KEY: Record<TemplateType, keyof Dict> = {
   'Slides': 'community.typeSlides',
   'Document': 'community.typeDocument',
   'Image': 'community.typeImage',
+  'Motion design': 'homeHero.chip.motionDesign',
   'Video': 'community.typeVideo',
   'HyperFrames': 'community.typeHyperFrames',
   'Audio': 'community.typeAudio',

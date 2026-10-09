@@ -1569,6 +1569,396 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
       prompt: 'Progetta un sito ispirato alle riviste per il mio marchio, presentando il prodotto con titoli d’impatto, collage di immagini e animazioni di scorrimento.',
     },
   },
+  'example-motion-3d-scene': {
+    'zh-CN': {
+      title: '3D 程序化海岛',
+      prompt: '用 Three.js 在浏览器里制作一段 15 秒的 3D 动效：黄昏时分一座程序生成的热带小岛。用着色器让海浪起伏，棕榈树随风摇摆，云朵缓缓飘动。镜头从海面高空出发，滑落后绕小岛转一道弧线，最后停在平静的远景上，标题“Made of code.”渐显并停留两秒。风格化而非写实：柔和渐变、轻卡通光影、温暖的日落色调。所有运动都由时间轴驱动，任意时刻都能精确重放。',
+    },
+    'zh-TW': {
+      title: '3D 程序化海島',
+      prompt: '用 Three.js 在瀏覽器裡製作一段 15 秒的 3D 動效：黃昏時分一座程序生成的熱帶小島。用著色器讓海浪起伏，棕櫚樹隨風搖擺，雲朵緩緩飄動。鏡頭從海面高空出發，滑落後繞小島轉一道弧線，最後停在平靜的遠景上，標題「Made of code.」漸顯並停留兩秒。風格化而非寫實：柔和漸層、輕卡通光影、溫暖的日落色調。所有運動都由時間軸驅動，任意時刻都能精確重播。',
+    },
+    en: {
+      title: 'Procedural 3D Island',
+      prompt: 'Create a 15-second 3D motion piece rendered in the browser with Three.js: a small procedural tropical island at golden hour. Animate ocean waves with a shader, palm trees swaying in the breeze and slow-drifting clouds. The camera starts high above the sea, glides down and arcs around the island, then settles on a calm wide shot as the title "Made of code." fades in and holds for two seconds. Stylized rather than photoreal: soft gradients, gentle toon shading and a warm sunset palette. Drive every movement from the timeline time so any moment replays exactly.',
+    },
+    id: {
+      title: 'Pulau 3D Prosedural',
+      prompt: 'Buat karya motion 3D 15 detik yang dirender di browser dengan Three.js: sebuah pulau tropis prosedural kecil saat golden hour. Animasikan ombak laut dengan shader, pohon palem yang bergoyang tertiup angin, dan awan yang bergerak pelan. Kamera mulai tinggi di atas laut, meluncur turun dan melengkung mengitari pulau, lalu berhenti pada bidikan lebar yang tenang saat judul "Made of code." muncul perlahan dan bertahan dua detik. Bergaya, bukan fotorealistis: gradasi lembut, toon shading halus, dan palet senja yang hangat. Gerakkan semuanya dari waktu timeline agar setiap momen dapat diputar ulang dengan tepat.',
+    },
+    de: {
+      title: 'Prozedurale 3D-Insel',
+      prompt: 'Erstelle ein 15-sekündiges 3D-Motion-Stück, das mit Three.js im Browser gerendert wird: eine kleine prozedurale Tropeninsel zur goldenen Stunde. Animiere Meereswellen per Shader, Palmen, die sich im Wind wiegen, und langsam ziehende Wolken. Die Kamera startet hoch über dem Meer, gleitet hinab, zieht einen Bogen um die Insel und kommt in einer ruhigen Totale zum Stehen, während der Titel „Made of code.“ einblendet und zwei Sekunden stehen bleibt. Stilisiert statt fotorealistisch: weiche Verläufe, sanftes Toon-Shading, warme Sonnenuntergangsfarben. Steuere jede Bewegung über die Timeline-Zeit, damit jeder Moment exakt wiederholbar ist.',
+    },
+    'pt-BR': {
+      title: 'Ilha 3D procedural',
+      prompt: 'Crie uma peça de motion 3D de 15 segundos renderizada no navegador com Three.js: uma pequena ilha tropical procedural na hora dourada. Anime as ondas do mar com um shader, coqueiros balançando com a brisa e nuvens se movendo devagar. A câmera começa bem acima do mar, desce deslizando e faz um arco ao redor da ilha, depois para em um plano geral tranquilo enquanto o título "Made of code." surge e permanece por dois segundos. Estilizado em vez de fotorrealista: gradientes suaves, toon shading leve e uma paleta quente de pôr do sol. Controle cada movimento pelo tempo da timeline para que qualquer momento possa ser reproduzido com exatidão.',
+    },
+    'es-ES': {
+      title: 'Isla 3D procedural',
+      prompt: 'Crea una pieza de motion 3D de 15 segundos renderizada en el navegador con Three.js: una pequeña isla tropical procedural en la hora dorada. Anima las olas con un shader, palmeras que se mecen con la brisa y nubes que avanzan despacio. La cámara empieza muy por encima del mar, desciende planeando y traza un arco alrededor de la isla, y termina en un plano general tranquilo mientras aparece el título «Made of code.» durante dos segundos. Estilizado en lugar de fotorrealista: degradados suaves, toon shading sutil y una paleta cálida de atardecer. Controla cada movimiento con el tiempo de la línea temporal para que cualquier momento se reproduzca con exactitud.',
+    },
+    ru: {
+      title: 'Процедурный 3D-остров',
+      prompt: 'Сделай 15-секундную 3D-анимацию, которая рендерится в браузере на Three.js: небольшой процедурный тропический остров в золотой час. Анимируй морские волны шейдером, пальмы, качающиеся на ветру, и медленно плывущие облака. Камера стартует высоко над морем, плавно опускается, огибает остров по дуге и останавливается на спокойном общем плане, где появляется заголовок «Made of code.» и держится две секунды. Стилизация вместо фотореализма: мягкие градиенты, лёгкий тун-шейдинг, тёплая закатная палитра. Управляй каждым движением временем таймлайна, чтобы любой момент воспроизводился точно.',
+    },
+    fa: {
+      title: 'جزیرهٔ سه‌بعدی رویه‌ای',
+      prompt: 'یک قطعهٔ موشن سه‌بعدی ۱۵ ثانیه‌ای بساز که با Three.js در مرورگر رندر شود: جزیرهٔ گرمسیری کوچک و رویه‌ای در ساعت طلایی. موج‌های دریا را با شیدر، درختان نخل را در حال تکان خوردن در نسیم و ابرها را در حال حرکت آرام متحرک کن. دوربین از ارتفاع زیاد بالای دریا شروع می‌کند، پایین می‌لغزد و قوسی دور جزیره می‌زند، سپس روی نمایی باز و آرام می‌ایستد و عنوان «Made of code.» آرام ظاهر می‌شود و دو ثانیه می‌ماند. سبک‌پردازی‌شده و نه واقع‌گرایانه: گرادیان‌های نرم، سایه‌زنی کارتونی ملایم و رنگ‌های گرم غروب. هر حرکت را با زمان تایم‌لاین هدایت کن تا هر لحظه دقیقاً قابل بازپخش باشد.',
+    },
+    ar: {
+      title: 'جزيرة ثلاثية الأبعاد إجرائية',
+      prompt: 'أنشئ عملًا حركيًا ثلاثي الأبعاد مدته 15 ثانية يُعرض في المتصفح باستخدام Three.js: جزيرة استوائية صغيرة مُولَّدة إجرائيًا في الساعة الذهبية. حرّك أمواج البحر بمظلّل، وأشجار النخيل تتمايل مع النسيم، والغيوم تنساب ببطء. تبدأ الكاميرا عاليًا فوق البحر، ثم تنزلق نزولًا وتدور في قوس حول الجزيرة، وتستقر على لقطة واسعة هادئة بينما يظهر العنوان "Made of code." ويبقى لثانيتين. أسلوب فني لا واقعي: تدرجات ناعمة وتظليل كرتوني خفيف وألوان غروب دافئة. اجعل كل حركة مرتبطة بزمن الخط الزمني حتى يمكن إعادة تشغيل أي لحظة بدقة.',
+    },
+    ja: {
+      title: 'プロシージャル 3D アイランド',
+      prompt: 'Three.js でブラウザ上にレンダリングする 15 秒の 3D モーション作品を作ってください。題材は、夕暮れのゴールデンアワーに浮かぶプロシージャル生成の小さな熱帯の島です。シェーダーで波を動かし、ヤシの木をそよ風に揺らし、雲をゆっくり流します。カメラは海の上空から始まり、滑るように降りて島の周りを弧を描いて回り、静かな引きのショットで止まります。そこでタイトル「Made of code.」がフェードインし、2 秒間表示されます。写実ではなく様式化：柔らかなグラデーション、控えめなトゥーンシェーディング、暖かな夕焼けの配色。どの瞬間も正確に再生できるよう、すべての動きをタイムラインの時間で制御してください。',
+    },
+    ko: {
+      title: '절차적 3D 섬',
+      prompt: 'Three.js로 브라우저에서 렌더링하는 15초 3D 모션을 만들어 줘. 황금빛 시간대에 절차적으로 생성된 작은 열대 섬이야. 셰이더로 바다 물결을 움직이고, 야자수가 바람에 흔들리고, 구름이 천천히 흘러가게 해 줘. 카메라는 바다 위 높은 곳에서 시작해 미끄러지듯 내려와 섬 주위를 호를 그리며 돌고, 잔잔한 와이드 숏에서 멈춰. 그때 "Made of code." 제목이 서서히 나타나 2초간 유지돼. 사실적이기보다 스타일리시하게: 부드러운 그라디언트, 은은한 툰 셰이딩, 따뜻한 노을 색감. 모든 움직임을 타임라인 시간으로 제어해서 어느 순간이든 정확히 다시 재생되게 해 줘.',
+    },
+    pl: {
+      title: 'Proceduralna wyspa 3D',
+      prompt: 'Stwórz 15-sekundową animację 3D renderowaną w przeglądarce za pomocą Three.js: małą proceduralną wyspę tropikalną o złotej godzinie. Animuj fale shaderem, palmy kołyszące się na wietrze i powoli płynące chmury. Kamera zaczyna wysoko nad morzem, zjeżdża w dół, okrąża wyspę łukiem i zatrzymuje się na spokojnym planie ogólnym, gdy pojawia się tytuł „Made of code.” i pozostaje przez dwie sekundy. Stylizacja zamiast fotorealizmu: miękkie gradienty, delikatny toon shading i ciepła paleta zachodu słońca. Steruj każdym ruchem czasem osi czasu, aby każdy moment dało się dokładnie odtworzyć.',
+    },
+    hu: {
+      title: 'Procedurális 3D-sziget',
+      prompt: 'Készíts egy 15 másodperces, böngészőben Three.js-szel renderelt 3D mozgóképet: egy kis, procedurálisan generált trópusi szigetet az aranyórában. Animáld shaderrel a tenger hullámait, a szellőben ringó pálmafákat és a lassan sodródó felhőket. A kamera magasan a tenger fölül indul, lesiklik, ívben megkerüli a szigetet, majd egy nyugodt totálban megáll, miközben megjelenik a „Made of code.” cím, és két másodpercig látható marad. Stilizált, nem fotórealisztikus: lágy színátmenetek, finom toon shading, meleg naplementés színek. Minden mozgást az idővonal ideje vezéreljen, hogy bármely pillanat pontosan visszajátszható legyen.',
+    },
+    fr: {
+      title: 'Île 3D procédurale',
+      prompt: 'Crée une pièce de motion 3D de 15 secondes rendue dans le navigateur avec Three.js : une petite île tropicale procédurale à l’heure dorée. Anime les vagues avec un shader, des palmiers qui se balancent dans la brise et des nuages qui dérivent lentement. La caméra part très haut au-dessus de la mer, descend en glissant, décrit un arc autour de l’île, puis s’arrête sur un plan large apaisé tandis que le titre « Made of code. » apparaît et reste deux secondes. Stylisé plutôt que photoréaliste : dégradés doux, toon shading léger et palette chaude de coucher de soleil. Pilote chaque mouvement par le temps de la timeline pour que chaque instant se rejoue à l’identique.',
+    },
+    uk: {
+      title: 'Процедурний 3D-острів',
+      prompt: 'Створи 15-секундну 3D-анімацію, що рендериться в браузері на Three.js: невеликий процедурний тропічний острів у золоту годину. Анімуй морські хвилі шейдером, пальми, що гойдаються на вітрі, і хмари, які повільно пливуть. Камера стартує високо над морем, плавно опускається, огинає острів по дузі й зупиняється на спокійному загальному плані, де з’являється заголовок «Made of code.» і тримається дві секунди. Стилізація замість фотореалізму: м’які градієнти, легкий тун-шейдинг, тепла палітра заходу сонця. Керуй кожним рухом часом таймлайну, щоб будь-яку мить можна було точно відтворити.',
+    },
+    tr: {
+      title: 'Prosedürel 3D ada',
+      prompt: 'Three.js ile tarayıcıda işlenen 15 saniyelik bir 3D hareketli çalışma oluştur: altın saatte prosedürel olarak üretilmiş küçük bir tropik ada. Deniz dalgalarını bir shader ile, esintide sallanan palmiyeleri ve yavaşça süzülen bulutları canlandır. Kamera denizin yükseklerinden başlasın, süzülerek alçalsın ve adanın etrafında bir yay çizsin; ardından sakin bir geniş planda dursun, "Made of code." başlığı belirip iki saniye kalsın. Fotogerçekçi değil, stilize: yumuşak geçişler, hafif toon shading ve sıcak gün batımı renkleri. Her hareketi zaman çizelgesinin zamanıyla yönet ki her an birebir yeniden oynatılabilsin.',
+    },
+    th: {
+      title: 'เกาะ 3D แบบโพรซีเดอรัล',
+      prompt: 'สร้างงานโมชัน 3D ความยาว 15 วินาทีที่เรนเดอร์ในเบราว์เซอร์ด้วย Three.js: เกาะเขตร้อนเล็ก ๆ ที่สร้างแบบโพรซีเดอรัลในช่วงแสงทองยามเย็น ใช้เชดเดอร์ทำให้คลื่นทะเลเคลื่อนไหว ต้นมะพร้าวโยกตามลม และเมฆลอยไปช้า ๆ กล้องเริ่มจากมุมสูงเหนือทะเล ร่อนลงมาแล้ววนเป็นวงโค้งรอบเกาะ ก่อนหยุดที่ภาพมุมกว้างอันสงบ พร้อมชื่อเรื่อง "Made of code." ค่อย ๆ ปรากฏและค้างไว้สองวินาที เน้นสไตล์มากกว่าความสมจริง: ไล่สีนุ่มนวล แสงเงาแบบการ์ตูนเบา ๆ และโทนสีพระอาทิตย์ตกที่อบอุ่น ควบคุมทุกการเคลื่อนไหวด้วยเวลาของไทม์ไลน์ เพื่อให้เล่นซ้ำได้ตรงทุกช่วงเวลา',
+    },
+    it: {
+      title: 'Isola 3D procedurale',
+      prompt: 'Crea un pezzo di motion 3D di 15 secondi renderizzato nel browser con Three.js: una piccola isola tropicale procedurale all’ora d’oro. Anima le onde del mare con uno shader, le palme che ondeggiano nella brezza e le nuvole che scorrono lente. La camera parte molto in alto sopra il mare, scende planando, descrive un arco attorno all’isola e si ferma su un campo lungo tranquillo mentre compare il titolo «Made of code.», che resta per due secondi. Stilizzato anziché fotorealistico: sfumature morbide, toon shading leggero e una palette calda da tramonto. Guida ogni movimento con il tempo della timeline, così ogni istante si riproduce esattamente.',
+    },
+  },
+  'example-motion-explainer': {
+    'zh-CN': {
+      title: '原理讲解动画',
+      prompt: '制作一段 20 秒的原理讲解动画：降噪耳机是怎么工作的。展示一段嘈杂的声波传向耳朵，微型麦克风采集它，芯片生成一段反相声波，两段声波相遇后抵消成一条平线，变得安静。让声波作为贯穿每个段落的主角，并在各部分出现时标注：噪音、麦克风、反向声波、安静。简洁的技术示意图风格：深石墨灰背景，青色和白色线条。结尾停在“安静，是被设计出来的。”',
+    },
+    'zh-TW': {
+      title: '原理講解動畫',
+      prompt: '製作一段 20 秒的原理講解動畫：降噪耳機是怎麼運作的。展示一段嘈雜的聲波傳向耳朵，微型麥克風採集它，晶片產生一段反相聲波，兩段聲波相遇後抵消成一條平線，變得安靜。讓聲波作為貫穿每個段落的主角，並在各部分出現時標註：噪音、麥克風、反向聲波、安靜。簡潔的技術示意圖風格：深石墨灰背景，青色和白色線條。結尾停在「安靜，是被設計出來的。」',
+    },
+    en: {
+      title: 'How-It-Works Explainer',
+      prompt: 'Create a 20-second explainer animation: how noise-cancelling headphones work. Show a noisy sound wave travelling toward an ear, a tiny microphone sampling it, the chip generating the inverted wave, and the two waves meeting and flattening into silence. Keep the wave as the recurring object through every beat, and label each part as it appears: Noise, Microphone, Anti-noise, Silence. Clean technical-diagram style: dark graphite background, cyan and white lines. End on "Silence is engineered."',
+    },
+    id: {
+      title: 'Animasi Penjelas Cara Kerja',
+      prompt: 'Buat animasi penjelas 20 detik: cara kerja headphone peredam bising. Tunjukkan gelombang suara bising yang bergerak menuju telinga, mikrofon kecil yang menangkapnya, chip yang menghasilkan gelombang terbalik, lalu kedua gelombang bertemu dan merata menjadi hening. Jadikan gelombang sebagai objek berulang di setiap bagian, dan beri label setiap bagian saat muncul: Bising, Mikrofon, Anti-bising, Hening. Gaya diagram teknis yang bersih: latar grafit gelap, garis sian dan putih. Akhiri dengan "Keheningan itu direkayasa."',
+    },
+    de: {
+      title: 'Erklärfilm: So funktioniert es',
+      prompt: 'Erstelle eine 20-sekündige Erklär-Animation: So funktionieren Noise-Cancelling-Kopfhörer. Zeige eine laute Schallwelle, die sich auf ein Ohr zubewegt, ein winziges Mikrofon, das sie aufnimmt, den Chip, der die invertierte Welle erzeugt, und wie beide Wellen aufeinandertreffen und zu Stille verflachen. Halte die Welle als durchgehendes Objekt in jedem Abschnitt und beschrifte jedes Teil, sobald es erscheint: Lärm, Mikrofon, Gegenschall, Stille. Klarer technischer Diagrammstil: dunkler Graphithintergrund, cyanfarbene und weiße Linien. Ende mit „Stille ist konstruiert.“',
+    },
+    'pt-BR': {
+      title: 'Animação explicativa: como funciona',
+      prompt: 'Crie uma animação explicativa de 20 segundos: como funcionam os fones com cancelamento de ruído. Mostre uma onda sonora ruidosa indo em direção ao ouvido, um microfone minúsculo captando-a, o chip gerando a onda invertida e as duas ondas se encontrando e se anulando em silêncio. Mantenha a onda como o objeto recorrente em cada etapa e rotule cada parte quando ela aparecer: Ruído, Microfone, Antirruído, Silêncio. Estilo limpo de diagrama técnico: fundo grafite escuro, linhas ciano e brancas. Termine com "O silêncio é projetado."',
+    },
+    'es-ES': {
+      title: 'Animación explicativa: cómo funciona',
+      prompt: 'Crea una animación explicativa de 20 segundos: cómo funcionan los auriculares con cancelación de ruido. Muestra una onda sonora ruidosa que viaja hacia el oído, un micrófono diminuto que la capta, el chip que genera la onda invertida y las dos ondas que se encuentran y se aplanan en silencio. Mantén la onda como objeto recurrente en cada paso y etiqueta cada parte cuando aparezca: Ruido, Micrófono, Antirruido, Silencio. Estilo limpio de diagrama técnico: fondo grafito oscuro, líneas cian y blancas. Termina con «El silencio se diseña».',
+    },
+    ru: {
+      title: 'Анимация «Как это работает»',
+      prompt: 'Сделай 20-секундную анимацию-объяснение: как работают наушники с шумоподавлением. Покажи шумную звуковую волну, которая движется к уху, крошечный микрофон, улавливающий её, чип, создающий инвертированную волну, и как две волны встречаются и сглаживаются в тишину. Пусть волна будет сквозным объектом в каждом шаге; подписывай каждую часть, когда она появляется: Шум, Микрофон, Антишум, Тишина. Чистый стиль технической схемы: тёмный графитовый фон, голубые и белые линии. Заверши фразой «Тишина — это инженерия».',
+    },
+    fa: {
+      title: 'انیمیشن توضیحی «چگونه کار می‌کند»',
+      prompt: 'یک انیمیشن توضیحی ۲۰ ثانیه‌ای بساز: هدفون‌های حذف نویز چگونه کار می‌کنند. موج صوتی پرنویزی را نشان بده که به سمت گوش می‌رود، میکروفون کوچکی که آن را دریافت می‌کند، تراشه‌ای که موج معکوس می‌سازد، و دو موج که به هم می‌رسند و به سکوت صاف می‌شوند. موج را عنصر تکرارشوندهٔ همهٔ بخش‌ها قرار بده و هر بخش را هنگام ظاهر شدن برچسب بزن: نویز، میکروفون، ضدنویز، سکوت. سبک نمودار فنی تمیز: پس‌زمینهٔ گرافیتی تیره، خطوط فیروزه‌ای و سفید. با جملهٔ «سکوت مهندسی می‌شود.» تمام کن.',
+    },
+    ar: {
+      title: 'رسوم توضيحية: كيف يعمل',
+      prompt: 'أنشئ رسومًا توضيحية مدتها 20 ثانية: كيف تعمل سماعات إلغاء الضوضاء. اعرض موجة صوتية صاخبة تتجه نحو الأذن، وميكروفونًا صغيرًا يلتقطها، وشريحة تولّد الموجة المعكوسة، ثم تلتقي الموجتان وتتسطّحان إلى صمت. اجعل الموجة العنصر المتكرر في كل مرحلة، وضع تسمية لكل جزء عند ظهوره: ضوضاء، ميكروفون، ضوضاء مضادة، صمت. أسلوب مخطط تقني نظيف: خلفية رمادية غرافيتية داكنة وخطوط سماوية وبيضاء. اختم بعبارة "الصمت يُصمَّم هندسيًا."',
+    },
+    ja: {
+      title: 'しくみ解説アニメーション',
+      prompt: 'ノイズキャンセリングヘッドホンのしくみを解説する 20 秒のアニメーションを作ってください。騒がしい音波が耳へ向かい、小さなマイクがそれを拾い、チップが逆位相の波を作り、2 つの波が出会って打ち消し合い、静かな平らな線になる様子を見せます。音波を全段を通じて登場するモチーフにし、各パーツが現れたら「ノイズ」「マイク」「逆位相の音」「静寂」とラベルを付けてください。すっきりした技術図解スタイル：濃いグラファイトの背景にシアンと白の線。最後は「静けさは、設計できる。」で締めます。',
+    },
+    ko: {
+      title: '작동 원리 설명 애니메이션',
+      prompt: '노이즈 캔슬링 헤드폰의 작동 원리를 설명하는 20초 애니메이션을 만들어 줘. 시끄러운 음파가 귀로 향하고, 작은 마이크가 그 소리를 받고, 칩이 반대 위상의 파형을 만들고, 두 파형이 만나 평평한 선으로 상쇄되며 조용해지는 과정을 보여 줘. 음파를 모든 단계를 잇는 반복 요소로 쓰고, 각 부분이 나타날 때 라벨을 붙여 줘: 소음, 마이크, 반대 파형, 고요. 깔끔한 기술 도식 스타일로, 짙은 그래파이트 배경에 시안과 흰색 선. 마지막은 "고요는 설계된다."로 마무리해 줘.',
+    },
+    pl: {
+      title: 'Animacja: jak to działa',
+      prompt: 'Stwórz 20-sekundową animację objaśniającą: jak działają słuchawki z redukcją szumów. Pokaż hałaśliwą falę dźwiękową płynącą w stronę ucha, maleńki mikrofon, który ją wychwytuje, układ generujący odwróconą falę oraz spotkanie obu fal, które wygaszają się do ciszy. Niech fala będzie powracającym motywem w każdym etapie, a każda część dostaje etykietę, gdy się pojawia: Hałas, Mikrofon, Antyhałas, Cisza. Czysty styl schematu technicznego: ciemnografitowe tło, cyjanowe i białe linie. Zakończ hasłem „Cisza jest zaprojektowana.”',
+    },
+    hu: {
+      title: 'Magyarázó animáció: hogyan működik',
+      prompt: 'Készíts egy 20 másodperces magyarázó animációt arról, hogyan működik a zajszűrős fejhallgató. Mutasd meg, ahogy egy zajos hanghullám a fül felé halad, egy apró mikrofon felveszi, a chip előállítja az ellentétes fázisú hullámot, majd a két hullám találkozik, és csenddé simul. A hullám legyen minden szakaszon végigvonuló elem, és minden részt lássunk el felirattal, amikor megjelenik: Zaj, Mikrofon, Ellenzaj, Csend. Letisztult műszaki ábra stílus: sötét grafit háttér, cián és fehér vonalak. Zárd ezzel: „A csend tervezés kérdése.”',
+    },
+    fr: {
+      title: 'Animation explicative : comment ça marche',
+      prompt: 'Crée une animation explicative de 20 secondes : comment fonctionne un casque à réduction de bruit. Montre une onde sonore bruyante qui se dirige vers l’oreille, un minuscule micro qui la capte, la puce qui génère l’onde inversée, puis les deux ondes qui se rencontrent et s’aplatissent en silence. Garde l’onde comme objet récurrent à chaque étape et étiquette chaque élément quand il apparaît : Bruit, Micro, Anti-bruit, Silence. Style épuré de schéma technique : fond graphite foncé, lignes cyan et blanches. Termine sur « Le silence se conçoit. »',
+    },
+    uk: {
+      title: 'Анімація «Як це працює»',
+      prompt: 'Створи 20-секундну анімацію-пояснення: як працюють навушники з шумозаглушенням. Покажи гучну звукову хвилю, що рухається до вуха, крихітний мікрофон, який її вловлює, чип, що створює інвертовану хвилю, і як дві хвилі зустрічаються та згладжуються в тишу. Нехай хвиля буде наскрізним об’єктом на кожному кроці; підписуй кожну частину, коли вона з’являється: Шум, Мікрофон, Антишум, Тиша. Чистий стиль технічної схеми: темний графітовий фон, блакитні й білі лінії. Заверши фразою «Тиша — це інженерія».',
+    },
+    tr: {
+      title: 'Nasıl çalışır açıklama animasyonu',
+      prompt: '20 saniyelik bir açıklama animasyonu oluştur: gürültü önleyici kulaklıklar nasıl çalışır. Kulağa doğru ilerleyen gürültülü bir ses dalgasını, onu algılayan minik bir mikrofonu, ters dalgayı üreten çipi ve iki dalganın buluşup sessizliğe düzleşmesini göster. Dalgayı her aşamada tekrar eden ana nesne yap ve her parçayı göründüğünde etiketle: Gürültü, Mikrofon, Karşı gürültü, Sessizlik. Sade teknik diyagram stili: koyu grafit arka plan, camgöbeği ve beyaz çizgiler. "Sessizlik tasarlanır." cümlesiyle bitir.',
+    },
+    th: {
+      title: 'แอนิเมชันอธิบายหลักการทำงาน',
+      prompt: 'สร้างแอนิเมชันอธิบาย 20 วินาที: หูฟังตัดเสียงรบกวนทำงานอย่างไร แสดงคลื่นเสียงที่มีเสียงรบกวนเคลื่อนเข้าหาหู ไมโครโฟนจิ๋วรับเสียงนั้น ชิปสร้างคลื่นที่กลับเฟส แล้วคลื่นทั้งสองมาเจอกันและหักล้างจนกลายเป็นเส้นเรียบที่เงียบสงบ ให้คลื่นเสียงเป็นองค์ประกอบหลักที่อยู่ในทุกช่วง และติดป้ายกำกับแต่ละส่วนเมื่อปรากฏ: เสียงรบกวน ไมโครโฟน คลื่นต้านเสียง ความเงียบ สไตล์แผนภาพเทคนิคที่สะอาดตา พื้นหลังสีกราไฟต์เข้ม เส้นสีฟ้าอมเขียวและสีขาว ปิดท้ายด้วย "ความเงียบ ถูกออกแบบได้"',
+    },
+    it: {
+      title: 'Animazione esplicativa: come funziona',
+      prompt: 'Crea un’animazione esplicativa di 20 secondi: come funzionano le cuffie con cancellazione del rumore. Mostra un’onda sonora rumorosa che viaggia verso l’orecchio, un minuscolo microfono che la cattura, il chip che genera l’onda invertita e le due onde che si incontrano e si appiattiscono nel silenzio. Mantieni l’onda come elemento ricorrente in ogni passaggio ed etichetta ogni parte quando appare: Rumore, Microfono, Anti-rumore, Silenzio. Stile pulito da schema tecnico: sfondo grafite scuro, linee ciano e bianche. Chiudi con «Il silenzio si progetta.»',
+    },
+  },
+  'example-motion-product-launch': {
+    'zh-CN': {
+      title: '产品发布短片',
+      prompt: '为虚构的 App「Driftnote」制作一段 20 秒的产品发布短片。它能把杂乱的会议录音整理成一页纸总结。展示核心变化：散落的对话气泡和转写片段逐行收拢，变成一张整洁的总结卡片，上面有三条待办事项。品牌口号：“会议进来，决定出去。”界面只为这支短片简单设计，不要编造数据、客户或价格。深海军蓝背景、暖白色文字、一种珊瑚色强调色。结尾停在 Driftnote 字标和口号上，保持两秒。',
+    },
+    'zh-TW': {
+      title: '產品發布短片',
+      prompt: '為虛構的 App「Driftnote」製作一段 20 秒的產品發布短片。它能把雜亂的會議錄音整理成一頁總結。展示核心變化：散落的對話氣泡和逐字稿片段逐行收攏，變成一張整潔的總結卡片，上面有三條待辦事項。品牌口號：「會議進來，決定出去。」介面只為這支短片簡單設計，不要編造數據、客戶或價格。深海軍藍背景、暖白色文字、一種珊瑚色強調色。結尾停在 Driftnote 字標和口號上，保持兩秒。',
+    },
+    en: {
+      title: 'Product Launch Film',
+      prompt: 'Create a 20-second launch film for Driftnote, a fictional app that turns messy meeting audio into a one-page summary. Show the core transformation: scattered speech bubbles and transcript fragments condense, line by line, into a tidy summary card with three action items. Brand line: "Meetings in. Decisions out." Invent only simple UI for this film — no metrics, customers or pricing. Deep navy canvas, warm white type, one coral accent. Close on the Driftnote wordmark and the brand line, held for two seconds.',
+    },
+    id: {
+      title: 'Video Peluncuran Produk',
+      prompt: 'Buat video peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rekaman rapat yang berantakan menjadi ringkasan satu halaman. Tunjukkan perubahan intinya: gelembung percakapan dan potongan transkrip yang tersebar menyatu baris demi baris menjadi kartu ringkasan rapi dengan tiga tugas tindak lanjut. Slogan merek: "Rapat masuk. Keputusan keluar." Buat UI sederhana khusus untuk video ini — tanpa metrik, pelanggan, atau harga. Latar biru navy gelap, teks putih hangat, satu aksen koral. Tutup dengan wordmark Driftnote dan slogannya, tahan selama dua detik.',
+    },
+    de: {
+      title: 'Produkt-Launchfilm',
+      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meeting-Aufnahmen in eine einseitige Zusammenfassung verwandelt. Zeige die zentrale Verwandlung: Verstreute Sprechblasen und Transkriptfragmente verdichten sich Zeile für Zeile zu einer aufgeräumten Zusammenfassungskarte mit drei Aufgaben. Markenclaim: „Meetings rein. Entscheidungen raus.“ Gestalte nur eine einfache UI für diesen Film – keine Kennzahlen, Kunden oder Preise. Tiefes Marineblau als Hintergrund, warmweiße Schrift, ein Korallenakzent. Ende mit der Driftnote-Wortmarke und dem Claim, zwei Sekunden lang gehalten.',
+    },
+    'pt-BR': {
+      title: 'Filme de lançamento de produto',
+      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma o áudio bagunçado de reuniões em um resumo de uma página. Mostre a transformação central: balões de fala e trechos de transcrição espalhados se condensam, linha por linha, em um cartão de resumo organizado com três tarefas. Slogan: "Reuniões entram. Decisões saem." Crie apenas uma UI simples para este filme — sem métricas, clientes ou preços. Fundo azul-marinho profundo, texto branco quente, um destaque coral. Termine na marca Driftnote e no slogan, mantidos por dois segundos.',
+    },
+    'es-ES': {
+      title: 'Vídeo de lanzamiento de producto',
+      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte el audio caótico de las reuniones en un resumen de una página. Muestra la transformación clave: bocadillos de diálogo y fragmentos de transcripción dispersos se condensan, línea a línea, en una tarjeta de resumen ordenada con tres tareas. Lema: «Entran reuniones. Salen decisiones.» Diseña solo una UI sencilla para este vídeo, sin métricas, clientes ni precios. Fondo azul marino profundo, texto blanco cálido y un acento coral. Cierra con el logotipo de Driftnote y el lema, durante dos segundos.',
+    },
+    ru: {
+      title: 'Ролик запуска продукта',
+      prompt: 'Сделай 20-секундный ролик запуска для Driftnote — вымышленного приложения, которое превращает сумбурную запись встречи в итог на одну страницу. Покажи главное преображение: разрозненные реплики и фрагменты расшифровки строка за строкой собираются в аккуратную карточку-итог с тремя задачами. Слоган: «На входе встречи. На выходе решения». Интерфейс придумай простой и только для этого ролика — без метрик, клиентов и цен. Глубокий тёмно-синий фон, тёплый белый текст, один коралловый акцент. Заверши логотипом Driftnote и слоганом, удерживая их две секунды.',
+    },
+    fa: {
+      title: 'ویدیوی معرفی محصول',
+      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز؛ اپی خیالی که صدای شلوغ جلسه‌ها را به خلاصه‌ای یک‌صفحه‌ای تبدیل می‌کند. تحول اصلی را نشان بده: حباب‌های گفت‌وگو و تکه‌های متن پیاده‌شده که پراکنده‌اند، خط‌به‌خط جمع می‌شوند و به کارت خلاصهٔ مرتبی با سه کار پیگیری تبدیل می‌شوند. شعار برند: «جلسه وارد می‌شود، تصمیم بیرون می‌آید.» رابط کاربری را فقط برای همین ویدیو و ساده طراحی کن — بدون آمار، مشتری یا قیمت. پس‌زمینهٔ سرمه‌ای تیره، متن سفید گرم، یک رنگ تأکیدی مرجانی. با لوگوی Driftnote و شعار تمام کن و دو ثانیه نگهش دار.',
+    },
+    ar: {
+      title: 'فيلم إطلاق منتج',
+      prompt: 'أنشئ فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل تسجيلات الاجتماعات الفوضوية إلى ملخص من صفحة واحدة. اعرض التحوّل الأساسي: فقاعات حوار ومقتطفات نصية متناثرة تتجمّع سطرًا بعد سطر في بطاقة ملخص مرتبة تتضمن ثلاث مهام. شعار العلامة: "اجتماعات تدخل، وقرارات تخرج." صمّم واجهة بسيطة لهذا الفيلم فقط، من دون أرقام أو عملاء أو أسعار. خلفية كحلية داكنة، ونص أبيض دافئ، ولون إبراز مرجاني واحد. اختم بشعار Driftnote المكتوب وعبارته لمدة ثانيتين.',
+    },
+    ja: {
+      title: 'プロダクトローンチ動画',
+      prompt: '散らかった会議の録音を 1 ページの要約に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作ってください。中心となる変化を見せます。散らばった吹き出しと文字起こしの断片が 1 行ずつまとまり、3 つのアクションアイテムを持つ整った要約カードになります。ブランドライン：「会議が入り、決定が出る。」UI はこの動画用にシンプルに作り、数値・顧客・価格は作らないでください。深いネイビーの背景、温かみのある白の文字、コーラルのアクセントを 1 色。最後は Driftnote のワードマークとブランドラインで締め、2 秒間キープします。',
+    },
+    ko: {
+      title: '제품 출시 영상',
+      prompt: '지저분한 회의 녹음을 한 페이지 요약으로 바꿔 주는 가상의 앱 "Driftnote"의 20초 출시 영상을 만들어 줘. 핵심 변화를 보여 줘: 흩어진 말풍선과 녹취 조각이 한 줄씩 모여 할 일 세 개가 담긴 깔끔한 요약 카드가 돼. 브랜드 문구: "회의는 들어오고, 결정은 나간다." UI는 이 영상을 위해 간단하게만 만들고, 수치·고객·가격은 지어내지 마. 짙은 네이비 배경, 따뜻한 흰색 글자, 코랄 강조색 하나. 마지막은 Driftnote 워드마크와 브랜드 문구로 마무리하고 2초간 유지해 줘.',
+    },
+    pl: {
+      title: 'Film premierowy produktu',
+      prompt: 'Stwórz 20-sekundowy film premierowy dla Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne nagrania spotkań w jednostronicowe podsumowanie. Pokaż kluczową przemianę: rozrzucone dymki i fragmenty transkrypcji linia po linii łączą się w schludną kartę podsumowania z trzema zadaniami. Hasło marki: „Spotkania na wejściu. Decyzje na wyjściu.” Zaprojektuj prosty interfejs tylko na potrzeby filmu — bez wskaźników, klientów i cen. Głębokie granatowe tło, ciepły biały tekst, jeden koralowy akcent. Zakończ logotypem Driftnote i hasłem, utrzymanymi przez dwie sekundy.',
+    },
+    hu: {
+      title: 'Termékbemutató film',
+      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált alkalmazáshoz, amely a kusza értekezletfelvételekből egyoldalas összefoglalót készít. Mutasd meg a lényegi változást: a szétszórt beszédbuborékok és átiratfoszlányok soronként egy rendezett összefoglaló kártyává állnak össze, három teendővel. Márkaszlogen: „Bemegy a megbeszélés, kijön a döntés.” Csak egyszerű felületet tervezz ehhez a filmhez – ne találj ki mutatókat, ügyfeleket vagy árakat. Mély tengerészkék háttér, meleg fehér szöveg, egy korallszínű kiemelés. Zárd a Driftnote logóval és a szlogennel, két másodpercig kitartva.',
+    },
+    fr: {
+      title: 'Film de lancement produit',
+      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme l’audio désordonné des réunions en un résumé d’une page. Montre la transformation clé : des bulles de dialogue et des fragments de transcription épars se condensent, ligne après ligne, en une carte de résumé nette avec trois actions à mener. Signature : « Les réunions entrent. Les décisions sortent. » Conçois une interface simple pour ce film uniquement — pas de chiffres, de clients ni de prix. Fond bleu marine profond, texte blanc chaud, un accent corail. Termine sur le logotype Driftnote et la signature, tenus deux secondes.',
+    },
+    uk: {
+      title: 'Ролик запуску продукту',
+      prompt: 'Створи 20-секундний ролик запуску для Driftnote — вигаданого застосунку, що перетворює хаотичний запис зустрічі на підсумок на одну сторінку. Покажи головну зміну: розкидані репліки та фрагменти розшифровки рядок за рядком збираються в охайну картку-підсумок із трьома завданнями. Слоган: «На вході зустрічі. На виході рішення». Інтерфейс придумай простий і лише для цього ролика — без метрик, клієнтів і цін. Глибокий темно-синій фон, теплий білий текст, один кораловий акцент. Заверши логотипом Driftnote і слоганом, утримуючи їх дві секунди.',
+    },
+    tr: {
+      title: 'Ürün lansman filmi',
+      prompt: 'Dağınık toplantı kayıtlarını tek sayfalık bir özete dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi oluştur. Temel dönüşümü göster: dağınık konuşma balonları ve transkript parçaları satır satır birleşerek üç görev içeren düzenli bir özet kartına dönüşsün. Marka sloganı: "Toplantılar girer. Kararlar çıkar." Arayüzü yalnızca bu film için basit tasarla — metrik, müşteri ya da fiyat uydurma. Koyu lacivert arka plan, sıcak beyaz yazı, tek bir mercan vurgu rengi. Driftnote logosu ve sloganıyla bitir, iki saniye beklet.',
+    },
+    th: {
+      title: 'วิดีโอเปิดตัวสินค้า',
+      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนเสียงประชุมที่ยุ่งเหยิงให้เป็นสรุปหน้าเดียว แสดงการเปลี่ยนแปลงหลัก: บับเบิลบทสนทนาและท่อนถอดความที่กระจัดกระจายค่อย ๆ รวมกันทีละบรรทัดจนกลายเป็นการ์ดสรุปที่เรียบร้อย พร้อมงานที่ต้องทำสามข้อ สโลแกนแบรนด์: "ประชุมเข้ามา การตัดสินใจออกไป" ออกแบบหน้าจอแบบเรียบง่ายสำหรับวิดีโอนี้เท่านั้น ห้ามแต่งตัวเลข ลูกค้า หรือราคา พื้นหลังกรมท่าเข้ม ตัวอักษรขาวโทนอุ่น สีเน้นปะการังหนึ่งสี ปิดท้ายด้วยโลโก้ตัวอักษร Driftnote และสโลแกน ค้างไว้สองวินาที',
+    },
+    it: {
+      title: 'Video di lancio prodotto',
+      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app immaginaria che trasforma l’audio disordinato delle riunioni in un riepilogo di una pagina. Mostra la trasformazione chiave: fumetti di dialogo e frammenti di trascrizione sparsi si condensano, riga dopo riga, in una scheda di riepilogo ordinata con tre attività. Claim: «Entrano riunioni. Escono decisioni.» Progetta solo una UI semplice per questo video, senza metriche, clienti o prezzi. Sfondo blu navy profondo, testo bianco caldo, un accento corallo. Chiudi sul logotipo Driftnote e sul claim, tenuti per due secondi.',
+    },
+  },
+  'example-motion-showreel': {
+    'zh-CN': {
+      title: '动效设计师作品集快剪',
+      prompt: '制作一段 15 秒的动效设计作品集快剪，展示你是一流的动效设计师。融入几种不同的手法：大字号动态排版、一个变形成新物体的图形、一段界面动效和一个简短的数据动画；但整体保持同一种视觉风格，并用一个反复出现的元素串起每一次切换。米白背景、墨黑文字，只用一种鲜明的强调色。结尾是一张自信的署名卡，署名为虚构工作室“Studio Kinetik”，停留两秒。',
+    },
+    'zh-TW': {
+      title: '動效設計師作品集快剪',
+      prompt: '製作一段 15 秒的動效設計作品集快剪，展示你是一流的動效設計師。融入幾種不同的手法：大字級動態排版、一個變形成新物體的圖形、一段介面動效和一個簡短的數據動畫；但整體保持同一種視覺風格，並用一個反覆出現的元素串起每一次切換。米白背景、墨黑文字，只用一種鮮明的強調色。結尾是一張自信的署名卡，署名為虛構工作室「Studio Kinetik」，停留兩秒。',
+    },
+    en: {
+      title: 'Motion Designer Showreel',
+      prompt: 'Make a 15-second motion design showreel that proves you are a world-class motion designer. Pack in several distinct techniques — bold kinetic typography, a shape that morphs into something new, an animated interface moment and a quick data flourish — but keep one visual identity and one recurring motif that links every cut. Off-white canvas, ink-black type, a single vivid accent color. End on a confident signature card for the fictional studio "Studio Kinetik", held for two seconds.',
+    },
+    id: {
+      title: 'Showreel Desainer Motion',
+      prompt: 'Buat showreel motion design berdurasi 15 detik yang membuktikan kamu desainer motion kelas dunia. Masukkan beberapa teknik berbeda — tipografi kinetik yang tegas, bentuk yang berubah menjadi sesuatu yang baru, momen animasi antarmuka, dan sentuhan data singkat — tetapi pertahankan satu identitas visual dan satu motif berulang yang menghubungkan setiap potongan. Latar putih gading, teks hitam tinta, satu warna aksen yang mencolok. Akhiri dengan kartu tanda tangan yang percaya diri untuk studio fiktif "Studio Kinetik", tahan selama dua detik.',
+    },
+    de: {
+      title: 'Motion-Designer-Showreel',
+      prompt: 'Erstelle ein 15-sekündiges Motion-Design-Showreel, das beweist, dass du ein Motion Designer der Weltklasse bist. Kombiniere mehrere Techniken – kräftige kinetische Typografie, eine Form, die sich in etwas Neues verwandelt, einen animierten Interface-Moment und eine kurze Datenanimation –, aber halte eine visuelle Identität und ein wiederkehrendes Motiv, das jeden Schnitt verbindet. Gebrochen weißer Hintergrund, tiefschwarze Schrift, eine einzige kräftige Akzentfarbe. Ende mit einer selbstbewussten Signaturkarte für das fiktive Studio „Studio Kinetik“, zwei Sekunden lang gehalten.',
+    },
+    'pt-BR': {
+      title: 'Showreel de motion designer',
+      prompt: 'Crie um showreel de motion design de 15 segundos que prove que você é um motion designer de nível mundial. Reúna várias técnicas diferentes — tipografia cinética marcante, uma forma que se transforma em algo novo, um momento de interface animada e um toque rápido de dados —, mas mantenha uma única identidade visual e um motivo recorrente que conecte cada corte. Fundo off-white, texto preto, uma única cor de destaque vibrante. Termine com um cartão de assinatura confiante do estúdio fictício "Studio Kinetik", mantido por dois segundos.',
+    },
+    'es-ES': {
+      title: 'Showreel de motion designer',
+      prompt: 'Crea un showreel de motion design de 15 segundos que demuestre que eres un motion designer de primer nivel. Incluye varias técnicas distintas —tipografía cinética contundente, una forma que se transforma en algo nuevo, un momento de interfaz animada y un toque rápido de datos—, pero mantén una sola identidad visual y un motivo recurrente que enlace cada corte. Fondo blanco roto, texto negro tinta y un único color de acento vivo. Termina con una tarjeta de firma segura del estudio ficticio «Studio Kinetik», que se mantenga dos segundos.',
+    },
+    ru: {
+      title: 'Шоурил моушн-дизайнера',
+      prompt: 'Сделай 15-секундный шоурил по моушн-дизайну, который докажет, что ты моушн-дизайнер мирового уровня. Объедини несколько приёмов — выразительную кинетическую типографику, форму, превращающуюся во что-то новое, анимированный момент интерфейса и короткий акцент с данными, — но сохрани единый визуальный стиль и повторяющийся мотив, который связывает каждую склейку. Молочно-белый фон, чёрный текст, один яркий акцентный цвет. Заверши уверенной финальной карточкой с подписью вымышленной студии «Studio Kinetik» и удержи её две секунды.',
+    },
+    fa: {
+      title: 'شوریل طراح موشن',
+      prompt: 'یک شوریل موشن دیزاین ۱۵ ثانیه‌ای بساز که ثابت کند طراح موشن درجه‌یکی هستی. چند تکنیک متفاوت را کنار هم بیاور — تایپوگرافی پویای پررنگ، شکلی که به چیزی تازه تبدیل می‌شود، یک لحظهٔ انیمیشن رابط کاربری و یک جلوهٔ کوتاه داده‌ای — اما یک هویت بصری واحد و یک نقش‌مایهٔ تکرارشونده داشته باش که همهٔ برش‌ها را به هم وصل کند. پس‌زمینهٔ سفید شیری، متن مشکی، فقط یک رنگ تأکیدی پررنگ. با یک کارت امضای مطمئن برای استودیوی خیالی «Studio Kinetik» تمام کن و دو ثانیه نگهش دار.',
+    },
+    ar: {
+      title: 'عرض أعمال مصمم الحركة',
+      prompt: 'أنشئ عرض أعمال موشن ديزاين مدته 15 ثانية يُثبت أنك مصمم حركة من الطراز العالمي. اجمع عدة تقنيات مختلفة — طباعة حركية جريئة، وشكلًا يتحوّل إلى شيء جديد، ولحظة واجهة متحركة، ولمسة بيانات سريعة — مع الحفاظ على هوية بصرية واحدة وعنصر متكرر يربط كل انتقال. خلفية بيضاء مائلة إلى العاجي، ونص أسود، ولون إبراز واحد زاهٍ. اختم ببطاقة توقيع واثقة للاستوديو الخيالي "Studio Kinetik" تبقى لثانيتين.',
+    },
+    ja: {
+      title: 'モーションデザイナーのショーリール',
+      prompt: '一流のモーションデザイナーであることを証明する 15 秒のモーションデザイン・ショーリールを作ってください。力強いキネティックタイポグラフィ、別の形へ変わるシェイプ、アニメーションする UI の一場面、短いデータ演出など複数の手法を盛り込みつつ、ビジュアルは一貫させ、各カットをつなぐ繰り返しのモチーフを置いてください。オフホワイトの背景、墨黒の文字、鮮やかなアクセントカラーを 1 色だけ使用。最後は架空のスタジオ「Studio Kinetik」の自信あるサインカードで締め、2 秒間キープします。',
+    },
+    ko: {
+      title: '모션 디자이너 쇼릴',
+      prompt: '세계적인 수준의 모션 디자이너임을 보여 주는 15초 모션 디자인 쇼릴을 만들어 줘. 굵직한 키네틱 타이포그래피, 새로운 무언가로 변하는 도형, 움직이는 인터페이스 장면, 짧은 데이터 연출 등 여러 기법을 담되, 하나의 비주얼 아이덴티티와 모든 컷을 잇는 반복 모티프를 유지해 줘. 오프화이트 배경, 먹색 글자, 선명한 강조색은 하나만. 마지막은 가상의 스튜디오 "Studio Kinetik"의 자신감 있는 서명 카드로 마무리하고 2초간 유지해 줘.',
+    },
+    pl: {
+      title: 'Showreel motion designera',
+      prompt: 'Stwórz 15-sekundowy showreel motion designu, który udowodni, że jesteś motion designerem światowej klasy. Połącz kilka różnych technik — wyrazistą typografię kinetyczną, kształt zmieniający się w coś nowego, animowany moment interfejsu i krótki akcent z danymi — ale zachowaj jedną identyfikację wizualną i powracający motyw łączący każde cięcie. Złamana biel w tle, atramentowo czarny tekst, jeden wyrazisty kolor akcentu. Zakończ pewną siebie kartą z podpisem fikcyjnego studia „Studio Kinetik”, utrzymaną przez dwie sekundy.',
+    },
+    hu: {
+      title: 'Motion designer bemutatófilm',
+      prompt: 'Készíts egy 15 másodperces motion design bemutatófilmet, amely bizonyítja, hogy világszínvonalú motion designer vagy. Tegyél bele több különböző technikát – erőteljes kinetikus tipográfiát, valami újjá alakuló formát, egy animált felületi pillanatot és egy rövid adatvizualizációt –, de tarts meg egyetlen vizuális arculatot és egy visszatérő motívumot, amely minden vágást összeköt. Törtfehér háttér, tintafekete szöveg, egyetlen élénk kiemelőszín. Zárd egy magabiztos szignókártyával a kitalált „Studio Kinetik” stúdió nevével, és tartsd két másodpercig.',
+    },
+    fr: {
+      title: 'Showreel de motion designer',
+      prompt: 'Crée un showreel de motion design de 15 secondes qui prouve que tu es un motion designer de classe mondiale. Réunis plusieurs techniques — une typographie cinétique affirmée, une forme qui se transforme en autre chose, un moment d’interface animée et une touche de données rapide —, mais garde une seule identité visuelle et un motif récurrent qui relie chaque coupe. Fond blanc cassé, texte noir encre, une seule couleur d’accent vive. Termine sur une carte de signature assurée pour le studio fictif « Studio Kinetik », tenue pendant deux secondes.',
+    },
+    uk: {
+      title: 'Шоурил моушн-дизайнера',
+      prompt: 'Створи 15-секундний шоурил з моушн-дизайну, який доведе, що ти моушн-дизайнер світового рівня. Поєднай кілька прийомів — виразну кінетичну типографіку, форму, що перетворюється на щось нове, анімований момент інтерфейсу та короткий акцент із даними, — але збережи єдиний візуальний стиль і повторюваний мотив, що поєднує кожну склейку. Молочно-білий фон, чорний текст, один яскравий акцентний колір. Заверши впевненою фінальною карткою з підписом вигаданої студії «Studio Kinetik» і втримай її дві секунди.',
+    },
+    tr: {
+      title: 'Hareket tasarımcısı showreel',
+      prompt: 'Dünya çapında bir hareket tasarımcısı olduğunu kanıtlayan 15 saniyelik bir motion design showreel\'i oluştur. Birkaç farklı tekniği bir araya getir — güçlü kinetik tipografi, yeni bir şeye dönüşen bir şekil, animasyonlu bir arayüz anı ve kısa bir veri dokunuşu — ama tek bir görsel kimlik ve her kesmeyi birbirine bağlayan tekrar eden bir motif koru. Kırık beyaz arka plan, mürekkep siyahı yazı, tek bir canlı vurgu rengi. Hayali "Studio Kinetik" stüdyosu için kendinden emin bir imza kartıyla bitir ve iki saniye beklet.',
+    },
+    th: {
+      title: 'โชว์รีลนักออกแบบโมชัน',
+      prompt: 'สร้างโชว์รีลโมชันดีไซน์ความยาว 15 วินาทีที่พิสูจน์ว่าคุณเป็นนักออกแบบโมชันระดับโลก ใส่หลายเทคนิค ทั้งตัวอักษรเคลื่อนไหวที่หนักแน่น รูปทรงที่แปลงเป็นสิ่งใหม่ ช่วงแอนิเมชันหน้าจอ และลูกเล่นข้อมูลสั้น ๆ แต่คงสไตล์ภาพเดียวกัน และมีองค์ประกอบที่วนกลับมาเชื่อมทุกช็อต พื้นหลังสีขาวนวล ตัวอักษรสีดำหมึก ใช้สีเน้นสดเพียงสีเดียว ปิดท้ายด้วยการ์ดลายเซ็นอย่างมั่นใจของสตูดิโอสมมติ "Studio Kinetik" ค้างไว้สองวินาที',
+    },
+    it: {
+      title: 'Showreel da motion designer',
+      prompt: 'Crea uno showreel di motion design di 15 secondi che dimostri che sei un motion designer di livello mondiale. Inserisci diverse tecniche — tipografia cinetica decisa, una forma che si trasforma in qualcosa di nuovo, un momento di interfaccia animata e un rapido tocco di dati — ma mantieni un’unica identità visiva e un motivo ricorrente che colleghi ogni stacco. Sfondo bianco sporco, testo nero inchiostro, un solo colore d’accento vivace. Chiudi con una sicura card firma dello studio immaginario «Studio Kinetik», tenuta per due secondi.',
+    },
+  },
+  'example-motion-data-story': {
+    'zh-CN': {
+      title: '数据故事动画',
+      prompt: '制作一段 20 秒的数据动画，标题是「人类每增加 10 亿人用了多久」。里程碑：1804 年 10 亿，1927 年 20 亿，1960 年 30 亿，1974 年 40 亿，1987 年 50 亿，1999 年 60 亿，2011 年 70 亿，2022 年 80 亿。从一个点开始，先展开时间轴，再依次标出每段间隔：123、33、14、13、12、12、11 年，让不断缩短的间隔成为故事主线。所有标签清晰可读，数值准确。报刊印刷风格：纸白底、黑色文字、一种红色强调。结尾停在“从 123 年到 11 年”。',
+    },
+    'zh-TW': {
+      title: '數據故事動畫',
+      prompt: '製作一段 20 秒的數據動畫，標題是「人類每增加 10 億人用了多久」。里程碑：1804 年 10 億，1927 年 20 億，1960 年 30 億，1974 年 40 億，1987 年 50 億，1999 年 60 億，2011 年 70 億，2022 年 80 億。從一個點開始，先展開時間軸，再依次標出每段間隔：123、33、14、13、12、12、11 年，讓不斷縮短的間隔成為故事主線。所有標籤清晰可讀，數值準確。報刊印刷風格：紙白底、黑色文字、一種紅色強調。結尾停在「從 123 年到 11 年」。',
+    },
+    en: {
+      title: 'Animated Data Story',
+      prompt: 'Create a 20-second animated data story titled "How long it took to add each billion people". Milestones: 1 billion in 1804, 2 in 1927, 3 in 1960, 4 in 1974, 5 in 1987, 6 in 1999, 7 in 2011, 8 in 2022. Start from a single dot, reveal the timeline axis first, then mark each gap — 123, 33, 14, 13, 12, 12 and 11 years — so the shrinking intervals become the story. Keep every label readable and every value exact. Editorial print style: paper white, black type, one red highlight. End on "From 123 years to 11."',
+    },
+    id: {
+      title: 'Cerita Data Animasi',
+      prompt: 'Buat cerita data animasi 20 detik berjudul "Berapa lama waktu untuk menambah setiap miliar manusia". Tonggak: 1 miliar pada 1804, 2 pada 1927, 3 pada 1960, 4 pada 1974, 5 pada 1987, 6 pada 1999, 7 pada 2011, 8 pada 2022. Mulai dari satu titik, tampilkan sumbu linimasa lebih dulu, lalu tandai setiap jeda — 123, 33, 14, 13, 12, 12, dan 11 tahun — agar jeda yang makin pendek menjadi inti cerita. Pastikan setiap label mudah dibaca dan setiap angka tepat. Gaya cetak editorial: putih kertas, teks hitam, satu sorotan merah. Akhiri dengan "Dari 123 tahun menjadi 11."',
+    },
+    de: {
+      title: 'Animierte Datengeschichte',
+      prompt: 'Erstelle eine 20-sekündige animierte Datengeschichte mit dem Titel „Wie lange es dauerte, jede weitere Milliarde Menschen zu erreichen“. Meilensteine: 1 Milliarde 1804, 2 im Jahr 1927, 3 im Jahr 1960, 4 im Jahr 1974, 5 im Jahr 1987, 6 im Jahr 1999, 7 im Jahr 2011, 8 im Jahr 2022. Beginne mit einem einzelnen Punkt, zeige zuerst die Zeitachse und markiere dann jeden Abstand – 123, 33, 14, 13, 12, 12 und 11 Jahre –, sodass die schrumpfenden Abstände zur Geschichte werden. Jede Beschriftung gut lesbar, jeder Wert exakt. Editorialer Druckstil: Papierweiß, schwarze Schrift, ein roter Akzent. Ende mit „Von 123 Jahren auf 11.“',
+    },
+    'pt-BR': {
+      title: 'História de dados animada',
+      prompt: 'Crie uma história de dados animada de 20 segundos com o título "Quanto tempo levou para somar cada bilhão de pessoas". Marcos: 1 bilhão em 1804, 2 em 1927, 3 em 1960, 4 em 1974, 5 em 1987, 6 em 1999, 7 em 2011, 8 em 2022. Comece com um único ponto, revele primeiro o eixo do tempo e depois marque cada intervalo — 123, 33, 14, 13, 12, 12 e 11 anos — para que os intervalos cada vez menores sejam a história. Mantenha todos os rótulos legíveis e todos os valores exatos. Estilo editorial impresso: branco papel, texto preto, um destaque vermelho. Termine com "De 123 anos para 11."',
+    },
+    'es-ES': {
+      title: 'Historia de datos animada',
+      prompt: 'Crea una historia de datos animada de 20 segundos titulada «Cuánto se tardó en sumar cada mil millones de personas». Hitos: 1000 millones en 1804, 2000 en 1927, 3000 en 1960, 4000 en 1974, 5000 en 1987, 6000 en 1999, 7000 en 2011 y 8000 en 2022. Empieza con un solo punto, muestra primero el eje temporal y luego marca cada intervalo —123, 33, 14, 13, 12, 12 y 11 años— para que los intervalos cada vez más cortos sean la historia. Que todas las etiquetas se lean bien y todos los valores sean exactos. Estilo editorial impreso: blanco papel, texto negro y un acento rojo. Termina con «De 123 años a 11».',
+    },
+    ru: {
+      title: 'Анимированная история в данных',
+      prompt: 'Сделай 20-секундную анимированную историю в данных под названием «Сколько времени понадобилось на каждый новый миллиард людей». Вехи: 1 миллиард в 1804 году, 2 — в 1927, 3 — в 1960, 4 — в 1974, 5 — в 1987, 6 — в 1999, 7 — в 2011, 8 — в 2022. Начни с одной точки, сначала покажи ось времени, затем отметь каждый интервал — 123, 33, 14, 13, 12, 12 и 11 лет, — чтобы сокращающиеся интервалы стали сюжетом. Все подписи должны читаться, все значения — быть точными. Газетный печатный стиль: бумажно-белый фон, чёрный текст, один красный акцент. Заверши фразой «От 123 лет до 11».',
+    },
+    fa: {
+      title: 'داستان داده‌ای متحرک',
+      prompt: 'یک داستان داده‌ای متحرک ۲۰ ثانیه‌ای با عنوان «افزودن هر یک میلیارد نفر چقدر طول کشید» بساز. نقاط عطف: ۱ میلیارد در ۱۸۰۴، ۲ در ۱۹۲۷، ۳ در ۱۹۶۰، ۴ در ۱۹۷۴، ۵ در ۱۹۸۷، ۶ در ۱۹۹۹، ۷ در ۲۰۱۱ و ۸ در ۲۰۲۲. از یک نقطه شروع کن، اول محور زمان را نشان بده و بعد هر فاصله را علامت بزن — ۱۲۳، ۳۳، ۱۴، ۱۳، ۱۲، ۱۲ و ۱۱ سال — تا کوتاه‌تر شدن فاصله‌ها به خط اصلی داستان تبدیل شود. همهٔ برچسب‌ها خوانا و همهٔ اعداد دقیق باشند. سبک چاپ مطبوعاتی: زمینهٔ سفید کاغذی، متن مشکی، یک رنگ تأکیدی قرمز. با «از ۱۲۳ سال به ۱۱ سال» تمام کن.',
+    },
+    ar: {
+      title: 'قصة بيانات متحركة',
+      prompt: 'أنشئ قصة بيانات متحركة مدتها 20 ثانية بعنوان "كم استغرقت إضافة كل مليار إنسان". المحطات: مليار واحد في 1804، و2 في 1927، و3 في 1960، و4 في 1974، و5 في 1987، و6 في 1999، و7 في 2011، و8 في 2022. ابدأ من نقطة واحدة، واعرض محور الزمن أولًا، ثم حدّد كل فترة — 123 و33 و14 و13 و12 و12 و11 عامًا — لتصبح الفترات المتقلصة هي محور القصة. اجعل كل تسمية مقروءة وكل قيمة دقيقة. أسلوب طباعة صحفية: أبيض ورقي ونص أسود ولون إبراز أحمر واحد. اختم بعبارة "من 123 عامًا إلى 11."',
+    },
+    ja: {
+      title: 'データストーリーアニメーション',
+      prompt: '「10 億人増えるのにかかった年数」というタイトルの 20 秒のデータストーリーを作ってください。節目：1804 年に 10 億人、1927 年に 20 億、1960 年に 30 億、1974 年に 40 億、1987 年に 50 億、1999 年に 60 億、2011 年に 70 億、2022 年に 80 億。1 つの点から始めてまず時間軸を見せ、続いて各間隔（123、33、14、13、12、12、11 年）を示し、縮まっていく間隔を物語の軸にしてください。すべてのラベルを読みやすく、数値は正確に。新聞・雑誌の印刷物風：紙の白、黒い文字、赤のアクセントを 1 色。最後は「123 年から 11 年へ。」で締めます。',
+    },
+    ko: {
+      title: '데이터 스토리 애니메이션',
+      prompt: '"인류가 10억 명씩 늘어나는 데 걸린 시간"이라는 제목의 20초 데이터 스토리 애니메이션을 만들어 줘. 이정표: 1804년 10억, 1927년 20억, 1960년 30억, 1974년 40억, 1987년 50억, 1999년 60억, 2011년 70억, 2022년 80억. 점 하나에서 시작해 먼저 타임라인 축을 보여 주고, 각 간격(123, 33, 14, 13, 12, 12, 11년)을 차례로 표시해 점점 짧아지는 간격이 이야기의 중심이 되게 해 줘. 모든 라벨은 읽기 쉽게, 모든 수치는 정확하게. 신문·잡지 인쇄물 스타일로, 종이 흰색 배경, 검은 글자, 빨간 강조색 하나. 마지막은 "123년에서 11년으로."로 마무리해 줘.',
+    },
+    pl: {
+      title: 'Animowana historia w danych',
+      prompt: 'Stwórz 20-sekundową animowaną historię w danych pod tytułem „Ile trwało dodanie każdego kolejnego miliarda ludzi”. Kamienie milowe: 1 miliard w 1804, 2 w 1927, 3 w 1960, 4 w 1974, 5 w 1987, 6 w 1999, 7 w 2011, 8 w 2022. Zacznij od jednego punktu, najpierw pokaż oś czasu, a potem zaznacz każdy odstęp — 123, 33, 14, 13, 12, 12 i 11 lat — tak, by coraz krótsze odstępy stały się historią. Każda etykieta czytelna, każda wartość dokładna. Prasowy styl druku: papierowa biel, czarny tekst, jeden czerwony akcent. Zakończ hasłem „Od 123 lat do 11.”',
+    },
+    hu: {
+      title: 'Animált adattörténet',
+      prompt: 'Készíts egy 20 másodperces animált adattörténetet „Mennyi idő alatt lett minden újabb milliárd ember” címmel. Mérföldkövek: 1 milliárd 1804-ben, 2 1927-ben, 3 1960-ban, 4 1974-ben, 5 1987-ben, 6 1999-ben, 7 2011-ben, 8 2022-ben. Indulj egyetlen pontból, előbb mutasd meg az idővonal tengelyét, majd jelöld az egyes időközöket – 123, 33, 14, 13, 12, 12 és 11 év –, hogy az egyre rövidülő időközök legyenek a történet. Minden felirat legyen jól olvasható, minden érték pontos. Szerkesztőségi nyomtatott stílus: papírfehér, fekete szöveg, egy piros kiemelés. Zárd ezzel: „123 évtől 11-ig.”',
+    },
+    fr: {
+      title: 'Récit de données animé',
+      prompt: 'Crée un récit de données animé de 20 secondes intitulé « Combien de temps pour ajouter chaque milliard d’humains ». Étapes : 1 milliard en 1804, 2 en 1927, 3 en 1960, 4 en 1974, 5 en 1987, 6 en 1999, 7 en 2011, 8 en 2022. Pars d’un seul point, révèle d’abord l’axe du temps, puis marque chaque intervalle — 123, 33, 14, 13, 12, 12 et 11 ans — pour que les intervalles qui rétrécissent deviennent l’histoire. Chaque libellé lisible, chaque valeur exacte. Style presse imprimée : blanc papier, texte noir, une touche de rouge. Termine sur « De 123 ans à 11. »',
+    },
+    uk: {
+      title: 'Анімована історія в даних',
+      prompt: 'Створи 20-секундну анімовану історію в даних під назвою «Скільки часу знадобилося на кожен новий мільярд людей». Віхи: 1 мільярд у 1804 році, 2 — у 1927, 3 — у 1960, 4 — у 1974, 5 — у 1987, 6 — у 1999, 7 — у 2011, 8 — у 2022. Почни з однієї точки, спершу покажи вісь часу, потім познач кожен інтервал — 123, 33, 14, 13, 12, 12 і 11 років, — щоб скорочення інтервалів стало сюжетом. Усі підписи мають читатися, усі значення — бути точними. Газетний друкований стиль: паперово-білий фон, чорний текст, один червоний акцент. Заверши фразою «Від 123 років до 11».',
+    },
+    tr: {
+      title: 'Animasyonlu veri hikâyesi',
+      prompt: '"Her yeni bir milyar insanın eklenmesi ne kadar sürdü" başlıklı 20 saniyelik animasyonlu bir veri hikâyesi oluştur. Dönüm noktaları: 1804\'te 1 milyar, 1927\'de 2, 1960\'ta 3, 1974\'te 4, 1987\'de 5, 1999\'da 6, 2011\'de 7, 2022\'de 8. Tek bir noktadan başla, önce zaman eksenini göster, ardından her aralığı işaretle — 123, 33, 14, 13, 12, 12 ve 11 yıl — böylece kısalan aralıklar hikâyenin kendisi olsun. Her etiket okunaklı, her değer kesin olsun. Gazete baskısı stili: kâğıt beyazı, siyah yazı, tek bir kırmızı vurgu. "123 yıldan 11 yıla." ile bitir.',
+    },
+    th: {
+      title: 'แอนิเมชันเล่าเรื่องด้วยข้อมูล',
+      prompt: 'สร้างแอนิเมชันเล่าเรื่องด้วยข้อมูลความยาว 20 วินาที ชื่อเรื่อง "มนุษย์ใช้เวลานานแค่ไหนในการเพิ่มขึ้นทีละพันล้านคน" หมุดหมาย: 1 พันล้านในปี 1804, 2 ในปี 1927, 3 ในปี 1960, 4 ในปี 1974, 5 ในปี 1987, 6 ในปี 1999, 7 ในปี 2011, 8 ในปี 2022 เริ่มจากจุดเดียว แสดงแกนเวลาก่อน แล้วค่อยระบุช่วงห่างแต่ละช่วง คือ 123, 33, 14, 13, 12, 12 และ 11 ปี ให้ช่วงห่างที่สั้นลงเรื่อย ๆ เป็นแกนของเรื่อง ป้ายกำกับทุกจุดต้องอ่านง่าย ตัวเลขต้องถูกต้อง สไตล์งานพิมพ์บรรณาธิการ: พื้นขาวแบบกระดาษ ตัวอักษรดำ สีแดงเน้นหนึ่งสี ปิดท้ายด้วย "จาก 123 ปี เหลือ 11 ปี"',
+    },
+    it: {
+      title: 'Storia di dati animata',
+      prompt: 'Crea una storia di dati animata di 20 secondi intitolata «Quanto ci è voluto per aggiungere ogni miliardo di persone». Tappe: 1 miliardo nel 1804, 2 nel 1927, 3 nel 1960, 4 nel 1974, 5 nel 1987, 6 nel 1999, 7 nel 2011, 8 nel 2022. Parti da un solo punto, mostra prima l’asse del tempo e poi segna ogni intervallo — 123, 33, 14, 13, 12, 12 e 11 anni — così che gli intervalli sempre più brevi diventino la storia. Ogni etichetta leggibile, ogni valore esatto. Stile editoriale da stampa: bianco carta, testo nero, un accento rosso. Chiudi con «Da 123 anni a 11.»',
+    },
+  },
 };
 
 export function homePresetCopy(pluginId: string, locale: string): HomePresetCopy | undefined {

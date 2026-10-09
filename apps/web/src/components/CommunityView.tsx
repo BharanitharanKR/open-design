@@ -37,6 +37,7 @@ const TEMPLATE_HOME_TARGET: Record<TemplateType, Pick<CommunityTemplateUseTarget
   // the Home `document` chip dispatches (see home-hero/chips.ts).
   'Document': { chipId: 'document', projectKind: 'other' },
   'Image': { chipId: 'image', projectKind: 'image' },
+  'Motion design': { chipId: 'motion-design', projectKind: 'video' },
   'Video': { chipId: 'video', projectKind: 'video' },
   'HyperFrames': { chipId: 'hyperframes', projectKind: 'video' },
   'Audio': { chipId: 'audio', projectKind: 'audio' },
@@ -62,6 +63,7 @@ const TEMPLATE_TYPE_ICON: Record<TemplateType, IconName> = {
   'Document': 'file-text',
   'Live Artifact': 'bar-chart-box',
   'Image': 'image',
+  'Motion design': 'video-ai',
   'Video': 'video-ai',
   'HyperFrames': 'orbit',
   'Audio': 'mic',

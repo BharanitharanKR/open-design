@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-od-preview-ready="false">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driftnote — Meetings in. Decisions out.</title>
+<style>
+  :root {
+    --navy: #0B1530;
+    --navy-raise: #111E42;
+    --paper: #F4EFE6;
+    --paper-dim: rgba(244, 239, 230, 0.62);
+    --hair: rgba(244, 239, 230, 0.38);
+    --coral: #FF6B57;
+    --font-display: "Instrument Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s6: 48px; --s7: 56px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #060C1D; color: var(--paper); font-family: var(--font-body); }
+  body { display: flex; flex-direction: column; }
+  #viewport { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #scaler { width: 1920px; height: 1080px; flex: none; transform-origin: center center; }
+
+  /* ---------- Composition stage ---------- */
+  #main { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  #wave { position: absolute; left: 0; top: 880px; width: 1920px; height: 160px; opacity: 0; }
+  .frag { position: absolute; left: 0; top: 0; transform-origin: 0 0; opacity: 0; white-space: nowrap;
+          font: 400 28px/1.5 var(--font-mono); color: var(--paper); }
+  .frag.bubble { padding: var(--s2) var(--s4); border: 2px solid var(--hair); border-radius: 32px 32px 32px 8px; background: var(--navy-raise); }
+  .frag.bubble.alt { border-radius: 32px 32px 8px 32px; }
+  .frag.bubble.hot { border-color: var(--coral); }
+  .frag.plain { padding: var(--s1) 0; color: var(--paper-dim); }
+
+  #scan { position: absolute; left: 0; top: 0; background: var(--coral); opacity: 0; z-index: 5; }
+
+  #card { position: absolute; left: 520px; top: 200px; width: 880px; height: 680px; padding: 48px 56px;
+          background: var(--navy-raise); border: 2px solid var(--hair); opacity: 0; display: flex; flex-direction: column; z-index: 2; }
+  .c-label { height: 32px; font: 500 24px/32px var(--font-mono); letter-spacing: 0.12em; color: var(--coral); }
+  .c-title { height: 80px; font: 400 56px/80px var(--font-display); color: var(--paper); white-space: nowrap; }
+  .c-sent { height: 56px; font: 400 32px/56px var(--font-body); color: var(--paper); white-space: nowrap; clip-path: inset(0 100% 0 0); }
+  .c-rule { height: 32px; display: flex; align-items: center; }
+  .c-rule i { display: block; width: 100%; height: 2px; background: var(--hair); }
+  .c-item { height: 80px; display: flex; align-items: center; gap: var(--s3); font: 500 40px/1.2 var(--font-body); color: var(--paper); white-space: nowrap; opacity: 0; }
+  .c-item svg { flex: none; width: 48px; height: 48px; }
+  #c-sec2 { opacity: 0; }
+
+  #brand { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3; pointer-events: none; }
+  #wordmark { font: 400 160px/1 var(--font-display); color: var(--paper); letter-spacing: -0.01em; opacity: 0; margin-top: -40px; }
+  #underline-slot { height: 6px; margin: var(--s4) 0 var(--s4); }
+  #tagline { font: 400 56px/1.2 var(--font-display); color: var(--paper); opacity: 0; white-space: nowrap; }
+
+  /* ---------- Player chrome (outside the composition) ---------- */
+  #controls { flex: none; display: flex; align-items: center; gap: 16px; padding: 12px 24px; background: #060C1D; border-top: 1px solid rgba(244,239,230,.18); font: 500 14px var(--font-mono); color: var(--paper); }
+  #controls button { font: inherit; color: var(--paper); background: transparent; border: 1px solid rgba(244,239,230,.5); padding: 8px 16px; min-height: 40px; cursor: pointer; border-radius: 4px; }
+  #controls button:hover { border-color: var(--coral); }
+  #controls button:focus-visible, #scrub:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+  #scrub { flex: 1; accent-color: var(--coral); min-height: 40px; }
+  #time { min-width: 110px; text-align: right; }
+  #rm-note { display: none; color: var(--coral); }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="scaler">
+    <div id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+      <canvas id="wave" width="1920" height="160"></canvas>
+      <div id="frags"></div>
+
+      <div id="card">
+        <div class="c-label">ONE-PAGE SUMMARY</div>
+        <div class="c-title">Weekly product sync</div>
+        <div class="c-sent">Review moved to Thursday.</div>
+        <div class="c-sent">Brief owner confirmed.</div>
+        <div class="c-sent">Launch plan agreed.</div>
+        <div class="c-rule" id="c-sec2"><i></i></div>
+        <div class="c-label" id="c-sec2b" style="opacity:0">ACTION ITEMS</div>
+        <div class="c-item"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="#FF6B57" stroke-width="3"/><path class="chk" d="M14 25 L21 32 L34 17" fill="none" stroke="#FF6B57" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg><span>Send revised brief</span></div>
+        <div class="c-item"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="#FF6B57" stroke-width="3"/><path class="chk" d="M14 25 L21 32 L34 17" fill="none" stroke="#FF6B57" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg><span>Book design review</span></div>
+        <div class="c-item"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="#FF6B57" stroke-width="3"/><path class="chk" d="M14 25 L21 32 L34 17" fill="none" stroke="#FF6B57" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg><span>Share meeting notes</span></div>
+      </div>
+
+      <div id="scan"></div>
+
+      <div id="brand">
+        <div id="wordmark">Driftnote</div>
+        <div id="underline-slot"></div>
+        <div id="tagline">Meetings in. Decisions out.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="controls">
+  <button id="play" type="button" aria-label="Play or pause">Pause</button>
+  <button id="replay" type="button" aria-label="Replay from start">Replay</button>
+  <input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Scrub timeline">
+  <span id="time">0.00 / 20.00s</span>
+  <span id="rm-note">Reduced motion: showing the end frame. Press Play to watch.</span>
+</div>
+
+<script src="assets/gsap.min.js"></script>
+<script>
+// ---------- Configuration (single source for timing + geometry) ----------
+const CFG = {
+  duration: 20, fps: 30, W: 1920, H: 1080,
+  card: { x: 520, y: 200, w: 880, h: 680, padX: 56 },
+  sentTop: 160,           // card-relative top of first summary row
+  sentH: 56,
+  groupStart: 7, groupGap: 1.9, fragStagger: 0.12,
+  navy: '#0B1530', paper: '#F4EFE6'
+};
+const duration = CFG.duration;
+
+// Seeded PRNG so layout is identical on every load / seek
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rnd = mulberry32(20261009);
+
+const FRAGS = [
+  // [text, kind]  group = index % 3
+  ['can we move the review to thursday?', 'bubble'],
+  ['who owns the brief again?', 'bubble hot'],
+  ['so, um, the launch plan\u2026', 'plain'],
+  ['draft is ready by friday', 'plain'],
+  ['sorry \u2014 you\u2019re on mute', 'bubble alt'],
+  ['I can take the brief', 'bubble'],
+  ['thursday works for me', 'plain'],
+  ['wait, which deck?', 'bubble alt'],
+  ['let\u2019s circle back on launch', 'plain'],
+  ['[crosstalk]', 'plain'],
+  ['owner: me, confirmed', 'bubble'],
+  ['okay, we\u2019re agreed, ship it', 'bubble alt']
+];
+
+const host = document.getElementById('frags');
+const frags = FRAGS.map((f, i) => {
+  const el = document.createElement('div');
+  el.className = 'frag ' + f[1];
+  el.textContent = f[0];
+  host.appendChild(el);
+  const g = i % 3, j = Math.floor(i / 3);
+  const sx = 80 + rnd() * 1300, sy = 70 + rnd() * 760;
+  return { el, g, j, i, sx, sy, dx: (rnd() - .5) * 120, dy: (rnd() - .5) * 90, rot: (rnd() - .5) * 16 };
+});
+
+// ---------- Timeline ----------
+const tl = gsap.timeline({ paused: true });
+const clock = { t: 0 };
+tl.to(clock, { t: duration, duration, ease: 'none' }, 0);
+
+// Initial states
+gsap.set('#scan', { x: 0, y: 0, width: 4, height: 1080, opacity: 0 });
+gsap.set('#card', { transformOrigin: '50% 50%' });
+gsap.set('.c-sent', { clipPath: 'inset(0 100% 0 0)' });
+gsap.set('.chk', { strokeDasharray: 1, strokeDashoffset: 1 });
+frags.forEach(f => gsap.set(f.el, { x: f.sx, y: f.sy, rotation: f.rot, scale: .85, opacity: 0 }));
+
+// Phase 1 (0–3s): chaos arrives and drifts
+frags.forEach(f => {
+  const t0 = 0.2 + f.i * 0.22;
+  tl.to(f.el, { opacity: f.el.classList.contains('plain') ? .85 : 1, scale: 1, duration: .5, ease: 'power2.out' }, t0);
+  tl.to(f.el, { x: f.sx + f.dx, y: f.sy + f.dy, duration: 3 - t0, ease: 'sine.inOut' }, t0);
+});
+tl.to('#wave', { opacity: .28, duration: 1.2, ease: 'power2.out' }, 0.2);
+
+// Phase 2 (3–7s): coral line sweeps; fragments sort into rows; card appears as destination
+tl.set('#scan', { opacity: 1 }, 3)
+  .to('#scan', { x: CFG.card.x - 2, duration: 1.6, ease: 'power2.inOut' }, 3)
+  .to('#scan', { x: CFG.card.x, y: CFG.card.y - 2, width: CFG.card.w, height: 4, duration: 1.0, ease: 'power3.inOut' }, 4.6)
+  .to('#card', { opacity: 1, duration: 1.0, ease: 'power2.out' }, 5.2);
+frags.forEach(f => {
+  const row = f.g * 4 + f.j;
+  const t0 = 3.2 + f.i * 0.06;
+  f.rx = 96 + f.j * 40; f.ry = 80 + row * 64;
+  tl.to(f.el, { x: f.rx, y: f.ry, rotation: 0, scale: .9, duration: 3.2, ease: 'power3.inOut' }, t0);
+});
+
+// Phase 3 (7–13s): line by line, fragments condense into one sentence each
+const sents = document.querySelectorAll('.c-sent');
+for (let g = 0; g < 3; g++) {
+  const Ws = CFG.groupStart + g * CFG.groupGap;
+  const slotX = CFG.card.x + CFG.card.padX + 8;
+  const slotY = CFG.card.y + CFG.sentTop + g * CFG.sentH + 8;
+  frags.filter(f => f.g === g).forEach(f => {
+    tl.to(f.el, { x: slotX, y: slotY, scale: .55, duration: .85, ease: 'power3.in' }, Ws + f.j * CFG.fragStagger)
+      .to(f.el, { opacity: 0, duration: .25, ease: 'power1.in' }, Ws + f.j * CFG.fragStagger + .6);
+  });
+  tl.to(sents[g], { clipPath: 'inset(0 0% 0 0)', duration: .7, ease: 'power2.out' }, Ws + .75);
+}
+tl.to('#wave', { opacity: 0, duration: 2.0, ease: 'power1.inOut' }, 10.5);
+
+// Phase 4 (13–17s): card completes, three action items tick in
+tl.fromTo('#c-sec2, #c-sec2b', { opacity: 0 }, { opacity: 1, duration: .4, ease: 'power2.out' }, 13.1, 0);
+const items = document.querySelectorAll('.c-item');
+items.forEach((it, k) => {
+  const t = 13.6 + k * 0.8;
+  tl.fromTo(it, { opacity: 0, x: 24 }, { opacity: 1, x: 0, duration: .5, ease: 'power2.out', immediateRender: false }, t);
+  tl.to(it.querySelector('.chk'), { strokeDashoffset: 0, duration: .3, ease: 'power2.out' }, t + .4);
+});
+// reading hold on the full card: 16.1 → 17.0
+
+// Phase 5 (17–18s): card recedes, coral rule becomes the wordmark underline, brand resolves
+tl.to('#card', { opacity: 0, scale: .96, duration: .7, ease: 'power2.in' }, 17.0)
+  .to('#scan', { x: 760, y: 566, width: 400, height: 6, duration: .9, ease: 'power3.inOut' }, 17.0)
+  .fromTo('#wordmark', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .7, ease: 'power2.out', immediateRender: false }, 17.25)
+  .fromTo('#tagline', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .55, ease: 'power2.out', immediateRender: false }, 17.45);
+// 18 → 20: everything holds still
+
+// ---------- Procedural waveform: pure function of clock.t ----------
+const wv = document.getElementById('wave'), wctx = wv.getContext('2d');
+const BARS = 96, phases = Array.from({ length: BARS }, () => rnd() * 6.28), freqs = Array.from({ length: BARS }, () => 1.5 + rnd() * 3);
+function drawWave(t) {
+  wctx.clearRect(0, 0, 1920, 160);
+  wctx.fillStyle = CFG.paper;
+  const env = Math.max(0, 1 - Math.max(0, t - 6) / 6);
+  for (let i = 0; i < BARS; i++) {
+    const a = (0.25 + 0.75 * Math.abs(Math.sin(t * freqs[i] + phases[i]))) * (0.35 + 0.65 * Math.abs(Math.sin(i * .21 + t * .9))) * (0.15 + .85 * env);
+    const h = Math.max(4, a * 150);
+    wctx.fillRect(i * 20 + 4, 80 - h / 2, 8, h);
+  }
+}
+tl.eventCallback('onUpdate', () => { drawWave(clock.t); syncUI(); });
+drawWave(0);
+window.__timelines = { main: tl };
+
+// ---------- Player chrome ----------
+const scaler = document.getElementById('scaler'), viewport = document.getElementById('viewport');
+function fit() {
+  const s = Math.min(viewport.clientWidth / CFG.W, viewport.clientHeight / CFG.H);
+  scaler.style.transform = 'scale(' + s + ')';
+  scaler.style.margin = ((CFG.H * s - CFG.H) / 2) + 'px ' + ((CFG.W * s - CFG.W) / 2) + 'px';
+}
+window.addEventListener('resize', fit); fit();
+
+const playBtn = document.getElementById('play'), scrub = document.getElementById('scrub'), timeEl = document.getElementById('time');
+function syncUI() {
+  const t = tl.time();
+  scrub.value = t;
+  timeEl.textContent = t.toFixed(2) + ' / ' + duration.toFixed(2) + 's';
+  playBtn.textContent = tl.paused() || t >= duration ? 'Play' : 'Pause';
+}
+playBtn.addEventListener('click', () => {
+  if (tl.paused() || tl.time() >= duration) { if (tl.time() >= duration) tl.restart(); else tl.play(); }
+  else tl.pause();
+  syncUI();
+});
+document.getElementById('replay').addEventListener('click', () => { tl.restart(); syncUI(); });
+scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); drawWave(clock.t); syncUI(); });
+tl.eventCallback('onComplete', syncUI);
+
+// Wait for fonts, then start (or show poster under reduced motion)
+const start = () => {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    tl.pause(19.5); document.getElementById('rm-note').style.display = 'inline'; syncUI();
+  } else { tl.play(0); }
+  syncUI();
+};
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(start);
+</script>
+<script>
+// Video export seeks with timeline callbacks suppressed, so the onUpdate
+// drawing also runs from a per-frame loop whenever the timeline time moves.
+(function install() {
+  var tls = window.__timelines;
+  var tl = tls && tls[Object.keys(tls)[0]];
+  if (!tl) { setTimeout(install, 50); return; }
+  var draw = tl.eventCallback('onUpdate');
+  if (!draw) return;
+  var drawnAt = null;
+  tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
+  (function loop() {
+    var t = tl.time();
+    if (t !== drawnAt) { drawnAt = t; draw(); }
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+<script>
+// Preview bake: mark ready once the timeline reaches the poster frame (11s).
+(function () {
+  var POSTER_AT = 11;
+  function check() {
+    var tls = window.__timelines;
+    var tl = tls && tls[Object.keys(tls)[0]];
+    if (tl && tl.time() >= POSTER_AT) {
+      document.documentElement.setAttribute('data-od-preview-ready', 'true');
+      return;
+    }
+    requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+// Motion design Home templates — bundled plugin contract.
+//
+// The motion-design chip owns an OD Next route, so picking one of its example
+// cards binds the plugin's SKILL.md as a session skill at project create. A
+// curated template without SKILL.md fails that bind ("example plugin has no
+// readable SKILL.md to carry as a Skill"). SKILL.md must also name
+// `example.html` so the frozen skill package carries the reference output.
+
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import url from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { CURATED_MOTION_DESIGN_PLUGIN_IDS } from '../../src/components/plugins-home/curatedPriority';
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const examplesRoot = path.resolve(__dirname, '../../../../plugins/_official/examples');
+
+function exampleDirsById(): Map<string, string> {
+  const dirs = new Map<string, string>();
+  for (const entry of readdirSync(examplesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(examplesRoot, entry.name, 'open-design.json');
+    if (!existsSync(manifestPath)) continue;
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string };
+    if (manifest.name) dirs.set(manifest.name, path.join(examplesRoot, entry.name));
+  }
+  return dirs;
+}
+
+describe('curated motion design templates', () => {
+  const dirs = exampleDirsById();
+
+  it.each([...CURATED_MOTION_DESIGN_PLUGIN_IDS])('%s ships an example card the OD Next route can bind', (id) => {
+    const dir = dirs.get(id);
+    expect(dir, `${id} has no bundled example folder`).toBeDefined();
+    const skill = readFileSync(path.join(dir!, 'SKILL.md'), 'utf8');
+    expect(skill).toMatch(/\bexample\.html\b/);
+    expect(existsSync(path.join(dir!, 'example.html'))).toBe(true);
+  });
+});

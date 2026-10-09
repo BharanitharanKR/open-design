@@ -1,0 +1,106 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-showreel",
+  "title": "Motion Designer Showreel",
+  "title_i18n": {
+    "en": "Motion Designer Showreel",
+    "id": "Showreel Desainer Motion",
+    "de": "Motion-Designer-Showreel",
+    "zh-CN": "动效设计师作品集快剪",
+    "zh-TW": "動效設計師作品集快剪",
+    "pt-BR": "Showreel de motion designer",
+    "es-ES": "Showreel de motion designer",
+    "ru": "Шоурил моушн-дизайнера",
+    "fa": "شوریل طراح موشن",
+    "ar": "عرض أعمال مصمم الحركة",
+    "ja": "モーションデザイナーのショーリール",
+    "ko": "모션 디자이너 쇼릴",
+    "pl": "Showreel motion designera",
+    "hu": "Motion designer bemutatófilm",
+    "fr": "Showreel de motion designer",
+    "uk": "Шоурил моушн-дизайнера",
+    "tr": "Hareket tasarımcısı showreel",
+    "th": "โชว์รีลนักออกแบบโมชัน",
+    "it": "Showreel da motion designer"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 15-second showreel that packs kinetic type, a shape morph, UI motion and a data flourish into one visual identity.",
+  "description_i18n": {
+    "en": "A 15-second showreel that packs kinetic type, a shape morph, UI motion and a data flourish into one visual identity.",
+    "id": "Showreel 15 detik yang memadukan tipografi kinetik, perubahan bentuk, animasi UI, dan sentuhan data dalam satu identitas visual.",
+    "de": "Ein 15-sekündiges Showreel, das kinetische Typografie, eine Formverwandlung, UI-Animation und eine Datenanimation in einer visuellen Identität vereint.",
+    "zh-CN": "15 秒作品集快剪，把动态排版、图形变形、界面动效和数据动画融进同一种视觉风格。",
+    "zh-TW": "15 秒作品集快剪，把動態排版、圖形變形、介面動效和數據動畫融進同一種視覺風格。",
+    "pt-BR": "Um showreel de 15 segundos que reúne tipografia cinética, metamorfose de formas, animação de UI e um toque de dados em uma única identidade visual.",
+    "es-ES": "Un showreel de 15 segundos que reúne tipografía cinética, una forma que se transforma, animación de UI y un detalle de datos en una sola identidad visual.",
+    "ru": "15-секундный шоурил: кинетическая типографика, морфинг формы, анимация интерфейса и данные в едином визуальном стиле.",
+    "fa": "شوریل ۱۵ ثانیه‌ای که تایپوگرافی پویا، تغییر شکل، انیمیشن رابط کاربری و یک جلوهٔ داده‌ای را در یک هویت بصری کنار هم می‌آورد.",
+    "ar": "عرض أعمال مدته 15 ثانية يجمع الطباعة الحركية وتحوّل الأشكال وحركة الواجهة ولمسة بيانات في هوية بصرية واحدة.",
+    "ja": "キネティックタイポグラフィ、シェイプの変形、UI モーション、データ演出をひとつのビジュアルにまとめた 15 秒のショーリール。",
+    "ko": "키네틱 타이포그래피, 도형 변형, UI 모션, 데이터 연출을 하나의 비주얼로 담은 15초 쇼릴.",
+    "pl": "15-sekundowy showreel łączący typografię kinetyczną, przemianę kształtu, animację UI i akcent z danymi w jednej identyfikacji wizualnej.",
+    "hu": "15 másodperces bemutatófilm, amely kinetikus tipográfiát, alakváltást, felületanimációt és adatvizualizációt fog össze egy vizuális stílusban.",
+    "fr": "Un showreel de 15 secondes qui réunit typographie cinétique, morphing de forme, animation d’interface et touche de données dans une seule identité visuelle.",
+    "uk": "15-секундний шоурил: кінетична типографіка, морфінг форми, анімація інтерфейсу й дані в єдиному візуальному стилі.",
+    "tr": "Kinetik tipografi, şekil dönüşümü, arayüz animasyonu ve veri dokunuşunu tek bir görsel kimlikte toplayan 15 saniyelik showreel.",
+    "th": "โชว์รีล 15 วินาทีที่รวมตัวอักษรเคลื่อนไหว การแปลงรูปทรง โมชันหน้าจอ และลูกเล่นข้อมูลไว้ในสไตล์ภาพเดียวกัน",
+    "it": "Uno showreel di 15 secondi che unisce tipografia cinetica, metamorfosi di forme, animazione UI e un tocco di dati in un’unica identità visiva."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "showreel",
+    "kinetic-typography",
+    "shape-morph",
+    "brand"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Make a 15-second motion design showreel that proves you are a world-class motion designer. Pack in several distinct techniques — bold kinetic typography, a shape that morphs into something new, an animated interface moment and a quick data flourish — but keep one visual identity and one recurring motif that links every cut. Off-white canvas, ink-black type, a single vivid accent color. End on a confident signature card for the fictional studio \"Studio Kinetik\", held for two seconds.",
+        "zh-CN": "制作一段 15 秒的动效设计作品集快剪，展示你是一流的动效设计师。融入几种不同的手法：大字号动态排版、一个变形成新物体的图形、一段界面动效和一个简短的数据动画；但整体保持同一种视觉风格，并用一个反复出现的元素串起每一次切换。米白背景、墨黑文字，只用一种鲜明的强调色。结尾是一张自信的署名卡，署名为虚构工作室“Studio Kinetik”，停留两秒。"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Motion Designer Showreel"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

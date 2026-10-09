@@ -1,0 +1,105 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-data-story",
+  "title": "Animated Data Story",
+  "title_i18n": {
+    "en": "Animated Data Story",
+    "id": "Cerita Data Animasi",
+    "de": "Animierte Datengeschichte",
+    "zh-CN": "数据故事动画",
+    "zh-TW": "數據故事動畫",
+    "pt-BR": "História de dados animada",
+    "es-ES": "Historia de datos animada",
+    "ru": "Анимированная история в данных",
+    "fa": "داستان داده‌ای متحرک",
+    "ar": "قصة بيانات متحركة",
+    "ja": "データストーリーアニメーション",
+    "ko": "데이터 스토리 애니메이션",
+    "pl": "Animowana historia w danych",
+    "hu": "Animált adattörténet",
+    "fr": "Récit de données animé",
+    "uk": "Анімована історія в даних",
+    "tr": "Animasyonlu veri hikâyesi",
+    "th": "แอนิเมชันเล่าเรื่องด้วยข้อมูล",
+    "it": "Storia di dati animata"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 20-second data story that turns world population milestones into a timeline of shrinking intervals.",
+  "description_i18n": {
+    "en": "A 20-second data story that turns world population milestones into a timeline of shrinking intervals.",
+    "id": "Cerita data 20 detik yang mengubah tonggak populasi dunia menjadi linimasa dengan jeda yang makin pendek.",
+    "de": "Eine 20-sekündige Datengeschichte, die die Meilensteine der Weltbevölkerung als Zeitleiste immer kürzerer Abstände zeigt.",
+    "zh-CN": "20 秒数据故事动画，把世界人口的里程碑变成一条间隔不断缩短的时间轴。",
+    "zh-TW": "20 秒數據故事動畫，把世界人口的里程碑變成一條間隔不斷縮短的時間軸。",
+    "pt-BR": "Uma história de dados de 20 segundos que transforma os marcos da população mundial em uma linha do tempo de intervalos cada vez menores.",
+    "es-ES": "Una historia de datos de 20 segundos que convierte los hitos de la población mundial en una línea de tiempo de intervalos cada vez más cortos.",
+    "ru": "20-секундная история в данных: вехи численности населения Земли на шкале времени со всё более короткими интервалами.",
+    "fa": "داستان داده‌ای ۲۰ ثانیه‌ای که نقاط عطف جمعیت جهان را به خط زمانی با فاصله‌های کوتاه‌شونده تبدیل می‌کند.",
+    "ar": "قصة بيانات مدتها 20 ثانية تحوّل محطات تعداد سكان العالم إلى خط زمني تتقلص فيه الفترات.",
+    "ja": "世界人口の節目を、間隔がどんどん縮まるタイムラインとして見せる 20 秒のデータストーリー。",
+    "ko": "세계 인구의 이정표를 간격이 점점 짧아지는 타임라인으로 보여 주는 20초 데이터 스토리.",
+    "pl": "20-sekundowa historia w danych, która zamienia kamienie milowe populacji świata w oś czasu z coraz krótszymi odstępami.",
+    "hu": "20 másodperces adattörténet, amely a világnépesség mérföldköveit egyre rövidülő időközök idővonalává alakítja.",
+    "fr": "Un récit de données de 20 secondes qui transforme les étapes de la population mondiale en une frise aux intervalles de plus en plus courts.",
+    "uk": "20-секундна історія в даних: віхи чисельності населення Землі на шкалі часу з дедалі коротшими інтервалами.",
+    "tr": "Dünya nüfusunun dönüm noktalarını giderek kısalan aralıklardan oluşan bir zaman çizelgesine dönüştüren 20 saniyelik veri hikâyesi.",
+    "th": "เรื่องเล่าข้อมูล 20 วินาทีที่เปลี่ยนหมุดหมายประชากรโลกให้เป็นไทม์ไลน์ที่ช่วงห่างสั้นลงเรื่อย ๆ",
+    "it": "Una storia di dati di 20 secondi che trasforma le tappe della popolazione mondiale in una linea del tempo con intervalli sempre più brevi."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "data-visualization",
+    "infographic",
+    "editorial"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Create a 20-second animated data story titled \"How long it took to add each billion people\". Milestones: 1 billion in 1804, 2 in 1927, 3 in 1960, 4 in 1974, 5 in 1987, 6 in 1999, 7 in 2011, 8 in 2022. Start from a single dot, reveal the timeline axis first, then mark each gap — 123, 33, 14, 13, 12, 12 and 11 years — so the shrinking intervals become the story. Keep every label readable and every value exact. Editorial print style: paper white, black type, one red highlight. End on \"From 123 years to 11.\"",
+        "zh-CN": "制作一段 20 秒的数据动画，标题是「人类每增加 10 亿人用了多久」。里程碑：1804 年 10 亿，1927 年 20 亿，1960 年 30 亿，1974 年 40 亿，1987 年 50 亿，1999 年 60 亿，2011 年 70 亿，2022 年 80 亿。从一个点开始，先展开时间轴，再依次标出每段间隔：123、33、14、13、12、12、11 年，让不断缩短的间隔成为故事主线。所有标签清晰可读，数值准确。报刊印刷风格：纸白底、黑色文字、一种红色强调。结尾停在“从 123 年到 11 年”。"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Animated Data Story"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

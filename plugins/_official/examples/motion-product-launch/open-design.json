@@ -1,0 +1,106 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-product-launch",
+  "title": "Product Launch Film",
+  "title_i18n": {
+    "en": "Product Launch Film",
+    "id": "Video Peluncuran Produk",
+    "de": "Produkt-Launchfilm",
+    "zh-CN": "产品发布短片",
+    "zh-TW": "產品發布短片",
+    "pt-BR": "Filme de lançamento de produto",
+    "es-ES": "Vídeo de lanzamiento de producto",
+    "ru": "Ролик запуска продукта",
+    "fa": "ویدیوی معرفی محصول",
+    "ar": "فيلم إطلاق منتج",
+    "ja": "プロダクトローンチ動画",
+    "ko": "제품 출시 영상",
+    "pl": "Film premierowy produktu",
+    "hu": "Termékbemutató film",
+    "fr": "Film de lancement produit",
+    "uk": "Ролик запуску продукту",
+    "tr": "Ürün lansman filmi",
+    "th": "วิดีโอเปิดตัวสินค้า",
+    "it": "Video di lancio prodotto"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 20-second launch film that shows a product’s core transformation and closes on the brand line.",
+  "description_i18n": {
+    "en": "A 20-second launch film that shows a product’s core transformation and closes on the brand line.",
+    "id": "Video peluncuran 20 detik yang menampilkan perubahan inti produk dan ditutup dengan slogan merek.",
+    "de": "Ein 20-sekündiger Launchfilm, der die zentrale Verwandlung eines Produkts zeigt und mit dem Markenclaim endet.",
+    "zh-CN": "20 秒产品发布短片，展示产品带来的核心变化，最后落在品牌口号上。",
+    "zh-TW": "20 秒產品發布短片，展示產品帶來的核心變化，最後落在品牌口號上。",
+    "pt-BR": "Um filme de lançamento de 20 segundos que mostra a transformação central do produto e termina no slogan da marca.",
+    "es-ES": "Un vídeo de lanzamiento de 20 segundos que muestra la transformación clave del producto y cierra con el lema de la marca.",
+    "ru": "20-секундный ролик запуска: главное преображение, которое даёт продукт, и финал на слогане бренда.",
+    "fa": "ویدیوی معرفی ۲۰ ثانیه‌ای که تحول اصلی محصول را نشان می‌دهد و با شعار برند تمام می‌شود.",
+    "ar": "فيلم إطلاق مدته 20 ثانية يُظهر التحوّل الأساسي الذي يقدّمه المنتج وينتهي بشعار العلامة.",
+    "ja": "プロダクトがもたらす中心的な変化を見せ、ブランドラインで締めくくる 20 秒のローンチ動画。",
+    "ko": "제품이 만드는 핵심 변화를 보여 주고 브랜드 문구로 마무리하는 20초 출시 영상.",
+    "pl": "20-sekundowy film premierowy, który pokazuje kluczową przemianę produktu i kończy się hasłem marki.",
+    "hu": "20 másodperces bemutatófilm, amely megmutatja a termék lényegi változását, és a márka szlogenjével zárul.",
+    "fr": "Un film de lancement de 20 secondes qui montre la transformation clé du produit et se termine sur la signature de marque.",
+    "uk": "20-секундний ролик запуску: головна зміна, яку дає продукт, і фінал на слогані бренду.",
+    "tr": "Ürünün temel dönüşümünü gösteren ve marka sloganıyla kapanan 20 saniyelik lansman filmi.",
+    "th": "วิดีโอเปิดตัว 20 วินาทีที่แสดงการเปลี่ยนแปลงหลักของสินค้า และปิดท้ายด้วยสโลแกนแบรนด์",
+    "it": "Un video di lancio di 20 secondi che mostra la trasformazione chiave del prodotto e si chiude sul claim del marchio."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "product-launch",
+    "promo",
+    "ui",
+    "brand"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Create a 20-second launch film for Driftnote, a fictional app that turns messy meeting audio into a one-page summary. Show the core transformation: scattered speech bubbles and transcript fragments condense, line by line, into a tidy summary card with three action items. Brand line: \"Meetings in. Decisions out.\" Invent only simple UI for this film — no metrics, customers or pricing. Deep navy canvas, warm white type, one coral accent. Close on the Driftnote wordmark and the brand line, held for two seconds.",
+        "zh-CN": "为虚构的 App「Driftnote」制作一段 20 秒的产品发布短片。它能把杂乱的会议录音整理成一页纸总结。展示核心变化：散落的对话气泡和转写片段逐行收拢，变成一张整洁的总结卡片，上面有三条待办事项。品牌口号：“会议进来，决定出去。”界面只为这支短片简单设计，不要编造数据、客户或价格。深海军蓝背景、暖白色文字、一种珊瑚色强调色。结尾停在 Driftnote 字标和口号上，保持两秒。"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Product Launch Film"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

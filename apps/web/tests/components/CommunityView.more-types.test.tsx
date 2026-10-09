@@ -93,7 +93,7 @@ function openMore() {
 }
 
 describe('CommunityView — 更多 is a fixed list (OPEND-3098)', () => {
-  it('always offers HyperFrames, Video, Audio, Live Artifact, WebGL in that order — even with none published', async () => {
+  it('always offers Motion design, HyperFrames, Video, Audio, Live Artifact, WebGL in that order — even with none published', async () => {
     serveCatalogue([LANDING]);
     render(<CommunityView />);
     await waitFor(() => expect(cards().length).toBe(1));
@@ -107,13 +107,13 @@ describe('CommunityView — 更多 is a fixed list (OPEND-3098)', () => {
     const popover = openMore();
     expect(
       Array.from(popover.querySelectorAll('button')).map((button) => button.getAttribute('data-chip')),
-    ).toEqual(['hyperframes', 'video', 'audio', 'live-artifact', 'webgl']);
+    ).toEqual(['motion-design', 'hyperframes', 'video', 'audio', 'live-artifact', 'webgl']);
     expect(
       Array.from(popover.querySelectorAll('button')).map((button) => button.textContent?.trim()),
-    ).toEqual(['HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL']);
+    ).toEqual(['Motion design', 'HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL']);
   });
 
-  it('shows the empty state for a 更多 kind with nothing published, and keeps 更多 for the other four', async () => {
+  it('shows the empty state for a 更多 kind with nothing published, and keeps 更多 for the other five', async () => {
     serveCatalogue([LANDING]);
     render(<CommunityView />);
     await waitFor(() => expect(cards().length).toBe(1));
@@ -139,7 +139,7 @@ describe('CommunityView — 更多 is a fixed list (OPEND-3098)', () => {
     const popover = openMore();
     expect(
       Array.from(popover.querySelectorAll('button')).map((button) => button.getAttribute('data-chip')),
-    ).toEqual(['hyperframes', 'video', 'live-artifact', 'webgl']);
+    ).toEqual(['motion-design', 'hyperframes', 'video', 'live-artifact', 'webgl']);
   });
 
   it('wears the Home webgl chip (sparkles glyph) and hands WebGL templates to the Home webgl chip as a prototype', async () => {

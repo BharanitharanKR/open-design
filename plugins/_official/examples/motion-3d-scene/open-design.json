@@ -1,0 +1,106 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-3d-scene",
+  "title": "Procedural 3D Island",
+  "title_i18n": {
+    "en": "Procedural 3D Island",
+    "id": "Pulau 3D Prosedural",
+    "de": "Prozedurale 3D-Insel",
+    "zh-CN": "3D 程序化海岛",
+    "zh-TW": "3D 程序化海島",
+    "pt-BR": "Ilha 3D procedural",
+    "es-ES": "Isla 3D procedural",
+    "ru": "Процедурный 3D-остров",
+    "fa": "جزیرهٔ سه‌بعدی رویه‌ای",
+    "ar": "جزيرة ثلاثية الأبعاد إجرائية",
+    "ja": "プロシージャル 3D アイランド",
+    "ko": "절차적 3D 섬",
+    "pl": "Proceduralna wyspa 3D",
+    "hu": "Procedurális 3D-sziget",
+    "fr": "Île 3D procédurale",
+    "uk": "Процедурний 3D-острів",
+    "tr": "Prosedürel 3D ada",
+    "th": "เกาะ 3D แบบโพรซีเดอรัล",
+    "it": "Isola 3D procedurale"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 15-second browser-rendered 3D scene: a procedural island at golden hour with shader waves and a sweeping camera move.",
+  "description_i18n": {
+    "en": "A 15-second browser-rendered 3D scene: a procedural island at golden hour with shader waves and a sweeping camera move.",
+    "id": "Adegan 3D 15 detik yang dirender di browser: pulau prosedural saat golden hour dengan ombak shader dan gerakan kamera yang menyapu.",
+    "de": "Eine 15-sekündige, im Browser gerenderte 3D-Szene: eine prozedurale Insel zur goldenen Stunde mit Shader-Wellen und weiter Kamerafahrt.",
+    "zh-CN": "15 秒浏览器实时渲染的 3D 场景：黄昏中的程序化小岛，着色器海浪配合大幅度运镜。",
+    "zh-TW": "15 秒瀏覽器即時渲染的 3D 場景：黃昏中的程序化小島，著色器海浪配合大幅度運鏡。",
+    "pt-BR": "Uma cena 3D de 15 segundos renderizada no navegador: uma ilha procedural na hora dourada, com ondas em shader e um movimento de câmera amplo.",
+    "es-ES": "Una escena 3D de 15 segundos renderizada en el navegador: una isla procedural en la hora dorada, con olas por shader y un amplio movimiento de cámara.",
+    "ru": "15-секундная 3D-сцена в браузере: процедурный остров в золотой час, шейдерные волны и широкий пролёт камеры.",
+    "fa": "صحنهٔ سه‌بعدی ۱۵ ثانیه‌ای که در مرورگر رندر می‌شود: جزیره‌ای رویه‌ای در ساعت طلایی با موج‌های شیدری و حرکت گستردهٔ دوربین.",
+    "ar": "مشهد ثلاثي الأبعاد مدته 15 ثانية يُعرض في المتصفح: جزيرة إجرائية في الساعة الذهبية مع أمواج بالمظلّلات وحركة كاميرا واسعة.",
+    "ja": "ブラウザでレンダリングする 15 秒の 3D シーン。夕暮れのプロシージャルな島を、シェーダーの波と大きなカメラワークで見せます。",
+    "ko": "브라우저에서 렌더링하는 15초 3D 장면: 황금빛 시간대의 절차적 섬, 셰이더 파도와 시원한 카메라 무빙.",
+    "pl": "15-sekundowa scena 3D renderowana w przeglądarce: proceduralna wyspa o złotej godzinie, z falami w shaderze i szerokim ruchem kamery.",
+    "hu": "15 másodperces, böngészőben renderelt 3D-jelenet: procedurális sziget az aranyórában, shaderes hullámokkal és nagy ívű kameramozgással.",
+    "fr": "Une scène 3D de 15 secondes rendue dans le navigateur : une île procédurale à l’heure dorée, avec des vagues en shader et un ample mouvement de caméra.",
+    "uk": "15-секундна 3D-сцена в браузері: процедурний острів у золоту годину, шейдерні хвилі та широкий проліт камери.",
+    "tr": "Tarayıcıda işlenen 15 saniyelik 3D sahne: altın saatte prosedürel bir ada, shader dalgaları ve geniş bir kamera hareketi.",
+    "th": "ฉาก 3D ความยาว 15 วินาทีที่เรนเดอร์ในเบราว์เซอร์: เกาะแบบโพรซีเดอรัลยามโพล้เพล้ พร้อมคลื่นจากเชดเดอร์และการเคลื่อนกล้องกว้าง ๆ",
+    "it": "Una scena 3D di 15 secondi renderizzata nel browser: un’isola procedurale all’ora d’oro, con onde in shader e un ampio movimento di camera."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "3d",
+    "procedural",
+    "threejs",
+    "generative-art"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Create a 15-second 3D motion piece rendered in the browser with Three.js: a small procedural tropical island at golden hour. Animate ocean waves with a shader, palm trees swaying in the breeze and slow-drifting clouds. The camera starts high above the sea, glides down and arcs around the island, then settles on a calm wide shot as the title \"Made of code.\" fades in and holds for two seconds. Stylized rather than photoreal: soft gradients, gentle toon shading and a warm sunset palette. Drive every movement from the timeline time so any moment replays exactly.",
+        "zh-CN": "用 Three.js 在浏览器里制作一段 15 秒的 3D 动效：黄昏时分一座程序生成的热带小岛。用着色器让海浪起伏，棕榈树随风摇摆，云朵缓缓飘动。镜头从海面高空出发，滑落后绕小岛转一道弧线，最后停在平静的远景上，标题“Made of code.”渐显并停留两秒。风格化而非写实：柔和渐变、轻卡通光影、温暖的日落色调。所有运动都由时间轴驱动，任意时刻都能精确重放。"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Procedural 3D Island"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

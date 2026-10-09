@@ -1,0 +1,105 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-explainer",
+  "title": "How-It-Works Explainer",
+  "title_i18n": {
+    "en": "How-It-Works Explainer",
+    "id": "Animasi Penjelas Cara Kerja",
+    "de": "Erklärfilm: So funktioniert es",
+    "zh-CN": "原理讲解动画",
+    "zh-TW": "原理講解動畫",
+    "pt-BR": "Animação explicativa: como funciona",
+    "es-ES": "Animación explicativa: cómo funciona",
+    "ru": "Анимация «Как это работает»",
+    "fa": "انیمیشن توضیحی «چگونه کار می‌کند»",
+    "ar": "رسوم توضيحية: كيف يعمل",
+    "ja": "しくみ解説アニメーション",
+    "ko": "작동 원리 설명 애니메이션",
+    "pl": "Animacja: jak to działa",
+    "hu": "Magyarázó animáció: hogyan működik",
+    "fr": "Animation explicative : comment ça marche",
+    "uk": "Анімація «Як це працює»",
+    "tr": "Nasıl çalışır açıklama animasyonu",
+    "th": "แอนิเมชันอธิบายหลักการทำงาน",
+    "it": "Animazione esplicativa: come funziona"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 20-second explainer that follows one recurring object to show how noise-cancelling headphones work.",
+  "description_i18n": {
+    "en": "A 20-second explainer that follows one recurring object to show how noise-cancelling headphones work.",
+    "id": "Animasi penjelas 20 detik yang mengikuti satu objek berulang untuk menunjukkan cara kerja headphone peredam bising.",
+    "de": "Ein 20-sekündiger Erklärfilm, der einem durchgehenden Objekt folgt und zeigt, wie Noise-Cancelling-Kopfhörer funktionieren.",
+    "zh-CN": "20 秒原理讲解动画，用一个贯穿始终的元素讲清降噪耳机是怎么工作的。",
+    "zh-TW": "20 秒原理講解動畫，用一個貫穿始終的元素講清降噪耳機是怎麼運作的。",
+    "pt-BR": "Uma animação explicativa de 20 segundos que segue um objeto recorrente para mostrar como funcionam os fones com cancelamento de ruído.",
+    "es-ES": "Una animación explicativa de 20 segundos que sigue un mismo objeto para mostrar cómo funcionan los auriculares con cancelación de ruido.",
+    "ru": "20-секундная анимация, которая через один сквозной объект объясняет, как работают наушники с шумоподавлением.",
+    "fa": "انیمیشن توضیحی ۲۰ ثانیه‌ای که با دنبال کردن یک عنصر تکرارشونده نشان می‌دهد هدفون‌های حذف نویز چگونه کار می‌کنند.",
+    "ar": "رسوم توضيحية مدتها 20 ثانية تتبع عنصرًا واحدًا متكررًا لتشرح كيف تعمل سماعات إلغاء الضوضاء.",
+    "ja": "ひとつのモチーフを追いながら、ノイズキャンセリングヘッドホンのしくみを解説する 20 秒のアニメーション。",
+    "ko": "하나의 반복 요소를 따라가며 노이즈 캔슬링 헤드폰의 원리를 보여 주는 20초 설명 애니메이션.",
+    "pl": "20-sekundowa animacja, która za pomocą jednego powracającego motywu pokazuje, jak działają słuchawki z redukcją szumów.",
+    "hu": "20 másodperces magyarázó animáció, amely egy visszatérő elemen keresztül mutatja meg, hogyan működik a zajszűrős fejhallgató.",
+    "fr": "Une animation explicative de 20 secondes qui suit un même objet pour montrer comment fonctionne un casque à réduction de bruit.",
+    "uk": "20-секундна анімація, яка через один наскрізний об’єкт пояснює, як працюють навушники з шумозаглушенням.",
+    "tr": "Tek bir tekrar eden nesneyi izleyerek gürültü önleyici kulaklıkların nasıl çalıştığını gösteren 20 saniyelik açıklama animasyonu.",
+    "th": "แอนิเมชันอธิบาย 20 วินาทีที่ใช้องค์ประกอบเดียวตลอดเรื่อง เพื่อแสดงว่าหูฟังตัดเสียงรบกวนทำงานอย่างไร",
+    "it": "Un’animazione esplicativa di 20 secondi che segue un unico elemento per mostrare come funzionano le cuffie con cancellazione del rumore."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "explainer",
+    "education",
+    "diagram"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Create a 20-second explainer animation: how noise-cancelling headphones work. Show a noisy sound wave travelling toward an ear, a tiny microphone sampling it, the chip generating the inverted wave, and the two waves meeting and flattening into silence. Keep the wave as the recurring object through every beat, and label each part as it appears: Noise, Microphone, Anti-noise, Silence. Clean technical-diagram style: dark graphite background, cyan and white lines. End on \"Silence is engineered.\"",
+        "zh-CN": "制作一段 20 秒的原理讲解动画：降噪耳机是怎么工作的。展示一段嘈杂的声波传向耳朵，微型麦克风采集它，芯片生成一段反相声波，两段声波相遇后抵消成一条平线，变得安静。让声波作为贯穿每个段落的主角，并在各部分出现时标注：噪音、麦克风、反向声波、安静。简洁的技术示意图风格：深石墨灰背景，青色和白色线条。结尾停在“安静，是被设计出来的。”"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "How-It-Works Explainer"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

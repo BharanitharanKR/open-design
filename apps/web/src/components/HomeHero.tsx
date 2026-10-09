@@ -79,7 +79,10 @@ import {
   localizeSkillName,
 } from '../i18n/content';
 import { readHomeGuideStage, writeHomeGuideStage } from './home-hero/firstRunGuide';
-import { curatedPluginPriorityForChip } from './plugins-home/curatedPriority';
+import {
+  CURATED_MOTION_DESIGN_PLUGIN_IDS,
+  curatedPluginPriorityForChip,
+} from './plugins-home/curatedPriority';
 import { comparePluginGalleryOrder } from './plugins-home/pluginPopularity';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
 import { inferPluginPreview } from './plugins-home/preview';
@@ -4221,6 +4224,7 @@ const HOME_PRESET_PLUGIN_IDS_BY_CHIP: Partial<Record<string, readonly string[]>>
     'example-resume-modern',
     'example-invoice',
   ],
+  'motion-design': CURATED_MOTION_DESIGN_PLUGIN_IDS,
   image: [
     'image-template-vr-headset-exploded-view-poster',
     'image-template-social-media-post-psg-transfer-announcement-poster',
@@ -4360,6 +4364,8 @@ export function pluginMatchesExampleChip(record: InstalledPluginRecord, chipId: 
       return has('deck', 'slides', 'slide-deck') || hasPart('slide', 'deck');
     case 'hyperframes':
       return hasPart('hyperframes', 'hyperframe');
+    case 'motion-design':
+      return has('motion-design');
     case 'live-artifact':
       return has('live-artifact') || hasPart('live-artifact');
     case 'webgl':
@@ -4370,7 +4376,7 @@ export function pluginMatchesExampleChip(record: InstalledPluginRecord, chipId: 
     case 'image':
       return (has('image') || hasPart('image-template')) && !hasPart('video', 'audio', 'live-artifact');
     case 'video':
-      return (has('video') || hasPart('video-template')) && !hasPart('hyperframes', 'audio');
+      return (has('video') || hasPart('video-template')) && !hasPart('hyperframes', 'audio', 'motion-design');
     case 'audio':
       // Exclude video / HyperFrames templates that merely carry an
       // `audio-reactive` tag (substring-matched by hasPart('audio')): their
