@@ -38,12 +38,13 @@ function Meter({ percent }: { percent: number }) {
 
 export function SeatFreeCreditsPanelBody({ mock }: { mock: SeatFreeMockState }) {
   const isOwner = mock.role === 'owner';
+  const isFree = mock.plan === 'free';
   const footer = (
     <div className={ownStyles.footer}>
       {isOwner ? (
-        <span>两种额度全员共用</span>
+        <span>{isFree ? '额度全员共用' : '两种额度全员共用'}</span>
       ) : (
-        <span>升级或充值请联系 Owner（{mock.ownerName}）</span>
+        <span>{isFree ? '升级' : '升级或充值'}请联系 {mock.ownerName}</span>
       )}
       <a className={ownStyles.footerLink} href={CONSOLE_URL} target="_blank" rel="noreferrer">
         查看详情 →
