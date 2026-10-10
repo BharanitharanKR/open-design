@@ -48,6 +48,7 @@
   /* UI card */
   #card{left:360px;top:200px;width:1200px;height:720px;background:#FFFFFF;border:3px solid var(--ink);border-radius:24px;opacity:0;z-index:5}
   #card .abs, .uiItem{opacity:0}
+  .uiItem{z-index:6}
   .uiLabel{font-family:var(--mono);font-weight:700;font-size:28px;letter-spacing:.06em;color:var(--ink);text-transform:uppercase}
   #tTrack{left:1240px;top:300px;width:160px;height:80px;border-radius:40px;border:3px solid var(--ink);background:var(--bg);z-index:6}
   #tKnob{left:1252px;top:312px;width:56px;height:56px;border-radius:28px;background:var(--ink);z-index:7}
@@ -82,6 +83,12 @@
   #controls button:focus-visible,#controls input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   #scrub{flex:1;accent-color:#FF3D00;height:24px}
   #tc{min-width:120px;text-align:right}
+
+/* The existing OD export bridge marks frame capture; keep preview controls out. */
+html.od-export body { margin:0!important; padding:0!important; gap:0!important; }
+html.od-export #controls { display:none!important; }
+html.od-export #viewport { position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; display:block!important; }
+html.od-export #scaler, html.od-export #main { position:absolute!important; left:0!important; top:0!important; margin:0!important; transform:none!important; }
 </style>
 </head>
 <body>
@@ -276,12 +283,7 @@ const sx = p => SL.left + p*SL.w;
 tl.to('#cursor',{x:sx(0.2),y:SL.y,duration:0.35,ease:'power2.inOut'},7.8);
 tl.to('#cursor',{scale:0.82,duration:0.08},8.15);
 tl.to('#cursor',{x:sx(0.72),duration:0.7,ease:'power2.inOut'},8.25);
-tl.to(ui,{p:0.72,duration:0.7,ease:'power2.inOut',
-  onUpdate(){
-    gsap.set('#sKnob',{x:sx(ui.p)});
-    gsap.set('#sFill',{scaleX:ui.p});
-    $('#sRead').textContent = Math.round(ui.p*100)+'%';
-  }},8.25);
+tl.to(ui,{p:0.72,duration:0.7,ease:'power2.inOut'},8.25);
 tl.to('#cursor',{scale:1,duration:0.12},8.95);
 tl.to('#cursor',{x:CFG.cardBtn.x+40,y:CFG.cardBtn.y,duration:0.4,ease:'power2.inOut'},9.0);
 tl.to('#cursor',{scale:0.82,duration:0.08},9.4);
@@ -308,13 +310,7 @@ CFG.bars.forEach((_,i)=>{
 tl.to(['#bigNum','#bigCap'],{opacity:1,duration:0.3,ease:'power2.out'},10.4);
 tl.to('#bigNote',{opacity:1,duration:0.3},11.2);
 const dp = { p:0 };
-tl.to(dp,{p:1,duration:0.9,ease:'power2.inOut',
-  onUpdate(){
-    path.style.strokeDashoffset = pathLen*(1-dp.p);
-    const pt = path.getPointAtLength(pathLen*dp.p);
-    gsap.set('#morph',{x:pt.x,y:pt.y});
-    $('#bigNum').textContent = '+'+Math.round(dp.p*248)+'%';
-  }},10.8);
+tl.to(dp,{p:1,duration:0.9,ease:'power2.inOut'},10.8);
 tl.fromTo('#rip1',{x:lastX.x,y:lastX.y,scale:0.4,opacity:1},{scale:3,opacity:0,duration:0.5,ease:'power2.out'},11.7);
 tl.to('#morph',{scale:1.5,duration:0.15,ease:'power2.out',yoyo:true,repeat:1},11.7);
 
@@ -326,7 +322,7 @@ CFG.bars.forEach((_,i)=>{
 });
 
 /* Beat 5 — signature (12.4 – 13.0, then hold to 15.0) */
-tl.to('#morph',{x:()=>offsetCenter($('#p2')).x,y:()=>offsetCenter($('#p2')).y,width:36,height:36,borderRadius:18,scale:1,duration:0.55,ease:'power3.inOut'},12.4);
+tl.fromTo('#morph',{x:lastX.x,y:lastX.y},{x:()=>offsetCenter($('#p2')).x,y:()=>offsetCenter($('#p2')).y,width:36,height:36,borderRadius:18,scale:1,duration:0.55,ease:'power3.inOut',immediateRender:false},12.4);
 tl.set('#sigWrap',{opacity:1},12.4);
 tl.to('#sigText',{yPercent:0,duration:0.5,ease:'power4.out'},12.45);
 tl.set('#frame',{opacity:1},12.4);
@@ -340,6 +336,17 @@ const fmt = t => {
 };
 tl.eventCallback('onUpdate',()=>{
   const t = clock.t;
+  // Rebuild every procedural layer here so suppressed export seeks can use
+  // the same renderer via the per-frame loop below, including backward seeks.
+  gsap.set('#sKnob',{x:sx(ui.p)});
+  gsap.set('#sFill',{scaleX:ui.p});
+  $('#sRead').textContent = Math.round(ui.p*100)+'%';
+  path.style.strokeDashoffset = pathLen*(1-dp.p);
+  $('#bigNum').textContent = '+'+Math.round(dp.p*248)+'%';
+  if(t>=10.8 && t<12.4){
+    const pt = path.getPointAtLength(pathLen*dp.p);
+    gsap.set('#morph',{x:pt.x,y:pt.y});
+  }
   $('#tcStage').textContent = fmt(t);
   gsap.set('#progressFill',{scaleX:t/CFG.duration});
 });
@@ -391,6 +398,9 @@ sync();
   var drawnAt = null;
   tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
   (function loop() {
+    if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) {
+      document.documentElement.classList.add('od-export');
+    }
     var t = tl.time();
     if (t !== drawnAt) { drawnAt = t; draw(); }
     requestAnimationFrame(loop);

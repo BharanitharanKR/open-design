@@ -15,6 +15,11 @@ An animated data story where the shrinking gaps between milestones are the
 story: how long it took humanity to add each billion people (UN milestones
 1804 → 2022). `example.html` is the finished reference — start from it.
 
+## Reference files
+- Copy `example.html` and `assets/gsap.min.js` into the new composition,
+  preserving the relative `assets/` path. These files are carried in the frozen
+  reference package; use these local bytes instead of a CDN or a new version.
+
 ## Art direction
 - Editorial print look: paper `#FAFAF7`, ink `#111111`, a single red highlight
   `#D7261E`. Serif headline, small sans/mono labels, thin black rules.
@@ -42,3 +47,6 @@ story: how long it took humanity to add each billion people (UN milestones
   must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
   timeline time on every animation frame, as the per-frame loop in
   `example.html` does.
+- Keep playback controls outside the composition. The example detects the
+  existing OD frame-export bridge and fills its capture viewport with only the
+  composition; preserve this export layout when adapting the preview shell.

@@ -16,6 +16,11 @@ becomes a clean result, then the brand resolves. Shown with the fictional app
 Driftnote (meeting audio → one-page summary). `example.html` is the finished
 reference — start from it.
 
+## Reference files
+- Copy `example.html` and `assets/gsap.min.js` into the new composition,
+  preserving the relative `assets/` path. These files are carried in the frozen
+  reference package; use these local bytes instead of a CDN or a new version.
+
 ## Art direction
 - Deep navy stage `#0B1530`, warm paper text `#F4EFE6`, one coral accent
   `#FF6B57`. Editorial serif for display, clean sans for UI, mono for transcript
@@ -46,3 +51,6 @@ reference — start from it.
   must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
   timeline time on every animation frame, as the per-frame loop in
   `example.html` does.
+- Keep playback controls outside the composition. The example detects the
+  existing OD frame-export bridge and fills its capture viewport with only the
+  composition; preserve this export layout when adapting the preview shell.

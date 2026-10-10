@@ -36,6 +36,12 @@
   #controls button:focus-visible, #scrub:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
   #scrub { flex: 1; accent-color: var(--coral); min-height: 44px; }
   #time { font-variant-numeric: tabular-nums; min-width: 96px; text-align: right; font-size: 16px; }
+
+/* The existing OD export bridge marks frame capture; keep preview controls out. */
+html.od-export body { margin:0!important; padding:0!important; gap:0!important; }
+html.od-export #controls { display:none!important; }
+html.od-export #viewport { position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; display:block!important; }
+html.od-export #scaler, html.od-export #main { position:absolute!important; left:0!important; top:0!important; margin:0!important; transform:none!important; }
 </style>
 </head>
 <body>
@@ -391,6 +397,9 @@ syncUI();
   var drawnAt = null;
   tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
   (function loop() {
+    if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) {
+      document.documentElement.classList.add('od-export');
+    }
     var t = tl.time();
     if (t !== drawnAt) { drawnAt = t; draw(); }
     requestAnimationFrame(loop);

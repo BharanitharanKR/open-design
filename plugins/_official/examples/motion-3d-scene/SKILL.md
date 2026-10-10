@@ -15,6 +15,18 @@ A stylized 3D motion piece rendered live in the browser with Three.js: a small
 procedural island at golden hour, one continuous camera move, a calm title
 close. `example.html` is the finished reference — start from it.
 
+## Reference files
+- Copy `example.html` and `assets/gsap.min.js` into the new composition,
+  preserving the relative `assets/` path. These files are carried in the frozen
+  reference package; use these local bytes instead of a CDN or a new version.
+- The gallery uses `assets/three.min.js`. The frozen reference package carries
+  the same Three.js bytes compressed as `assets/three.min.js.gz` to fit the
+  existing per-file budget. Before rendering, create the composition's assets
+  directory and decompress this file into `assets/three.min.js`:
+  `gzip -dc "<reference-root>/assets/three.min.js.gz" > "<composition-root>/assets/three.min.js"`.
+  Both placeholders are the actual reference and composition directories in
+  this task. Keep the HTML script URL pointing to the decompressed `.js` file.
+
 ## Art direction
 - Toon-shaded low-poly world: faceted island (sand, grass mound, rocks), palm
   trees with drooping fronds, soft puffy clouds. 3-step toon light ramp, warm
@@ -47,3 +59,6 @@ close. `example.html` is the finished reference — start from it.
   must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
   timeline time on every animation frame, as the per-frame loop in
   `example.html` does.
+- Keep playback controls outside the composition. The example detects the
+  existing OD frame-export bridge and fills its capture viewport with only the
+  composition; preserve this export layout when adapting the preview shell.

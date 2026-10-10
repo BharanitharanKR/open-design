@@ -15,6 +15,11 @@ A technical explainer that follows one recurring object — a waveform — throu
 cause and effect: how noise-cancelling headphones work. `example.html` is the
 finished reference — start from it.
 
+## Reference files
+- Copy `example.html` and `assets/gsap.min.js` into the new composition,
+  preserving the relative `assets/` path. These files are carried in the frozen
+  reference package; use these local bytes instead of a CDN or a new version.
+
 ## Art direction
 - Clean technical diagram on dark graphite `#14171a`; cyan `#22d3ee` for the
   active signal, white `#f5f7f8` lines, dim `#8a9aa3` for secondary labels.
@@ -45,3 +50,6 @@ finished reference — start from it.
   must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
   timeline time on every animation frame, as the per-frame loop in
   `example.html` does.
+- Keep playback controls outside the composition. The example detects the
+  existing OD frame-export bridge and fills its capture viewport with only the
+  composition; preserve this export layout when adapting the preview shell.

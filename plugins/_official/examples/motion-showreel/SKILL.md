@@ -15,6 +15,11 @@ A 15-second motion designer showreel: several distinct techniques inside one
 visual identity, linked by a recurring accent dot. Signed by the fictional
 "Studio Kinetik". `example.html` is the finished reference — start from it.
 
+## Reference files
+- Copy `example.html` and `assets/gsap.min.js` into the new composition,
+  preserving the relative `assets/` path. These files are carried in the frozen
+  reference package; use these local bytes instead of a CDN or a new version.
+
 ## Art direction
 - Off-white `#F4F4F1`, ink-black `#0E0E10`, a single vivid accent `#FF3D00`.
 - Heavy display grotesque (900 weight, very large) for kinetic type; uppercase
@@ -42,3 +47,6 @@ visual identity, linked by a recurring accent dot. Signed by the fictional
   must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
   timeline time on every animation frame, as the per-frame loop in
   `example.html` does.
+- Keep playback controls outside the composition. The example detects the
+  existing OD frame-export bridge and fills its capture viewport with only the
+  composition; preserve this export layout when adapting the preview shell.
