@@ -1,6 +1,6 @@
 ---
 name: motion-data-story
-description: "Animated Data Story — motion design template. A 20-second data story that turns world population milestones into a timeline of shrinking intervals."
+description: "A 20-second story that makes the difference between a million and a billion tangible through seconds, days, years and a thousand-dot comparison."
 od:
   mode: video
   scenario: video
@@ -11,42 +11,41 @@ od:
 
 # Animated Data Story
 
-An animated data story where the shrinking gaps between milestones are the
-story: how long it took humanity to add each billion people (UN milestones
-1804 → 2022). `example.html` is the finished reference — start from it.
-
-## Reference files
-- Copy `example.html` and `assets/gsap.min.js` into the new composition,
-  preserving the relative `assets/` path. These files are carried in the frozen
-  reference package; use these local bytes instead of a CDN or a new version.
+“A million vs a billion” turns an abstract numerical difference into felt time.
+Start from `example.html`. This example uses arithmetic, not an invented dataset.
 
 ## Art direction
-- Editorial print look: paper `#FAFAF7`, ink `#111111`, a single red highlight
-  `#D7261E`. Serif headline, small sans/mono labels, thin black rules.
-- Data is exact: 1, 2 … 8 billion in 1804, 1927, 1960, 1974, 1987, 1999, 2011,
-  2022; gaps 123, 33, 14, 13, 12, 12, 11 years.
+- Warm paper #f2f0e8, near-black #171918 and vermilion #f24c32.
+- Oversized figures and bold changes between paper, dark and red scenes.
+- Use the entire frame. Keep critical labels readable at gallery-card size.
 
 ## Beat map (20s)
-- 0–2.5s: a single dot and the title; the dot travels to the axis origin.
-- 2.5–4.5s: the timeline axis draws, then its year ticks.
-- 4.5–14s: each gap is bracketed and labelled in turn; the latest gap is red.
-- 14.2–17.2s: comparison bars restate the gaps from longest to shortest.
-- 17.5–20s: closing line "From 123 years to 11." holds.
+- 0–4.5s: 1M versus 1B, with the question visible immediately.
+- 4.5–7.5s: 1,000,000 seconds = about 11.6 days, beside a moving clock.
+- 7.5–10.5s: 1,000,000,000 seconds = about 31.7 years, on a dark field.
+- 10.5–16s: a 40×25 grid fills to 1,000 dots. Each dot is one million seconds.
+- 16–20s: the rounded contrast, about 12 days versus 32 years, fills two cards.
 
-## Motion
-- Reveal the axis before any values; labels stay put while brackets grow.
-  Values never animate through wrong numbers.
+## Data and adaptation
+Use 86,400 seconds per day and 365.25 days per year; keep the approximation mark
+and basis visible. If changing the story, verify the input data, distinguish
+exact values from rounded display figures, and make the chart encode the stated
+quantity correctly. Do not replace missing data with plausible-looking figures.
 
-## Adapting the template
-- Keep axis-first, one-gap-at-a-time pacing and the single red highlight.
-- Replace the dataset, title and closing line with the user's data; use only
-  values the user supplies or that are verifiable, and keep units visible.
+## Reference files
+Copy `example.html`, `assets/gsap.min.js`, `assets/space-grotesk.ttf` and
+`assets/space-grotesk-OFL.txt` into the composition, preserving the assets path.
+The font is bundled under the SIL Open Font License; keep its license with it.
+These files must travel with the frozen reference. No runtime font CDN is needed.
 
-## Video export
-- The MP4 exporter seeks the timeline with callbacks suppressed. Visible content
-  must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
-  timeline time on every animation frame, as the per-frame loop in
-  `example.html` does.
-- Keep playback controls outside the composition. The example detects the
-  existing OD frame-export bridge and fills its capture viewport with only the
-  composition; preserve this export layout when adapting the preview shell.
+## Preview and video export
+Keep the stage edge to edge in both gallery and MP4 capture. Playback controls
+are an overlay that stays transparent until directly hovered or focused; never
+reserve stage space for them or include them in the poster.
+
+The GSAP master timeline is the only clock. Render every procedural layer from
+its current time in the per-frame loop: export seeks suppress timeline callbacks.
+Do not carry state between frames, use wall-clock time, or rely on child-tween
+callbacks for visible output. Backward seeks must reproduce identical frames.
+Await bundled fonts before playback and signal preview-ready at a legible hero
+frame. Preserve `window.__timelines` and the composition's timing attributes.

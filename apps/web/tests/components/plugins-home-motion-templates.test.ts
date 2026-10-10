@@ -11,6 +11,9 @@ import path from 'node:path';
 import url from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { CURATED_MOTION_DESIGN_PLUGIN_IDS } from '../../src/components/plugins-home/curatedPriority';
+import { examplePresetSeedPrompt } from '../../src/components/plugins-home/presetSeedPrompt';
+import { LOCALES } from '../../src/i18n/types';
+import type { InstalledPluginRecord } from '@open-design/contracts';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const examplesRoot = path.resolve(__dirname, '../../../../plugins/_official/examples');
@@ -36,5 +39,18 @@ describe('curated motion design templates', () => {
     const skill = readFileSync(path.join(dir!, 'SKILL.md'), 'utf8');
     expect(skill).toMatch(/\bexample\.html\b/);
     expect(existsSync(path.join(dir!, 'example.html'))).toBe(true);
+  });
+
+  it('seeds the revised data story from Home in every locale, consistently with its plugin context', () => {
+    const id = 'example-motion-data-story';
+    const manifest = JSON.parse(readFileSync(path.join(dirs.get(id)!, 'open-design.json'), 'utf8'));
+    const record = { id, manifest } as InstalledPluginRecord;
+    for (const locale of LOCALES) {
+      const seed = examplePresetSeedPrompt(record, locale, () => 'missing prompt');
+      expect(seed.text, locale).toBe(manifest.od.useCase.query[locale]);
+      expect(seed.text, locale).toMatch(/11[.,]6/);
+      expect(seed.text, locale).toMatch(/31[.,]7/);
+      expect(seed.text, locale).not.toContain('1804');
+    }
   });
 });

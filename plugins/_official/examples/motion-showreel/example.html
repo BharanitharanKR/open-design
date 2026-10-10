@@ -4,22 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Studio Kinetik — Showreel</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <script src="assets/gsap.min.js"></script>
 <style>
+@font-face{font-family:Space;src:url('assets/space-grotesk.ttf') format('truetype');font-weight:300 700;font-display:block}
   :root{
     --bg:#F4F4F1; --ink:#0E0E10; --accent:#FF3D00;
-    --display:'Archivo','Arial Black',Impact,sans-serif;
-    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+    --display:Space,'Arial Black',Impact,sans-serif;
+    --mono:ui-monospace,Menlo,Consolas,monospace;
     --ctl:#0E0E10;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;background:#E4E4E0;font-family:var(--mono)}
   body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden}
   #viewport{position:relative;flex:none;overflow:hidden;background:var(--bg)}
-  #main{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--bg);color:var(--ink);overflow:hidden}
+  #main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:var(--bg);color:var(--ink);overflow:hidden}
   #main .abs{position:absolute}
   .mono{font-family:var(--mono);font-weight:500;font-size:22px;letter-spacing:.08em;text-transform:uppercase;line-height:1.5}
 
@@ -33,14 +31,15 @@
   /* beat 1 */
   #lines{left:144px;top:200px;display:flex;flex-direction:column}
   .mask{position:relative;overflow:hidden;height:224px;white-space:nowrap}
-  .word{font-family:var(--display);font-weight:900;font-size:240px;line-height:224px;letter-spacing:-.02em;color:var(--ink);display:inline-block}
+  .word{font-family:var(--display);font-weight:700;font-size:240px;line-height:224px;letter-spacing:-.02em;color:var(--ink);display:inline-block}
   .per{display:inline-block;width:44px;height:44px;margin-left:14px;vertical-align:baseline}
 
   /* guides */
   .hair{background:var(--ink);opacity:.25}
   #hh{left:96px;top:539px;width:1728px;height:2px;transform-origin:50% 50%;transform:scaleX(0)}
-  #hv{left:959px;top:120px;width:2px;height:840px;transform-origin:50% 50%;transform:scaleY(0)}
+  #hv{left:1289px;top:120px;width:2px;height:840px;transform-origin:50% 50%;transform:scaleY(0)}
 
+  #shapeCopy{left:144px;top:225px;font-family:var(--display);font-weight:700;font-size:180px;line-height:1;letter-spacing:-.055em;opacity:0}
   /* morph dot */
   #morph{left:0;top:0;width:44px;height:44px;border-radius:22px;background:var(--accent);border:0 solid var(--accent);opacity:0;z-index:20}
   #btnRun,#btnDone{left:0;top:0;width:240px;height:96px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:36px;letter-spacing:.12em;color:var(--ink);z-index:21;opacity:0}
@@ -65,7 +64,7 @@
   #axis{left:440px;top:860px;width:1040px;height:3px;background:var(--ink);transform-origin:0 50%;transform:scaleX(0)}
   .tick{font-family:var(--mono);font-weight:500;font-size:22px;letter-spacing:.08em;width:120px;text-align:center;opacity:0}
   #lineSvg{left:0;top:0;width:1920px;height:1080px;z-index:4;overflow:visible}
-  #bigNum{left:144px;top:130px;font-family:var(--display);font-weight:900;font-size:200px;line-height:1;letter-spacing:-.03em;white-space:nowrap;opacity:0}
+  #bigNum{left:144px;top:130px;font-family:var(--display);font-weight:700;font-size:200px;line-height:1;letter-spacing:-.03em;white-space:nowrap;opacity:0}
   #bigCap{left:152px;top:350px;opacity:0}
   #bigNote{left:1500px;top:760px;width:324px;opacity:0}
 
@@ -73,7 +72,7 @@
   #frame{left:96px;top:120px;width:1728px;height:840px;border:3px solid var(--ink);clip-path:inset(0 100% 0 0);opacity:0}
   #sigWrap{left:0;top:410px;width:1920px;display:flex;justify-content:center;opacity:0}
   #sigMask{position:relative;overflow:hidden;height:200px;white-space:nowrap}
-  #sigText{font-family:var(--display);font-weight:900;font-size:168px;line-height:200px;letter-spacing:-.03em;display:inline-block}
+  #sigText{font-family:var(--display);font-weight:700;font-size:168px;line-height:200px;letter-spacing:-.03em;display:inline-block}
   #sigText .per{width:36px;height:36px;margin-left:10px}
   #sigSub{left:0;top:660px;width:1920px;text-align:center;opacity:0}
 
@@ -89,6 +88,12 @@ html.od-export body { margin:0!important; padding:0!important; gap:0!important; 
 html.od-export #controls { display:none!important; }
 html.od-export #viewport { position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; display:block!important; }
 html.od-export #scaler, html.od-export #main { position:absolute!important; left:0!important; top:0!important; margin:0!important; transform:none!important; }
+
+/* A clean gallery capture uses the same edge-to-edge stage as the film. */
+body{gap:0!important}#viewport{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important}
+#controls{position:fixed!important;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;padding:12px 18px;width:min(900px,92vw);border-radius:14px;opacity:0;background:#101214dd;color:#fff}
+#controls:hover,#controls:focus-within{opacity:1}html.od-export #controls{display:none!important}
+
 </style>
 </head>
 <body>
@@ -117,13 +122,14 @@ html.od-export #scaler, html.od-export #main { position:absolute!important; left
   <div id="hh" class="abs hair"></div>
   <div id="hv" class="abs hair"></div>
 
+  <div id="shapeCopy" class="abs">MAKE<br>IT<br>MOVE.</div>
   <!-- Beat 3 card -->
   <div id="card" class="abs"></div>
-  <div id="cardTitle" class="abs mono uiItem">Export panel · sample UI</div>
-  <div id="lbl1" class="abs uiLabel uiItem" style="left:440px;top:322px">Motion blur</div>
+  <div id="cardTitle" class="abs mono uiItem">KINETIK SESSIONS · SAMPLE PLAYER</div>
+  <div id="lbl1" class="abs uiLabel uiItem" style="left:440px;top:322px">Spatial audio</div>
   <div id="tTrack" class="abs uiItem"></div>
   <div id="tKnob" class="abs uiItem"></div>
-  <div id="lbl2" class="abs uiLabel uiItem" style="left:440px;top:490px">Intensity</div>
+  <div id="lbl2" class="abs uiLabel uiItem" style="left:440px;top:490px">Volume</div>
   <div id="sTrack" class="abs uiItem"></div>
   <div id="sFill" class="abs uiItem"></div>
   <div id="sKnob" class="abs uiItem"></div>
@@ -139,8 +145,8 @@ html.od-export #scaler, html.od-export #main { position:absolute!important; left
     <path id="linePath" d="M560 630 L760 530 L960 570 L1160 410 L1360 270" stroke="#FF3D00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <div id="bigNum" class="abs">+0%</div>
-  <div id="bigCap" class="abs mono">Placeholder growth index</div>
-  <div id="bigNote" class="abs mono">Sample data — values are illustrative placeholders</div>
+  <div id="bigCap" class="abs mono">Illustrative listening index</div>
+  <div id="bigNote" class="abs mono">Illustrative data · No business performance claim</div>
 
   <!-- Beat 5 -->
   <div id="frame" class="abs"></div>
@@ -149,8 +155,8 @@ html.od-export #scaler, html.od-export #main { position:absolute!important; left
 
   <!-- The recurring motif -->
   <div id="morph" class="abs"></div>
-  <div id="btnRun" class="abs">RUN</div>
-  <div id="btnDone" class="abs">DONE</div>
+  <div id="btnRun" class="abs">PLAY</div>
+  <div id="btnDone" class="abs">LIVE</div>
   <svg id="cursor" class="abs" viewBox="0 0 40 48" fill="none"><path d="M3 3 L3 38 L12 30 L18 44 L25 41 L19 28 L31 28 Z" fill="#0E0E10" stroke="#F4F4F1" stroke-width="3" stroke-linejoin="round"/></svg>
 </div>
 </div>
@@ -255,14 +261,17 @@ tl.to('#morph',{x:CFG.center.x,y:CFG.center.y,duration:0.6,ease:'power3.inOut'},
 /* Beat 2 — shape morph (3.2 – 6.0) */
 tl.to('#hh',{scaleX:1,duration:0.7,ease:'power3.out'},3.2);
 tl.to('#hv',{scaleY:1,duration:0.7,ease:'power3.out'},3.3);
-tl.to('#morph',{width:560,height:44,borderRadius:22,duration:0.6,ease:'power3.inOut'},3.4);
-tl.to('#morph',{width:360,height:360,borderRadius:28,rotation:90,duration:0.7,ease:'power4.inOut'},4.1);
-tl.to('#morph',{backgroundColor:'rgba(255,61,0,0)',borderWidth:48,borderRadius:180,rotation:180,duration:0.8,ease:'power3.inOut'},4.9);
+tl.fromTo('#shapeCopy',{y:60,opacity:0},{y:0,opacity:1,duration:.45,ease:'power3.out',immediateRender:false},3.15);
+tl.to('#shapeCopy',{opacity:0,y:-60,duration:.3,ease:'power3.in'},5.85);
+tl.to('#morph',{x:1290,duration:.4,ease:'power3.inOut'},3.2);
+tl.to('#morph',{width:560,height:180,borderRadius:90,duration:0.6,ease:'power3.inOut'},3.4);
+tl.to('#morph',{width:560,height:560,borderRadius:55,rotation:90,duration:0.7,ease:'power4.inOut'},4.1);
+tl.to('#morph',{backgroundColor:'rgba(255,61,0,0)',borderWidth:70,borderRadius:280,rotation:180,duration:0.8,ease:'power3.inOut'},4.9);
 tl.to('#morph',{scale:1.06,duration:0.25,ease:'sine.inOut',yoyo:true,repeat:1},5.7);
 tl.to(['#hh','#hv'],{opacity:0,duration:0.3,ease:'power2.in'},5.6);
 
 /* Beat 2 → 3: ring becomes the button, card arrives */
-tl.to('#morph',{y:CFG.cardBtn.y,width:240,height:96,borderRadius:48,borderWidth:0,backgroundColor:CFG.accent,rotation:360,duration:0.7,ease:'power3.inOut'},5.9);
+tl.to('#morph',{x:CFG.cardBtn.x,y:CFG.cardBtn.y,width:240,height:96,borderRadius:48,borderWidth:0,backgroundColor:CFG.accent,rotation:360,duration:0.7,ease:'power3.inOut'},5.9);
 tl.to('#card',{opacity:1,y:0,duration:0.6,ease:'power3.out'},6.0);
 tl.to('.uiItem',{opacity:1,duration:0.35,ease:'power2.out',stagger:0.04},6.3);
 tl.to('#btnRun',{opacity:1,duration:0.2,ease:'power2.out'},6.65);
@@ -273,7 +282,7 @@ tl.to('#cursor',{opacity:1,duration:0.15},6.7);
 tl.to('#cursor',{x:TOG.x,y:TOG.y,duration:0.6,ease:'power2.inOut'},6.7);
 tl.to('#cursor',{scale:0.82,duration:0.08,ease:'power1.out'},7.35);
 tl.to('#cursor',{scale:1,duration:0.15,ease:'power2.out'},7.43);
-tl.fromTo('#rip1',{x:TOG.x,y:TOG.y,scale:0.4,opacity:1},{scale:2.8,opacity:0,duration:0.6,ease:'power2.out'},7.38);
+tl.fromTo('#rip1',{x:TOG.x,y:TOG.y,scale:0.4,opacity:1},{scale:2.8,opacity:0,duration:0.6,ease:'power2.out',immediateRender:false},7.38);
 tl.to('#tKnob',{x:80,duration:0.25,ease:'power3.out'},7.4);
 tl.to('#tTrack',{backgroundColor:CFG.accent,duration:0.25,ease:'power2.out'},7.4);
 
@@ -288,7 +297,7 @@ tl.to('#cursor',{scale:1,duration:0.12},8.95);
 tl.to('#cursor',{x:CFG.cardBtn.x+40,y:CFG.cardBtn.y,duration:0.4,ease:'power2.inOut'},9.0);
 tl.to('#cursor',{scale:0.82,duration:0.08},9.4);
 tl.to('#cursor',{scale:1,duration:0.15},9.48);
-tl.fromTo('#rip2',{x:CFG.cardBtn.x,y:CFG.cardBtn.y,scale:1,opacity:1},{scale:4,opacity:0,duration:0.6,ease:'power2.out'},9.42);
+tl.fromTo('#rip2',{x:CFG.cardBtn.x,y:CFG.cardBtn.y,scale:1,opacity:1},{scale:4,opacity:0,duration:0.6,ease:'power2.out',immediateRender:false},9.42);
 tl.to('#morph',{scale:1.1,duration:0.1,ease:'power2.out',yoyo:true,repeat:1},9.42);
 tl.to('#btnRun',{opacity:0,duration:0.1},9.45);
 tl.to('#btnDone',{opacity:1,duration:0.15},9.5);
@@ -343,6 +352,11 @@ tl.eventCallback('onUpdate',()=>{
   $('#sRead').textContent = Math.round(ui.p*100)+'%';
   path.style.strokeDashoffset = pathLen*(1-dp.p);
   $('#bigNum').textContent = '+'+Math.round(dp.p*248)+'%';
+  // Explicit visibility also survives font invalidation and backward seeks.
+  for (const [id, start] of [['#rip1',7.38],['#rip2',9.42]]) {
+    const p = (t-start)/0.6;
+    gsap.set(id,{opacity:p>=0 && p<1 ? Math.pow(1-p,3) : 0});
+  }
   if(t>=10.8 && t<12.4){
     const pt = path.getPointAtLength(pathLen*dp.p);
     gsap.set('#morph',{x:pt.x,y:pt.y});
@@ -357,10 +371,8 @@ if(document.fonts && document.fonts.ready){ document.fonts.ready.then(()=>{ cons
 /* ---- Preview shell (outside the composition) ---- */
 const vp = $('#viewport'), playBtn = $('#playBtn'), scrub = $('#scrub'), tcEl = $('#tc');
 function fit(){
-  const ctlH = $('#controls').offsetHeight + 32;
-  const s = Math.min(window.innerWidth/CFG.w, (window.innerHeight-ctlH)/CFG.h);
-  vp.style.width = CFG.w*s+'px'; vp.style.height = CFG.h*s+'px';
-  main.style.transform = 'scale('+s+')';
+  const s = Math.min(window.innerWidth/CFG.w, window.innerHeight/CFG.h);
+  main.style.transform = 'translate(-50%,-50%) scale('+s+')';
 }
 window.addEventListener('resize',fit); fit();
 
@@ -383,7 +395,7 @@ window.addEventListener('keydown',e=>{ if(e.code==='Space' && e.target===documen
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 if(reduce){ tl.pause(); tl.time(14); }
-else { tl.play(0); }
+else { document.fonts.ready.then(()=>tl.play(0)); }
 sync();
 </script>
 <script>
@@ -408,9 +420,9 @@ sync();
 })();
 </script>
 <script>
-// Preview bake: mark ready once the timeline reaches the poster frame (1.5s).
+// Preview bake: mark ready once the timeline reaches the poster frame (3.8s).
 (function () {
-  var POSTER_AT = 1.5;
+  var POSTER_AT = 3.8;
   function check() {
     var tls = window.__timelines;
     var tl = tls && tls[Object.keys(tls)[0]];

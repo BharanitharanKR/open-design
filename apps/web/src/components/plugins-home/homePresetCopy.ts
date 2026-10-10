@@ -1572,85 +1572,85 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
   'example-motion-3d-scene': {
     'zh-CN': {
       title: '3D 程序化海岛',
-      prompt: '用 Three.js 在浏览器里制作一段 15 秒的 3D 动效：黄昏时分一座程序生成的热带小岛。用着色器让海浪起伏，棕榈树随风摇摆，云朵缓缓飘动。镜头从海面高空出发，滑落后绕小岛转一道弧线，最后停在平静的远景上，标题“Made of code.”渐显并停留两秒。风格化而非写实：柔和渐变、轻卡通光影、温暖的日落色调。所有运动都由时间轴驱动，任意时刻都能精确重放。',
+      prompt: '制作一段 15 秒的浏览器 3D 旅行海报短片，开场大标题“A little escape.”。展示黄昏的热带小岛、棕榈树、小木屋、沙滩伞、着色器海浪和缓缓飘动的云。以近距离俯视镜头和大号奶油白字体开场，标题退场后镜头滑落并环绕小岛。水深颜色连续过渡，日落反光克制柔和。结尾停在“Stay a little longer.”。所有动画由时间轴驱动，任意时刻都能精确重放。',
     },
     'zh-TW': {
       title: '3D 程序化海島',
-      prompt: '用 Three.js 在瀏覽器裡製作一段 15 秒的 3D 動效：黃昏時分一座程序生成的熱帶小島。用著色器讓海浪起伏，棕櫚樹隨風搖擺，雲朵緩緩飄動。鏡頭從海面高空出發，滑落後繞小島轉一道弧線，最後停在平靜的遠景上，標題「Made of code.」漸顯並停留兩秒。風格化而非寫實：柔和漸層、輕卡通光影、溫暖的日落色調。所有運動都由時間軸驅動，任意時刻都能精確重播。',
+      prompt: '用 Three.js 在瀏覽器裡製作一段 15 秒的 3D 動效：黃昏時分一座程序生成的熱帶小島。用著色器讓海浪起伏，棕櫚樹隨風搖擺，雲朵緩緩飄動。鏡頭從海面高空出發，滑落後繞小島轉一道弧線，最後停在平靜的遠景上，標題「Stay a little longer.」漸顯並停留兩秒。風格化而非寫實：柔和漸層、輕卡通光影、溫暖的日落色調。所有運動都由時間軸驅動，任意時刻都能精確重播。',
     },
     en: {
       title: 'Procedural 3D Island',
-      prompt: 'Create a 15-second 3D motion piece rendered in the browser with Three.js: a small procedural tropical island at golden hour. Animate ocean waves with a shader, palm trees swaying in the breeze and slow-drifting clouds. The camera starts high above the sea, glides down and arcs around the island, then settles on a calm wide shot as the title "Made of code." fades in and holds for two seconds. Stylized rather than photoreal: soft gradients, gentle toon shading and a warm sunset palette. Drive every movement from the timeline time so any moment replays exactly.',
+      prompt: 'Create a 15-second browser-rendered 3D travel-poster film, “A little escape.” Show a stylized tropical island at golden hour with palms, a tiny cabin, a beach umbrella, shader waves and softly drifting clouds. Open with a close aerial and large cream typography, then clear the title as the camera glides down and orbits the island. Use continuous water-depth shading and restrained sunset reflections. Close on “Stay a little longer.” Keep all animation deterministic and driven by timeline time.',
     },
     id: {
       title: 'Pulau 3D Prosedural',
-      prompt: 'Buat karya motion 3D 15 detik yang dirender di browser dengan Three.js: sebuah pulau tropis prosedural kecil saat golden hour. Animasikan ombak laut dengan shader, pohon palem yang bergoyang tertiup angin, dan awan yang bergerak pelan. Kamera mulai tinggi di atas laut, meluncur turun dan melengkung mengitari pulau, lalu berhenti pada bidikan lebar yang tenang saat judul "Made of code." muncul perlahan dan bertahan dua detik. Bergaya, bukan fotorealistis: gradasi lembut, toon shading halus, dan palet senja yang hangat. Gerakkan semuanya dari waktu timeline agar setiap momen dapat diputar ulang dengan tepat.',
+      prompt: 'Buat karya motion 3D 15 detik yang dirender di browser dengan Three.js: sebuah pulau tropis prosedural kecil saat golden hour. Animasikan ombak laut dengan shader, pohon palem yang bergoyang tertiup angin, dan awan yang bergerak pelan. Kamera mulai tinggi di atas laut, meluncur turun dan melengkung mengitari pulau, lalu berhenti pada bidikan lebar yang tenang saat judul "Stay a little longer." muncul perlahan dan bertahan dua detik. Bergaya, bukan fotorealistis: gradasi lembut, toon shading halus, dan palet senja yang hangat. Gerakkan semuanya dari waktu timeline agar setiap momen dapat diputar ulang dengan tepat.',
     },
     de: {
       title: 'Prozedurale 3D-Insel',
-      prompt: 'Erstelle ein 15-sekündiges 3D-Motion-Stück, das mit Three.js im Browser gerendert wird: eine kleine prozedurale Tropeninsel zur goldenen Stunde. Animiere Meereswellen per Shader, Palmen, die sich im Wind wiegen, und langsam ziehende Wolken. Die Kamera startet hoch über dem Meer, gleitet hinab, zieht einen Bogen um die Insel und kommt in einer ruhigen Totale zum Stehen, während der Titel „Made of code.“ einblendet und zwei Sekunden stehen bleibt. Stilisiert statt fotorealistisch: weiche Verläufe, sanftes Toon-Shading, warme Sonnenuntergangsfarben. Steuere jede Bewegung über die Timeline-Zeit, damit jeder Moment exakt wiederholbar ist.',
+      prompt: 'Erstelle ein 15-sekündiges 3D-Motion-Stück, das mit Three.js im Browser gerendert wird: eine kleine prozedurale Tropeninsel zur goldenen Stunde. Animiere Meereswellen per Shader, Palmen, die sich im Wind wiegen, und langsam ziehende Wolken. Die Kamera startet hoch über dem Meer, gleitet hinab, zieht einen Bogen um die Insel und kommt in einer ruhigen Totale zum Stehen, während der Titel „Stay a little longer.“ einblendet und zwei Sekunden stehen bleibt. Stilisiert statt fotorealistisch: weiche Verläufe, sanftes Toon-Shading, warme Sonnenuntergangsfarben. Steuere jede Bewegung über die Timeline-Zeit, damit jeder Moment exakt wiederholbar ist.',
     },
     'pt-BR': {
       title: 'Ilha 3D procedural',
-      prompt: 'Crie uma peça de motion 3D de 15 segundos renderizada no navegador com Three.js: uma pequena ilha tropical procedural na hora dourada. Anime as ondas do mar com um shader, coqueiros balançando com a brisa e nuvens se movendo devagar. A câmera começa bem acima do mar, desce deslizando e faz um arco ao redor da ilha, depois para em um plano geral tranquilo enquanto o título "Made of code." surge e permanece por dois segundos. Estilizado em vez de fotorrealista: gradientes suaves, toon shading leve e uma paleta quente de pôr do sol. Controle cada movimento pelo tempo da timeline para que qualquer momento possa ser reproduzido com exatidão.',
+      prompt: 'Crie uma peça de motion 3D de 15 segundos renderizada no navegador com Three.js: uma pequena ilha tropical procedural na hora dourada. Anime as ondas do mar com um shader, coqueiros balançando com a brisa e nuvens se movendo devagar. A câmera começa bem acima do mar, desce deslizando e faz um arco ao redor da ilha, depois para em um plano geral tranquilo enquanto o título "Stay a little longer." surge e permanece por dois segundos. Estilizado em vez de fotorrealista: gradientes suaves, toon shading leve e uma paleta quente de pôr do sol. Controle cada movimento pelo tempo da timeline para que qualquer momento possa ser reproduzido com exatidão.',
     },
     'es-ES': {
       title: 'Isla 3D procedural',
-      prompt: 'Crea una pieza de motion 3D de 15 segundos renderizada en el navegador con Three.js: una pequeña isla tropical procedural en la hora dorada. Anima las olas con un shader, palmeras que se mecen con la brisa y nubes que avanzan despacio. La cámara empieza muy por encima del mar, desciende planeando y traza un arco alrededor de la isla, y termina en un plano general tranquilo mientras aparece el título «Made of code.» durante dos segundos. Estilizado en lugar de fotorrealista: degradados suaves, toon shading sutil y una paleta cálida de atardecer. Controla cada movimiento con el tiempo de la línea temporal para que cualquier momento se reproduzca con exactitud.',
+      prompt: 'Crea una pieza de motion 3D de 15 segundos renderizada en el navegador con Three.js: una pequeña isla tropical procedural en la hora dorada. Anima las olas con un shader, palmeras que se mecen con la brisa y nubes que avanzan despacio. La cámara empieza muy por encima del mar, desciende planeando y traza un arco alrededor de la isla, y termina en un plano general tranquilo mientras aparece el título «Stay a little longer.» durante dos segundos. Estilizado en lugar de fotorrealista: degradados suaves, toon shading sutil y una paleta cálida de atardecer. Controla cada movimiento con el tiempo de la línea temporal para que cualquier momento se reproduzca con exactitud.',
     },
     ru: {
       title: 'Процедурный 3D-остров',
-      prompt: 'Сделай 15-секундную 3D-анимацию, которая рендерится в браузере на Three.js: небольшой процедурный тропический остров в золотой час. Анимируй морские волны шейдером, пальмы, качающиеся на ветру, и медленно плывущие облака. Камера стартует высоко над морем, плавно опускается, огибает остров по дуге и останавливается на спокойном общем плане, где появляется заголовок «Made of code.» и держится две секунды. Стилизация вместо фотореализма: мягкие градиенты, лёгкий тун-шейдинг, тёплая закатная палитра. Управляй каждым движением временем таймлайна, чтобы любой момент воспроизводился точно.',
+      prompt: 'Сделай 15-секундную 3D-анимацию, которая рендерится в браузере на Three.js: небольшой процедурный тропический остров в золотой час. Анимируй морские волны шейдером, пальмы, качающиеся на ветру, и медленно плывущие облака. Камера стартует высоко над морем, плавно опускается, огибает остров по дуге и останавливается на спокойном общем плане, где появляется заголовок «Stay a little longer.» и держится две секунды. Стилизация вместо фотореализма: мягкие градиенты, лёгкий тун-шейдинг, тёплая закатная палитра. Управляй каждым движением временем таймлайна, чтобы любой момент воспроизводился точно.',
     },
     fa: {
       title: 'جزیرهٔ سه‌بعدی رویه‌ای',
-      prompt: 'یک قطعهٔ موشن سه‌بعدی ۱۵ ثانیه‌ای بساز که با Three.js در مرورگر رندر شود: جزیرهٔ گرمسیری کوچک و رویه‌ای در ساعت طلایی. موج‌های دریا را با شیدر، درختان نخل را در حال تکان خوردن در نسیم و ابرها را در حال حرکت آرام متحرک کن. دوربین از ارتفاع زیاد بالای دریا شروع می‌کند، پایین می‌لغزد و قوسی دور جزیره می‌زند، سپس روی نمایی باز و آرام می‌ایستد و عنوان «Made of code.» آرام ظاهر می‌شود و دو ثانیه می‌ماند. سبک‌پردازی‌شده و نه واقع‌گرایانه: گرادیان‌های نرم، سایه‌زنی کارتونی ملایم و رنگ‌های گرم غروب. هر حرکت را با زمان تایم‌لاین هدایت کن تا هر لحظه دقیقاً قابل بازپخش باشد.',
+      prompt: 'یک قطعهٔ موشن سه‌بعدی ۱۵ ثانیه‌ای بساز که با Three.js در مرورگر رندر شود: جزیرهٔ گرمسیری کوچک و رویه‌ای در ساعت طلایی. موج‌های دریا را با شیدر، درختان نخل را در حال تکان خوردن در نسیم و ابرها را در حال حرکت آرام متحرک کن. دوربین از ارتفاع زیاد بالای دریا شروع می‌کند، پایین می‌لغزد و قوسی دور جزیره می‌زند، سپس روی نمایی باز و آرام می‌ایستد و عنوان «Stay a little longer.» آرام ظاهر می‌شود و دو ثانیه می‌ماند. سبک‌پردازی‌شده و نه واقع‌گرایانه: گرادیان‌های نرم، سایه‌زنی کارتونی ملایم و رنگ‌های گرم غروب. هر حرکت را با زمان تایم‌لاین هدایت کن تا هر لحظه دقیقاً قابل بازپخش باشد.',
     },
     ar: {
       title: 'جزيرة ثلاثية الأبعاد إجرائية',
-      prompt: 'أنشئ عملًا حركيًا ثلاثي الأبعاد مدته 15 ثانية يُعرض في المتصفح باستخدام Three.js: جزيرة استوائية صغيرة مُولَّدة إجرائيًا في الساعة الذهبية. حرّك أمواج البحر بمظلّل، وأشجار النخيل تتمايل مع النسيم، والغيوم تنساب ببطء. تبدأ الكاميرا عاليًا فوق البحر، ثم تنزلق نزولًا وتدور في قوس حول الجزيرة، وتستقر على لقطة واسعة هادئة بينما يظهر العنوان "Made of code." ويبقى لثانيتين. أسلوب فني لا واقعي: تدرجات ناعمة وتظليل كرتوني خفيف وألوان غروب دافئة. اجعل كل حركة مرتبطة بزمن الخط الزمني حتى يمكن إعادة تشغيل أي لحظة بدقة.',
+      prompt: 'أنشئ عملًا حركيًا ثلاثي الأبعاد مدته 15 ثانية يُعرض في المتصفح باستخدام Three.js: جزيرة استوائية صغيرة مُولَّدة إجرائيًا في الساعة الذهبية. حرّك أمواج البحر بمظلّل، وأشجار النخيل تتمايل مع النسيم، والغيوم تنساب ببطء. تبدأ الكاميرا عاليًا فوق البحر، ثم تنزلق نزولًا وتدور في قوس حول الجزيرة، وتستقر على لقطة واسعة هادئة بينما يظهر العنوان "Stay a little longer." ويبقى لثانيتين. أسلوب فني لا واقعي: تدرجات ناعمة وتظليل كرتوني خفيف وألوان غروب دافئة. اجعل كل حركة مرتبطة بزمن الخط الزمني حتى يمكن إعادة تشغيل أي لحظة بدقة.',
     },
     ja: {
       title: 'プロシージャル 3D アイランド',
-      prompt: 'Three.js でブラウザ上にレンダリングする 15 秒の 3D モーション作品を作ってください。題材は、夕暮れのゴールデンアワーに浮かぶプロシージャル生成の小さな熱帯の島です。シェーダーで波を動かし、ヤシの木をそよ風に揺らし、雲をゆっくり流します。カメラは海の上空から始まり、滑るように降りて島の周りを弧を描いて回り、静かな引きのショットで止まります。そこでタイトル「Made of code.」がフェードインし、2 秒間表示されます。写実ではなく様式化：柔らかなグラデーション、控えめなトゥーンシェーディング、暖かな夕焼けの配色。どの瞬間も正確に再生できるよう、すべての動きをタイムラインの時間で制御してください。',
+      prompt: 'Three.js でブラウザ上にレンダリングする 15 秒の 3D モーション作品を作ってください。題材は、夕暮れのゴールデンアワーに浮かぶプロシージャル生成の小さな熱帯の島です。シェーダーで波を動かし、ヤシの木をそよ風に揺らし、雲をゆっくり流します。カメラは海の上空から始まり、滑るように降りて島の周りを弧を描いて回り、静かな引きのショットで止まります。そこでタイトル「Stay a little longer.」がフェードインし、2 秒間表示されます。写実ではなく様式化：柔らかなグラデーション、控えめなトゥーンシェーディング、暖かな夕焼けの配色。どの瞬間も正確に再生できるよう、すべての動きをタイムラインの時間で制御してください。',
     },
     ko: {
       title: '절차적 3D 섬',
-      prompt: 'Three.js로 브라우저에서 렌더링하는 15초 3D 모션을 만들어 줘. 황금빛 시간대에 절차적으로 생성된 작은 열대 섬이야. 셰이더로 바다 물결을 움직이고, 야자수가 바람에 흔들리고, 구름이 천천히 흘러가게 해 줘. 카메라는 바다 위 높은 곳에서 시작해 미끄러지듯 내려와 섬 주위를 호를 그리며 돌고, 잔잔한 와이드 숏에서 멈춰. 그때 "Made of code." 제목이 서서히 나타나 2초간 유지돼. 사실적이기보다 스타일리시하게: 부드러운 그라디언트, 은은한 툰 셰이딩, 따뜻한 노을 색감. 모든 움직임을 타임라인 시간으로 제어해서 어느 순간이든 정확히 다시 재생되게 해 줘.',
+      prompt: 'Three.js로 브라우저에서 렌더링하는 15초 3D 모션을 만들어 줘. 황금빛 시간대에 절차적으로 생성된 작은 열대 섬이야. 셰이더로 바다 물결을 움직이고, 야자수가 바람에 흔들리고, 구름이 천천히 흘러가게 해 줘. 카메라는 바다 위 높은 곳에서 시작해 미끄러지듯 내려와 섬 주위를 호를 그리며 돌고, 잔잔한 와이드 숏에서 멈춰. 그때 "Stay a little longer." 제목이 서서히 나타나 2초간 유지돼. 사실적이기보다 스타일리시하게: 부드러운 그라디언트, 은은한 툰 셰이딩, 따뜻한 노을 색감. 모든 움직임을 타임라인 시간으로 제어해서 어느 순간이든 정확히 다시 재생되게 해 줘.',
     },
     pl: {
       title: 'Proceduralna wyspa 3D',
-      prompt: 'Stwórz 15-sekundową animację 3D renderowaną w przeglądarce za pomocą Three.js: małą proceduralną wyspę tropikalną o złotej godzinie. Animuj fale shaderem, palmy kołyszące się na wietrze i powoli płynące chmury. Kamera zaczyna wysoko nad morzem, zjeżdża w dół, okrąża wyspę łukiem i zatrzymuje się na spokojnym planie ogólnym, gdy pojawia się tytuł „Made of code.” i pozostaje przez dwie sekundy. Stylizacja zamiast fotorealizmu: miękkie gradienty, delikatny toon shading i ciepła paleta zachodu słońca. Steruj każdym ruchem czasem osi czasu, aby każdy moment dało się dokładnie odtworzyć.',
+      prompt: 'Stwórz 15-sekundową animację 3D renderowaną w przeglądarce za pomocą Three.js: małą proceduralną wyspę tropikalną o złotej godzinie. Animuj fale shaderem, palmy kołyszące się na wietrze i powoli płynące chmury. Kamera zaczyna wysoko nad morzem, zjeżdża w dół, okrąża wyspę łukiem i zatrzymuje się na spokojnym planie ogólnym, gdy pojawia się tytuł „Stay a little longer.” i pozostaje przez dwie sekundy. Stylizacja zamiast fotorealizmu: miękkie gradienty, delikatny toon shading i ciepła paleta zachodu słońca. Steruj każdym ruchem czasem osi czasu, aby każdy moment dało się dokładnie odtworzyć.',
     },
     hu: {
       title: 'Procedurális 3D-sziget',
-      prompt: 'Készíts egy 15 másodperces, böngészőben Three.js-szel renderelt 3D mozgóképet: egy kis, procedurálisan generált trópusi szigetet az aranyórában. Animáld shaderrel a tenger hullámait, a szellőben ringó pálmafákat és a lassan sodródó felhőket. A kamera magasan a tenger fölül indul, lesiklik, ívben megkerüli a szigetet, majd egy nyugodt totálban megáll, miközben megjelenik a „Made of code.” cím, és két másodpercig látható marad. Stilizált, nem fotórealisztikus: lágy színátmenetek, finom toon shading, meleg naplementés színek. Minden mozgást az idővonal ideje vezéreljen, hogy bármely pillanat pontosan visszajátszható legyen.',
+      prompt: 'Készíts egy 15 másodperces, böngészőben Three.js-szel renderelt 3D mozgóképet: egy kis, procedurálisan generált trópusi szigetet az aranyórában. Animáld shaderrel a tenger hullámait, a szellőben ringó pálmafákat és a lassan sodródó felhőket. A kamera magasan a tenger fölül indul, lesiklik, ívben megkerüli a szigetet, majd egy nyugodt totálban megáll, miközben megjelenik a „Stay a little longer.” cím, és két másodpercig látható marad. Stilizált, nem fotórealisztikus: lágy színátmenetek, finom toon shading, meleg naplementés színek. Minden mozgást az idővonal ideje vezéreljen, hogy bármely pillanat pontosan visszajátszható legyen.',
     },
     fr: {
       title: 'Île 3D procédurale',
-      prompt: 'Crée une pièce de motion 3D de 15 secondes rendue dans le navigateur avec Three.js : une petite île tropicale procédurale à l’heure dorée. Anime les vagues avec un shader, des palmiers qui se balancent dans la brise et des nuages qui dérivent lentement. La caméra part très haut au-dessus de la mer, descend en glissant, décrit un arc autour de l’île, puis s’arrête sur un plan large apaisé tandis que le titre « Made of code. » apparaît et reste deux secondes. Stylisé plutôt que photoréaliste : dégradés doux, toon shading léger et palette chaude de coucher de soleil. Pilote chaque mouvement par le temps de la timeline pour que chaque instant se rejoue à l’identique.',
+      prompt: 'Crée une pièce de motion 3D de 15 secondes rendue dans le navigateur avec Three.js : une petite île tropicale procédurale à l’heure dorée. Anime les vagues avec un shader, des palmiers qui se balancent dans la brise et des nuages qui dérivent lentement. La caméra part très haut au-dessus de la mer, descend en glissant, décrit un arc autour de l’île, puis s’arrête sur un plan large apaisé tandis que le titre « Stay a little longer. » apparaît et reste deux secondes. Stylisé plutôt que photoréaliste : dégradés doux, toon shading léger et palette chaude de coucher de soleil. Pilote chaque mouvement par le temps de la timeline pour que chaque instant se rejoue à l’identique.',
     },
     uk: {
       title: 'Процедурний 3D-острів',
-      prompt: 'Створи 15-секундну 3D-анімацію, що рендериться в браузері на Three.js: невеликий процедурний тропічний острів у золоту годину. Анімуй морські хвилі шейдером, пальми, що гойдаються на вітрі, і хмари, які повільно пливуть. Камера стартує високо над морем, плавно опускається, огинає острів по дузі й зупиняється на спокійному загальному плані, де з’являється заголовок «Made of code.» і тримається дві секунди. Стилізація замість фотореалізму: м’які градієнти, легкий тун-шейдинг, тепла палітра заходу сонця. Керуй кожним рухом часом таймлайну, щоб будь-яку мить можна було точно відтворити.',
+      prompt: 'Створи 15-секундну 3D-анімацію, що рендериться в браузері на Three.js: невеликий процедурний тропічний острів у золоту годину. Анімуй морські хвилі шейдером, пальми, що гойдаються на вітрі, і хмари, які повільно пливуть. Камера стартує високо над морем, плавно опускається, огинає острів по дузі й зупиняється на спокійному загальному плані, де з’являється заголовок «Stay a little longer.» і тримається дві секунди. Стилізація замість фотореалізму: м’які градієнти, легкий тун-шейдинг, тепла палітра заходу сонця. Керуй кожним рухом часом таймлайну, щоб будь-яку мить можна було точно відтворити.',
     },
     tr: {
       title: 'Prosedürel 3D ada',
-      prompt: 'Three.js ile tarayıcıda işlenen 15 saniyelik bir 3D hareketli çalışma oluştur: altın saatte prosedürel olarak üretilmiş küçük bir tropik ada. Deniz dalgalarını bir shader ile, esintide sallanan palmiyeleri ve yavaşça süzülen bulutları canlandır. Kamera denizin yükseklerinden başlasın, süzülerek alçalsın ve adanın etrafında bir yay çizsin; ardından sakin bir geniş planda dursun, "Made of code." başlığı belirip iki saniye kalsın. Fotogerçekçi değil, stilize: yumuşak geçişler, hafif toon shading ve sıcak gün batımı renkleri. Her hareketi zaman çizelgesinin zamanıyla yönet ki her an birebir yeniden oynatılabilsin.',
+      prompt: 'Three.js ile tarayıcıda işlenen 15 saniyelik bir 3D hareketli çalışma oluştur: altın saatte prosedürel olarak üretilmiş küçük bir tropik ada. Deniz dalgalarını bir shader ile, esintide sallanan palmiyeleri ve yavaşça süzülen bulutları canlandır. Kamera denizin yükseklerinden başlasın, süzülerek alçalsın ve adanın etrafında bir yay çizsin; ardından sakin bir geniş planda dursun, "Stay a little longer." başlığı belirip iki saniye kalsın. Fotogerçekçi değil, stilize: yumuşak geçişler, hafif toon shading ve sıcak gün batımı renkleri. Her hareketi zaman çizelgesinin zamanıyla yönet ki her an birebir yeniden oynatılabilsin.',
     },
     th: {
       title: 'เกาะ 3D แบบโพรซีเดอรัล',
-      prompt: 'สร้างงานโมชัน 3D ความยาว 15 วินาทีที่เรนเดอร์ในเบราว์เซอร์ด้วย Three.js: เกาะเขตร้อนเล็ก ๆ ที่สร้างแบบโพรซีเดอรัลในช่วงแสงทองยามเย็น ใช้เชดเดอร์ทำให้คลื่นทะเลเคลื่อนไหว ต้นมะพร้าวโยกตามลม และเมฆลอยไปช้า ๆ กล้องเริ่มจากมุมสูงเหนือทะเล ร่อนลงมาแล้ววนเป็นวงโค้งรอบเกาะ ก่อนหยุดที่ภาพมุมกว้างอันสงบ พร้อมชื่อเรื่อง "Made of code." ค่อย ๆ ปรากฏและค้างไว้สองวินาที เน้นสไตล์มากกว่าความสมจริง: ไล่สีนุ่มนวล แสงเงาแบบการ์ตูนเบา ๆ และโทนสีพระอาทิตย์ตกที่อบอุ่น ควบคุมทุกการเคลื่อนไหวด้วยเวลาของไทม์ไลน์ เพื่อให้เล่นซ้ำได้ตรงทุกช่วงเวลา',
+      prompt: 'สร้างงานโมชัน 3D ความยาว 15 วินาทีที่เรนเดอร์ในเบราว์เซอร์ด้วย Three.js: เกาะเขตร้อนเล็ก ๆ ที่สร้างแบบโพรซีเดอรัลในช่วงแสงทองยามเย็น ใช้เชดเดอร์ทำให้คลื่นทะเลเคลื่อนไหว ต้นมะพร้าวโยกตามลม และเมฆลอยไปช้า ๆ กล้องเริ่มจากมุมสูงเหนือทะเล ร่อนลงมาแล้ววนเป็นวงโค้งรอบเกาะ ก่อนหยุดที่ภาพมุมกว้างอันสงบ พร้อมชื่อเรื่อง "Stay a little longer." ค่อย ๆ ปรากฏและค้างไว้สองวินาที เน้นสไตล์มากกว่าความสมจริง: ไล่สีนุ่มนวล แสงเงาแบบการ์ตูนเบา ๆ และโทนสีพระอาทิตย์ตกที่อบอุ่น ควบคุมทุกการเคลื่อนไหวด้วยเวลาของไทม์ไลน์ เพื่อให้เล่นซ้ำได้ตรงทุกช่วงเวลา',
     },
     it: {
       title: 'Isola 3D procedurale',
-      prompt: 'Crea un pezzo di motion 3D di 15 secondi renderizzato nel browser con Three.js: una piccola isola tropicale procedurale all’ora d’oro. Anima le onde del mare con uno shader, le palme che ondeggiano nella brezza e le nuvole che scorrono lente. La camera parte molto in alto sopra il mare, scende planando, descrive un arco attorno all’isola e si ferma su un campo lungo tranquillo mentre compare il titolo «Made of code.», che resta per due secondi. Stilizzato anziché fotorealistico: sfumature morbide, toon shading leggero e una palette calda da tramonto. Guida ogni movimento con il tempo della timeline, così ogni istante si riproduce esattamente.',
+      prompt: 'Crea un pezzo di motion 3D di 15 secondi renderizzato nel browser con Three.js: una piccola isola tropicale procedurale all’ora d’oro. Anima le onde del mare con uno shader, le palme che ondeggiano nella brezza e le nuvole che scorrono lente. La camera parte molto in alto sopra il mare, scende planando, descrive un arco attorno all’isola e si ferma su un campo lungo tranquillo mentre compare il titolo «Stay a little longer.», che resta per due secondi. Stilizzato anziché fotorealistico: sfumature morbide, toon shading leggero e una palette calda da tramonto. Guida ogni movimento con il tempo della timeline, così ogni istante si riproduce esattamente.',
     },
   },
   'example-motion-explainer': {
     'zh-CN': {
       title: '原理讲解动画',
-      prompt: '制作一段 20 秒的原理讲解动画：降噪耳机是怎么工作的。展示一段嘈杂的声波传向耳朵，微型麦克风采集它，芯片生成一段反相声波，两段声波相遇后抵消成一条平线，变得安静。让声波作为贯穿每个段落的主角，并在各部分出现时标注：噪音、麦克风、反向声波、安静。简洁的技术示意图风格：深石墨灰背景，青色和白色线条。结尾停在“安静，是被设计出来的。”',
+      prompt: '制作一段 20 秒的降噪原理动画。开头用大标题“How do you hear nothing?”和醒目的矢量耳机插画吸引注意。为三个因果步骤分别设计特写分镜：麦克风采集噪音；系统生成等幅反相声波；两波发生干涉，理想化的叠加结果变为平线。结尾“Silence is engineered.”。深蓝、白、青色，大字号和清楚的宽幅波形图。注明这是理想化相位抵消，现实系统降低噪音而非消除所有声音。波形由时间轴计算，导出任意帧都能精确重现。',
     },
     'zh-TW': {
       title: '原理講解動畫',
@@ -1658,7 +1658,7 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
     },
     en: {
       title: 'How-It-Works Explainer',
-      prompt: 'Create a 20-second explainer animation: how noise-cancelling headphones work. Show a noisy sound wave travelling toward an ear, a tiny microphone sampling it, the chip generating the inverted wave, and the two waves meeting and flattening into silence. Keep the wave as the recurring object through every beat, and label each part as it appears: Noise, Microphone, Anti-noise, Silence. Clean technical-diagram style: dark graphite background, cyan and white lines. End on "Silence is engineered."',
+      prompt: 'Create a 20-second noise-cancellation explainer. Open with the large question “How do you hear nothing?” and an oversized vector headphone illustration. Use separate close-up compositions for three causal steps: a microphone samples the noise; the system creates an equal-and-opposite wave; the waves interfere and their idealized sum flattens. Close on “Silence is engineered.” Deep blue, white and cyan, large typography and clear wide wave plots. Label this as idealized phase cancellation: real systems reduce noise rather than erase all sound. Draw all procedural waves from timeline time so export seeks reproduce the same frames.',
     },
     id: {
       title: 'Animasi Penjelas Cara Kerja',
@@ -1728,79 +1728,79 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
   'example-motion-product-launch': {
     'zh-CN': {
       title: '产品发布短片',
-      prompt: '为虚构的 App「Driftnote」制作一段 20 秒的产品发布短片。它能把杂乱的会议录音整理成一页纸总结。展示核心变化：散落的对话气泡和转写片段逐行收拢，变成一张整洁的总结卡片，上面有三条待办事项。品牌口号：“会议进来，决定出去。”界面只为这支短片简单设计，不要编造数据、客户或价格。深海军蓝背景、暖白色文字、一种珊瑚色强调色。结尾停在 Driftnote 字标和口号上，保持两秒。',
+      prompt: '为虚构会议 App「Driftnote」制作一段 20 秒产品发布短片。开头立即用超大字号亮出“Meetings in. Decisions out.”。接着展示三个清晰可读的会议对话片段，将其整理成一张醒目的决策总结，再用横贯画面的卡片呈现下一步行动，最后品牌落版。炭青色、暖白色、荧光青柠色，Space Grotesk 字体，用箭头贯穿全片。每个分镜都推进故事，缩成模板卡片时仍能看清主要信息。不要编造业务指标、客户证据或价格。',
     },
     'zh-TW': {
       title: '產品發布短片',
-      prompt: '為虛構的 App「Driftnote」製作一段 20 秒的產品發布短片。它能把雜亂的會議錄音整理成一頁總結。展示核心變化：散落的對話氣泡和逐字稿片段逐行收攏，變成一張整潔的總結卡片，上面有三條待辦事項。品牌口號：「會議進來，決定出去。」介面只為這支短片簡單設計，不要編造數據、客戶或價格。深海軍藍背景、暖白色文字、一種珊瑚色強調色。結尾停在 Driftnote 字標和口號上，保持兩秒。',
+      prompt: '為虛構的 App「Driftnote」製作一段 20 秒的產品發布短片。它能把雜亂的會議錄音整理成一頁總結。展示核心變化：散落的對話氣泡和逐字稿片段逐行收攏，變成一張整潔的總結卡片，上面有三條待辦事項。品牌口號：「會議進來，決定出去。」介面只為這支短片簡單設計，不要編造數據、客戶或價格。炭青色背景、暖白色文字、螢光青檸色強調色。結尾停在 Driftnote 字標和口號上，保持兩秒。',
     },
     en: {
       title: 'Product Launch Film',
-      prompt: 'Create a 20-second launch film for Driftnote, a fictional app that turns messy meeting audio into a one-page summary. Show the core transformation: scattered speech bubbles and transcript fragments condense, line by line, into a tidy summary card with three action items. Brand line: "Meetings in. Decisions out." Invent only simple UI for this film — no metrics, customers or pricing. Deep navy canvas, warm white type, one coral accent. Close on the Driftnote wordmark and the brand line, held for two seconds.',
+      prompt: 'Create a 20-second product launch film for fictional meeting app Driftnote. Open immediately with the oversized benefit “Meetings in. Decisions out.” Then show three readable meeting fragments, turn them into a large summary with concrete decisions, reveal full-width next-action cards, and close on the brand. Charcoal-teal, warm white, electric lime, Space Grotesk and a recurring arrow. Every scene advances the story. Make the main message readable at gallery-card size. Do not invent business metrics, customer evidence or pricing.',
     },
     id: {
       title: 'Video Peluncuran Produk',
-      prompt: 'Buat video peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rekaman rapat yang berantakan menjadi ringkasan satu halaman. Tunjukkan perubahan intinya: gelembung percakapan dan potongan transkrip yang tersebar menyatu baris demi baris menjadi kartu ringkasan rapi dengan tiga tugas tindak lanjut. Slogan merek: "Rapat masuk. Keputusan keluar." Buat UI sederhana khusus untuk video ini — tanpa metrik, pelanggan, atau harga. Latar biru navy gelap, teks putih hangat, satu aksen koral. Tutup dengan wordmark Driftnote dan slogannya, tahan selama dua detik.',
+      prompt: 'Buat video peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rekaman rapat yang berantakan menjadi ringkasan satu halaman. Tunjukkan perubahan intinya: gelembung percakapan dan potongan transkrip yang tersebar menyatu baris demi baris menjadi kartu ringkasan rapi dengan tiga tugas tindak lanjut. Slogan merek: "Rapat masuk. Keputusan keluar." Buat UI sederhana khusus untuk video ini — tanpa metrik, pelanggan, atau harga. Latar arang kehijauan, teks putih hangat, satu aksen hijau limau. Tutup dengan wordmark Driftnote dan slogannya, tahan selama dua detik.',
     },
     de: {
       title: 'Produkt-Launchfilm',
-      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meeting-Aufnahmen in eine einseitige Zusammenfassung verwandelt. Zeige die zentrale Verwandlung: Verstreute Sprechblasen und Transkriptfragmente verdichten sich Zeile für Zeile zu einer aufgeräumten Zusammenfassungskarte mit drei Aufgaben. Markenclaim: „Meetings rein. Entscheidungen raus.“ Gestalte nur eine einfache UI für diesen Film – keine Kennzahlen, Kunden oder Preise. Tiefes Marineblau als Hintergrund, warmweiße Schrift, ein Korallenakzent. Ende mit der Driftnote-Wortmarke und dem Claim, zwei Sekunden lang gehalten.',
+      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meeting-Aufnahmen in eine einseitige Zusammenfassung verwandelt. Zeige die zentrale Verwandlung: Verstreute Sprechblasen und Transkriptfragmente verdichten sich Zeile für Zeile zu einer aufgeräumten Zusammenfassungskarte mit drei Aufgaben. Markenclaim: „Meetings rein. Entscheidungen raus.“ Gestalte nur eine einfache UI für diesen Film – keine Kennzahlen, Kunden oder Preise. Dunkles Petrol als Hintergrund, warmweiße Schrift, ein Limettengrünakzent. Ende mit der Driftnote-Wortmarke und dem Claim, zwei Sekunden lang gehalten.',
     },
     'pt-BR': {
       title: 'Filme de lançamento de produto',
-      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma o áudio bagunçado de reuniões em um resumo de uma página. Mostre a transformação central: balões de fala e trechos de transcrição espalhados se condensam, linha por linha, em um cartão de resumo organizado com três tarefas. Slogan: "Reuniões entram. Decisões saem." Crie apenas uma UI simples para este filme — sem métricas, clientes ou preços. Fundo azul-marinho profundo, texto branco quente, um destaque coral. Termine na marca Driftnote e no slogan, mantidos por dois segundos.',
+      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma o áudio bagunçado de reuniões em um resumo de uma página. Mostre a transformação central: balões de fala e trechos de transcrição espalhados se condensam, linha por linha, em um cartão de resumo organizado com três tarefas. Slogan: "Reuniões entram. Decisões saem." Crie apenas uma UI simples para este filme — sem métricas, clientes ou preços. Fundo verde-carvão, texto branco quente, um destaque verde-lima. Termine na marca Driftnote e no slogan, mantidos por dois segundos.',
     },
     'es-ES': {
       title: 'Vídeo de lanzamiento de producto',
-      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte el audio caótico de las reuniones en un resumen de una página. Muestra la transformación clave: bocadillos de diálogo y fragmentos de transcripción dispersos se condensan, línea a línea, en una tarjeta de resumen ordenada con tres tareas. Lema: «Entran reuniones. Salen decisiones.» Diseña solo una UI sencilla para este vídeo, sin métricas, clientes ni precios. Fondo azul marino profundo, texto blanco cálido y un acento coral. Cierra con el logotipo de Driftnote y el lema, durante dos segundos.',
+      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte el audio caótico de las reuniones en un resumen de una página. Muestra la transformación clave: bocadillos de diálogo y fragmentos de transcripción dispersos se condensan, línea a línea, en una tarjeta de resumen ordenada con tres tareas. Lema: «Entran reuniones. Salen decisiones.» Diseña solo una UI sencilla para este vídeo, sin métricas, clientes ni precios. Fondo verde carbón, texto blanco cálido y un acento lima. Cierra con el logotipo de Driftnote y el lema, durante dos segundos.',
     },
     ru: {
       title: 'Ролик запуска продукта',
-      prompt: 'Сделай 20-секундный ролик запуска для Driftnote — вымышленного приложения, которое превращает сумбурную запись встречи в итог на одну страницу. Покажи главное преображение: разрозненные реплики и фрагменты расшифровки строка за строкой собираются в аккуратную карточку-итог с тремя задачами. Слоган: «На входе встречи. На выходе решения». Интерфейс придумай простой и только для этого ролика — без метрик, клиентов и цен. Глубокий тёмно-синий фон, тёплый белый текст, один коралловый акцент. Заверши логотипом Driftnote и слоганом, удерживая их две секунды.',
+      prompt: 'Сделай 20-секундный ролик запуска для Driftnote — вымышленного приложения, которое превращает сумбурную запись встречи в итог на одну страницу. Покажи главное преображение: разрозненные реплики и фрагменты расшифровки строка за строкой собираются в аккуратную карточку-итог с тремя задачами. Слоган: «На входе встречи. На выходе решения». Интерфейс придумай простой и только для этого ролика — без метрик, клиентов и цен. Тёмный зеленовато-графитовый фон, тёплый белый текст, один лаймовый акцент. Заверши логотипом Driftnote и слоганом, удерживая их две секунды.',
     },
     fa: {
       title: 'ویدیوی معرفی محصول',
-      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز؛ اپی خیالی که صدای شلوغ جلسه‌ها را به خلاصه‌ای یک‌صفحه‌ای تبدیل می‌کند. تحول اصلی را نشان بده: حباب‌های گفت‌وگو و تکه‌های متن پیاده‌شده که پراکنده‌اند، خط‌به‌خط جمع می‌شوند و به کارت خلاصهٔ مرتبی با سه کار پیگیری تبدیل می‌شوند. شعار برند: «جلسه وارد می‌شود، تصمیم بیرون می‌آید.» رابط کاربری را فقط برای همین ویدیو و ساده طراحی کن — بدون آمار، مشتری یا قیمت. پس‌زمینهٔ سرمه‌ای تیره، متن سفید گرم، یک رنگ تأکیدی مرجانی. با لوگوی Driftnote و شعار تمام کن و دو ثانیه نگهش دار.',
+      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز؛ اپی خیالی که صدای شلوغ جلسه‌ها را به خلاصه‌ای یک‌صفحه‌ای تبدیل می‌کند. تحول اصلی را نشان بده: حباب‌های گفت‌وگو و تکه‌های متن پیاده‌شده که پراکنده‌اند، خط‌به‌خط جمع می‌شوند و به کارت خلاصهٔ مرتبی با سه کار پیگیری تبدیل می‌شوند. شعار برند: «جلسه وارد می‌شود، تصمیم بیرون می‌آید.» رابط کاربری را فقط برای همین ویدیو و ساده طراحی کن — بدون آمار، مشتری یا قیمت. پس‌زمینهٔ زغالی سبز، متن سفید گرم، یک رنگ تأکیدی سبز لیمویی. با لوگوی Driftnote و شعار تمام کن و دو ثانیه نگهش دار.',
     },
     ar: {
       title: 'فيلم إطلاق منتج',
-      prompt: 'أنشئ فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل تسجيلات الاجتماعات الفوضوية إلى ملخص من صفحة واحدة. اعرض التحوّل الأساسي: فقاعات حوار ومقتطفات نصية متناثرة تتجمّع سطرًا بعد سطر في بطاقة ملخص مرتبة تتضمن ثلاث مهام. شعار العلامة: "اجتماعات تدخل، وقرارات تخرج." صمّم واجهة بسيطة لهذا الفيلم فقط، من دون أرقام أو عملاء أو أسعار. خلفية كحلية داكنة، ونص أبيض دافئ، ولون إبراز مرجاني واحد. اختم بشعار Driftnote المكتوب وعبارته لمدة ثانيتين.',
+      prompt: 'أنشئ فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل تسجيلات الاجتماعات الفوضوية إلى ملخص من صفحة واحدة. اعرض التحوّل الأساسي: فقاعات حوار ومقتطفات نصية متناثرة تتجمّع سطرًا بعد سطر في بطاقة ملخص مرتبة تتضمن ثلاث مهام. شعار العلامة: "اجتماعات تدخل، وقرارات تخرج." صمّم واجهة بسيطة لهذا الفيلم فقط، من دون أرقام أو عملاء أو أسعار. خلفية كحلية داكنة، ونص أبيض دافئ، ولون إبراز ليموني واحد. اختم بشعار Driftnote المكتوب وعبارته لمدة ثانيتين.',
     },
     ja: {
       title: 'プロダクトローンチ動画',
-      prompt: '散らかった会議の録音を 1 ページの要約に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作ってください。中心となる変化を見せます。散らばった吹き出しと文字起こしの断片が 1 行ずつまとまり、3 つのアクションアイテムを持つ整った要約カードになります。ブランドライン：「会議が入り、決定が出る。」UI はこの動画用にシンプルに作り、数値・顧客・価格は作らないでください。深いネイビーの背景、温かみのある白の文字、コーラルのアクセントを 1 色。最後は Driftnote のワードマークとブランドラインで締め、2 秒間キープします。',
+      prompt: '散らかった会議の録音を 1 ページの要約に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作ってください。中心となる変化を見せます。散らばった吹き出しと文字起こしの断片が 1 行ずつまとまり、3 つのアクションアイテムを持つ整った要約カードになります。ブランドライン：「会議が入り、決定が出る。」UI はこの動画用にシンプルに作り、数値・顧客・価格は作らないでください。深いネイビーの背景、温かみのある白の文字、ライムのアクセントを 1 色。最後は Driftnote のワードマークとブランドラインで締め、2 秒間キープします。',
     },
     ko: {
       title: '제품 출시 영상',
-      prompt: '지저분한 회의 녹음을 한 페이지 요약으로 바꿔 주는 가상의 앱 "Driftnote"의 20초 출시 영상을 만들어 줘. 핵심 변화를 보여 줘: 흩어진 말풍선과 녹취 조각이 한 줄씩 모여 할 일 세 개가 담긴 깔끔한 요약 카드가 돼. 브랜드 문구: "회의는 들어오고, 결정은 나간다." UI는 이 영상을 위해 간단하게만 만들고, 수치·고객·가격은 지어내지 마. 짙은 네이비 배경, 따뜻한 흰색 글자, 코랄 강조색 하나. 마지막은 Driftnote 워드마크와 브랜드 문구로 마무리하고 2초간 유지해 줘.',
+      prompt: '지저분한 회의 녹음을 한 페이지 요약으로 바꿔 주는 가상의 앱 "Driftnote"의 20초 출시 영상을 만들어 줘. 핵심 변화를 보여 줘: 흩어진 말풍선과 녹취 조각이 한 줄씩 모여 할 일 세 개가 담긴 깔끔한 요약 카드가 돼. 브랜드 문구: "회의는 들어오고, 결정은 나간다." UI는 이 영상을 위해 간단하게만 만들고, 수치·고객·가격은 지어내지 마. 짙은 네이비 배경, 따뜻한 흰색 글자, 라임 강조색 하나. 마지막은 Driftnote 워드마크와 브랜드 문구로 마무리하고 2초간 유지해 줘.',
     },
     pl: {
       title: 'Film premierowy produktu',
-      prompt: 'Stwórz 20-sekundowy film premierowy dla Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne nagrania spotkań w jednostronicowe podsumowanie. Pokaż kluczową przemianę: rozrzucone dymki i fragmenty transkrypcji linia po linii łączą się w schludną kartę podsumowania z trzema zadaniami. Hasło marki: „Spotkania na wejściu. Decyzje na wyjściu.” Zaprojektuj prosty interfejs tylko na potrzeby filmu — bez wskaźników, klientów i cen. Głębokie granatowe tło, ciepły biały tekst, jeden koralowy akcent. Zakończ logotypem Driftnote i hasłem, utrzymanymi przez dwie sekundy.',
+      prompt: 'Stwórz 20-sekundowy film premierowy dla Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne nagrania spotkań w jednostronicowe podsumowanie. Pokaż kluczową przemianę: rozrzucone dymki i fragmenty transkrypcji linia po linii łączą się w schludną kartę podsumowania z trzema zadaniami. Hasło marki: „Spotkania na wejściu. Decyzje na wyjściu.” Zaprojektuj prosty interfejs tylko na potrzeby filmu — bez wskaźników, klientów i cen. Głębokie granatowe tło, ciepły biały tekst, jeden limonkowy akcent. Zakończ logotypem Driftnote i hasłem, utrzymanymi przez dwie sekundy.',
     },
     hu: {
       title: 'Termékbemutató film',
-      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált alkalmazáshoz, amely a kusza értekezletfelvételekből egyoldalas összefoglalót készít. Mutasd meg a lényegi változást: a szétszórt beszédbuborékok és átiratfoszlányok soronként egy rendezett összefoglaló kártyává állnak össze, három teendővel. Márkaszlogen: „Bemegy a megbeszélés, kijön a döntés.” Csak egyszerű felületet tervezz ehhez a filmhez – ne találj ki mutatókat, ügyfeleket vagy árakat. Mély tengerészkék háttér, meleg fehér szöveg, egy korallszínű kiemelés. Zárd a Driftnote logóval és a szlogennel, két másodpercig kitartva.',
+      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált alkalmazáshoz, amely a kusza értekezletfelvételekből egyoldalas összefoglalót készít. Mutasd meg a lényegi változást: a szétszórt beszédbuborékok és átiratfoszlányok soronként egy rendezett összefoglaló kártyává állnak össze, három teendővel. Márkaszlogen: „Bemegy a megbeszélés, kijön a döntés.” Csak egyszerű felületet tervezz ehhez a filmhez – ne találj ki mutatókat, ügyfeleket vagy árakat. Mély tengerészkék háttér, meleg fehér szöveg, egy limezöldszínű kiemelés. Zárd a Driftnote logóval és a szlogennel, két másodpercig kitartva.',
     },
     fr: {
       title: 'Film de lancement produit',
-      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme l’audio désordonné des réunions en un résumé d’une page. Montre la transformation clé : des bulles de dialogue et des fragments de transcription épars se condensent, ligne après ligne, en une carte de résumé nette avec trois actions à mener. Signature : « Les réunions entrent. Les décisions sortent. » Conçois une interface simple pour ce film uniquement — pas de chiffres, de clients ni de prix. Fond bleu marine profond, texte blanc chaud, un accent corail. Termine sur le logotype Driftnote et la signature, tenus deux secondes.',
+      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme l’audio désordonné des réunions en un résumé d’une page. Montre la transformation clé : des bulles de dialogue et des fragments de transcription épars se condensent, ligne après ligne, en une carte de résumé nette avec trois actions à mener. Signature : « Les réunions entrent. Les décisions sortent. » Conçois une interface simple pour ce film uniquement — pas de chiffres, de clients ni de prix. Fond bleu marine profond, texte blanc chaud, un accent vert citron. Termine sur le logotype Driftnote et la signature, tenus deux secondes.',
     },
     uk: {
       title: 'Ролик запуску продукту',
-      prompt: 'Створи 20-секундний ролик запуску для Driftnote — вигаданого застосунку, що перетворює хаотичний запис зустрічі на підсумок на одну сторінку. Покажи головну зміну: розкидані репліки та фрагменти розшифровки рядок за рядком збираються в охайну картку-підсумок із трьома завданнями. Слоган: «На вході зустрічі. На виході рішення». Інтерфейс придумай простий і лише для цього ролика — без метрик, клієнтів і цін. Глибокий темно-синій фон, теплий білий текст, один кораловий акцент. Заверши логотипом Driftnote і слоганом, утримуючи їх дві секунди.',
+      prompt: 'Створи 20-секундний ролик запуску для Driftnote — вигаданого застосунку, що перетворює хаотичний запис зустрічі на підсумок на одну сторінку. Покажи головну зміну: розкидані репліки та фрагменти розшифровки рядок за рядком збираються в охайну картку-підсумок із трьома завданнями. Слоган: «На вході зустрічі. На виході рішення». Інтерфейс придумай простий і лише для цього ролика — без метрик, клієнтів і цін. Темний зеленувато-графітовий фон, теплий білий текст, один лаймовий акцент. Заверши логотипом Driftnote і слоганом, утримуючи їх дві секунди.',
     },
     tr: {
       title: 'Ürün lansman filmi',
-      prompt: 'Dağınık toplantı kayıtlarını tek sayfalık bir özete dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi oluştur. Temel dönüşümü göster: dağınık konuşma balonları ve transkript parçaları satır satır birleşerek üç görev içeren düzenli bir özet kartına dönüşsün. Marka sloganı: "Toplantılar girer. Kararlar çıkar." Arayüzü yalnızca bu film için basit tasarla — metrik, müşteri ya da fiyat uydurma. Koyu lacivert arka plan, sıcak beyaz yazı, tek bir mercan vurgu rengi. Driftnote logosu ve sloganıyla bitir, iki saniye beklet.',
+      prompt: 'Dağınık toplantı kayıtlarını tek sayfalık bir özete dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi oluştur. Temel dönüşümü göster: dağınık konuşma balonları ve transkript parçaları satır satır birleşerek üç görev içeren düzenli bir özet kartına dönüşsün. Marka sloganı: "Toplantılar girer. Kararlar çıkar." Arayüzü yalnızca bu film için basit tasarla — metrik, müşteri ya da fiyat uydurma. Koyu kömür yeşili arka plan, sıcak beyaz yazı, tek bir limon yeşili vurgu rengi. Driftnote logosu ve sloganıyla bitir, iki saniye beklet.',
     },
     th: {
       title: 'วิดีโอเปิดตัวสินค้า',
-      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนเสียงประชุมที่ยุ่งเหยิงให้เป็นสรุปหน้าเดียว แสดงการเปลี่ยนแปลงหลัก: บับเบิลบทสนทนาและท่อนถอดความที่กระจัดกระจายค่อย ๆ รวมกันทีละบรรทัดจนกลายเป็นการ์ดสรุปที่เรียบร้อย พร้อมงานที่ต้องทำสามข้อ สโลแกนแบรนด์: "ประชุมเข้ามา การตัดสินใจออกไป" ออกแบบหน้าจอแบบเรียบง่ายสำหรับวิดีโอนี้เท่านั้น ห้ามแต่งตัวเลข ลูกค้า หรือราคา พื้นหลังกรมท่าเข้ม ตัวอักษรขาวโทนอุ่น สีเน้นปะการังหนึ่งสี ปิดท้ายด้วยโลโก้ตัวอักษร Driftnote และสโลแกน ค้างไว้สองวินาที',
+      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนเสียงประชุมที่ยุ่งเหยิงให้เป็นสรุปหน้าเดียว แสดงการเปลี่ยนแปลงหลัก: บับเบิลบทสนทนาและท่อนถอดความที่กระจัดกระจายค่อย ๆ รวมกันทีละบรรทัดจนกลายเป็นการ์ดสรุปที่เรียบร้อย พร้อมงานที่ต้องทำสามข้อ สโลแกนแบรนด์: "ประชุมเข้ามา การตัดสินใจออกไป" ออกแบบหน้าจอแบบเรียบง่ายสำหรับวิดีโอนี้เท่านั้น ห้ามแต่งตัวเลข ลูกค้า หรือราคา พื้นหลังเขียวถ่านเข้ม ตัวอักษรขาวโทนอุ่น สีเน้นเขียวมะนาวหนึ่งสี ปิดท้ายด้วยโลโก้ตัวอักษร Driftnote และสโลแกน ค้างไว้สองวินาที',
     },
     it: {
       title: 'Video di lancio prodotto',
-      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app immaginaria che trasforma l’audio disordinato delle riunioni in un riepilogo di una pagina. Mostra la trasformazione chiave: fumetti di dialogo e frammenti di trascrizione sparsi si condensano, riga dopo riga, in una scheda di riepilogo ordinata con tre attività. Claim: «Entrano riunioni. Escono decisioni.» Progetta solo una UI semplice per questo video, senza metriche, clienti o prezzi. Sfondo blu navy profondo, testo bianco caldo, un accento corallo. Chiudi sul logotipo Driftnote e sul claim, tenuti per due secondi.',
+      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app immaginaria che trasforma l’audio disordinato delle riunioni in un riepilogo di una pagina. Mostra la trasformazione chiave: fumetti di dialogo e frammenti di trascrizione sparsi si condensano, riga dopo riga, in una scheda di riepilogo ordinata con tre attività. Claim: «Entrano riunioni. Escono decisioni.» Progetta solo una UI semplice per questo video, senza metriche, clienti o prezzi. Sfondo verde carbone, testo bianco caldo, un accento verde lime. Chiudi sul logotipo Driftnote e sul claim, tenuti per due secondi.',
     },
   },
   'example-motion-showreel': {
@@ -1884,79 +1884,79 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
   'example-motion-data-story': {
     'zh-CN': {
       title: '数据故事动画',
-      prompt: '制作一段 20 秒的数据动画，标题是「人类每增加 10 亿人用了多久」。里程碑：1804 年 10 亿，1927 年 20 亿，1960 年 30 亿，1974 年 40 亿，1987 年 50 亿，1999 年 60 亿，2011 年 70 亿，2022 年 80 亿。从一个点开始，先展开时间轴，再依次标出每段间隔：123、33、14、13、12、12、11 年，让不断缩短的间隔成为故事主线。所有标签清晰可读，数值准确。报刊印刷风格：纸白底、黑色文字、一种红色强调。结尾停在“从 123 年到 11 年”。',
+      prompt: '制作 20 秒数据故事「一百万与十亿」。用大数字对比一百万秒约 11.6 天、十亿秒约 31.7 年，再用 1000 个圆点展示 1000 倍差距，每点代表一百万秒。结尾两张卡片：约 12 天与约 32 年。暖纸白、近黑、朱红，大字和明确分镜。按每天 86400 秒、每年 365.25 天换算，标明近似值。',
     },
     'zh-TW': {
       title: '數據故事動畫',
-      prompt: '製作一段 20 秒的數據動畫，標題是「人類每增加 10 億人用了多久」。里程碑：1804 年 10 億，1927 年 20 億，1960 年 30 億，1974 年 40 億，1987 年 50 億，1999 年 60 億，2011 年 70 億，2022 年 80 億。從一個點開始，先展開時間軸，再依次標出每段間隔：123、33、14、13、12、12、11 年，讓不斷縮短的間隔成為故事主線。所有標籤清晰可讀，數值準確。報刊印刷風格：紙白底、黑色文字、一種紅色強調。結尾停在「從 123 年到 11 年」。',
+      prompt: '製作 20 秒數據故事「一百萬與十億」。用大數字對比一百萬秒約 11.6 天、十億秒約 31.7 年，再用 1000 個圓點展示 1000 倍差距，每點代表一百萬秒。結尾兩張卡片：約 12 天與約 32 年。暖紙白、近黑、朱紅，大字和明確分鏡。按每天 86400 秒、每年 365.25 天換算，標明近似值。',
     },
     en: {
       title: 'Animated Data Story',
-      prompt: 'Create a 20-second animated data story titled "How long it took to add each billion people". Milestones: 1 billion in 1804, 2 in 1927, 3 in 1960, 4 in 1974, 5 in 1987, 6 in 1999, 7 in 2011, 8 in 2022. Start from a single dot, reveal the timeline axis first, then mark each gap — 123, 33, 14, 13, 12, 12 and 11 years — so the shrinking intervals become the story. Keep every label readable and every value exact. Editorial print style: paper white, black type, one red highlight. End on "From 123 years to 11."',
+      prompt: 'Create a 20-second data story, “A million vs a billion.” Compare one million seconds (about 11.6 days) with one billion seconds (about 31.7 years), then fill 1,000 dots, each representing one million seconds. End with two big cards: approximately 12 days versus 32 years. Warm paper, near-black, vermilion and bold typography. Use 86,400 seconds/day and 365.25 days/year; label rounded values.',
     },
     id: {
       title: 'Cerita Data Animasi',
-      prompt: 'Buat cerita data animasi 20 detik berjudul "Berapa lama waktu untuk menambah setiap miliar manusia". Tonggak: 1 miliar pada 1804, 2 pada 1927, 3 pada 1960, 4 pada 1974, 5 pada 1987, 6 pada 1999, 7 pada 2011, 8 pada 2022. Mulai dari satu titik, tampilkan sumbu linimasa lebih dulu, lalu tandai setiap jeda — 123, 33, 14, 13, 12, 12, dan 11 tahun — agar jeda yang makin pendek menjadi inti cerita. Pastikan setiap label mudah dibaca dan setiap angka tepat. Gaya cetak editorial: putih kertas, teks hitam, satu sorotan merah. Akhiri dengan "Dari 123 tahun menjadi 11."',
+      prompt: 'Buat cerita data 20 detik, “Satu juta vs satu miliar”. Bandingkan satu juta detik (sekitar 11,6 hari) dan satu miliar detik (sekitar 31,7 tahun), lalu isi 1000 titik; setiap titik mewakili satu juta detik. Akhiri dengan kartu sekitar 12 hari vs 32 tahun. Putih kertas hangat, hitam, merah terang, angka besar. Gunakan 86400 detik/hari dan 365,25 hari/tahun; tandai pembulatan.',
     },
     de: {
       title: 'Animierte Datengeschichte',
-      prompt: 'Erstelle eine 20-sekündige animierte Datengeschichte mit dem Titel „Wie lange es dauerte, jede weitere Milliarde Menschen zu erreichen“. Meilensteine: 1 Milliarde 1804, 2 im Jahr 1927, 3 im Jahr 1960, 4 im Jahr 1974, 5 im Jahr 1987, 6 im Jahr 1999, 7 im Jahr 2011, 8 im Jahr 2022. Beginne mit einem einzelnen Punkt, zeige zuerst die Zeitachse und markiere dann jeden Abstand – 123, 33, 14, 13, 12, 12 und 11 Jahre –, sodass die schrumpfenden Abstände zur Geschichte werden. Jede Beschriftung gut lesbar, jeder Wert exakt. Editorialer Druckstil: Papierweiß, schwarze Schrift, ein roter Akzent. Ende mit „Von 123 Jahren auf 11.“',
+      prompt: 'Erstelle eine 20-sekündige Datengeschichte „Eine Million gegen eine Milliarde“. Vergleiche eine Million Sekunden (etwa 11,6 Tage) mit einer Milliarde Sekunden (etwa 31,7 Jahre). Fülle 1000 Punkte, jeder für eine Million Sekunden. Ende: etwa 12 Tage gegen 32 Jahre. Warmes Papierweiß, Schwarz, Zinnoberrot, große Zahlen. Rechne mit 86400 Sekunden/Tag und 365,25 Tagen/Jahr; kennzeichne Rundungen.',
     },
     'pt-BR': {
       title: 'História de dados animada',
-      prompt: 'Crie uma história de dados animada de 20 segundos com o título "Quanto tempo levou para somar cada bilhão de pessoas". Marcos: 1 bilhão em 1804, 2 em 1927, 3 em 1960, 4 em 1974, 5 em 1987, 6 em 1999, 7 em 2011, 8 em 2022. Comece com um único ponto, revele primeiro o eixo do tempo e depois marque cada intervalo — 123, 33, 14, 13, 12, 12 e 11 anos — para que os intervalos cada vez menores sejam a história. Mantenha todos os rótulos legíveis e todos os valores exatos. Estilo editorial impresso: branco papel, texto preto, um destaque vermelho. Termine com "De 123 anos para 11."',
+      prompt: 'Crie uma história de dados de 20 segundos: “Um milhão vs um bilhão”. Compare um milhão de segundos (cerca de 11,6 dias) com um bilhão (cerca de 31,7 anos). Preencha 1000 pontos, cada um representando um milhão de segundos. Termine com cartões: aproximadamente 12 dias vs 32 anos. Papel branco quente, preto, vermelho e números grandes. Use 86400 segundos/dia e 365,25 dias/ano; indique os arredondamentos.',
     },
     'es-ES': {
       title: 'Historia de datos animada',
-      prompt: 'Crea una historia de datos animada de 20 segundos titulada «Cuánto se tardó en sumar cada mil millones de personas». Hitos: 1000 millones en 1804, 2000 en 1927, 3000 en 1960, 4000 en 1974, 5000 en 1987, 6000 en 1999, 7000 en 2011 y 8000 en 2022. Empieza con un solo punto, muestra primero el eje temporal y luego marca cada intervalo —123, 33, 14, 13, 12, 12 y 11 años— para que los intervalos cada vez más cortos sean la historia. Que todas las etiquetas se lean bien y todos los valores sean exactos. Estilo editorial impreso: blanco papel, texto negro y un acento rojo. Termina con «De 123 años a 11».',
+      prompt: 'Crea una historia de datos de 20 segundos: «Un millón frente a mil millones». Compara un millón de segundos (unos 11,6 días) con mil millones (unos 31,7 años). Llena 1000 puntos, cada uno equivalente a un millón de segundos. Termina con tarjetas: aproximadamente 12 días frente a 32 años. Papel cálido, negro, rojo y números grandes. Usa 86400 segundos/día y 365,25 días/año; indica los redondeos.',
     },
     ru: {
       title: 'Анимированная история в данных',
-      prompt: 'Сделай 20-секундную анимированную историю в данных под названием «Сколько времени понадобилось на каждый новый миллиард людей». Вехи: 1 миллиард в 1804 году, 2 — в 1927, 3 — в 1960, 4 — в 1974, 5 — в 1987, 6 — в 1999, 7 — в 2011, 8 — в 2022. Начни с одной точки, сначала покажи ось времени, затем отметь каждый интервал — 123, 33, 14, 13, 12, 12 и 11 лет, — чтобы сокращающиеся интервалы стали сюжетом. Все подписи должны читаться, все значения — быть точными. Газетный печатный стиль: бумажно-белый фон, чёрный текст, один красный акцент. Заверши фразой «От 123 лет до 11».',
+      prompt: 'Создай 20-секундную историю «Миллион против миллиарда». Сравни миллион секунд (около 11,6 дня) с миллиардом (около 31,7 года). Заполни 1000 точек, каждая — миллион секунд. Финал: две крупные карточки, примерно 12 дней против 32 лет. Тёплый бумажный фон, чёрный, красный, крупные числа. Расчёт: 86400 секунд в дне, 365,25 дня в году; обозначь округления.',
     },
     fa: {
       title: 'داستان داده‌ای متحرک',
-      prompt: 'یک داستان داده‌ای متحرک ۲۰ ثانیه‌ای با عنوان «افزودن هر یک میلیارد نفر چقدر طول کشید» بساز. نقاط عطف: ۱ میلیارد در ۱۸۰۴، ۲ در ۱۹۲۷، ۳ در ۱۹۶۰، ۴ در ۱۹۷۴، ۵ در ۱۹۸۷، ۶ در ۱۹۹۹، ۷ در ۲۰۱۱ و ۸ در ۲۰۲۲. از یک نقطه شروع کن، اول محور زمان را نشان بده و بعد هر فاصله را علامت بزن — ۱۲۳، ۳۳، ۱۴، ۱۳، ۱۲، ۱۲ و ۱۱ سال — تا کوتاه‌تر شدن فاصله‌ها به خط اصلی داستان تبدیل شود. همهٔ برچسب‌ها خوانا و همهٔ اعداد دقیق باشند. سبک چاپ مطبوعاتی: زمینهٔ سفید کاغذی، متن مشکی، یک رنگ تأکیدی قرمز. با «از ۱۲۳ سال به ۱۱ سال» تمام کن.',
+      prompt: 'داستان داده‌ای ۲۰ ثانیه‌ای «یک میلیون در برابر یک میلیارد» بساز. یک میلیون ثانیه، حدود 11.6 روز، را با یک میلیارد ثانیه، حدود 31.7 سال، مقایسه کن. 1000 نقطه را پر کن؛ هر نقطه یک میلیون ثانیه است. پایان: حدود 12 روز در برابر 32 سال. کاغذ سفید گرم، مشکی، قرمز و اعداد درشت. مبنا: 86400 ثانیه در روز و 365.25 روز در سال؛ مقادیر گرد‌شده را مشخص کن.',
     },
     ar: {
       title: 'قصة بيانات متحركة',
-      prompt: 'أنشئ قصة بيانات متحركة مدتها 20 ثانية بعنوان "كم استغرقت إضافة كل مليار إنسان". المحطات: مليار واحد في 1804، و2 في 1927، و3 في 1960، و4 في 1974، و5 في 1987، و6 في 1999، و7 في 2011، و8 في 2022. ابدأ من نقطة واحدة، واعرض محور الزمن أولًا، ثم حدّد كل فترة — 123 و33 و14 و13 و12 و12 و11 عامًا — لتصبح الفترات المتقلصة هي محور القصة. اجعل كل تسمية مقروءة وكل قيمة دقيقة. أسلوب طباعة صحفية: أبيض ورقي ونص أسود ولون إبراز أحمر واحد. اختم بعبارة "من 123 عامًا إلى 11."',
+      prompt: 'أنشئ قصة بيانات مدتها 20 ثانية: «مليون مقابل مليار». قارن مليون ثانية (نحو 11.6 يومًا) بمليار ثانية (نحو 31.7 سنة). املأ 1000 نقطة، كل نقطة تمثل مليون ثانية. اختم ببطاقتين كبيرتين: نحو 12 يومًا مقابل 32 سنة. خلفية ورقية دافئة وأسود وأحمر وأرقام كبيرة. احسب على أساس 86400 ثانية في اليوم و365.25 يومًا في السنة، ووضّح القيم التقريبية.',
     },
     ja: {
       title: 'データストーリーアニメーション',
-      prompt: '「10 億人増えるのにかかった年数」というタイトルの 20 秒のデータストーリーを作ってください。節目：1804 年に 10 億人、1927 年に 20 億、1960 年に 30 億、1974 年に 40 億、1987 年に 50 億、1999 年に 60 億、2011 年に 70 億、2022 年に 80 億。1 つの点から始めてまず時間軸を見せ、続いて各間隔（123、33、14、13、12、12、11 年）を示し、縮まっていく間隔を物語の軸にしてください。すべてのラベルを読みやすく、数値は正確に。新聞・雑誌の印刷物風：紙の白、黒い文字、赤のアクセントを 1 色。最後は「123 年から 11 年へ。」で締めます。',
+      prompt: '「100 万と 10 億」を比べる 20 秒のデータアニメーションを作成。100 万秒は約 11.6 日、10 億秒は約 31.7 年。1 点が 100 万秒を表す 1000 個の点を埋め、最後は約 12 日と約 32 年の大きなカードで対比。暖かい紙白、黒、朱赤、大きな数字。1 日 86400 秒、1 年 365.25 日で計算し、概数を明記してください。',
     },
     ko: {
       title: '데이터 스토리 애니메이션',
-      prompt: '"인류가 10억 명씩 늘어나는 데 걸린 시간"이라는 제목의 20초 데이터 스토리 애니메이션을 만들어 줘. 이정표: 1804년 10억, 1927년 20억, 1960년 30억, 1974년 40억, 1987년 50억, 1999년 60억, 2011년 70억, 2022년 80억. 점 하나에서 시작해 먼저 타임라인 축을 보여 주고, 각 간격(123, 33, 14, 13, 12, 12, 11년)을 차례로 표시해 점점 짧아지는 간격이 이야기의 중심이 되게 해 줘. 모든 라벨은 읽기 쉽게, 모든 수치는 정확하게. 신문·잡지 인쇄물 스타일로, 종이 흰색 배경, 검은 글자, 빨간 강조색 하나. 마지막은 "123년에서 11년으로."로 마무리해 줘.',
+      prompt: '“백만과 십억”을 비교하는 20초 데이터 애니메이션을 만들어 줘. 백만 초는 약 11.6일, 십억 초는 약 31.7년이야. 점 하나가 백만 초를 나타내는 1000개의 점을 채우고, 마지막은 약 12일과 약 32년의 큰 카드로 비교해 줘. 따뜻한 종이색, 검정, 주홍, 큰 숫자. 하루 86400초, 1년 365.25일로 계산하고 근삿값을 표시해 줘.',
     },
     pl: {
       title: 'Animowana historia w danych',
-      prompt: 'Stwórz 20-sekundową animowaną historię w danych pod tytułem „Ile trwało dodanie każdego kolejnego miliarda ludzi”. Kamienie milowe: 1 miliard w 1804, 2 w 1927, 3 w 1960, 4 w 1974, 5 w 1987, 6 w 1999, 7 w 2011, 8 w 2022. Zacznij od jednego punktu, najpierw pokaż oś czasu, a potem zaznacz każdy odstęp — 123, 33, 14, 13, 12, 12 i 11 lat — tak, by coraz krótsze odstępy stały się historią. Każda etykieta czytelna, każda wartość dokładna. Prasowy styl druku: papierowa biel, czarny tekst, jeden czerwony akcent. Zakończ hasłem „Od 123 lat do 11.”',
+      prompt: 'Stwórz 20-sekundową historię „Milion kontra miliard”. Porównaj milion sekund (około 11,6 dnia) z miliardem (około 31,7 roku). Wypełnij 1000 punktów, każdy oznacza milion sekund. Finał: duże karty, około 12 dni kontra 32 lata. Ciepła biel papieru, czerń, czerwień i duże liczby. Przyjmij 86400 sekund/dzień i 365,25 dnia/rok; oznacz zaokrąglenia.',
     },
     hu: {
       title: 'Animált adattörténet',
-      prompt: 'Készíts egy 20 másodperces animált adattörténetet „Mennyi idő alatt lett minden újabb milliárd ember” címmel. Mérföldkövek: 1 milliárd 1804-ben, 2 1927-ben, 3 1960-ban, 4 1974-ben, 5 1987-ben, 6 1999-ben, 7 2011-ben, 8 2022-ben. Indulj egyetlen pontból, előbb mutasd meg az idővonal tengelyét, majd jelöld az egyes időközöket – 123, 33, 14, 13, 12, 12 és 11 év –, hogy az egyre rövidülő időközök legyenek a történet. Minden felirat legyen jól olvasható, minden érték pontos. Szerkesztőségi nyomtatott stílus: papírfehér, fekete szöveg, egy piros kiemelés. Zárd ezzel: „123 évtől 11-ig.”',
+      prompt: 'Készíts 20 másodperces adattörténetet „Egymillió és egymilliárd” címmel. Egymillió másodperc körülbelül 11,6 nap; egymilliárd körülbelül 31,7 év. Tölts fel 1000 pontot, mindegyik egymillió másodperc. Zárásként két nagy kártya: körülbelül 12 nap és 32 év. Meleg papírfehér, fekete, vörös és nagy számok. Számolj napi 86400 másodperccel, évi 365,25 nappal; jelöld a kerekítést.',
     },
     fr: {
       title: 'Récit de données animé',
-      prompt: 'Crée un récit de données animé de 20 secondes intitulé « Combien de temps pour ajouter chaque milliard d’humains ». Étapes : 1 milliard en 1804, 2 en 1927, 3 en 1960, 4 en 1974, 5 en 1987, 6 en 1999, 7 en 2011, 8 en 2022. Pars d’un seul point, révèle d’abord l’axe du temps, puis marque chaque intervalle — 123, 33, 14, 13, 12, 12 et 11 ans — pour que les intervalles qui rétrécissent deviennent l’histoire. Chaque libellé lisible, chaque valeur exacte. Style presse imprimée : blanc papier, texte noir, une touche de rouge. Termine sur « De 123 ans à 11. »',
+      prompt: 'Crée une animation de données de 20 secondes : « Un million contre un milliard ». Compare un million de secondes (environ 11,6 jours) à un milliard (environ 31,7 ans). Remplis 1000 points, chacun représentant un million de secondes. Termine sur deux grandes cartes : environ 12 jours contre 32 ans. Papier chaud, noir, rouge et grands chiffres. Base : 86400 secondes/jour, 365,25 jours/an ; indique les arrondis.',
     },
     uk: {
       title: 'Анімована історія в даних',
-      prompt: 'Створи 20-секундну анімовану історію в даних під назвою «Скільки часу знадобилося на кожен новий мільярд людей». Віхи: 1 мільярд у 1804 році, 2 — у 1927, 3 — у 1960, 4 — у 1974, 5 — у 1987, 6 — у 1999, 7 — у 2011, 8 — у 2022. Почни з однієї точки, спершу покажи вісь часу, потім познач кожен інтервал — 123, 33, 14, 13, 12, 12 і 11 років, — щоб скорочення інтервалів стало сюжетом. Усі підписи мають читатися, усі значення — бути точними. Газетний друкований стиль: паперово-білий фон, чорний текст, один червоний акцент. Заверши фразою «Від 123 років до 11».',
+      prompt: 'Створи 20-секундну історію «Мільйон проти мільярда». Порівняй мільйон секунд (приблизно 11,6 дня) з мільярдом (приблизно 31,7 року). Заповни 1000 крапок, кожна — мільйон секунд. Фінал: дві великі картки, приблизно 12 днів проти 32 років. Тепле паперове тло, чорний, червоний, великі числа. Розрахунок: 86400 секунд на день, 365,25 дня на рік; познач округлення.',
     },
     tr: {
       title: 'Animasyonlu veri hikâyesi',
-      prompt: '"Her yeni bir milyar insanın eklenmesi ne kadar sürdü" başlıklı 20 saniyelik animasyonlu bir veri hikâyesi oluştur. Dönüm noktaları: 1804\'te 1 milyar, 1927\'de 2, 1960\'ta 3, 1974\'te 4, 1987\'de 5, 1999\'da 6, 2011\'de 7, 2022\'de 8. Tek bir noktadan başla, önce zaman eksenini göster, ardından her aralığı işaretle — 123, 33, 14, 13, 12, 12 ve 11 yıl — böylece kısalan aralıklar hikâyenin kendisi olsun. Her etiket okunaklı, her değer kesin olsun. Gazete baskısı stili: kâğıt beyazı, siyah yazı, tek bir kırmızı vurgu. "123 yıldan 11 yıla." ile bitir.',
+      prompt: '“Bir milyon ve bir milyar” başlıklı 20 saniyelik veri animasyonu oluştur. Bir milyon saniyeyi (yaklaşık 11,6 gün) bir milyar saniyeyle (yaklaşık 31,7 yıl) karşılaştır. Her biri bir milyon saniyeyi temsil eden 1000 noktayı doldur. İki büyük kartla bitir: yaklaşık 12 gün ve 32 yıl. Sıcak kâğıt beyazı, siyah, kırmızı, büyük sayılar. Günde 86400 saniye, yılda 365,25 gün kullan; yuvarlamaları belirt.',
     },
     th: {
       title: 'แอนิเมชันเล่าเรื่องด้วยข้อมูล',
-      prompt: 'สร้างแอนิเมชันเล่าเรื่องด้วยข้อมูลความยาว 20 วินาที ชื่อเรื่อง "มนุษย์ใช้เวลานานแค่ไหนในการเพิ่มขึ้นทีละพันล้านคน" หมุดหมาย: 1 พันล้านในปี 1804, 2 ในปี 1927, 3 ในปี 1960, 4 ในปี 1974, 5 ในปี 1987, 6 ในปี 1999, 7 ในปี 2011, 8 ในปี 2022 เริ่มจากจุดเดียว แสดงแกนเวลาก่อน แล้วค่อยระบุช่วงห่างแต่ละช่วง คือ 123, 33, 14, 13, 12, 12 และ 11 ปี ให้ช่วงห่างที่สั้นลงเรื่อย ๆ เป็นแกนของเรื่อง ป้ายกำกับทุกจุดต้องอ่านง่าย ตัวเลขต้องถูกต้อง สไตล์งานพิมพ์บรรณาธิการ: พื้นขาวแบบกระดาษ ตัวอักษรดำ สีแดงเน้นหนึ่งสี ปิดท้ายด้วย "จาก 123 ปี เหลือ 11 ปี"',
+      prompt: 'สร้างแอนิเมชันข้อมูล 20 วินาที “หนึ่งล้านกับหนึ่งพันล้าน” เปรียบเทียบหนึ่งล้านวินาที (ประมาณ 11.6 วัน) กับหนึ่งพันล้านวินาที (ประมาณ 31.7 ปี) เติมจุด 1000 จุด โดยแต่ละจุดแทนหนึ่งล้านวินาที ปิดท้ายด้วยการ์ดใหญ่ประมาณ 12 วันกับ 32 ปี ใช้พื้นกระดาษโทนอุ่น สีดำ สีแดง และตัวเลขใหญ่ คำนวณจาก 86400 วินาทีต่อวันและ 365.25 วันต่อปี ระบุค่าที่ปัดเศษ',
     },
     it: {
       title: 'Storia di dati animata',
-      prompt: 'Crea una storia di dati animata di 20 secondi intitolata «Quanto ci è voluto per aggiungere ogni miliardo di persone». Tappe: 1 miliardo nel 1804, 2 nel 1927, 3 nel 1960, 4 nel 1974, 5 nel 1987, 6 nel 1999, 7 nel 2011, 8 nel 2022. Parti da un solo punto, mostra prima l’asse del tempo e poi segna ogni intervallo — 123, 33, 14, 13, 12, 12 e 11 anni — così che gli intervalli sempre più brevi diventino la storia. Ogni etichetta leggibile, ogni valore esatto. Stile editoriale da stampa: bianco carta, testo nero, un accento rosso. Chiudi con «Da 123 anni a 11.»',
+      prompt: 'Crea una storia di dati di 20 secondi: «Un milione contro un miliardo». Confronta un milione di secondi (circa 11,6 giorni) con un miliardo (circa 31,7 anni). Riempi 1000 punti, ciascuno pari a un milione di secondi. Chiudi con due grandi schede: circa 12 giorni contro 32 anni. Carta calda, nero, rosso e numeri grandi. Usa 86400 secondi/giorno e 365,25 giorni/anno; indica gli arrotondamenti.',
     },
   },
 };

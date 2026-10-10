@@ -14,7 +14,7 @@ import {
 const examples = fileURLToPath(new URL('../../../plugins/_official/examples/', import.meta.url));
 
 test.each(['3d-scene', 'explainer', 'product-launch', 'showreel', 'data-story'])(
-  '[P1] motion-%s carries its local script dependencies through the frozen reference package',
+  '[P1] motion-%s carries its offline scripts, font and license through the frozen reference package',
   async (name) => {
     const source = path.join(examples, `motion-${name}`);
     const frozen = await captureFrozenSkillPackageFromSources({ sources: [{ dir: source, name: `Motion ${name}` }] });
@@ -37,6 +37,13 @@ test.each(['3d-scene', 'explainer', 'product-launch', 'showreel', 'data-story'])
         const relative = src!.replace(/^\.\//, '');
         expect(await readFile(path.join(reference, relative))).toEqual(await readFile(path.join(source, relative)));
       }
+      // Rendering must retain the same font when the reference is copied offline.
+      const fonts = [...html.matchAll(/url\(["']?(assets\/[^)"']+\.(?:ttf|woff2?))["']?\)/g)];
+      expect(fonts.length).toBeGreaterThan(0);
+      for (const [, font] of fonts) {
+        expect(await readFile(path.join(reference, font!))).toEqual(await readFile(path.join(source, font!)));
+      }
+      expect(await readFile(path.join(reference, 'assets/space-grotesk-OFL.txt'), 'utf8')).toContain('SIL OPEN FONT LICENSE');
     } finally {
       await rm(project, { recursive: true, force: true });
     }

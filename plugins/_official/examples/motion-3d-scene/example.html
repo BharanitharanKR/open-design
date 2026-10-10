@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Made of code. — Island at golden hour</title>
 <style>
+@font-face{font-family:Space;src:url('assets/space-grotesk.ttf') format('truetype');font-weight:300 700;font-display:block}
   :root {
     --ink: #1c1233;
     --cream: #fff1dc;
@@ -42,6 +43,16 @@ html.od-export body { margin:0!important; padding:0!important; gap:0!important; 
 html.od-export #controls { display:none!important; }
 html.od-export #viewport { position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important; display:block!important; }
 html.od-export #scaler, html.od-export #main { position:absolute!important; left:0!important; top:0!important; margin:0!important; transform:none!important; }
+
+/* A clean gallery capture uses the same edge-to-edge stage as the film. */
+body{gap:0!important}#viewport{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important}
+#controls{position:fixed!important;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;padding:12px 18px;width:min(900px,92vw);border-radius:14px;opacity:0;background:#101214dd;color:#fff}
+#controls:hover,#controls:focus-within{opacity:1}html.od-export #controls{display:none!important}
+
+#travelKicker{position:absolute;left:86px;top:60px;font:500 25px Space,Arial;letter-spacing:.14em;color:#fff4e3}
+#travelTitle{position:absolute;left:78px;bottom:122px;font:700 178px/.92 Space,Arial;letter-spacing:-.065em;color:#fff4e3;text-shadow:0 5px 35px #173b3940}
+#travelCaption{position:absolute;right:86px;bottom:65px;font:500 24px Space,Arial;color:#fff4e3;text-align:right}
+#title{font-family:Space,Arial;font-weight:700;letter-spacing:-.065em;font-size:170px;bottom:118px;text-shadow:0 5px 35px #173b3940}
 </style>
 </head>
 <body>
@@ -49,7 +60,7 @@ html.od-export #scaler, html.od-export #main { position:absolute!important; left
   <div id="scaler">
     <div id="main" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080">
       <canvas id="gl" width="1920" height="1080" aria-label="Stylized 3D tropical island at golden hour"></canvas>
-      <div id="title">Made of code.</div>
+      <div id="travelKicker">TINY WORLDS / 01 — GOLDEN HOUR</div><div id="travelTitle">A little<br>escape.</div><div id="travelCaption">Built from code.<br>Made to get lost in.</div><div id="title">Stay a little longer.</div>
     </div>
   </div>
 </div>
@@ -69,8 +80,8 @@ const CFG = {
   palette: {
     skyTop: 0x3b2a7a, skyMid: 0xd5568a, skyLow: 0xff9a5c, skyHorizon: 0xffd08a,
     seaDeep: 0x0b4a63, seaMid: 0x16837f, seaShallow: 0x5fd0b4, foam: 0xfff3dc,
-    sand: 0xf2c48a, sandDark: 0xd9965f, grass: 0x4fa36a, grassDark: 0x2f7a58,
-    trunk: 0x8a5a44, frond: 0x2f9a62, frondLight: 0x7ccf72, rock: 0x7a5a6e,
+    sand: 0xf0d7aa, sandDark: 0xc6a279, grass: 0x799d73, grassDark: 0x4f755e,
+    trunk: 0x8a5a44, frond: 0x477e65, frondLight: 0x8cb88a, rock: 0x78877f,
     cloud: 0xffd6c4, cloudShade: 0xe58aa0, sun: 0xffb86b, ambient: 0x9a7ac0
   },
   sunDir: [-0.38, 0.16, -1.0],
@@ -89,6 +100,8 @@ const col = h => new THREE.Color(h);
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 renderer.setSize(CFG.width, CFG.height, false);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, CFG.width/CFG.height, 0.5, 600);
@@ -120,17 +133,19 @@ const sky = new THREE.Mesh(
         c = mix(c,vec3(1.0,0.93,0.78),disc);
         if(vDir.y<0.0) c = mix(cHor,cLow,0.4);
         gl_FragColor = vec4(c,1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`
   })
 );
 scene.add(sky);
 
 /* Lights (warm key + cool-violet fill) */
-const sunLight = new THREE.DirectionalLight(col(CFG.palette.sun), 2.4);
+const sunLight = new THREE.DirectionalLight(col(0xffedcc), 1.8);
 sunLight.position.copy(sunDir).multiplyScalar(60);
 scene.add(sunLight);
-scene.add(new THREE.HemisphereLight(col(CFG.palette.skyMid), col(CFG.palette.seaDeep), 1.1));
-scene.add(new THREE.AmbientLight(col(CFG.palette.ambient), 0.7));
+scene.add(new THREE.HemisphereLight(col(0xc2e8e5), col(CFG.palette.seaDeep), 1.6));
+scene.add(new THREE.AmbientLight(col(0xe4ece4), 0.7));
 
 /* 3-step toon ramp */
 function toonRamp(){
@@ -194,7 +209,7 @@ const ocean = new THREE.Mesh(
         float dist = length(vWorld.xz);
         // depth tint around the island (stepped for toon feel)
         float shallow = 1.0 - smoothstep(10.0, 26.0, dist);
-        shallow = floor(shallow*4.0+0.5)/4.0;
+        // Continuous depth falloff keeps the shore from reading as concentric discs.
         vec3 c = mix(cDeep, cMid, smoothstep(-0.3,0.5,vH)*0.6 + 0.2);
         c = mix(c, cShallow, shallow*0.85);
         // soft crest highlight
@@ -204,18 +219,20 @@ const ocean = new THREE.Mesh(
         float lap = sin(dist*1.8 - uTime*1.4);
         float foam = smoothstep(1.4,0.0,abs(ring)) * step(0.1, lap*0.5+0.5 + vnoise(vWorld.xz*1.2)*0.4 - 0.45);
         foam += smoothstep(0.35,0.0,abs(ring-2.2)) * step(0.6, vnoise(vWorld.xz*0.9+uTime*0.3));
-        c = mix(c, cFoam, clamp(foam,0.0,1.0)*0.9);
+        c = mix(c, cFoam, clamp(foam,0.0,1.0)*0.6);
         // fresnel sky reflection
         float fr = pow(1.0 - max(dot(N,V),0.0), 3.0);
-        c = mix(c, mix(cLow, cHor, 0.5), fr*0.65);
+        c = mix(c, mix(cLow, cHor, 0.5), fr*0.25);
         // stepped sun glitter
         vec3 R = reflect(-normalize(sunDir), N);
         float s = pow(max(dot(R,V),0.0), 60.0);
-        c += vec3(1.0,0.78,0.45) * step(0.35, s) * 0.9 + vec3(1.0,0.6,0.3)*s*0.4;
+        c += vec3(1.0,0.78,0.45) * smoothstep(0.25, 0.9, s) * 0.22 + vec3(1.0,0.6,0.3)*s*0.16;
         // distance haze toward horizon
         float fog = smoothstep(60.0, 300.0, length(vWorld - cameraPosition));
         c = mix(c, cHor, fog*0.85);
         gl_FragColor = vec4(c,1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`
   })
 );
@@ -247,6 +264,34 @@ for(let i=0;i<6;i++){
   rock.position.set(Math.cos(a)*d, 0.1, Math.sin(a)*d); rock.rotation.set(rr(0,3), rr(0,3), 0); island.add(rock);
 }
 
+/* A few human details give the island a story, rather than just geometry. */
+const shelter=new THREE.Group();shelter.position.set(-3.8,1.3,4.5);shelter.rotation.y=.5;island.add(shelter);
+const hut=new THREE.Mesh(new THREE.BoxGeometry(2.5,1.8,2),toon(0xf2d8ad));hut.position.y=.9;shelter.add(hut);
+const roof=new THREE.Mesh(new THREE.ConeGeometry(2.1,1.3,4),toon(0xe77667));roof.rotation.y=Math.PI/4;roof.position.y=2.3;shelter.add(roof);
+const door=new THREE.Mesh(new THREE.PlaneGeometry(.65,1.15),toon(0x305552));door.position.set(0,.6,1.01);shelter.add(door);
+const umbrella=new THREE.Group();umbrella.position.set(5.8,.9,2.2);island.add(umbrella);
+const pole=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,2.1,8),toon(0xf8e8cf));pole.position.y=1.05;umbrella.add(pole);
+const canopy=new THREE.Mesh(new THREE.ConeGeometry(1.35,.5,12),toon(0xffe5a9));canopy.position.y=2.25;umbrella.add(canopy);
+/* The dock and sailboat make this a small destination, not an empty disc. */
+const dock=new THREE.Group();island.add(dock);
+for(let i=0;i<13;i++){
+ const plank=new THREE.Mesh(new THREE.BoxGeometry(.44,.16,1.8),toon(i%2?0xb78358:0xc99a6a));
+ plank.position.set(6.4+i*.46,.65,4.3);dock.add(plank);
+ if(i%4===0)for(const z of [3.55,5.05]){
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,2,7),toon(0x84684d));
+  post.position.set(6.4+i*.46,.2,z);dock.add(post);
+ }
+}
+const boat=new THREE.Group();boat.position.set(12.6,.35,4.3);boat.rotation.y=-.35;scene.add(boat);
+const hull=new THREE.Mesh(new THREE.SphereGeometry(1,14,8),toon(0xd66d52));hull.scale.set(.7,.42,1.65);boat.add(hull);
+const deck=new THREE.Mesh(new THREE.BoxGeometry(1.1,.12,2.3),toon(0xf3ddba));deck.position.y=.28;boat.add(deck);
+const mast=new THREE.Mesh(new THREE.CylinderGeometry(.045,.06,3.7,8),toon(0x6d6655));mast.position.y=2;boat.add(mast);
+const sailShape=new THREE.Shape();sailShape.moveTo(.08,.65);sailShape.lineTo(1.65,.65);sailShape.lineTo(.08,3.65);sailShape.closePath();
+const sail=new THREE.Mesh(new THREE.ShapeGeometry(sailShape),toon(0xfff0cf,{side:THREE.DoubleSide}));sail.position.z=.05;boat.add(sail);
+const pennant=new THREE.Mesh(new THREE.ConeGeometry(.22,.6,3),toon(0xe87c64));pennant.rotation.z=-Math.PI/2;pennant.position.set(.28,3.65,0);boat.add(pennant);
+for(let i=0;i<2;i++){
+ const chair=new THREE.Mesh(new THREE.BoxGeometry(.6,.15,1.4),toon(0xf4e6bf));chair.rotation.x=-.12;chair.position.set(5.1+i*.9,1.3,3.5);island.add(chair);
+}
 /* ---------- Palms ---------- */
 const palms = [];
 const frondGeo = (function(){
@@ -289,17 +334,17 @@ palmSpots.forEach((s,idx)=>{
 const clouds = [];
 const cloudMat = toon(CFG.palette.cloud, { emissive: col(0x6a2f4a), emissiveIntensity: 0.25 });
 const cloudMat2 = toon(CFG.palette.cloudShade, { emissive: col(0x6a2f4a), emissiveIntensity: 0.2 });
-for(let i=0;i<9;i++){
+for(let i=0;i<6;i++){
   const g = new THREE.Group();
   const parts = 4 + Math.floor(rnd()*3);
   for(let k=0;k<parts;k++){
-    const s = rr(2.2, 4.4);
+    const s = rr(1.2, 2.0);
     const b = new THREE.Mesh(new THREE.SphereGeometry(s, 14, 10).scale(1.25, 0.62, 1), k%3===0 ? cloudMat2 : cloudMat);
     b.position.set((k-parts/2)*rr(2.4,3.4), rr(-0.4,1.0), rr(-1.2,1.2)); g.add(b);
   }
-  const a = rr(0, Math.PI*2), d = rr(40, 110);
-  const x0 = Math.cos(a)*d, z0 = Math.sin(a)*d - 20, y0 = rr(14, 26);
-  g.position.set(x0, y0, z0); g.scale.setScalar(rr(0.9, 1.8)); scene.add(g);
+  const a = rr(0, Math.PI*2), d = rr(90, 150);
+  const x0 = Math.cos(a)*d, z0 = Math.sin(a)*d - 20, y0 = rr(22, 30);
+  g.position.set(x0, y0, z0); g.scale.setScalar(rr(0.7, 1.0)); scene.add(g);
   clouds.push({g, x0, y0, z0, v: rr(0.7, 1.4), bob: rr(0,6.28)});
 }
 
@@ -314,10 +359,11 @@ for(let i=0;i<18;i++){
 }
 
 /* ---------- Pure function of time: update whole scene ---------- */
-const cam = { a: 2.4, r: 62, h: 50, ly: 2 };
+const cam = { a: 1.2, r: 42, h: 22, ly: 2.5 };
 const tmpLook = new THREE.Vector3();
 function frame(t){
   oceanUniforms.uTime.value = t;
+  boat.position.y=.35+Math.sin(t*1.7)*.11;boat.rotation.z=Math.sin(t*1.4)*.035;
   // palms sway
   palms.forEach(p=>{
     const s = Math.sin(t*p.sp + p.ph);
@@ -344,6 +390,9 @@ function frame(t){
   const e = k*k*(3-2*k);
   titleEl.style.opacity = e.toFixed(4);
   titleEl.style.transform = 'translateY(' + ((1-e)*16).toFixed(2) + 'px)';
+  const opening = 1 - Math.min(1,Math.max(0,(t-2.2)/.65));
+  document.getElementById('travelTitle').style.opacity=opening;
+  document.getElementById('travelTitle').style.transform='translateY('+((1-opening)*-30)+'px)';
   renderer.render(scene, camera);
 }
 
@@ -354,9 +403,9 @@ const tl = gsap.timeline({ paused: true });
 // camera: high aerial -> glide down -> arc around -> calm wide settle
 tl.to(cam, { a: 0.15, duration: 11.0, ease: 'power1.inOut' }, 0);
 tl.to(cam, { a: -0.1, duration: 4.0, ease: 'sine.out' }, 11);
-tl.to(cam, { r: 27, h: 11, ly: 3, duration: 4.8, ease: 'power2.out' }, 0);
-tl.to(cam, { r: 25, h: 6.5, ly: 2.5, duration: 6.2, ease: 'sine.inOut' }, 4.8);
-tl.to(cam, { r: 34, h: 6.2, ly: -1.8, duration: 4.0, ease: 'sine.inOut' }, 11);
+tl.to(cam, { r: 37, h: 13, ly: 2.5, duration: 4.8, ease: 'power2.out' }, 0);
+tl.to(cam, { r: 38, h: 12, ly: 2.5, duration: 6.2, ease: 'sine.inOut' }, 4.8);
+tl.to(cam, { r: 42, h: 16, ly: 2.5, duration: 4.0, ease: 'sine.inOut' }, 11);
 tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
 tl.eventCallback('onUpdate', () => { frame(clock.t); syncUI(); });
 window.__timelines = { main: tl };
@@ -382,7 +431,7 @@ scrub.oninput = () => { tl.pause(); tl.time(parseFloat(scrub.value)); syncUI(); 
 
 frame(0);
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-if (reduce) { tl.time(14); } else { tl.play(0); }
+if (reduce) { tl.time(14); } else { document.fonts.ready.then(()=>tl.play(0)); }
 syncUI();
 </script>
 <script>
@@ -407,9 +456,9 @@ syncUI();
 })();
 </script>
 <script>
-// Preview bake: mark ready once the timeline reaches the poster frame (4.5s).
+// Preview bake: mark ready once the timeline reaches the poster frame (1.4s).
 (function () {
-  var POSTER_AT = 4.5;
+  var POSTER_AT = 1.4;
   function check() {
     var tls = window.__timelines;
     var tl = tls && tls[Object.keys(tls)[0]];

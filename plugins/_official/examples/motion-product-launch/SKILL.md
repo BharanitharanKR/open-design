@@ -1,6 +1,6 @@
 ---
 name: motion-product-launch
-description: "Product Launch Film — motion design template. A 20-second launch film that shows a product’s core transformation and closes on the brand line."
+description: "A 20-second product launch film: a bold benefit hook, the meeting problem, a clear summary, next actions, and a brand close."
 od:
   mode: video
   scenario: video
@@ -11,46 +11,42 @@ od:
 
 # Product Launch Film
 
-A product launch film built around one concrete transformation: messy input
-becomes a clean result, then the brand resolves. Shown with the fictional app
-Driftnote (meeting audio → one-page summary). `example.html` is the finished
-reference — start from it.
-
-## Reference files
-- Copy `example.html` and `assets/gsap.min.js` into the new composition,
-  preserving the relative `assets/` path. These files are carried in the frozen
-  reference package; use these local bytes instead of a CDN or a new version.
+A launch film for fictional meeting app Driftnote. The product benefit is visible
+from the first shot: “Meetings in. Decisions out.” Start from `example.html`.
 
 ## Art direction
-- Deep navy stage `#0B1530`, warm paper text `#F4EFE6`, one coral accent
-  `#FF6B57`. Editorial serif for display, clean sans for UI, mono for transcript
-  fragments.
-- Simple invented UI only: speech bubbles, transcript fragments, one summary
-  card with three action items. No metrics, customers or pricing.
+- Charcoal-teal #10191b, warm white #f2f4e9, electric lime #d8ff79.
+- Large Space Grotesk type, one directional-arrow motif, a faint structural grid.
+- Keep the protagonist large: an oversized message, a legible summary, then
+  full-width action cards. The gallery must communicate at 320×180.
 
 ## Beat map (20s)
-- 0–3s: chaos — scattered bubbles and fragments drift over a live waveform.
-- 3–7s: a coral line sweeps; fragments sort into rows; the summary card
-  appears as their destination.
-- 7–13s: line by line, fragments condense into one sentence each on the card.
-- 13–17s: the card completes and three action items tick in; reading hold.
-- 17–18s: the card recedes; the coral rule becomes the wordmark underline.
-- 18–20s: wordmark and brand line hold still.
+- 0–3.2s: product benefit in large type; the arrow begins the visual thread.
+- 3.2–6.2s: three readable meeting fragments show the problem.
+- 6.2–13.2s: the summary fills the right half; three concrete decisions resolve.
+- 13.2–17s: next actions appear as large, distinct rows.
+- 17–20s: brand, benefit and arrow hold together.
 
-## Motion
-- The coral line is the recurring motif: sweep → divider → wordmark underline.
-- Fragments travel on readable paths into their sentences; nothing teleports.
+## Adaptation
+Replace the fictional name, meeting content and palette with the user's brief.
+Preserve benefit → problem → transformation → next actions → brand. Never invent
+customer evidence, business metrics or testimonials. Each segment must visibly
+advance the story; do not leave a small card floating in an empty frame.
 
-## Adapting the template
-- Keep the chaos → order → result → brand structure and the coral-line motif.
-- Replace product name, UI content, brand line and palette with the user's;
-  never invent metrics, logos or testimonials.
+## Reference files
+Copy `example.html`, `assets/gsap.min.js`, `assets/space-grotesk.ttf` and
+`assets/space-grotesk-OFL.txt` into the composition, preserving the assets path.
+The font is bundled under the SIL Open Font License; keep its license with it.
+These files must travel with the frozen reference. No runtime font CDN is needed.
 
-## Video export
-- The MP4 exporter seeks the timeline with callbacks suppressed. Visible content
-  must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
-  timeline time on every animation frame, as the per-frame loop in
-  `example.html` does.
-- Keep playback controls outside the composition. The example detects the
-  existing OD frame-export bridge and fills its capture viewport with only the
-  composition; preserve this export layout when adapting the preview shell.
+## Preview and video export
+Keep the stage edge to edge in both gallery and MP4 capture. Playback controls
+are an overlay that stays transparent until directly hovered or focused; never
+reserve stage space for them or include them in the poster.
+
+The GSAP master timeline is the only clock. Render every procedural layer from
+its current time in the per-frame loop: export seeks suppress timeline callbacks.
+Do not carry state between frames, use wall-clock time, or rely on child-tween
+callbacks for visible output. Backward seeks must reproduce identical frames.
+Await bundled fonts before playback and signal preview-ready at a legible hero
+frame. Preserve `window.__timelines` and the composition's timing attributes.

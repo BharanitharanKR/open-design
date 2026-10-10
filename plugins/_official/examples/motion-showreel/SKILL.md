@@ -16,20 +16,21 @@ visual identity, linked by a recurring accent dot. Signed by the fictional
 "Studio Kinetik". `example.html` is the finished reference — start from it.
 
 ## Reference files
-- Copy `example.html` and `assets/gsap.min.js` into the new composition,
-  preserving the relative `assets/` path. These files are carried in the frozen
-  reference package; use these local bytes instead of a CDN or a new version.
+Copy `example.html`, `assets/gsap.min.js`, `assets/space-grotesk.ttf` and
+`assets/space-grotesk-OFL.txt` into the composition, preserving the assets path.
+The font is bundled under the SIL Open Font License; keep its license with it.
+Use these frozen local bytes; no runtime script or font CDN is needed.
 
 ## Art direction
 - Off-white `#F4F4F1`, ink-black `#0E0E10`, a single vivid accent `#FF3D00`.
-- Heavy display grotesque (900 weight, very large) for kinetic type; uppercase
+- Bundled Space Grotesk (700 weight, very large) for kinetic type; uppercase
   mono for HUD labels (scene number, timecode). Generous margins, editorial grid.
 
 ## Beat map (15s)
 - 0–3s: kinetic type ("MOTION HAS WEIGHT"); the accent dot drops in as the full stop.
-- 3.2–6s: the dot morphs into a shape (square → ring) with guides.
-- 6–10s: the ring becomes a button inside an interface card; toggle, slider, press.
-- 10–12.5s: data flourish — bars rise, a line draws, a number counts up.
+- 3.2–6s: “MAKE IT MOVE.” anchors the left; the dot becomes an oversized square → ring on the right.
+- 6–10s: the ring becomes a button inside a sample music-player card; toggle, volume slider, press.
+- 10–12.5s: illustrative listening index — bars rise, a line draws, a number counts up.
 - 12.4–15s: signature card "Studio Kinetik." holds still.
 
 ## Motion
@@ -42,11 +43,19 @@ visual identity, linked by a recurring accent dot. Signed by the fictional
 - Swap copy, palette, techniques and the signature to the user's studio or
   brand; label any chart values as sample data.
 
-## Video export
-- The MP4 exporter seeks the timeline with callbacks suppressed. Visible content
-  must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
-  timeline time on every animation frame, as the per-frame loop in
-  `example.html` does.
-- Keep playback controls outside the composition. The example detects the
-  existing OD frame-export bridge and fills its capture viewport with only the
-  composition; preserve this export layout when adapting the preview shell.
+
+## Preview and video export
+Keep the stage edge to edge in both gallery and MP4 capture. Playback controls
+are an overlay that stays transparent until directly hovered or focused; never
+reserve stage space for them or include them in the poster.
+
+The GSAP master timeline is the only clock. Render every procedural layer from
+its current time in the per-frame loop: export seeks suppress timeline callbacks.
+Do not carry state between frames, use wall-clock time, or rely on child-tween
+callbacks for visible output. Backward seeks must reproduce identical frames.
+Await bundled fonts before playback and signal preview-ready at a legible hero
+frame. Preserve `window.__timelines` and the composition's timing attributes.
+
+
+The player is a fictional UI example, not a claim that this film has an audio
+track. Keep illustrative chart labels visible; never imply business results.

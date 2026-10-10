@@ -1,6 +1,6 @@
 ---
 name: motion-explainer
-description: "How-It-Works Explainer — motion design template. A 20-second explainer that follows one recurring object to show how noise-cancelling headphones work."
+description: "A 20-second noise-cancellation explainer with a large opening question, close-up wave diagrams, phase inversion, interference, and a quiet close."
 od:
   mode: video
   scenario: video
@@ -11,45 +11,42 @@ od:
 
 # How-It-Works Explainer
 
-A technical explainer that follows one recurring object — a waveform — through
-cause and effect: how noise-cancelling headphones work. `example.html` is the
-finished reference — start from it.
-
-## Reference files
-- Copy `example.html` and `assets/gsap.min.js` into the new composition,
-  preserving the relative `assets/` path. These files are carried in the frozen
-  reference package; use these local bytes instead of a CDN or a new version.
+“How do you hear nothing?” explains the idealized wave principle behind active
+noise cancellation. Start from `example.html`.
 
 ## Art direction
-- Clean technical diagram on dark graphite `#14171a`; cyan `#22d3ee` for the
-  active signal, white `#f5f7f8` lines, dim `#8a9aa3` for secondary labels.
-- Thin stroked line art (ear cup, microphone, chip, scope) drawn on with
-  stroke-dash reveals. Monospace numbered labels: 01 Noise, 02 Microphone,
-  03 Anti-noise, 04 Silence.
+- Deep blue #0c1724, warm white #f2f5ed and cyan #65e8dc.
+- Large headlines, a custom vector headphone illustration, and wide wave plots.
+- Each step gets its own composition. Do not shrink an entire system diagram
+  into a distant overview for the whole film.
 
 ## Beat map (20s)
-- 0–3.5s: the noise wave travels toward the ear; ear outline draws in.
-- 3.5–8s: microphone appears and samples the wave; a scope shows the signal.
-- 8–13s: the chip generates the inverted wave (same shape, flipped).
-- 13–17.5s: the two waves meet and flatten into a single silent line.
-- 17.5–20s: supporting parts dim; closing line "Silence is engineered." holds.
+- 0–3s: question and large headphone illustration, both visible immediately.
+- 3–7s: a microphone samples the noise; the waveform becomes the protagonist.
+- 7–11s: reveal the equal-and-opposite anti-noise wave.
+- 11–16s: the waves converge and their idealized sum flattens.
+- 16–20s: “Silence is engineered.” resolves with the headphone motif.
 
-## Motion
-- The wave is the protagonist in every beat; each new part is introduced by a
-  short reveal next to the wave, then labelled. Labels stay readable while
-  relationships change. No decorative motion.
+## Accuracy and adaptation
+The zero-sum example illustrates ideal phase cancellation. Real headphones
+reduce noise rather than erase all sound; retain this distinction. Replace
+the mechanism with the user's subject, but keep question → three clear causal
+steps → answer. Procedural paths must remain a pure function of timestamp.
 
-## Adapting the template
-- Keep the "one object carries the explanation" structure, the numbered
-  labels and the dim-then-resolve ending.
-- Replace the subject, parts, labels and closing line with the user's topic;
-  keep the causal order explicit (show the object before transforming it).
+## Reference files
+Copy `example.html`, `assets/gsap.min.js`, `assets/space-grotesk.ttf` and
+`assets/space-grotesk-OFL.txt` into the composition, preserving the assets path.
+The font is bundled under the SIL Open Font License; keep its license with it.
+These files must travel with the frozen reference. No runtime font CDN is needed.
 
-## Video export
-- The MP4 exporter seeks the timeline with callbacks suppressed. Visible content
-  must not depend on `onUpdate`/`onComplete`; procedural layers redraw from the
-  timeline time on every animation frame, as the per-frame loop in
-  `example.html` does.
-- Keep playback controls outside the composition. The example detects the
-  existing OD frame-export bridge and fills its capture viewport with only the
-  composition; preserve this export layout when adapting the preview shell.
+## Preview and video export
+Keep the stage edge to edge in both gallery and MP4 capture. Playback controls
+are an overlay that stays transparent until directly hovered or focused; never
+reserve stage space for them or include them in the poster.
+
+The GSAP master timeline is the only clock. Render every procedural layer from
+its current time in the per-frame loop: export seeks suppress timeline callbacks.
+Do not carry state between frames, use wall-clock time, or rely on child-tween
+callbacks for visible output. Backward seeks must reproduce identical frames.
+Await bundled fonts before playback and signal preview-ready at a legible hero
+frame. Preserve `window.__timelines` and the composition's timing attributes.
