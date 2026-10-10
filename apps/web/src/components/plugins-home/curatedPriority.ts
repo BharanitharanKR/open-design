@@ -125,8 +125,7 @@ const CURATED_HYPERFRAMES_PLUGIN_IDS = [
   'video-template-hyperframes-flight-map-route',
 ] as const;
 
-// Motion design: one template per leading community direction, ordered by
-// community reach (3D scene, explainer, product launch, showreel, data story).
+// Motion design: five complementary examples in the Home display order.
 export const CURATED_MOTION_DESIGN_PLUGIN_IDS = [
   'example-motion-3d-scene',
   'example-motion-explainer',

@@ -23,8 +23,10 @@ from the first shot: “Meetings in. Decisions out.” Start from `example.html`
 ## Beat map (20s)
 - 0–3.2s: product benefit in large type; the arrow begins the visual thread.
 - 3.2–6.2s: three readable meeting fragments show the problem.
-- 6.2–13.2s: the summary fills the right half; three concrete decisions resolve.
-- 13.2–17s: next actions appear as large, distinct rows.
+- Around 6s, the conversation fragments gather into the summary on the right;
+  its three concrete decisions resolve through 13s.
+- Around 13s, the summary stretches into the first full-width action row;
+  the remaining rows follow. Keep the same object visible across the transition.
 - 17–20s: brand, benefit and arrow hold together.
 
 ## Adaptation

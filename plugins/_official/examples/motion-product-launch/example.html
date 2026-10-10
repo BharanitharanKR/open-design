@@ -25,7 +25,7 @@ html.od-export #controls{display:none}html.od-export #main{left:0;top:0;transfor
 <body><div id="viewport"><main id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080"><div class="p-grid"></div>
 <section id="intro" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">Driftnote / A clearer way to meet</div><div id="introCopy" class="abs p-heading"><span class="pill">● Meet your next clear thought</span><h1 class="head" style="margin-top:38px">Meetings in.<br><span class="accent">Decisions out.</span></h1><p class="sub muted">Turn the conversation into the next move.</p></div><div id="introOrbit" class="orbit"></div><div id="introOrb" class="abs p-orb">↗</div></section>
 <section id="chaos" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">01 / Sound familiar?</div><h2 class="head">Great conversation.<br><span class="muted">Now what?</span></h2><div id="b0" class="bubble" style="left:1090px;top:480px;rotate:-7deg">Who owns the <b>next step?</b></div><div id="b1" class="bubble" style="left:190px;top:565px;rotate:5deg">“Can you send that again?”</div><div id="b2" class="bubble" style="left:1020px;top:650px;rotate:-3deg">“Wait. What did we decide?”</div><canvas id="wave" class="p-wave" width="1920" height="210"></canvas></section>
-<section id="result" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">02 / Bring it into focus</div><div id="resultCopy" class="p-copy"><h2 class="head">All the talk.<br><span class="accent">One clear<br>page.</span></h2><p class="sub muted">The decision. The owner.<br>The next step.</p></div><div id="summary" class="summary"><div class="eyebrow">↗ Meeting, distilled.</div><h2>Launch sync.<br>Clarity delivered.</h2><div id="sum0" class="line"><span class="check">✓</span><span>Launch review moves<br>to Thursday.</span></div><div id="sum1" class="line"><span class="check">✓</span><span>Alex owns the<br>revised brief.</span></div><div id="sum2" class="line"><span class="check">✓</span><span>Share the final notes<br>with the team.</span></div><span class="tag">Decisions, ready to go.</span></div></section>
+<section id="result" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">02 / Bring it into focus</div><div id="resultCopy" class="p-copy"><h2 class="head">All the talk.<br><span class="accent">One clear<br>page.</span></h2><p class="sub muted">The decision. The owner.<br>The next step.</p></div><div id="summary" class="summary"><div id="summaryContent"><div class="eyebrow">↗ Meeting, distilled.</div><h2>Launch sync.<br>Clarity delivered.</h2><div id="sum0" class="line"><span class="check">✓</span><span>Launch review moves<br>to Thursday.</span></div><div id="sum1" class="line"><span class="check">✓</span><span>Alex owns the<br>revised brief.</span></div><div id="sum2" class="line"><span class="check">✓</span><span>Share the final notes<br>with the team.</span></div><span class="tag">Decisions, ready to go.</span></div></div></section>
 <section id="actions" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">03 / Less follow-up. More follow-through.</div><h2 id="actionTitle" class="abs head" style="left:86px;top:170px;font-size:145px">Everyone knows<br>the <span class="accent">next move.</span></h2><div id="a0" class="action" style="top:540px"><span><span class="number">01</span>Revise the brief.</span><small>Alex ↗</small></div><div id="a1" class="action" style="top:680px;background:#b9d57c"><span><span class="number">02</span>Book Thursday’s review.</span><small>Team ↗</small></div><div id="a2" class="action" style="top:820px;background:#97ad6c"><span><span class="number">03</span>Keep the work moving.</span><small>Done ✓</small></div></section>
 <section id="end" class="scene"><span class="abs pill" style="left:98px;top:210px">Less meeting. More meaning.</span><h2 id="wordmark" class="endbrand">Driftnote<span class="accent">.</span></h2><p class="endline">Meetings in. Decisions out.</p><div id="endOrb" class="abs p-orb p-end-icon">↗</div><div class="abs rule" style="left:98px;right:98px;top:790px"></div><p class="abs sub muted" style="left:98px;top:835px">Your next move starts here.</p></section>
 <div class="footer"><span class="brand">driftnote ↗</span><span>Product launch / Fictional concept</span></div></main></div>
@@ -41,11 +41,39 @@ function pose(id,x,y,s=1,r=0){$(id).style.transform='translate('+x+'px,'+y+'px) 
 const clock={t:0},tl=gsap.timeline({paused:true});tl.to(clock,{t:DURATION,duration:DURATION,ease:'none'},0);window.__timelines={main:tl};
 function render(t){
 
-  const intro=scene('intro',t,0,3.2), chaos=scene('chaos',t,3.2,6.2),result=scene('result',t,6.2,13.2),actions=scene('actions',t,13.2,17),end=scene('end',t,17,20.01);
+  const intro=scene('intro',t,0,3.2), chaos=scene('chaos',t,3.2,7.15),result=scene('result',t,6.05,14.05),actions=scene('actions',t,13.0,17),end=scene('end',t,17,20.01);
   if(intro){enter('introCopy',t,0);pose('introOrb',0,Math.sin(t*2)*14,1,-12+t*6);pose('introOrbit',0,0,1,t*12);}
-  if(chaos){for(let i=0;i<3;i++){const p=ease((t-3.2-i*.18)/.7);pose('b'+i,(1-p)*(i%2?160:-160),Math.sin(t*2+i)*15,1);$('b'+i).style.opacity=p;}const c=$('wave').getContext('2d');c.clearRect(0,0,1920,210);c.fillStyle='#d8ff79';for(let x=0;x<1920;x+=15){const h=14+Math.abs(Math.sin(x*.014+t*3)*Math.cos(x*.027-t*2))*145;c.fillRect(x,105-h/2,5,h);}}
-  if(result){enter('resultCopy',t,6.2);const p=ease((t-6.2)/.8);pose('summary',0,(1-p)*100, .94+.06*p);for(let i=0;i<3;i++){enter('sum'+i,t,7.1+i*1.5);}}
-  if(actions){enter('actionTitle',t,13.2);for(let i=0;i<3;i++)enter('a'+i,t,13.5+i*.55);}
+  if(chaos){
+    const gather=ease((t-5.95)/1.1);
+    $('chaos').querySelector('h2').style.opacity=1-ease((t-5.95)/.3);
+    $('chaos').querySelector('.eyebrow').style.opacity=1-ease((t-6.05)/.15);
+    const starts=[[1090,480],[190,565],[1020,650]],rotations=[-7,5,-3];
+    for(let i=0;i<3;i++){
+      const p=ease((t-3.2-i*.18)/.7),[x,y]=starts[i];
+      pose('b'+i,mix((1-p)*(i%2?160:-160),1048-x,gather),mix(Math.sin(t*2+i)*15,425+i*105-y,gather),mix(1,.7,gather),-rotations[i]*gather);
+      $('b'+i).style.opacity=p*(1-ease((t-6.5)/.55));
+    }
+    $('wave').style.opacity=.65*(1-gather);pose('wave',gather*450,0,1-gather*.65);
+    const c=$('wave').getContext('2d');c.clearRect(0,0,1920,210);c.fillStyle='#d8ff79';
+    for(let x=0;x<1920;x+=15){const h=14+Math.abs(Math.sin(x*.014+t*3)*Math.cos(x*.027-t*2))*145;c.fillRect(x,105-h/2,5,h);}
+  }
+  if(result){
+    const arrive=ease((t-6.15)/.8),unfold=ease((t-13.0)/.8),leave=ease((t-13.7)/.35);
+    enter('resultCopy',t,6.4);$('resultCopy').style.opacity=ease((t-6.3)/.7)*(1-ease((t-13)/.25));
+    $('result').querySelector('.eyebrow').style.opacity=ease((t-6.3)/.5)*(1-ease((t-13)/.2));
+    const card=$('summary');card.style.opacity=arrive*(1-leave);card.style.overflow='hidden';card.style.transformOrigin='top left';
+    card.style.width=mix(820,1748,unfold)+'px';card.style.height=mix(730,116,unfold)+'px';card.style.borderRadius=mix(30,25,unfold)+'px';
+    card.style.background='rgb('+Math.round(mix(242,216,unfold))+','+Math.round(mix(244,255,unfold))+','+Math.round(mix(233,121,unfold))+')';
+    pose('summary',mix((1-arrive)*90,-894,unfold),mix((1-arrive)*70,380,unfold),mix(.97,1,arrive));
+    $('summaryContent').style.opacity=1-ease((t-13)/.4);
+    for(let i=0;i<3;i++)enter('sum'+i,t,7.1+i*1.5);
+  }
+  if(actions){
+    enter('actionTitle',t,13.4);
+    for(let i=0;i<3;i++){
+      const p=ease((t-(13.55+i*.45))/.6);pose('a'+i,0,(1-p)*(i===0?0:65));$('a'+i).style.opacity=p;
+    }
+  }
   if(end){enter('wordmark',t,17);pose('endOrb',0,Math.sin((t-17)*2)*8,1,-7+ease((t-17)/1)*7);}
   $('main').dataset.beat=intro?'hook':chaos?'problem':result?'transformation':actions?'outcome':'brand';
 

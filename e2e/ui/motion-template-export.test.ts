@@ -65,3 +65,40 @@ test('[P1] showreel procedural layers survive export seeks and backward scrubbin
   expect(samples[8]?.ripples[0]).toBeGreaterThan(0);
   expect(samples[9]).toEqual(samples[7]);
 });
+
+test('[P1] product launch preserves transition objects across export seeks', async ({ page }) => {
+  await page.goto('/api/plugins/example-motion-product-launch/preview');
+  await page.waitForFunction(() => Boolean((window as unknown as { __timelines?: unknown }).__timelines));
+  const samples = await page.evaluate(async () => {
+    const tl = (window as unknown as {
+      __timelines: { main: { pause(): void; totalTime(t: number, suppressEvents: boolean): void } };
+    }).__timelines.main;
+    tl.pause();
+    const result = [];
+    for (const time of [6.6, 8.8, 13.5, 14.5, 6.6, 13.5, 8.8]) {
+      tl.totalTime(time, true);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const styles = ['b0', 'summary', 'summaryContent', 'a0'].map((id) => {
+        const element = document.getElementById(id)!;
+        if (getComputedStyle(element).visibility === 'hidden') return null;
+        return {
+          opacity: Number(getComputedStyle(element).opacity),
+          transform: element.style.transform,
+          width: element.style.width,
+          height: element.style.height,
+        };
+      });
+      result.push({ time, styles });
+    }
+    return result;
+  });
+  // The message and summary coexist during the handoff; the card unfolds into a row.
+  expect(samples[0]!.styles[0]!.opacity).toBeGreaterThan(0);
+  expect(samples[0]!.styles[1]!.opacity).toBeGreaterThan(0);
+  expect(parseFloat(samples[2]!.styles[1]!.width)).toBeGreaterThan(parseFloat(samples[1]!.styles[1]!.width));
+  expect(parseFloat(samples[2]!.styles[1]!.height)).toBeLessThan(parseFloat(samples[1]!.styles[1]!.height));
+  expect(samples[3]!.styles[3]!.opacity).toBe(1);
+  expect(samples[4]).toEqual(samples[0]);
+  expect(samples[5]).toEqual(samples[2]);
+  expect(samples[6]).toEqual(samples[1]);
+});

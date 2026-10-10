@@ -1,82 +1,69 @@
-# Motion template sources and maintenance
+# Motion templates: sources and maintenance
 
-These five examples extend the existing official HTML template mechanism:
-`SKILL.md`, `example.html`, `open-design.json`, curated Home chips, and Community
-cards. They use the existing preview baker, example binding, frozen reference
-package, Remix, and HyperFrames MP4 exporter.
+Five official HTML examples populate the Motion design Home entry and Community
+category: a procedural island, noise-cancellation explainer, product launch,
+showreel, and data story. They use the existing plugin preview, example binding,
+frozen reference package, Remix, and HyperFrames MP4 export paths.
 
-## Content provenance
+## Selection evidence
 
-The original October 8–9, 2026 work used the Opus 5.5 video community to choose
-topics, including the collection at
-[zhuyansen/awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video)
-and discovery through
-[yihui-dev/awesome-opus5-5-videos](https://github.com/yihui-dev/awesome-opus5-5-videos)
-and [Skillry's collection](https://skillry.dev/ai-videos/opus-5-5).
-View-count ranking was an informal topic-selection aid, not evidence that these
-are recreations of the five most popular individual videos.
+Topic selection used the October 8, 2026 snapshot of
+[awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video/blob/main/cases.json):
+1,402 cases, captured at `2026-10-08T09:18:38.003Z`, SHA-256
+`0e443a045a62b6494ffb2f90b8d5b550b978064031d9543a256343d328bec027`.
+The original selection record and snapshot are archived in the
+[implementation evidence document](https://powerformer.feishu.cn/docx/NvfoduBi4oj5pgxqnoYccdonn0g).
 
-Prompts were written for OD. HTML previews were generated in OD, then packaged
-with local script dependencies, poster-ready markers, and export-safe drawing.
-The source-project mapping comes from the original generator's `sources.json`;
-all five original `index.html` files were still present during the handoff audit.
+The original keyword grouping, recalculated from that snapshot, yielded:
 
-| Template | Original OD project |
-| --- | --- |
-| Procedural 3D island | `5873852b-3e24-4734-a909-903ad038a8e3` |
-| Explainer | `baab39ba-f4ee-4261-a302-a98cd2c58dac` |
-| Product launch | `d38769ce-f3d6-4451-9977-72887e551fce` |
-| Showreel | `aebf983b-6223-46eb-bf63-4f7d03087695` |
-| Data story | `515296bd-a73b-475d-b343-ee1451b2b695` |
+| Direction | Matching cases | Summed recorded views |
+| --- | ---: | ---: |
+| Explainer | 117 | 12,427,430 |
+| Product launch / promo | 95 | 9,950,709 |
+| Showreel | 44 | 9,701,547 |
+| Data / chart | 78 | 7,498,070 |
 
-Driftnote and Studio Kinetik are fictional examples. Chart figures are sample
-content, not a verified business dataset. Preserve that distinction when
-adapting a template.
+Groups can overlap. Counts describe the collected posts at the snapshot time.
+The selection also included [Dan Greenheck's procedural island](https://x.com/dangreenheck/status/2102878170089169235),
+with 888,215 recorded views, and [Stephan Livera's showreel](https://x.com/stephanlivera/status/2103315922098470926),
+with 2,246,353. These informed the template directions. OD-specific prompts and
+compositions implement those directions; the Home order is curated.
 
-## October 10 visual revision
+## Template content
 
-The revision rewrites the product, noise-cancellation, and data-story HTML;
-it refines the existing island and Showreel. It was edited directly in source,
-not produced by a second OD generation run. No reference video's footage,
-screenshots, music, or project source was imported into these templates.
+Initial HTML was generated in OD and subsequently refined in source. The source
+project mapping is retained from the original generator's `sources.json`.
 
-Discovery used [OpenChamber's collection](https://data.openchamber.dev/opus-5-5-videos/).
-The following are original-post observations on October 10, 2026, in Beijing
-time. Views are platform counters, not unique viewers or OD template results.
-
-| Reference | Observed views / likes / bookmarks | Relevance and boundary |
+| Template | Original OD project | Current content |
 | --- | --- | --- |
-| [Stephan Livera](https://x.com/stephanlivera/status/2103315922098470926), 13:50 | 2,265,583 / 17,122 / 13,078 | Kinetic type and a short Motion showreel; not a shot-for-shot recreation |
-| [zero](https://x.com/twoclipping/status/2103273003555402193), 13:57 | 1,153,766 / 12,626 / 20,955 | UI shape continuity; full playback was not verified |
-| [Deedy](https://x.com/deedydas/status/2102787937482252537), about 15:30 | 348,496 / 3,267 / 4,694 | Large type, clear argument, product presentation; a different product |
-| [Meng To](https://x.com/MengTo/status/2102760783344189761), about 15:33 | 482,346 / 6,572 / 3,805 | Atmospheric procedural scenery and readable landmarks; a Japanese river scene, not an island |
-| [Skylar Kitchen](https://x.com/Skylartkitchen/status/2103522230957420843), about 15:39 | 198,629 / 1,865 / 2,253 | A garden-irrigation tutorial; a later genre cross-check, not the source of the noise-cancellation topic |
+| 3D island | `5873852b-3e24-4734-a909-903ad038a8e3` | Procedural island, shader water, continuous camera orbit |
+| Explainer | `baab39ba-f4ee-4261-a302-a98cd2c58dac` | Idealized equal-amplitude, opposite-phase noise cancellation |
+| Product launch | `d38769ce-f3d6-4451-9977-72887e551fce` | Fictional Driftnote meeting app |
+| Showreel | `aebf983b-6223-46eb-bf63-4f7d03087695` | Fictional Studio Kinetik; illustrative chart figures |
+| Data story | `515296bd-a73b-475d-b343-ee1451b2b695` | One million seconds versus one billion seconds |
 
-The new data story compares one million seconds (11.574 days) with one billion
-seconds (31.688 years, using 365.25 days/year). Its rounded labels and thousand
-dots come from arithmetic. It has no verified viral source. The ANC animation
-is an idealized equal-amplitude, opposite-phase illustration, not a claim that
-real headphones cancel every sound perfectly.
+The data story uses 86,400 seconds/day and 365.25 days/year: 11.574 days versus
+31.688 years, rounded in the film to 11.6 days and 31.7 years. One thousand dots
+each represent one million seconds. The explainer labels phase cancellation as
+idealized; real headphones reduce noise with practical limits.
 
-These references support design choices and observed reach of the original
-posts. They do not prove that our five templates are viral, the most popular,
-or likely to achieve the same reach. No OD exposure, click, Remix, retention,
-or sharing metrics have been collected for this revision.
+Visual refinements use large typography, a distinct palette per film, readable
+story beats, locally bundled fonts, and deterministic per-frame animation.
+The island applies tone mapping and output color-space conversion in its custom
+shaders and keeps the dock and sailboat in frame. Generated posters and gallery
+clips are derived from each committed `example.html`.
 
-At about 15:58 Beijing time, the zero original was rechecked: 1,153,989 views,
-12,625 likes and 20,955 bookmarks. Playback succeeded on this visit; the opening
-button, a volume slider at about 5.24 seconds, and a completion notification at
-about 12.22 seconds were observed. This adds actual-frame evidence to the earlier
-failed playback attempts; it is still not a continuous full-film review.
+## Gallery publication
 
-The final island refinement corrects custom-shader output conversion, softens
-the sky/water relationship, moves oversized clouds into the distance, and widens
-the camera orbit to keep the dock and sailboat in frame. Custom ShaderMaterial
-output needs its own color-space conversion, as described in the
-[Three.js color-management manual](https://threejs.org/manual/pages/color-management.html).
-The refined 15-second MP4 was rendered through the existing production Electron
-path and reviewed at half-second intervals. This is visual/export evidence,
-not a user-preference or popularity result.
+`open-design.json` points to `example.html`; source and referenced assets ship
+with the official plugin. The existing pre-merge preview workflow validates
+rendering. After merge, `bake-plugin-previews.yml` uploads content-addressed
+posters and clips to R2 and opens the rolling preview-manifest PR. The release
+bake writes the authoritative manifest for its release branch. Verify that
+release's five preview entries and remote resources before release acceptance.
+
+Local preview overrides and verification output stay outside tracked source.
+The release pipeline owns publication; template authors maintain HTML and assets.
 
 ## Local dependencies and export
 
