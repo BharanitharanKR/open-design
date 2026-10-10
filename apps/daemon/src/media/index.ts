@@ -93,6 +93,7 @@ import {
   resolveHyperFramesCliPath,
   resolveHyperFramesNodeBin,
 } from './hyperframes-runtime.js';
+import { prepareHyperFramesAudio, hyperFramesAudioEncodingArgs, type HyperFramesAudioTrack } from './hyperframes-audio.js';
 import { renderVelaImage, renderVelaVideo } from './vela.js';
 import {
   ensureProject,
@@ -3983,7 +3984,8 @@ async function renderHyperFramesWithDesktop(
   const sourceHtml = await readFile(path.join(compAbs, 'index.html'), 'utf8');
   const { fps, height, width } = hyperFramesCompositionMetrics(sourceHtml);
   const browserRuntime = await readFile(resolveHyperFramesBrowserRuntimePath(), 'utf8');
-  const html = injectHyperFramesFrameBridge(sourceHtml, browserRuntime);
+  const audio = await prepareHyperFramesAudio(sourceHtml, compAbs);
+  const html = injectHyperFramesFrameBridge(audio.html, browserRuntime);
   const framesDir = path.join(tmpRoot, 'frames');
 
   onProgress?.('Rendering HyperFrames with the bundled Electron Chromium…');
@@ -4000,7 +4002,7 @@ async function renderHyperFramesWithDesktop(
   }
 
   onProgress?.(`Encoding ${rendered.frameCount} frame(s) at ${rendered.fps} fps…`);
-  await encodeHyperFramesMp4(rendered.framePattern, rendered.fps, tmpOutput);
+  await encodeHyperFramesMp4(rendered.framePattern, rendered.fps, tmpOutput, audio.tracks, rendered.frameCount / rendered.fps);
 }
 
 export function hyperFramesCompositionMetrics(html: string): {
@@ -4112,6 +4114,8 @@ function encodeHyperFramesMp4(
   framePattern: string,
   fps: number,
   outputPath: string,
+  audioTracks: HyperFramesAudioTrack[] = [],
+  duration = 0,
 ): Promise<void> {
   const ffmpegPath = process.env.HYPERFRAMES_FFMPEG_PATH?.trim() || ffmpegInstaller.path;
   return new Promise<void>((resolve, reject) => {
@@ -4128,6 +4132,8 @@ function encodeHyperFramesMp4(
         '0',
         '-i',
         framePattern,
+        ...audioTracks.flatMap((track) => ['-protocol_whitelist', 'file,pipe', '-f', track.format, '-i', track.file]),
+        ...hyperFramesAudioEncodingArgs(audioTracks, duration),
         '-vf',
         'pad=ceil(iw/2)*2:ceil(ih/2)*2',
         '-c:v',

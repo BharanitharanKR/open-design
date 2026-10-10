@@ -91,3 +91,17 @@ byte-for-byte. The browser regression checks callback-suppressed export seeking,
 including backward scrubbing of the Showreel's slider, graph, and signature.
 Keep procedural drawing in the shared per-frame renderer: nested tween callbacks
 alone do not execute during MP4 export.
+
+## Audio
+
+The island, product launch and showreel include locally authored procedural
+soundtracks in `assets/soundtrack.mp3`. No reference-post audio was copied.
+HTML preview sound is enabled by the Sound on control and follows the master
+timeline. The desktop export path resolves timed local audio files and mixes
+them into the MP4 with FFmpeg. The explainer and data story remain silent.
+Gallery clips continue using the existing muted preview behavior.
+
+Original generation runs for all five examples used OpenDesign Cloud
+(`agentId: amr`, `model: claude-sonnet-5.5`); subsequent source edits refined
+the visuals. Soundtracks were synthesized locally from oscillators and noise,
+without an audio-generation model.

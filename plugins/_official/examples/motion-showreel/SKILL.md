@@ -59,3 +59,13 @@ frame. Preserve `window.__timelines` and the composition's timing attributes.
 
 The player is a fictional UI example, not a claim that this film has an audio
 track. Keep illustrative chart labels visible; never imply business results.
+
+## Sound
+Carry `assets/soundtrack.mp3` with the reference files. This is an original
+procedural soundtrack authored for this example, not audio copied from a source
+video. Preserve the root `<audio>` element with numeric `data-start`,
+`data-duration`, and `data-volume`; the desktop exporter mixes that local file
+into the MP4. Preview sound is enabled by the Sound on control and follows the
+master timeline, including pause and backward seeks. Keep it silent during
+frame capture. When changing the film length, provide a correspondingly timed
+local soundtrack.

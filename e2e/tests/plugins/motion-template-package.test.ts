@@ -44,6 +44,10 @@ test.each(['3d-scene', 'explainer', 'product-launch', 'showreel', 'data-story'])
         expect(await readFile(path.join(reference, font!))).toEqual(await readFile(path.join(source, font!)));
       }
       expect(await readFile(path.join(reference, 'assets/space-grotesk-OFL.txt'), 'utf8')).toContain('SIL OPEN FONT LICENSE');
+      if (['3d-scene', 'product-launch', 'showreel'].includes(name)) {
+        expect(await readFile(path.join(reference, 'assets/soundtrack.mp3')))
+          .toEqual(await readFile(path.join(source, 'assets/soundtrack.mp3')));
+      }
     } finally {
       await rm(project, { recursive: true, force: true });
     }

@@ -76,3 +76,13 @@ Do not carry state between frames, use wall-clock time, or rely on child-tween
 callbacks for visible output. Backward seeks must reproduce identical frames.
 Await bundled fonts before playback and signal preview-ready at a legible hero
 frame. Preserve `window.__timelines` and the composition's timing attributes.
+
+## Sound
+Carry `assets/soundtrack.mp3` with the reference files. This is an original
+procedural soundtrack authored for this example, not audio copied from a source
+video. Preserve the root `<audio>` element with numeric `data-start`,
+`data-duration`, and `data-volume`; the desktop exporter mixes that local file
+into the MP4. Preview sound is enabled by the Sound on control and follows the
+master timeline, including pause and backward seeks. Keep it silent during
+frame capture. When changing the film length, provide a correspondingly timed
+local soundtrack.

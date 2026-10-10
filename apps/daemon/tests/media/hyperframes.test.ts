@@ -145,7 +145,7 @@ describe('hyperframes-html media renderer preflight', () => {
       .resolves.toBe('managed-hyperframes-render');
   });
 
-  it('renders frames through the bundled desktop Chromium and encodes a real MP4', async () => {
+  it.each([false, true])('encodes a real desktop MP4 with audio=%s', async (withAudio) => {
     const compRel = '.hyperframes-cache/electron-runtime';
     const compDir = path.join(projectsRoot, 'project-1', compRel);
     await mkdir(compDir, { recursive: true });
@@ -153,9 +153,13 @@ describe('hyperframes-html media renderer preflight', () => {
     await writeFile(path.join(compDir, 'meta.json'), '{}', 'utf8');
     await writeFile(path.join(compDir, 'index.html'), `<!doctype html>
 <main data-composition-id="main" data-duration="0.1" data-width="320" data-height="180" data-fps="30"></main>
+${withAudio ? '<audio src="tone.wav" data-start="0" data-duration="0.1"></audio>' : ''}
 <script>window.__timelines={main:{duration(){return .1},seek(){}}};</script>`, 'utf8');
 
     const sourceFrame = path.join(root, 'source-frame.png');
+    if (withAudio) await execFileAsync(ffmpegInstaller.path, [
+      '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.1', path.join(compDir, 'tone.wav'),
+    ]);
     await execFileAsync(ffmpegInstaller.path, [
       '-y', '-f', 'lavfi', '-i', 'color=c=#10253f:s=320x180', '-frames:v', '1', sourceFrame,
     ]);
@@ -189,8 +193,16 @@ describe('hyperframes-html media renderer preflight', () => {
 
     expect(result.providerNote).toContain('hyperframes/electron-html');
     expect(receivedHtml).toContain('window.__odFrameRenderer');
+    expect(receivedHtml).not.toContain('<audio');
     const bytes = await readFile(path.join(projectsRoot, 'project-1', 'electron.mp4'));
     expect(bytes.subarray(4, 8).toString('ascii')).toBe('ftyp');
+    if (withAudio) {
+      const decoded = await execFileAsync(ffmpegInstaller.path, [
+        '-i', path.join(projectsRoot, 'project-1', 'electron.mp4'), '-map', '0:a', '-f', 's16le', '-ac', '1', '-',
+      ], { encoding: 'buffer' });
+      expect(decoded.stdout.length).toBeGreaterThan(4000);
+      expect(decoded.stdout.some((value) => value !== 0)).toBe(true);
+    }
   });
 
   it('requires the desktop renderer instead of auto-downloading Chrome', async () => {

@@ -435,5 +435,27 @@ sync();
   requestAnimationFrame(check);
 })();
 </script>
+<audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="15" data-track-index="2" data-volume="1" preload="auto"></audio>
+<script>
+// A user gesture enables sound; the master timeline owns play, pause and seek.
+(function() {
+  const audio=document.getElementById('soundtrack');
+  if (!audio || typeof audio.play !== 'function' || window.__odFrameRenderer) return;
+  const controls=document.getElementById('controls');
+  const button=document.createElement('button');button.type='button';button.textContent='Sound on';button.setAttribute('aria-label','Enable sound');button.setAttribute('aria-pressed','false');controls.appendChild(button);
+  let enabled=false,pending=false;
+  function play() { if(pending||!audio.paused)return;pending=true;audio.play().catch(()=>{enabled=false;button.textContent='Sound on';button.setAttribute('aria-pressed','false');}).finally(()=>{pending=false;}); }
+  button.onclick=()=>{enabled=!enabled;button.textContent=enabled?'Sound off':'Sound on';button.setAttribute('aria-pressed',String(enabled));if(enabled){const tl=window.__timelines.main;if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
+  document.getElementById('scrub').addEventListener('input',event=>{if(enabled)audio.currentTime=Number(event.target.value);});
+  function sync() {
+    const tl=window.__timelines.main;
+    if(enabled&&!window.__odFrameRenderer){
+      if(!pending&&!audio.seeking&&audio.readyState>=3&&Math.abs(audio.currentTime-tl.time())>.3)audio.currentTime=tl.time();
+      if(tl.paused()||tl.progress()>=1)audio.pause();else play();
+    }else audio.pause();
+    requestAnimationFrame(sync);
+  }sync();
+})();
+</script>
 </body>
 </html>

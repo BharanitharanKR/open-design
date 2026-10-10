@@ -100,6 +100,7 @@ beforeAll(async () => {
   );
   await writeFile(path.join(installedRoot, 'notes.markdown'), '# notes\n');
   await writeFile(path.join(installedRoot, 'payload.bin'), 'not a text asset');
+  await writeFile(path.join(installedRoot, 'soundtrack.mp3'), '0123456789');
   void migratePlugins;
   void upsertInstalledPlugin;
   void Database;
@@ -114,6 +115,16 @@ afterAll(async () => {
 });
 
 describe('GET /api/plugins/:id/asset/*', () => {
+  it('serves seekable media ranges with the media MIME type', async () => {
+    const response = await fetch(`${baseUrl}/api/plugins/asset-plugin/asset/soundtrack.mp3`, {
+      headers: { range: 'bytes=2-5' },
+    });
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-type')).toBe('audio/mpeg');
+    expect(response.headers.get('content-range')).toBe('bytes 2-5/10');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(await response.text()).toBe('2345');
+  });
   it('returns 404 for an unknown plugin', async () => {
     const resp = await fetch(`${baseUrl}/api/plugins/unknown/asset/index.html`);
     expect(resp.status).toBe(404);
