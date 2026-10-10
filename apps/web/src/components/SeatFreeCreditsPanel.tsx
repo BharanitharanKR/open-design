@@ -12,7 +12,7 @@ import { formatMockUsd, SEAT_FREE_SIGNUP_GRANT_USD, SEAT_FREE_TIER_CREDITS, type
 import styles from './CodingPlanUsage.module.css';
 import ownStyles from './SeatFreeCreditsPanel.module.css';
 
-const RECHARGE_URL = 'http://localhost:5191/dashboard?mock=seatfree&role=owner';
+const RECHARGE_URL = 'http://localhost:5191/dashboard?mock=seatfree&role=owner&billing=recharge';
 const CONSOLE_URL = 'http://localhost:5191/dashboard?mock=seatfree';
 // Mock readings for the Design Plan windows (`dp5=` / `dp7=` override them).
 const DESIGN_PLAN_WINDOWS = [
