@@ -46,6 +46,12 @@ export interface SeatFreeMockState {
   midrun: boolean;
   /** Open the invite dialog on Home. */
   invite: boolean;
+  /**
+   * How the onboarding invite send turns out (`send=`): `ok` (default),
+   * `fail` (nothing went out, e.g. network; a retry succeeds) or `partial`
+   * (the last address already holds a pending invite, the rest go out).
+   */
+  sendResult: 'ok' | 'fail' | 'partial';
 }
 
 const STORAGE_KEY = 'od.mock.seatfree';
@@ -99,6 +105,8 @@ export function readSeatFreeMock(): SeatFreeMockState | null {
       gate: params.get('gate') === '1' || params.get('gate') === 'midrun',
       midrun: params.get('gate') === 'midrun',
       invite: params.get('invite') === '1',
+      sendResult:
+        params.get('send') === 'fail' ? 'fail' : params.get('send') === 'partial' ? 'partial' : 'ok',
     };
   }
   cached = { key, state };
@@ -197,6 +205,39 @@ export function dismissSeatFreeInviteBanner(accountId: string): void {
 export function openSeatFreeInvite(): void {
   window.dispatchEvent(new Event(SEAT_FREE_OPEN_INVITE_EVENT));
 }
+
+/**
+ * The web console's seat-free mock (vela `?mock=seatfree`, local dev port).
+ * The mock context carries no console URL, so entries that link out to the
+ * console (新建团队) fall back to this one.
+ */
+export const SEAT_FREE_CONSOLE_URL = 'http://localhost:5191/settings?mock=seatfree';
+
+/**
+ * The workspace's shareable join link, served by the web console mock (same
+ * code as vela's seat-free members page). Valid 7 days; joins as Member.
+ */
+// Emails already in the mock workspace, so the invite form can show the
+// "already in the team" error. lin@acme.com is the default owner account.
+export const SEAT_FREE_MEMBER_EMAILS: readonly string[] = ['lin@acme.com', 'mia@acme.com', 'kai@acme.com'];
+// Onboarding → home handoff: how many invites the last onboarding step sent,
+// so home can confirm it once in a toast. Cleared when that toast goes away.
+let pendingInvitesSent: number | null = null;
+export function noteSeatFreeInvitesSent(count: number): void {
+  pendingInvitesSent = count > 0 ? count : null;
+  // They just invited people: the "invite teammates" banner would only repeat
+  // the ask. `?banner=reset` brings it back for review.
+  const accountId = readSeatFreeMock()?.accountId;
+  if (pendingInvitesSent && accountId) dismissSeatFreeInviteBanner(accountId);
+}
+export function peekSeatFreeInvitesSent(): number | null {
+  return pendingInvitesSent;
+}
+export function clearSeatFreeInvitesSent(): void {
+  pendingInvitesSent = null;
+}
+
+export const SEAT_FREE_INVITE_LINK = 'http://localhost:5191/join/acme-design-7Kq2xP?mock=seatfree';
 
 /** Window event Home fires to open the rail's invite dialog (mock only). */
 export const SEAT_FREE_OPEN_INVITE_EVENT = 'open-design:seatfree-open-invite';

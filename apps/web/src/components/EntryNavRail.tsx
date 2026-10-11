@@ -71,7 +71,12 @@ import { MarqueeLabel } from './MarqueeLabel';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
 import { SeatFreeCreditsPanelBody } from './SeatFreeCreditsPanel';
-import { openSeatFreeInvite, readSeatFreeMock, SEAT_FREE_OPEN_INVITE_EVENT } from '../mock/seat-free';
+import {
+  openSeatFreeInvite,
+  readSeatFreeMock,
+  SEAT_FREE_CONSOLE_URL,
+  SEAT_FREE_OPEN_INVITE_EVENT,
+} from '../mock/seat-free';
 import {
   closeRailRecentRowMenu,
   openRailRecentRowMenu,
@@ -2164,7 +2169,9 @@ export function EntryNavRail({
   // so every role reaches the local invite dialog on every plan.
   const seatFreeMock = readSeatFreeMock();
   const canAccessInviteFlow = seatFreeMock ? true : canAccessWorkspaceInviteFlow(context);
-  const workspaceSettingsUrl = context?.workspaceSettingsUrl?.trim() || null;
+  // The mock context has no console URL; point 新建团队 at the web console mock.
+  const workspaceSettingsUrl =
+    context?.workspaceSettingsUrl?.trim() || (seatFreeMock ? SEAT_FREE_CONSOLE_URL : null);
 
   // Message-center panel for the SIGNED-OUT shell only (the bell on the local
   // account dock in the footer is the one opener there). The signed-in panel —
