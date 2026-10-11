@@ -55,11 +55,18 @@ export async function prepareHyperFramesAudio(html: string, compositionDir: stri
 
 export function hyperFramesAudioEncodingArgs(tracks: HyperFramesAudioTrack[], duration: number): string[] {
   if (tracks.length === 0) return [];
-  const filters = tracks.map((track, index) =>
-    `[${index + 1}:a]atrim=duration=${track.duration},asetpts=PTS-STARTPTS,`
-    + `volume=${track.volume},adelay=${Math.round(track.start * 1000)}:all=1[a${index}]`,
-  );
-  filters.push(tracks.map((_, index) => `[a${index}]`).join('')
-    + `amix=inputs=${tracks.length}:normalize=0,apad,atrim=duration=${duration}[audio]`);
+  // Filters stay within FFmpeg 4.1 (the bundled Linux build): every track is
+  // made stereo so one per-channel delay covers it (no `adelay all=1`), and
+  // amix's input averaging is undone with a gain (no `amix normalize=0`).
+  const filters = tracks.map((track, index) => {
+    const delayMs = Math.round(track.start * 1000);
+    return `[${index + 1}:a]atrim=duration=${track.duration},asetpts=PTS-STARTPTS,`
+      + `aformat=channel_layouts=stereo,volume=${track.volume},adelay=${delayMs}|${delayMs}[a${index}]`;
+  });
+  const mixed = tracks.length === 1
+    ? '[a0]'
+    : tracks.map((_, index) => `[a${index}]`).join('')
+      + `amix=inputs=${tracks.length}:duration=longest:dropout_transition=0,volume=${tracks.length},`;
+  filters.push(`${mixed}apad,atrim=duration=${duration}[audio]`);
   return ['-filter_complex', filters.join(';'), '-map', '0:v', '-map', '[audio]', '-c:a', 'aac', '-b:a', '192k'];
 }
