@@ -112,6 +112,21 @@ const VIDEO_TEMPLATE = plugin({
   },
 });
 
+// A motion design template: Use must bind it as the Motion design example card.
+const MOTION_TEMPLATE = plugin({
+  id: 'example-motion-showreel',
+  title: 'Motion Designer Showreel',
+  manifest: {
+    description: 'A 15-second motion designer showreel.',
+    tags: ['motion-design', 'showreel'],
+    od: {
+      mode: 'video',
+      preview: { type: 'html', entry: './example.html' },
+      useCase: { query: 'Make a 15-second motion design showreel.' },
+    },
+  },
+});
+
 const CATALOGUE = [PITCH_DECK, SALES_DECK, LANDING_PROTOTYPE, IMAGE_TEMPLATE, HIDDEN_PLUGIN, DESIGN_SYSTEM_PLUGIN];
 
 function serveCatalogue(plugins: unknown[]) {
@@ -323,7 +338,7 @@ describe('CommunityView catalogue source', () => {
     fireEvent.click(screen.getByTestId('community-type-tabs-more'));
     const popover = screen.getByTestId('community-type-tabs-popover');
     expect(Array.from(popover.querySelectorAll('button')).map((button) => button.textContent?.trim()))
-      .toEqual(['HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL']);
+      .toEqual(['Motion design', 'HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL']);
 
     fireEvent.click(screen.getByTestId('community-type-tab-video-more'));
 
@@ -482,6 +497,7 @@ describe('CommunityView remix', () => {
       prompt: 'A typography-led key art poster.',
       chipId: 'image',
       projectKind: 'image',
+      asExample: false,
     });
     expect(onUsePrompt).not.toHaveBeenCalled();
   });
@@ -589,6 +605,7 @@ describe('CommunityView use handoff', () => {
       prompt: 'A conversion-focused SaaS landing page.',
       chipId: 'prototype',
       projectKind: 'prototype',
+      asExample: false,
     });
   });
 
@@ -609,8 +626,74 @@ describe('CommunityView use handoff', () => {
         prompt: 'A conversion-focused SaaS landing page.',
         chipId: 'prototype',
         projectKind: 'prototype',
+        asExample: false,
       },
     );
+  });
+
+  function openMotionTab() {
+    const inline = readFacets().find(({ label }) => label === 'Motion design');
+    if (inline) {
+      fireEvent.click(inline.tab);
+      return;
+    }
+    fireEvent.click(screen.getByTestId('community-type-tabs-more'));
+    fireEvent.click(screen.getByTestId('community-type-tab-motion-design-more'));
+  }
+
+  function useClicks() {
+    return analytics.track.mock.calls.filter(
+      ([event, props]) => event === 'ui_click' && (props as { element?: string }).element === 'use_prompt',
+    );
+  }
+
+  it('binds a motion design template as its type example from the card Use, recording the card source once', async () => {
+    serveCatalogue([...CATALOGUE, MOTION_TEMPLATE]);
+    const onUsePlugin = vi.fn();
+    await renderCommunity({ onUsePlugin });
+    openMotionTab();
+    analytics.track.mockClear();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Try it now' })[0]!);
+
+    expect(onUsePlugin).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'example-motion-showreel' }),
+      'use-with-query',
+      expect.objectContaining({ chipId: 'motion-design', projectKind: 'video', asExample: true }),
+    );
+    expect(useClicks()).toHaveLength(1);
+    expect(useClicks()[0]![1]).toMatchObject({
+      page_name: 'community',
+      area: 'community_templates',
+      template_key: 'example-motion-showreel',
+      template_type: 'Motion design',
+      use_source: 'card',
+      use_action: 'use_with_query',
+    });
+  });
+
+  it('records the details modal Use with its own source and action, and routes it as the example', async () => {
+    serveCatalogue([...CATALOGUE, MOTION_TEMPLATE]);
+    const onUsePlugin = vi.fn();
+    await renderCommunity({ onUsePlugin });
+    openMotionTab();
+    fireEvent.click(renderedCards()[0]!);
+    analytics.track.mockClear();
+
+    fireEvent.click(await screen.findByTestId('plugin-details-use-example-motion-showreel'));
+
+    expect(onUsePlugin).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'example-motion-showreel' }),
+      'use-with-query',
+      expect.objectContaining({ chipId: 'motion-design', asExample: true }),
+    );
+    expect(useClicks()).toHaveLength(1);
+    expect(useClicks()[0]![1]).toMatchObject({
+      element: 'use_prompt',
+      template_key: 'example-motion-showreel',
+      use_source: 'detail_modal',
+      use_action: 'use_with_query',
+    });
   });
 });
 

@@ -256,6 +256,8 @@ interface PendingPluginUseHandoff {
   inputs?: Record<string, unknown>;
   chipId?: string;
   projectKind?: ProjectKind;
+  asExample?: boolean;
+  useTracked?: boolean;
 }
 
 const AUTHORING_DEFAULT_SCENARIO_INPUTS = {
@@ -1143,6 +1145,8 @@ export function HomeView({
         ...(promptHandoff.inputs ? { inputs: promptHandoff.inputs } : {}),
         ...(promptHandoff.chipId ? { chipId: promptHandoff.chipId } : {}),
         ...(promptHandoff.projectKind ? { projectKind: promptHandoff.projectKind } : {}),
+        ...(promptHandoff.asExample ? { asExample: true } : {}),
+        ...(promptHandoff.useTracked ? { useTracked: true } : {}),
       });
       if (promptHandoff.focus) {
         focusPromptAtEnd();
@@ -1746,16 +1750,32 @@ export function HomeView({
     record: InstalledPluginRecord,
     action: PluginUseAction = 'use',
     inputs?: Record<string, unknown>,
-    homeType?: { chipId?: string; projectKind?: ProjectKind },
+    homeType?: { chipId?: string; projectKind?: ProjectKind; asExample?: boolean; useTracked?: boolean },
   ) {
-    trackCommunityGalleryClick(analytics.track, {
-      page_name: 'home',
-      area: 'community_gallery',
-      element: 'use_plugin',
-      plugin_id: record.sourceMarketplaceEntryName ?? record.id,
-      plugin_type: record.marketplaceTrust ?? 'official',
-      action: action === 'use-with-query' ? 'use_with_query' : 'use',
-    });
+    // A hand-off whose surface already recorded the use click (Community)
+    // must not count again as a Home gallery click.
+    if (!homeType?.useTracked) {
+      trackCommunityGalleryClick(analytics.track, {
+        page_name: 'home',
+        area: 'community_gallery',
+        element: 'use_plugin',
+        plugin_id: record.sourceMarketplaceEntryName ?? record.id,
+        plugin_type: record.marketplaceTrust ?? 'official',
+        action: action === 'use-with-query' ? 'use_with_query' : 'use',
+      });
+    }
+    // An example picked elsewhere for its own task type binds as that type's
+    // example card, so it takes the same route as a pick from Home's list —
+    // including the type's own project metadata, which the route is
+    // re-derived from at create time.
+    const examplePick = homeType?.asExample === true;
+    const exampleChip = examplePick && homeType?.chipId ? findChip(homeType.chipId) : undefined;
+    const exampleProjectMetadata = exampleChip?.action.kind === 'apply-scenario'
+      ? exampleChip.action.projectMetadata ?? null
+      : null;
+    const exampleBinding = examplePick
+      ? { examplePick: true, ...(exampleProjectMetadata ? { projectMetadata: exampleProjectMetadata } : {}) }
+      : {};
     if (action === 'use-with-query') {
       // Prompt-loading "Use" seeds the composer with the SAME human-friendly
       // text the Home example-prompt cards use (examplePresetSeedPrompt), NOT the
@@ -1799,6 +1819,7 @@ export function HomeView({
         // when there is no prefix at all.
         queryTemplateAllowsPrefix: hasTemplate,
         explicitPick: true,
+        ...exampleBinding,
       });
       scrollHomeToTop();
       // Plugins with required inputs and no defaults land on the inputs
@@ -1814,6 +1835,7 @@ export function HomeView({
       ...(homeType?.projectKind ? { projectKind: homeType.projectKind } : {}),
       suppressPromptUpdate: true,
       explicitPick: true,
+      ...exampleBinding,
     });
     scrollHomeToTop();
     // Plain Use doesn't seed the composer; with no draft and no staged
@@ -1883,6 +1905,8 @@ export function HomeView({
       {
         chipId: pendingPluginUseHandoff.chipId,
         projectKind: pendingPluginUseHandoff.projectKind,
+        asExample: pendingPluginUseHandoff.asExample === true,
+        useTracked: pendingPluginUseHandoff.useTracked === true,
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
