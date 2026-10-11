@@ -31,10 +31,12 @@ Follow the active host's task route, stage, capability, and delivery contract.
 This skill supplies motion craft; it does not create tool access or change the
 host's workflow. In OD Next, retain its Core, general orchestration, machine
 blocks, and ship-on-write boundary. Plan during planning; author during Build.
-Do not add a later playback, frame-capture, or rendering phase where the host
-forbids it. The editable HTML composition is the canonical OD Next deliverable;
-MP4 is a separate product export unless the accepted Build Package owns it.
-Never describe an unrendered video file as complete.
+Do not add a post-generation quality-review phase. For a video brief (a timed
+film, promo, explainer or showreel), declare BOTH editable HTML source and MP4
+as required deliverables. Rendering the MP4 is Build production and must finish
+before delivery. For pointer/scroll-driven interaction or UI micro-animation,
+deliver runnable HTML/code instead; do not flatten the requested interaction
+into video. Never describe an unrendered video file as complete.
 
 Where the active task's tools and scope permit visual iteration, examine the
 opening, key transformation, transition,
@@ -221,18 +223,66 @@ the MP4 exporter seeks with them suppressed.
 Audio-reactive motion needs a precomputed envelope or known beat map when exact
 replay matters. Never imply that an arbitrary pulse is analysis of the music.
 
-For a standalone HTML preview, put play/pause, scrub and replay outside the
+Open Design scaffolds and embeds a shared source player with play/pause, scrub
+and replay. Preserve its `script[data-od-motion-source-player]`. Do not create
+competing controls or start a second playback clock. The renderer sets
+`window.__odMotionRender` before author scripts to disable preview chrome and
+scaling during capture. The scaffold includes pinned GSAP 3.14.2 at
+`./gsap.min.js`; preserve and reference that local file. No download is needed. Prefer installed/system fonts with Chinese coverage; an unrequested font
+must not block delivery. If an optional download fails, use an available font
+instead of probing more mirrors, installing font tools or creating environments.
+For an existing standalone source without the host player, put controls outside the
 composition and connect them to the same master timeline. Scale the whole stage
 uniformly to fit; do not reflow scene layout when the viewport changes. Controls
 must not appear in the exported frames. Keep a useful poster when reduced motion
 is requested and let the user explicitly start playback.
 
-In OD Next, write the source to the declared semantic HTML artifact path and
-stop at its delivery boundary. Do not hide the only deliverable in a cache or
-silently replace HTML with MP4. If a render-owning task is explicitly assigned,
-use the host's supplied media route and wait for its actual completion; preserve
-source and report the output that really exists. Never launch a second renderer
-behind the host's back.
+## Video production and dual delivery
+
+For video briefs, use Open Design's existing local HyperFrames renderer during
+Build. It needs no video-generation API key. Do not ask the user to render it
+manually or run a second renderer. Plan declares `hyperframes-html` as the
+production route, editable source as canonical, and MP4 as a required derived
+output. For interactive briefs use `html` and source only.
+
+In the accepted Plan Contract, set `taskProfile.taskSpecific.motionDelivery` to
+`{"mode":"video","sourcePath":"motion-source/film/index.html","videoPath":"film.mp4"}`
+for a film, or `{"mode":"interactive","sourcePath":"index.html"}` for interactive
+motion. Use the actual planned paths. The host freezes and enforces this contract;
+HTML metadata is descriptive and cannot change the required output. Include a
+required `kind: "video"` deliverable with `derivesFrom` set to the canonical HTML
+id. Omit `derivesFrom` on the canonical source entry; never set it to null.
+A new film needs Full Plan; do not start it as a contract-free Direct Edit.
+This applies only when the user's requested deliverable is motion, including an
+explicit motion helper used in another task; adding hover/scroll animation to a
+prototype does not turn it into a video request.
+
+1. Scaffold a visible source directory with the native shell tool:
+   `"$OD_NODE_BIN" "$OD_BIN" media scaffold --project "$OD_PROJECT_ID" --composition-dir "motion-source/film"`.
+   Use a new descriptive directory for a new film; edit the existing source on
+   revisions. Keep `hyperframes.json`, `meta.json`, HTML and local assets there.
+2. Author `motion-source/film/index.html`. Its composition root must have
+   `data-composition-id="main"`, `data-start="0"`, `data-duration`, `data-width`,
+   `data-height` and `data-fps`. Register the seekable master timeline at
+   `window.__timelines.main`. Use actual GSAP animations, not a placeholder
+   timeline. Keep assets/fonts local and relative to this source directory.
+   Include `<meta name="od-motion-output" content="video">` and
+   `<link rel="alternate" type="video/mp4" href="../../film.mp4">` in the head.
+   The href must identify the actual planned MP4 inside the project. The
+   interactive equivalent declares `content="interactive"` and needs no MP4.
+3. Render through the host:
+   `"$OD_NODE_BIN" "$OD_BIN" media generate --project "$OD_PROJECT_ID" --surface video --model hyperframes-html --composition-dir "motion-source/film" --output "film.mp4"`.
+   If it returns a task ID, use `"$OD_NODE_BIN" "$OD_BIN" media wait <id>` and wait for success.
+   A queued task, HTML preview or failed command is not a completed film.
+4. Preserve the source and assets, and link BOTH the actual MP4 and the source
+   HTML in the final response using project-relative Markdown links. The file
+   viewer provides preview/download. On later video edits re-render the same
+   linked MP4 so the download matches the current source.
+
+If the host reports a renderer failure, preserve the editable source and report
+that blocker truthfully. Never fabricate a download or label HTML-only output
+as a finished video. Rendering to produce the deliverable does not authorize a
+post-generation playback/review loop.
 
 ## Quality while composing
 
