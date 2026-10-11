@@ -14,6 +14,7 @@ import type {
 import {
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
+  workspaceContextHasTeamIdentity,
 } from '@open-design/contracts';
 import { coalescedGet, forceCoalescedGet } from '../lib/coalesced-get';
 import { BackoffController, type BackoffOptions } from '../lib/backoff';
@@ -1978,6 +1979,7 @@ export function notifyWorkspaceBillingRefresh(): void {
 export interface TeamProjectsState {
   projects: TeamProject[];
   loading: boolean;
+  error?: 'unavailable';
   /** Re-fetch the team-shared project list (e.g. after a member pulls one). */
   reload: () => void;
 }
@@ -2062,6 +2064,7 @@ export function useTeamProjects(): TeamProjectsState {
   const [catalog, setCatalog] = useState<{
     identity: string | null;
     projects: TeamProject[];
+    error?: 'unavailable';
   }>(() => ({
     identity: initialCachedCatalog ? catalogScopeKey : null,
     projects: initialCachedCatalog ?? [],
@@ -2125,12 +2128,16 @@ export function useTeamProjects(): TeamProjectsState {
       // `fetchTeamProjectsCatalog` owns the endpoint, the coalescing key, and
       // the array guarantee — see team-projects-catalog.ts for why those three
       // must not be split across call sites again.
-      const projects = await fetchTeamProjectsCatalog({
-        context: read.context,
-        force,
-        requestGeneration: issuedIdentity?.generation,
-        cacheDiscriminator: catalogRefresh?.cacheDiscriminator,
-      });
+      // A Personal workspace has an authoritative empty team catalog. Do not
+      // treat its lack of a Team identity as an outage or cache a failed read.
+      const projects = workspaceContextHasTeamIdentity(read.context)
+        ? await fetchTeamProjectsCatalog({
+            context: read.context,
+            force,
+            requestGeneration: issuedIdentity?.generation,
+            cacheDiscriminator: catalogRefresh?.cacheDiscriminator,
+          })
+        : [];
       if (!isStillCurrent()) return;
       const identity = teamProjectsIdentity(read.context, issuedAccountGeneration);
       if (identity) cacheTeamProjects(identity, projects);
@@ -2159,7 +2166,7 @@ export function useTeamProjects(): TeamProjectsState {
         setLoading(false);
       }
     } catch {
-      // Personal / offline / daemon without the hub: no team-shared projects.
+      // A settled failure belongs to this scope even without last-good rows.
       // A request issued for the workspace the user just left must not clear a
       // newer workspace's successful catalog when it rejects late.
       if (!isStillCurrent()) return;
@@ -2167,8 +2174,9 @@ export function useTeamProjects(): TeamProjectsState {
         const identity = teamProjectsIdentity(read.context, issuedAccountGeneration);
         const cached = identity ? cachedTeamProjects.get(identity) ?? null : null;
         setCatalog({
-          identity: cached ? catalogScopeKey : null,
+          identity: catalogScopeKey,
           projects: cached ?? [],
+          error: 'unavailable',
         });
         setLoading(false);
       }
@@ -2380,6 +2388,7 @@ export function useTeamProjects(): TeamProjectsState {
     catalogMatchesIdentity ? catalog.projects : [];
   return {
     projects,
+    error: catalogMatchesIdentity ? catalog.error : undefined,
     loading:
       loading
       || !catalogMatchesIdentity
