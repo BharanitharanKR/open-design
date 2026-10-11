@@ -13,7 +13,7 @@ import {
 
 const examples = fileURLToPath(new URL('../../../plugins/_official/examples/', import.meta.url));
 
-test.each(['3d-scene', 'explainer', 'product-launch', 'showreel', 'data-story'])(
+test.each(['explainer', 'showreel', 'product-launch', '3d-scene', 'short-story'])(
   '[P1] motion-%s carries its offline scripts, font and license through the frozen reference package',
   async (name) => {
     const source = path.join(examples, `motion-${name}`);
@@ -44,10 +44,9 @@ test.each(['3d-scene', 'explainer', 'product-launch', 'showreel', 'data-story'])
         expect(await readFile(path.join(reference, font!))).toEqual(await readFile(path.join(source, font!)));
       }
       expect(await readFile(path.join(reference, 'assets/space-grotesk-OFL.txt'), 'utf8')).toContain('SIL OPEN FONT LICENSE');
-      if (['3d-scene', 'product-launch', 'showreel'].includes(name)) {
-        expect(await readFile(path.join(reference, 'assets/soundtrack.mp3')))
-          .toEqual(await readFile(path.join(source, 'assets/soundtrack.mp3')));
-      }
+      expect(html).toContain('src="assets/soundtrack.mp3"');
+      expect(await readFile(path.join(reference, 'assets/soundtrack.mp3')))
+        .toEqual(await readFile(path.join(source, 'assets/soundtrack.mp3')));
     } finally {
       await rm(project, { recursive: true, force: true });
     }

@@ -1,53 +1,442 @@
-<!doctype html>
-<html lang="en" data-od-preview-ready="false"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>How do you hear nothing? — Noise cancellation</title><style>
+<!DOCTYPE html>
+<html lang="en" data-od-preview-ready="false">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a Camera Focuses — 20-second explainer</title>
+<script src="assets/gsap.min.js"></script>
+<style>
 @font-face{font-family:Space;src:url('assets/space-grotesk.ttf') format('truetype');font-weight:300 700;font-display:block}
-*{box-sizing:border-box;margin:0}html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Space,Arial,sans-serif}
-#viewport{position:fixed;inset:0;overflow:hidden}#main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;overflow:hidden;background:var(--bg);isolation:isolate}
-.scene{position:absolute;inset:0;opacity:0;visibility:hidden}.abs{position:absolute}.eyebrow{font-size:25px;font-weight:500;letter-spacing:.15em;text-transform:uppercase}.muted{color:var(--muted)}
-.head{font-size:158px;line-height:.98;font-weight:700;letter-spacing:-.065em}.sub{font-size:36px;line-height:1.3;letter-spacing:-.025em}.accent{color:var(--accent)}.rule{height:2px;background:currentColor;opacity:.18}
-.footer{position:absolute;left:86px;right:86px;bottom:50px;display:flex;justify-content:space-between;font-size:22px;letter-spacing:.08em}.brand{font-size:34px;letter-spacing:-.04em;font-weight:700}
-#controls{position:fixed;z-index:100;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:16px;padding:12px 18px;border-radius:14px;background:#000c;color:#fff;font:16px Space,Arial;opacity:0}
-#controls:hover,#controls:focus-within{opacity:1}#controls button{border:1px solid #ffffff50;background:transparent;border-radius:7px;padding:8px 14px;color:inherit;font:inherit;cursor:pointer}#controls input{width:360px;accent-color:var(--accent)}
-html.od-export #controls{display:none}html.od-export #main{left:0;top:0;transform:none!important}
+:root{--bg:#0E1622;--ink:#EAF0F7;--ray:#FFB547;--lens:#59D8E6}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+#viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
+#main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:var(--bg);overflow:hidden}
+#main canvas{display:block;width:1920px;height:1080px}
+#controls{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:14px;width:min(900px,92vw);padding:12px 18px;border-radius:14px;background:#101214dd;color:#fff;font:600 13px ui-monospace,Menlo,monospace;opacity:0;transition:opacity .2s}
+#controls:hover,#controls:focus-within{opacity:1}
+#controls button{font:inherit;letter-spacing:.06em;background:var(--ray);color:#0E1622;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
+#controls button:focus-visible,#scrub:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#scrub{flex:1;accent-color:var(--ray)}
+#tc{min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
+html.od-export #controls{display:none!important}
+html.od-export #main{left:0!important;top:0!important;transform:none!important}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+    <canvas id="stage" width="1920" height="1080"></canvas>
+  </div>
+</div>
+<div id="controls">
+  <button id="playBtn" type="button" aria-label="Play or pause">PAUSE</button>
+  <input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position">
+  <span id="tc">0.00 / 20.00</span>
+</div>
 
-:root{--bg:#0c1724;--fg:#f2f5ed;--accent:#65e8dc;--muted:#8da8b4}.e-grid{position:absolute;inset:0;background-image:linear-gradient(#65e8dc07 1px,transparent 1px),linear-gradient(90deg,#65e8dc07 1px,transparent 1px);background-size:80px 80px}.e-top{position:absolute;left:86px;right:86px;top:60px;display:flex;justify-content:space-between}.e-head{position:absolute;left:86px;top:220px;font-size:160px;line-height:1;letter-spacing:-.065em;font-weight:700}.e-sub{position:absolute;left:92px;top:760px;font-size:38px;line-height:1.3;color:var(--muted)}.headphone{position:absolute;left:1120px;top:190px;width:650px;height:710px;color:#e5f2ee}.e-disc{position:absolute;left:1060px;top:230px;width:720px;height:720px;border-radius:50%;border:1px solid #65e8dc25}.e-disc:before{content:'';position:absolute;inset:35px;border-radius:50%;border:1px dashed #65e8dc35}.stepTitle{position:absolute;left:86px;top:155px;font-size:146px;font-weight:700;letter-spacing:-.06em}.stepTitle small{font-size:65px;color:var(--accent);margin-right:32px}.waveplot{position:absolute;left:86px;top:380px;width:1748px;height:460px;background:#122335;border:1px solid #65e8dc30;border-radius:28px;overflow:hidden}.waveplot canvas{width:1748px;height:460px}.waveLabel{position:absolute;left:32px;top:25px;font-size:25px;letter-spacing:.08em}.waveCaption{position:absolute;left:90px;top:885px;font-size:38px}.waveKey{position:absolute;right:90px;top:885px;font-size:26px;display:flex;gap:40px}.waveKey i{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:10px}.quietLine{position:absolute;left:92px;right:92px;top:650px;height:3px;background:var(--accent)}.quietLabel{position:absolute;left:92px;top:700px;font-size:31px;color:var(--muted)}
-</style></head>
-<body><div id="viewport"><main id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080"><div class="e-grid"></div>
-<section id="eIntro" class="scene"><div class="e-top eyebrow"><span>The invisible, explained.</span><span>Noise cancellation / 20 seconds</span></div><h1 id="eHook" class="e-head">How do you<br>hear <span class="accent">nothing?</span></h1><p class="e-sub">The clever trick inside<br>noise-cancelling headphones.</p><div class="e-disc"></div><div id="headphoneIntro" class="headphone"><svg viewBox="0 0 600 660" fill="none"><path d="M125 340V270C125 65 475 65 475 270V340" stroke="currentColor" stroke-width="38" stroke-linecap="round"/><path d="M145 315V260C145 90 455 90 455 260V315" stroke="#65e8dc" stroke-width="8"/><rect x="82" y="295" width="133" height="255" rx="60" fill="#162c3c" stroke="currentColor" stroke-width="5"/><rect x="385" y="295" width="133" height="255" rx="60" fill="#162c3c" stroke="currentColor" stroke-width="5"/><path d="M128 360V485M472 360V485" stroke="#65e8dc" stroke-width="7" stroke-linecap="round"/><circle cx="300" cy="365" r="98" stroke="#65e8dc" stroke-opacity=".25" stroke-width="2"/><circle cx="300" cy="365" r="65" stroke="#65e8dc" stroke-opacity=".5" stroke-width="2"/><path d="M268 366l22 22 48-50" stroke="#65e8dc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></section>
-<section id="listen" class="scene"><div class="e-top eyebrow"><span>Noise cancellation</span><span>01 / Capture</span></div><h2 id="listenTitle" class="stepTitle"><small>01</small>First, <span class="accent">listen.</span></h2><div class="waveplot"><span class="waveLabel">A MICROPHONE SAMPLES THE NOISE</span><canvas id="listenWave" width="1748" height="460"></canvas></div><p class="waveCaption">Sound is a moving pressure wave.</p><span class="waveKey"><span><i style="background:#f2f5ed"></i>Noise</span></span></section>
-<section id="flip" class="scene"><div class="e-top eyebrow"><span>Noise cancellation</span><span>02 / Invert</span></div><h2 id="flipTitle" class="stepTitle"><small>02</small>Then, <span class="accent">flip it.</span></h2><div class="waveplot"><span class="waveLabel">SAME WAVE. OPPOSITE PHASE.</span><canvas id="flipWave" width="1748" height="460"></canvas></div><p class="waveCaption">Every peak meets a trough.</p><span class="waveKey"><span><i style="background:#f2f5ed"></i>Noise</span><span><i style="background:#65e8dc"></i>Anti-noise</span></span></section>
-<section id="cancel" class="scene"><div class="e-top eyebrow"><span>Noise cancellation</span><span>03 / Interfere</span></div><h2 id="cancelTitle" class="stepTitle"><small>03</small>Watch it <span class="accent">disappear.</span></h2><div class="waveplot"><span class="waveLabel">NOISE + ANTI-NOISE</span><canvas id="cancelWave" width="1748" height="460"></canvas></div><p id="cancelCaption" class="waveCaption">The two waves add up to a quieter result.</p><span class="waveKey"><span><i style="background:#65e8dc"></i>Combined wave</span></span></section>
-<section id="eEnd" class="scene"><div class="e-top eyebrow"><span>The invisible, explained.</span><span>Now you know.</span></div><h2 id="quietTitle" class="e-head" style="top:235px">Silence is<br><span class="accent">engineered.</span></h2><div class="quietLine"></div><p class="quietLabel">Noise + anti-noise. Quiet.</p><div id="headphoneEnd" class="headphone" style="left:1230px;top:235px;width:520px;height:570px"><svg viewBox="0 0 600 660" fill="none"><path d="M125 340V270C125 65 475 65 475 270V340" stroke="currentColor" stroke-width="38" stroke-linecap="round"/><path d="M145 315V260C145 90 455 90 455 260V315" stroke="#65e8dc" stroke-width="8"/><rect x="82" y="295" width="133" height="255" rx="60" fill="#162c3c" stroke="currentColor" stroke-width="5"/><rect x="385" y="295" width="133" height="255" rx="60" fill="#162c3c" stroke="currentColor" stroke-width="5"/><path d="M128 360V485M472 360V485" stroke="#65e8dc" stroke-width="7" stroke-linecap="round"/><circle cx="300" cy="365" r="98" stroke="#65e8dc" stroke-opacity=".25" stroke-width="2"/><circle cx="300" cy="365" r="65" stroke="#65e8dc" stroke-opacity=".5" stroke-width="2"/><path d="M268 366l22 22 48-50" stroke="#65e8dc" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></section>
-<div class="footer"><span>SCIENCE IN MOTION</span><span>Idealized phase cancellation · Real systems reduce, rather than erase, noise</span></div></main></div>
-<div id="controls"><button id="play" aria-label="Play or pause">Pause</button><button id="replay" aria-label="Replay from start">Replay</button><input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position"><span id="time"></span></div>
-<script src="assets/gsap.min.js"></script><script>
-// Every visible value is derived from timeline time, including backward seeks.
-const DURATION=20, POSTER_AT=1.5;
-const $=id=>document.getElementById(id), clamp=v=>Math.min(1,Math.max(0,v));
-const ease=v=>1-Math.pow(1-clamp(v),3), mix=(a,b,p)=>a+(b-a)*p;
-function scene(id,t,a,b){const el=$(id),active=t>=a&&t<b;el.style.visibility=active?'visible':'hidden';el.style.opacity=active?1:0;return active;}
-function enter(id,t,a,delay=0){const p=ease((t-a-delay+.22)/.65);$(id).style.transform='translateY('+((1-p)*65)+'px)';$(id).style.opacity=p;}
-function pose(id,x,y,s=1,r=0){$(id).style.transform='translate('+x+'px,'+y+'px) scale('+s+') rotate('+r+'deg)';}
-const clock={t:0},tl=gsap.timeline({paused:true});tl.to(clock,{t:DURATION,duration:DURATION,ease:'none'},0);window.__timelines={main:tl};
+<script>
+/* ============================================================
+   How a camera focuses — a 20-second explainer.
+   The optics are real: every ray follows the thin-lens equation
+   1/f = 1/u + 1/v, so the blur on the sensor is computed, not drawn.
+   render(t) is a pure function of timeline time.
+   ============================================================ */
+const CFG = {
+  duration: 20, w: 1920, h: 1080,
+  bg: '#0E1622', ink: '#EAF0F7', dim: 'rgba(234,240,247,.45)', line: 'rgba(234,240,247,.16)',
+  ray: '#FFB547', lens: '#59D8E6', warn: '#FF6B5A',
+  axisY: 560, sensorX: 1440, f: 200, lensHalf: 150,
+  objectFar: 380, objectNear: 600, farPoint: 230, objH: 84,
+  apertureOpen: 110, apertureClosed: 34,
+  inset: { x: 1560, y: 236, w: 300, h: 300 }
+};
+const DISPLAY = 'Space, "Helvetica Neue", Arial, sans-serif';
+const MONO = 'ui-monospace, Menlo, Consolas, monospace';
+const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+const E = n => gsap.parseEase(n);
+const EZ = { o3: E('power3.out'), i3: E('power3.in'), io3: E('power3.inOut'), io2: E('power2.inOut'), o4: E('power4.out'), back: E('back.out(1.8)') };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const TAU = Math.PI * 2;
 
-function waves(id,t,anti,merge){const c=$(id).getContext('2d'),W=1748,H=460;c.clearRect(0,0,W,H);c.lineWidth=1;c.strokeStyle='#65e8dc14';for(let x=0;x<W;x+=80){c.beginPath();c.moveTo(x,80);c.lineTo(x,H);c.stroke();}for(let y=140;y<H;y+=80){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}const signal=x=>Math.sin(x*.018-t*3.6)*54+Math.sin(x*.042-t*5)*22+Math.sin(x*.073+t*2)*11;const base1=mix(265,280,merge),base2=mix(330,280,merge);function path(base,k,color,alpha){c.globalAlpha=alpha;c.strokeStyle=color;c.lineWidth=5;c.beginPath();for(let x=0;x<W;x+=3){const y=base+signal(x)*k;x===0?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();c.globalAlpha=1;}path(base1,1-merge,'#f2f5ed',1-merge*.8);if(anti>0)path(base2,-anti*(1-merge),'#65e8dc',anti);if(merge>0)path(280,0,'#65e8dc',merge);}
-
-function render(t){
-
-  const i=scene('eIntro',t,0,3),l=scene('listen',t,3,7),f=scene('flip',t,7,11),c=scene('cancel',t,11,16),e=scene('eEnd',t,16,20.01);
-  if(i){enter('eHook',t,0);pose('headphoneIntro',0,Math.sin(t*1.5)*9,1,Math.sin(t)*2);}
-  if(l){enter('listenTitle',t,3);waves('listenWave',t,0,0);}
-  if(f){enter('flipTitle',t,7);waves('flipWave',t,ease((t-7.2)/1.3),0);}
-  if(c){enter('cancelTitle',t,11);waves('cancelWave',t,1,clamp((t-11.3)/2.6));}
-  if(e){enter('quietTitle',t,16);pose('headphoneEnd',0,Math.sin(t)*5);}
-  $('main').dataset.beat=i?'hook':l?'capture':f?'invert':c?'cancellation':'quiet';
-
-  $('scrub').value=t;$('time').textContent=t.toFixed(1)+' / '+DURATION+' s';
-  $('main').dataset.time=t.toFixed(3);
+/* ---------- optics ---------- */
+const imageDist = u => 1 / (1 / CFG.f - 1 / u);
+// lens position that focuses an object at x = ox onto the sensor (the root with the longer object distance)
+function focusLens(ox) {
+  const span = CFG.sensorX - ox, disc = span * span - 4 * CFG.f * span;
+  return ox + (span + Math.sqrt(Math.max(0, disc))) / 2;
 }
-function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);$('main').style.transform='translate(-50%,-50%) scale('+s+')';}addEventListener('resize',fit);fit();
-$('play').onclick=()=>{tl.progress()===1?tl.restart():tl.paused(!tl.paused());$('play').textContent=tl.paused()?'Play':'Pause';};$('replay').onclick=()=>tl.restart();$('scrub').oninput=e=>{tl.pause();tl.time(Number(e.target.value),true);};
-render(0);let last=-1;
-function tick(){if(window.__odFrameRenderer)document.documentElement.classList.add('od-export');const t=tl.time();if(t!==last){render(t);last=t;}requestAnimationFrame(tick);}tick();
-document.fonts.ready.then(()=>{render(tl.time());if(matchMedia('(prefers-reduced-motion: reduce)').matches){tl.pause(POSTER_AT);render(POSTER_AT);}else tl.play(0);function ready(){if(tl.time()>=POSTER_AT){document.documentElement.dataset.odPreviewReady='true';}else requestAnimationFrame(ready);}ready();});
-</script></body></html>
+const LENS_A = focusLens(CFG.objectFar), LENS_B = focusLens(CFG.objectNear);
+
+/* state at time t: where things are, purely derived */
+function state(t) {
+  const ox = lerp(CFG.objectFar, CFG.objectNear, EZ.io3(seg(t, 8.5, 9.6)));
+  const lx = lerp(LENS_A, LENS_B, EZ.io3(seg(t, 10.6, 11.9)));
+  const A = lerp(CFG.apertureOpen, CFG.apertureClosed, EZ.io2(seg(t, 14.0, 15.8)));
+  return { ox, lx, A };
+}
+function bundle(ox, h, lx, A) {
+  const u = lx - ox, v = imageDist(u), d = CFG.sensorX - lx;
+  const P = [ox, CFG.axisY - h];
+  const I = [lx + v, CFG.axisY + h * v / u];
+  const blur = 2 * A * Math.abs(v - d) / v; // circle of confusion on the sensor
+  return { P, I, v, d, blur };
+}
+
+/* ---------- drawing helpers ---------- */
+function text(str, x, y, size, color, weight = 600, font = DISPLAY, align = 'left', alpha = 1) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${font}`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(str, x, y); ctx.restore();
+}
+function caption(t, a, b, line1, line2) {
+  const pin = EZ.o3(seg(t, a, a + 0.45)), out = seg(t, b - 0.3, b);
+  const al = pin * (1 - out);
+  if (al <= 0) return;
+  text(line1, 120, 930 + (1 - pin) * 24, 46, CFG.ink, 600, DISPLAY, 'left', al);
+  if (line2) text(line2, 120, 990 + (1 - pin) * 24, 46, CFG.ray, 600, DISPLAY, 'left', al * EZ.o3(seg(t, a + 0.35, a + 0.8)));
+}
+function polyPartial(pts, p) {
+  // draw a polyline up to fraction p of its total length
+  const lens = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); lens.push(l); total += l; }
+  let left = total * p;
+  ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length && left > 0; i++) {
+    const k = Math.min(1, left / lens[i - 1]);
+    ctx.lineTo(lerp(pts[i - 1][0], pts[i][0], k), lerp(pts[i - 1][1], pts[i][1], k));
+    left -= lens[i - 1];
+  }
+  ctx.stroke();
+}
+function glowDot(x, y, r, color, core = 1) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.4);
+  g.addColorStop(0, color); g.addColorStop(0.35, color + 'AA'); g.addColorStop(1, color + '00');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.4, 0, TAU); ctx.fill();
+  if (core) { ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(x, y, Math.max(2, r * 0.35), 0, TAU); ctx.fill(); }
+}
+
+/* ---------- scene 1: the photo with a focus pull ---------- */
+function photo(t, alpha, focusDepth, scale = 1) {
+  if (alpha <= 0) return;
+  const fx = 960, fy = 500, W = 1120 * scale, H = 630 * scale;
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.translate(fx, fy); ctx.scale(scale, scale); ctx.translate(-560, -315);
+  ctx.beginPath(); ctx.roundRect(0, 0, 1120, 630, 18); ctx.clip();
+  const sky = ctx.createLinearGradient(0, 0, 0, 630); sky.addColorStop(0, '#F7C98B'); sky.addColorStop(1, '#F39A6B');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, 1120, 630);
+  const layer = (depth, draw) => { const b = Math.abs(depth - focusDepth) * 16; ctx.save(); ctx.filter = b > 0.3 ? `blur(${b.toFixed(1)}px)` : 'none'; draw(); ctx.restore(); };
+  layer(1.0, () => { // far: mountains + sun
+    ctx.fillStyle = '#FFE7B8'; ctx.beginPath(); ctx.arc(820, 230, 70, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#B5677A'; ctx.beginPath(); ctx.moveTo(-20, 420); ctx.lineTo(240, 200); ctx.lineTo(430, 360); ctx.lineTo(620, 170); ctx.lineTo(900, 400); ctx.lineTo(1140, 260); ctx.lineTo(1140, 630); ctx.lineTo(-20, 630); ctx.fill();
+  });
+  layer(0.5, () => { // middle: hill + a person
+    ctx.fillStyle = '#5B4A7A'; ctx.beginPath(); ctx.moveTo(-20, 500); ctx.quadraticCurveTo(560, 360, 1140, 480); ctx.lineTo(1140, 630); ctx.lineTo(-20, 630); ctx.fill();
+    ctx.fillStyle = '#2B2240'; ctx.beginPath(); ctx.arc(600, 330, 26, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(574, 360, 52, 96, 20); ctx.fill();
+  });
+  layer(0.0, () => { // near: flowers
+    for (let i = 0; i < 3; i++) {
+      const x = 150 + i * 70, y = 560 - i * 18;
+      ctx.strokeStyle = '#1F3B2E'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x, 640); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = '#FF5D73'; for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 22, y + Math.sin(a) * 22, 18, 0, TAU); ctx.fill(); }
+      ctx.fillStyle = '#FFD166'; ctx.beginPath(); ctx.arc(x, y, 13, 0, TAU); ctx.fill();
+    }
+  });
+  ctx.restore();
+  // viewfinder marks
+  ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = CFG.ink; ctx.lineWidth = 3;
+  const L = 34, x0 = fx - W / 2 - 18, y0 = fy - H / 2 - 18, x1 = fx + W / 2 + 18, y1 = fy + H / 2 + 18;
+  [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]].forEach(([x, y, sx, sy]) => { ctx.beginPath(); ctx.moveTo(x, y + sy * L); ctx.lineTo(x, y); ctx.lineTo(x + sx * L, y); ctx.stroke(); });
+  // focus point square follows the sharp layer
+  const tx = lerp(fx - 380 * scale, fx + 40 * scale, focusDepth * 2 > 1 ? 1 : focusDepth * 2);
+  const ty = lerp(fy + 220 * scale, fy - 120 * scale, clamp(focusDepth));
+  ctx.strokeStyle = CFG.ray; ctx.strokeRect(tx - 34, ty - 34, 68, 68);
+  ctx.restore();
+}
+function scenePhoto(t) {
+  if (t >= 4.2) return;
+  const inA = EZ.o3(seg(t, 0.1, 0.8)), out = EZ.i3(seg(t, 3.4, 4.1));
+  // focus pull: flowers -> person -> mountains -> person
+  let fd = 0;
+  fd = lerp(0, 0.5, EZ.io3(seg(t, 0.9, 1.6)));
+  fd = lerp(fd, 1.0, EZ.io3(seg(t, 1.9, 2.5)));
+  fd = lerp(fd, 0.5, EZ.io3(seg(t, 2.7, 3.2)));
+  photo(t, inA * (1 - out), fd, lerp(0.92, 1, inA) * (1 - out * 0.25));
+  const tIn = EZ.o4(seg(t, 0.3, 0.9)), tOut = seg(t, 3.3, 3.7);
+  text('Why is only one thing sharp?', 960, 128 - (1 - tIn) * 30, 64, CFG.ink, 700, DISPLAY, 'center', tIn * (1 - tOut));
+  text('HOW A CAMERA FOCUSES · 20 SECONDS', 960, 950, 22, CFG.dim, 600, MONO, 'center', tIn * (1 - tOut));
+}
+
+/* ---------- the optical bench ---------- */
+function bench(t, s) {
+  const show = EZ.o3(seg(t, 3.7, 4.5)) * (1 - EZ.i3(seg(t, 16.9, 17.5)));
+  if (show <= 0) return 0;
+  ctx.save(); ctx.globalAlpha = show;
+  // optical axis
+  ctx.setLineDash([6, 10]); ctx.strokeStyle = CFG.line; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(140, CFG.axisY); ctx.lineTo(1500, CFG.axisY); ctx.stroke(); ctx.setLineDash([]);
+  // sensor
+  ctx.fillStyle = '#22324A'; ctx.fillRect(CFG.sensorX, CFG.axisY - 170, 18, 340);
+  ctx.fillStyle = CFG.lens; ctx.fillRect(CFG.sensorX, CFG.axisY - 170, 4, 340);
+  text('SENSOR', CFG.sensorX + 9, CFG.axisY + 214, 20, CFG.dim, 600, MONO, 'center');
+  // lens (biconvex)
+  const lx = s.lx, H = CFG.lensHalf;
+  ctx.fillStyle = 'rgba(89,216,230,.16)'; ctx.strokeStyle = CFG.lens; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(lx, CFG.axisY - H);
+  ctx.quadraticCurveTo(lx + 46, CFG.axisY, lx, CFG.axisY + H);
+  ctx.quadraticCurveTo(lx - 46, CFG.axisY, lx, CFG.axisY - H); ctx.fill(); ctx.stroke();
+  text('LENS', lx, CFG.axisY - H - 26, 20, CFG.dim, 600, MONO, 'center');
+  // aperture blades
+  const bladeT = seg(t, 12.8, 13.4);
+  if (bladeT > 0) {
+    ctx.fillStyle = '#C9D3DF'; ctx.globalAlpha = show * bladeT;
+    ctx.fillRect(lx - 34, CFG.axisY - H - 12, 14, H + 12 - s.A);
+    ctx.fillRect(lx - 34, CFG.axisY + s.A, 14, H + 12 - s.A);
+    ctx.globalAlpha = show;
+  }
+  ctx.restore();
+  return show;
+}
+function rays(t, b, lx, A, color, draw, alpha) {
+  if (alpha <= 0 || draw <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const s = lerp(-A, A, i / (n - 1));
+    const L = [lx, CFG.axisY + s];
+    // continue the refracted ray to the sensor plane
+    const k = (CFG.sensorX - L[0]) / (b.I[0] - L[0]);
+    const S = [CFG.sensorX, L[1] + (b.I[1] - L[1]) * k];
+    ctx.globalAlpha = alpha * (i === 0 || i === n - 1 ? 1 : 0.55);
+    polyPartial([b.P, L, S], draw);
+  }
+  ctx.restore();
+  // ghost of the true meeting point when it misses the sensor
+  if (draw >= 1 && b.blur > 6) {
+    ctx.save(); ctx.globalAlpha = alpha * 0.8; ctx.strokeStyle = color; ctx.setLineDash([4, 8]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(b.I[0], b.I[1], 10, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+}
+function objectPoint(b, color, alpha, label) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(b.P[0], CFG.axisY); ctx.lineTo(b.P[0], b.P[1]); ctx.stroke();
+  glowDot(b.P[0], b.P[1], 12, color);
+  text(label, b.P[0], CFG.axisY + 48, 20, CFG.dim, 600, MONO, 'center');
+  ctx.restore();
+}
+function inset(t, items, alpha) {
+  if (alpha <= 0) return;
+  const { x, y, w, h } = CFG.inset;
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#0A111B'; ctx.strokeStyle = CFG.line; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 14); ctx.fill(); ctx.stroke();
+  text('WHAT THE SENSOR SEES', x + w / 2, y - 18, 18, CFG.dim, 600, MONO, 'center');
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 14); ctx.clip();
+  items.forEach(([cx, cy, blur, color]) => {
+    const r = Math.max(7, blur * 1.6); // magnified view of the sensor
+    const sharp = blur < 6;
+    const g = ctx.createRadialGradient(x + cx, y + cy, 0, x + cx, y + cy, r);
+    g.addColorStop(0, color + (sharp ? 'FF' : '99')); g.addColorStop(sharp ? 0.6 : 0.85, color + (sharp ? 'FF' : '55')); g.addColorStop(1, color + '00');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + cx, y + cy, r, 0, TAU); ctx.fill();
+    if (sharp) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + cx, y + cy, 3.5, 0, TAU); ctx.fill(); }
+  });
+  ctx.restore();
+  if (items.length === 1) {
+    const sharp = items[0][2] < 6;
+    text(sharp ? 'SHARP' : 'BLUR', x + w / 2, y + h + 42, 26, sharp ? CFG.lens : CFG.warn, 700, MONO, 'center', alpha);
+  } else {
+    items.forEach(([cx, , blur, color], i) => text(i ? 'BACKGROUND' : 'SUBJECT', x + cx, y + h + 38, 18, color, 700, MONO, 'center', alpha));
+  }
+}
+
+function sceneOptics(t) {
+  if (t < 3.6 || t >= 17.6) return;
+  const s = state(t);
+  const show = bench(t, s);
+  if (!show) return;
+  const hero = bundle(s.ox, CFG.objH, s.lx, s.A);
+  const pIn = EZ.back(seg(t, 4.3, 4.7));
+  objectPoint(hero, CFG.ray, show * pIn, 'SUBJECT');
+  const draw = EZ.io2(seg(t, 4.8, 6.0));
+  rays(t, hero, s.lx, s.A, CFG.ray, draw, show);
+  // second, farther subject for the depth-of-field beat
+  const far = bundle(CFG.farPoint, -CFG.objH * 1.2, s.lx, s.A);
+  const fIn = EZ.back(seg(t, 12.7, 13.1));
+  if (fIn > 0) {
+    objectPoint(far, CFG.lens, show * fIn, 'BACKGROUND');
+    rays(t, far, s.lx, s.A, CFG.lens, EZ.io2(seg(t, 12.9, 13.8)), show * 0.9);
+  }
+  // meeting point pulse on the sensor
+  if (draw >= 1 && hero.blur < 6) {
+    const pulse = 1 + 0.25 * Math.sin(t * 9);
+    glowDot(CFG.sensorX, hero.I[1], 10 * pulse, CFG.ray);
+  }
+  // blur span marker on the sensor
+  if (hero.blur > 6) {
+    ctx.save(); ctx.strokeStyle = CFG.warn; ctx.lineWidth = 6; ctx.globalAlpha = show;
+    const y0 = CFG.axisY + (hero.I[1] - CFG.axisY) * (CFG.sensorX - s.lx) / (hero.I[0] - s.lx);
+    ctx.beginPath(); ctx.moveTo(CFG.sensorX - 14, y0 - hero.blur / 2); ctx.lineTo(CFG.sensorX - 14, y0 + hero.blur / 2); ctx.stroke(); ctx.restore();
+  }
+  // focus ring dial while the lens moves
+  const dialA = seg(t, 10.3, 10.6) * (1 - seg(t, 12.2, 12.5));
+  if (dialA > 0) {
+    const rot = EZ.io3(seg(t, 10.6, 11.9)) * 2.4;
+    ctx.save(); ctx.globalAlpha = dialA; ctx.translate(s.lx, CFG.axisY + CFG.lensHalf + 86); ctx.strokeStyle = CFG.lens; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.stroke(); ctx.rotate(rot);
+    for (let i = 0; i < 12; i++) { ctx.rotate(TAU / 12); ctx.beginPath(); ctx.moveTo(0, -34); ctx.lineTo(0, -24); ctx.stroke(); }
+    ctx.restore();
+    text('← FOCUS', s.lx + 54, CFG.axisY + CFG.lensHalf + 94, 20, CFG.lens, 600, MONO, 'left', dialA);
+  }
+  // f-number readout
+  const fA = seg(t, 13.3, 13.7) * (1 - seg(t, 16.9, 17.3));
+  if (fA > 0) {
+    const stops = [1.8, 2, 2.8, 4, 5.6];
+    const n = 1.8 * CFG.apertureOpen / s.A;
+    const label = stops.reduce((a, b) => Math.abs(b - n) < Math.abs(a - n) ? b : a);
+    text('f/' + label, s.lx, CFG.axisY - CFG.lensHalf - 64, 40, CFG.ink, 700, DISPLAY, 'center', fA);
+  }
+  // sensor inset
+  const insetA = seg(t, 6.0, 6.4) * show;
+  const items = [[150, 150 + (hero.I[1] - CFG.axisY) * 0, hero.blur, CFG.ray]];
+  if (fIn > 0.5) { items[0][0] = 80; items.push([200, 150, far.blur, CFG.lens]); }
+  inset(t, items, insetA);
+}
+
+function sceneCaptions(t) {
+  caption(t, 4.5, 8.3, 'A lens bends every ray from one point…', '…back to a single point. On the sensor, that point is sharp.');
+  caption(t, 8.5, 10.5, 'Move the subject closer and the rays meet behind the sensor.', 'They land as a disc instead of a point: blur.');
+  caption(t, 10.6, 12.7, 'Focusing slides the lens away from the sensor', 'until the rays meet on it again.');
+  caption(t, 13.0, 15.9, 'A smaller aperture narrows every cone of light,', 'so out-of-focus discs shrink too.');
+  caption(t, 15.9, 17.4, 'More of the scene looks sharp.', 'That range is called depth of field.');
+}
+
+/* ---------- scene 5: the rules ---------- */
+function sceneSummary(t) {
+  if (t < 17.2) return;
+  const rules = [
+    ['01', 'A lens bends light from each point back to a point.', CFG.ray],
+    ['02', 'Focus moves the lens until that point lands on the sensor.', CFG.lens],
+    ['03', 'Aperture sets how much of the scene stays sharp.', CFG.ink]
+  ];
+  rules.forEach(([n, line, c], i) => {
+    const a = EZ.o3(seg(t, 17.4 + i * 0.35, 17.9 + i * 0.35));
+    text(n, 240, 300 + i * 120 + (1 - a) * 20, 30, c, 700, MONO, 'left', a);
+    text(line, 330, 300 + i * 120 + (1 - a) * 20, 44, CFG.ink, 600, DISPLAY, 'left', a);
+  });
+  const fin = EZ.o4(seg(t, 18.7, 19.3));
+  ctx.save(); ctx.globalAlpha = fin; ctx.fillStyle = CFG.ray; ctx.fillRect(240, 700, 220 * fin, 6); ctx.restore();
+  text('Focus is where the light meets.', 240, 800 + (1 - fin) * 24, 76, CFG.ink, 700, DISPLAY, 'left', fin);
+}
+
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = CFG.bg; ctx.fillRect(0, 0, CFG.w, CFG.h);
+  // faint engineering grid
+  ctx.fillStyle = 'rgba(234,240,247,.035)';
+  for (let x = 0; x < CFG.w; x += 40) ctx.fillRect(x, 0, 1, CFG.h);
+  for (let y = 0; y < CFG.h; y += 40) ctx.fillRect(0, y, CFG.w, 1);
+  scenePhoto(t);
+  sceneOptics(t);
+  sceneCaptions(t);
+  sceneSummary(t);
+  // chapter marker
+  const ch = t < 3.6 ? '01 · THE QUESTION' : t < 8.4 ? '02 · LIGHT' : t < 12.8 ? '03 · FOCUS' : t < 17.2 ? '04 · APERTURE' : '05 · RECAP';
+  text(ch, 120, 84, 22, CFG.dim, 600, MONO, 'left', 1);
+  ctx.fillStyle = CFG.line; ctx.fillRect(120, 1040, 1680, 3);
+  ctx.fillStyle = CFG.ray; ctx.fillRect(120, 1040, 1680 * t / CFG.duration, 3);
+}
+
+/* ---------- master timeline: the only clock ---------- */
+const tl = gsap.timeline({ paused: true });
+const clock = { t: 0 };
+tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
+tl.eventCallback('onUpdate', () => render(tl.time()));
+window.__timelines = { main: tl };
+render(0);
+// Plugin previews may block bundled fonts; the fallback stack then renders the film.
+document.fonts.load('700 100px Space').then(() => render(tl.time()), () => render(tl.time()));
+
+/* ---------- preview shell (outside the composition) ---------- */
+const main = document.getElementById('main');
+const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub'), tcEl = document.getElementById('tc');
+function fit() { const s = Math.min(window.innerWidth / CFG.w, window.innerHeight / CFG.h); main.style.transform = 'translate(-50%,-50%) scale(' + s + ')'; }
+window.addEventListener('resize', fit); fit();
+function sync() {
+  const t = tl.time();
+  scrub.value = t; tcEl.textContent = t.toFixed(2) + ' / ' + CFG.duration.toFixed(2);
+  playBtn.textContent = tl.isActive() ? 'PAUSE' : (t >= CFG.duration - 0.01 ? 'REPLAY' : 'PLAY');
+}
+gsap.ticker.add(sync);
+playBtn.addEventListener('click', () => { if (tl.time() >= CFG.duration - 0.01) tl.restart(); else if (tl.paused()) tl.play(); else tl.pause(); sync(); });
+scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); sync(); });
+window.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); playBtn.click(); } });
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) { tl.pause(); tl.time(14.6); }
+else document.fonts.ready.then(() => tl.play(0));
+sync();
+</script>
+<script>
+// Video export seeks with timeline callbacks suppressed, so the onUpdate
+// drawing also runs from a per-frame loop whenever the timeline time moves.
+(function install() {
+  var tls = window.__timelines;
+  var tl = tls && tls[Object.keys(tls)[0]];
+  if (!tl) { setTimeout(install, 50); return; }
+  var draw = tl.eventCallback('onUpdate');
+  if (!draw) return;
+  var drawnAt = null;
+  tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
+  (function loop() {
+    if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) {
+      document.documentElement.classList.add('od-export');
+    }
+    var t = tl.time();
+    if (t !== drawnAt) { drawnAt = t; draw(); }
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+<script>
+// Preview bake: mark ready once the timeline reaches the poster frame.
+(function () {
+  var POSTER_AT = 6.6;
+  function check() {
+    var tls = window.__timelines;
+    var tl = tls && tls[Object.keys(tls)[0]];
+    if (tl && tl.time() >= POSTER_AT) {
+      document.documentElement.setAttribute('data-od-preview-ready', 'true');
+      return;
+    }
+    requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+})();
+</script>
+<audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="20" data-track-index="2" data-volume="1" preload="auto"></audio>
+<script>
+// A user gesture enables sound; the master timeline owns play, pause and seek.
+(function() {
+  const audio=document.getElementById('soundtrack');
+  if (!audio || typeof audio.play !== 'function' || window.__odFrameRenderer) return;
+  const controls=document.getElementById('controls');
+  const button=document.createElement('button');button.type='button';button.textContent='Sound on';button.setAttribute('aria-label','Enable sound');button.setAttribute('aria-pressed','false');controls.appendChild(button);
+  let enabled=false,pending=false;
+  function play() { if(pending||!audio.paused)return;pending=true;audio.play().catch(()=>{enabled=false;button.textContent='Sound on';button.setAttribute('aria-pressed','false');}).finally(()=>{pending=false;}); }
+  button.onclick=()=>{enabled=!enabled;button.textContent=enabled?'Sound off':'Sound on';button.setAttribute('aria-pressed',String(enabled));if(enabled){const tl=window.__timelines.main;if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
+  document.getElementById('scrub').addEventListener('input',event=>{if(enabled)audio.currentTime=Number(event.target.value);});
+  function sync() {
+    const tl=window.__timelines.main;
+    if(enabled&&!window.__odFrameRenderer){
+      if(!pending&&!audio.seeking&&audio.readyState>=3&&Math.abs(audio.currentTime-tl.time())>.3)audio.currentTime=tl.time();
+      if(tl.paused()||tl.progress()>=1)audio.pause();else play();
+    }else audio.pause();
+    requestAnimationFrame(sync);
+  }sync();
+})();
+</script>
+</body>
+</html>

@@ -1569,394 +1569,394 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
       prompt: 'Progetta un sito ispirato alle riviste per il mio marchio, presentando il prodotto con titoli d’impatto, collage di immagini e animazioni di scorrimento.',
     },
   },
-  'example-motion-3d-scene': {
-    'zh-CN': {
-      title: '3D 程序化海岛',
-      prompt: '制作一段 15 秒的浏览器 3D 旅行海报短片，开场大标题“A little escape.”。展示黄昏的热带小岛、棕榈树、小木屋、沙滩伞、着色器海浪和缓缓飘动的云。以近距离俯视镜头和大号奶油白字体开场，标题退场后镜头滑落并环绕小岛。水深颜色连续过渡，日落反光克制柔和。结尾停在“Stay a little longer.”。所有动画由时间轴驱动，任意时刻都能精确重放。',
-    },
-    'zh-TW': {
-      title: '3D 程序化海島',
-      prompt: '用 Three.js 在瀏覽器裡製作一段 15 秒的 3D 動效：黃昏時分一座程序生成的熱帶小島。用著色器讓海浪起伏，棕櫚樹隨風搖擺，雲朵緩緩飄動。鏡頭從海面高空出發，滑落後繞小島轉一道弧線，最後停在平靜的遠景上，標題「Stay a little longer.」漸顯並停留兩秒。風格化而非寫實：柔和漸層、輕卡通光影、溫暖的日落色調。所有運動都由時間軸驅動，任意時刻都能精確重播。',
-    },
-    en: {
-      title: 'Procedural 3D Island',
-      prompt: 'Create a 15-second browser-rendered 3D travel-poster film, “A little escape.” Show a stylized tropical island at golden hour with palms, a tiny cabin, a beach umbrella, shader waves and softly drifting clouds. Open with a close aerial and large cream typography, then clear the title as the camera glides down and orbits the island. Use continuous water-depth shading and restrained sunset reflections. Close on “Stay a little longer.” Keep all animation deterministic and driven by timeline time.',
-    },
-    id: {
-      title: 'Pulau 3D Prosedural',
-      prompt: 'Buat karya motion 3D 15 detik yang dirender di browser dengan Three.js: sebuah pulau tropis prosedural kecil saat golden hour. Animasikan ombak laut dengan shader, pohon palem yang bergoyang tertiup angin, dan awan yang bergerak pelan. Kamera mulai tinggi di atas laut, meluncur turun dan melengkung mengitari pulau, lalu berhenti pada bidikan lebar yang tenang saat judul "Stay a little longer." muncul perlahan dan bertahan dua detik. Bergaya, bukan fotorealistis: gradasi lembut, toon shading halus, dan palet senja yang hangat. Gerakkan semuanya dari waktu timeline agar setiap momen dapat diputar ulang dengan tepat.',
-    },
-    de: {
-      title: 'Prozedurale 3D-Insel',
-      prompt: 'Erstelle ein 15-sekündiges 3D-Motion-Stück, das mit Three.js im Browser gerendert wird: eine kleine prozedurale Tropeninsel zur goldenen Stunde. Animiere Meereswellen per Shader, Palmen, die sich im Wind wiegen, und langsam ziehende Wolken. Die Kamera startet hoch über dem Meer, gleitet hinab, zieht einen Bogen um die Insel und kommt in einer ruhigen Totale zum Stehen, während der Titel „Stay a little longer.“ einblendet und zwei Sekunden stehen bleibt. Stilisiert statt fotorealistisch: weiche Verläufe, sanftes Toon-Shading, warme Sonnenuntergangsfarben. Steuere jede Bewegung über die Timeline-Zeit, damit jeder Moment exakt wiederholbar ist.',
-    },
-    'pt-BR': {
-      title: 'Ilha 3D procedural',
-      prompt: 'Crie uma peça de motion 3D de 15 segundos renderizada no navegador com Three.js: uma pequena ilha tropical procedural na hora dourada. Anime as ondas do mar com um shader, coqueiros balançando com a brisa e nuvens se movendo devagar. A câmera começa bem acima do mar, desce deslizando e faz um arco ao redor da ilha, depois para em um plano geral tranquilo enquanto o título "Stay a little longer." surge e permanece por dois segundos. Estilizado em vez de fotorrealista: gradientes suaves, toon shading leve e uma paleta quente de pôr do sol. Controle cada movimento pelo tempo da timeline para que qualquer momento possa ser reproduzido com exatidão.',
-    },
-    'es-ES': {
-      title: 'Isla 3D procedural',
-      prompt: 'Crea una pieza de motion 3D de 15 segundos renderizada en el navegador con Three.js: una pequeña isla tropical procedural en la hora dorada. Anima las olas con un shader, palmeras que se mecen con la brisa y nubes que avanzan despacio. La cámara empieza muy por encima del mar, desciende planeando y traza un arco alrededor de la isla, y termina en un plano general tranquilo mientras aparece el título «Stay a little longer.» durante dos segundos. Estilizado en lugar de fotorrealista: degradados suaves, toon shading sutil y una paleta cálida de atardecer. Controla cada movimiento con el tiempo de la línea temporal para que cualquier momento se reproduzca con exactitud.',
-    },
-    ru: {
-      title: 'Процедурный 3D-остров',
-      prompt: 'Сделай 15-секундную 3D-анимацию, которая рендерится в браузере на Three.js: небольшой процедурный тропический остров в золотой час. Анимируй морские волны шейдером, пальмы, качающиеся на ветру, и медленно плывущие облака. Камера стартует высоко над морем, плавно опускается, огибает остров по дуге и останавливается на спокойном общем плане, где появляется заголовок «Stay a little longer.» и держится две секунды. Стилизация вместо фотореализма: мягкие градиенты, лёгкий тун-шейдинг, тёплая закатная палитра. Управляй каждым движением временем таймлайна, чтобы любой момент воспроизводился точно.',
-    },
-    fa: {
-      title: 'جزیرهٔ سه‌بعدی رویه‌ای',
-      prompt: 'یک قطعهٔ موشن سه‌بعدی ۱۵ ثانیه‌ای بساز که با Three.js در مرورگر رندر شود: جزیرهٔ گرمسیری کوچک و رویه‌ای در ساعت طلایی. موج‌های دریا را با شیدر، درختان نخل را در حال تکان خوردن در نسیم و ابرها را در حال حرکت آرام متحرک کن. دوربین از ارتفاع زیاد بالای دریا شروع می‌کند، پایین می‌لغزد و قوسی دور جزیره می‌زند، سپس روی نمایی باز و آرام می‌ایستد و عنوان «Stay a little longer.» آرام ظاهر می‌شود و دو ثانیه می‌ماند. سبک‌پردازی‌شده و نه واقع‌گرایانه: گرادیان‌های نرم، سایه‌زنی کارتونی ملایم و رنگ‌های گرم غروب. هر حرکت را با زمان تایم‌لاین هدایت کن تا هر لحظه دقیقاً قابل بازپخش باشد.',
-    },
-    ar: {
-      title: 'جزيرة ثلاثية الأبعاد إجرائية',
-      prompt: 'أنشئ عملًا حركيًا ثلاثي الأبعاد مدته 15 ثانية يُعرض في المتصفح باستخدام Three.js: جزيرة استوائية صغيرة مُولَّدة إجرائيًا في الساعة الذهبية. حرّك أمواج البحر بمظلّل، وأشجار النخيل تتمايل مع النسيم، والغيوم تنساب ببطء. تبدأ الكاميرا عاليًا فوق البحر، ثم تنزلق نزولًا وتدور في قوس حول الجزيرة، وتستقر على لقطة واسعة هادئة بينما يظهر العنوان "Stay a little longer." ويبقى لثانيتين. أسلوب فني لا واقعي: تدرجات ناعمة وتظليل كرتوني خفيف وألوان غروب دافئة. اجعل كل حركة مرتبطة بزمن الخط الزمني حتى يمكن إعادة تشغيل أي لحظة بدقة.',
-    },
-    ja: {
-      title: 'プロシージャル 3D アイランド',
-      prompt: 'Three.js でブラウザ上にレンダリングする 15 秒の 3D モーション作品を作ってください。題材は、夕暮れのゴールデンアワーに浮かぶプロシージャル生成の小さな熱帯の島です。シェーダーで波を動かし、ヤシの木をそよ風に揺らし、雲をゆっくり流します。カメラは海の上空から始まり、滑るように降りて島の周りを弧を描いて回り、静かな引きのショットで止まります。そこでタイトル「Stay a little longer.」がフェードインし、2 秒間表示されます。写実ではなく様式化：柔らかなグラデーション、控えめなトゥーンシェーディング、暖かな夕焼けの配色。どの瞬間も正確に再生できるよう、すべての動きをタイムラインの時間で制御してください。',
-    },
-    ko: {
-      title: '절차적 3D 섬',
-      prompt: 'Three.js로 브라우저에서 렌더링하는 15초 3D 모션을 만들어 줘. 황금빛 시간대에 절차적으로 생성된 작은 열대 섬이야. 셰이더로 바다 물결을 움직이고, 야자수가 바람에 흔들리고, 구름이 천천히 흘러가게 해 줘. 카메라는 바다 위 높은 곳에서 시작해 미끄러지듯 내려와 섬 주위를 호를 그리며 돌고, 잔잔한 와이드 숏에서 멈춰. 그때 "Stay a little longer." 제목이 서서히 나타나 2초간 유지돼. 사실적이기보다 스타일리시하게: 부드러운 그라디언트, 은은한 툰 셰이딩, 따뜻한 노을 색감. 모든 움직임을 타임라인 시간으로 제어해서 어느 순간이든 정확히 다시 재생되게 해 줘.',
-    },
-    pl: {
-      title: 'Proceduralna wyspa 3D',
-      prompt: 'Stwórz 15-sekundową animację 3D renderowaną w przeglądarce za pomocą Three.js: małą proceduralną wyspę tropikalną o złotej godzinie. Animuj fale shaderem, palmy kołyszące się na wietrze i powoli płynące chmury. Kamera zaczyna wysoko nad morzem, zjeżdża w dół, okrąża wyspę łukiem i zatrzymuje się na spokojnym planie ogólnym, gdy pojawia się tytuł „Stay a little longer.” i pozostaje przez dwie sekundy. Stylizacja zamiast fotorealizmu: miękkie gradienty, delikatny toon shading i ciepła paleta zachodu słońca. Steruj każdym ruchem czasem osi czasu, aby każdy moment dało się dokładnie odtworzyć.',
-    },
-    hu: {
-      title: 'Procedurális 3D-sziget',
-      prompt: 'Készíts egy 15 másodperces, böngészőben Three.js-szel renderelt 3D mozgóképet: egy kis, procedurálisan generált trópusi szigetet az aranyórában. Animáld shaderrel a tenger hullámait, a szellőben ringó pálmafákat és a lassan sodródó felhőket. A kamera magasan a tenger fölül indul, lesiklik, ívben megkerüli a szigetet, majd egy nyugodt totálban megáll, miközben megjelenik a „Stay a little longer.” cím, és két másodpercig látható marad. Stilizált, nem fotórealisztikus: lágy színátmenetek, finom toon shading, meleg naplementés színek. Minden mozgást az idővonal ideje vezéreljen, hogy bármely pillanat pontosan visszajátszható legyen.',
-    },
-    fr: {
-      title: 'Île 3D procédurale',
-      prompt: 'Crée une pièce de motion 3D de 15 secondes rendue dans le navigateur avec Three.js : une petite île tropicale procédurale à l’heure dorée. Anime les vagues avec un shader, des palmiers qui se balancent dans la brise et des nuages qui dérivent lentement. La caméra part très haut au-dessus de la mer, descend en glissant, décrit un arc autour de l’île, puis s’arrête sur un plan large apaisé tandis que le titre « Stay a little longer. » apparaît et reste deux secondes. Stylisé plutôt que photoréaliste : dégradés doux, toon shading léger et palette chaude de coucher de soleil. Pilote chaque mouvement par le temps de la timeline pour que chaque instant se rejoue à l’identique.',
-    },
-    uk: {
-      title: 'Процедурний 3D-острів',
-      prompt: 'Створи 15-секундну 3D-анімацію, що рендериться в браузері на Three.js: невеликий процедурний тропічний острів у золоту годину. Анімуй морські хвилі шейдером, пальми, що гойдаються на вітрі, і хмари, які повільно пливуть. Камера стартує високо над морем, плавно опускається, огинає острів по дузі й зупиняється на спокійному загальному плані, де з’являється заголовок «Stay a little longer.» і тримається дві секунди. Стилізація замість фотореалізму: м’які градієнти, легкий тун-шейдинг, тепла палітра заходу сонця. Керуй кожним рухом часом таймлайну, щоб будь-яку мить можна було точно відтворити.',
-    },
-    tr: {
-      title: 'Prosedürel 3D ada',
-      prompt: 'Three.js ile tarayıcıda işlenen 15 saniyelik bir 3D hareketli çalışma oluştur: altın saatte prosedürel olarak üretilmiş küçük bir tropik ada. Deniz dalgalarını bir shader ile, esintide sallanan palmiyeleri ve yavaşça süzülen bulutları canlandır. Kamera denizin yükseklerinden başlasın, süzülerek alçalsın ve adanın etrafında bir yay çizsin; ardından sakin bir geniş planda dursun, "Stay a little longer." başlığı belirip iki saniye kalsın. Fotogerçekçi değil, stilize: yumuşak geçişler, hafif toon shading ve sıcak gün batımı renkleri. Her hareketi zaman çizelgesinin zamanıyla yönet ki her an birebir yeniden oynatılabilsin.',
-    },
-    th: {
-      title: 'เกาะ 3D แบบโพรซีเดอรัล',
-      prompt: 'สร้างงานโมชัน 3D ความยาว 15 วินาทีที่เรนเดอร์ในเบราว์เซอร์ด้วย Three.js: เกาะเขตร้อนเล็ก ๆ ที่สร้างแบบโพรซีเดอรัลในช่วงแสงทองยามเย็น ใช้เชดเดอร์ทำให้คลื่นทะเลเคลื่อนไหว ต้นมะพร้าวโยกตามลม และเมฆลอยไปช้า ๆ กล้องเริ่มจากมุมสูงเหนือทะเล ร่อนลงมาแล้ววนเป็นวงโค้งรอบเกาะ ก่อนหยุดที่ภาพมุมกว้างอันสงบ พร้อมชื่อเรื่อง "Stay a little longer." ค่อย ๆ ปรากฏและค้างไว้สองวินาที เน้นสไตล์มากกว่าความสมจริง: ไล่สีนุ่มนวล แสงเงาแบบการ์ตูนเบา ๆ และโทนสีพระอาทิตย์ตกที่อบอุ่น ควบคุมทุกการเคลื่อนไหวด้วยเวลาของไทม์ไลน์ เพื่อให้เล่นซ้ำได้ตรงทุกช่วงเวลา',
-    },
-    it: {
-      title: 'Isola 3D procedurale',
-      prompt: 'Crea un pezzo di motion 3D di 15 secondi renderizzato nel browser con Three.js: una piccola isola tropicale procedurale all’ora d’oro. Anima le onde del mare con uno shader, le palme che ondeggiano nella brezza e le nuvole che scorrono lente. La camera parte molto in alto sopra il mare, scende planando, descrive un arco attorno all’isola e si ferma su un campo lungo tranquillo mentre compare il titolo «Stay a little longer.», che resta per due secondi. Stilizzato anziché fotorealistico: sfumature morbide, toon shading leggero e una palette calda da tramonto. Guida ogni movimento con il tempo della timeline, così ogni istante si riproduce esattamente.',
-    },
-  },
   'example-motion-explainer': {
     'zh-CN': {
       title: '原理讲解动画',
-      prompt: '制作一段 20 秒的降噪原理动画。开头用大标题“How do you hear nothing?”和醒目的矢量耳机插画吸引注意。为三个因果步骤分别设计特写分镜：麦克风采集噪音；系统生成等幅反相声波；两波发生干涉，理想化的叠加结果变为平线。结尾“Silence is engineered.”。深蓝、白、青色，大字号和清楚的宽幅波形图。注明这是理想化相位抵消，现实系统降低噪音而非消除所有声音。波形由时间轴计算，导出任意帧都能精确重现。',
+      prompt: '做一段 20 秒的原理讲解动画：相机是怎么对焦的？开场是一张照片，焦点从花移到人再移到远山，配上问题“为什么只有一样东西是清楚的？”。然后切到侧视光学台：被摄物、镜头、传感器，光线按薄透镜公式真实计算：光线汇聚在传感器上就清楚；被摄物靠近后汇聚点跑到传感器后面，形成模糊光斑；移动镜头重新对焦；光圈从 f/1.8 收到 f/5.6，背景点的模糊光斑随之变小，这就是景深。加一个“传感器看到的画面”小窗、清楚的两行字幕和三条总结。蓝图深蓝底、琥珀色光线、青色镜片。',
     },
     'zh-TW': {
       title: '原理講解動畫',
-      prompt: '製作一段 20 秒的原理講解動畫：降噪耳機是怎麼運作的。展示一段嘈雜的聲波傳向耳朵，微型麥克風採集它，晶片產生一段反相聲波，兩段聲波相遇後抵消成一條平線，變得安靜。讓聲波作為貫穿每個段落的主角，並在各部分出現時標註：噪音、麥克風、反向聲波、安靜。簡潔的技術示意圖風格：深石墨灰背景，青色和白色線條。結尾停在「安靜，是被設計出來的。」',
+      prompt: '做一段 20 秒的原理講解動畫：相機是怎麼對焦的？開場是一張照片，焦點從花移到人再移到遠山，配上問題「為什麼只有一樣東西是清楚的？」。然後切到側視光學台：被攝物、鏡頭、感光元件，光線按薄透鏡公式真實計算：光線匯聚在感光元件上就清楚；被攝物靠近後匯聚點跑到感光元件後面，形成模糊光斑；移動鏡頭重新對焦；光圈從 f/1.8 收到 f/5.6，背景點的模糊光斑隨之變小，這就是景深。加一個「感光元件看到的畫面」小窗、清楚的兩行字幕和三條總結。藍圖深藍底、琥珀色光線、青色鏡片。',
     },
     en: {
       title: 'How-It-Works Explainer',
-      prompt: 'Create a 20-second noise-cancellation explainer. Open with the large question “How do you hear nothing?” and an oversized vector headphone illustration. Use separate close-up compositions for three causal steps: a microphone samples the noise; the system creates an equal-and-opposite wave; the waves interfere and their idealized sum flattens. Close on “Silence is engineered.” Deep blue, white and cyan, large typography and clear wide wave plots. Label this as idealized phase cancellation: real systems reduce noise rather than erase all sound. Draw all procedural waves from timeline time so export seeks reproduce the same frames.',
+      prompt: 'Make a 20-second explainer: how does a camera focus? Open on a photo that pulls focus from flowers to a person to the mountains, with the question "Why is only one thing sharp?". Then show a side-view optical bench — subject, lens, sensor — with light rays that follow the thin-lens equation: rays meet on the sensor (sharp); move the subject closer and they meet behind it (a blur disc); slide the lens to refocus; close the aperture from f/1.8 to f/5.6 and a background point\'s blur shrinks (depth of field). Add a "What the sensor sees" inset, clear two-line captions and a three-rule recap. Blueprint navy, amber rays, cyan glass.',
     },
     id: {
       title: 'Animasi Penjelas Cara Kerja',
-      prompt: 'Buat animasi penjelas 20 detik: cara kerja headphone peredam bising. Tunjukkan gelombang suara bising yang bergerak menuju telinga, mikrofon kecil yang menangkapnya, chip yang menghasilkan gelombang terbalik, lalu kedua gelombang bertemu dan merata menjadi hening. Jadikan gelombang sebagai objek berulang di setiap bagian, dan beri label setiap bagian saat muncul: Bising, Mikrofon, Anti-bising, Hening. Gaya diagram teknis yang bersih: latar grafit gelap, garis sian dan putih. Akhiri dengan "Keheningan itu direkayasa."',
+      prompt: 'Buat animasi penjelas 20 detik: bagaimana kamera fokus? Buka dengan foto yang memindahkan fokus dari bunga ke orang lalu ke gunung, dengan pertanyaan "Mengapa hanya satu hal yang tajam?". Lalu tampilkan bangku optik tampak samping — subjek, lensa, sensor — dengan sinar yang mengikuti persamaan lensa tipis: sinar bertemu di sensor (tajam); dekatkan subjek dan sinar bertemu di belakangnya (lingkaran blur); geser lensa untuk fokus ulang; kecilkan bukaan dari f/1.8 ke f/5.6 dan blur titik latar menyusut (kedalaman ruang tajam). Tambahkan sisipan "Yang dilihat sensor", teks dua baris yang jelas, dan ringkasan tiga aturan. Biru tua cetak biru, sinar kuning amber, kaca sian.',
     },
     de: {
       title: 'Erklärfilm: So funktioniert es',
-      prompt: 'Erstelle eine 20-sekündige Erklär-Animation: So funktionieren Noise-Cancelling-Kopfhörer. Zeige eine laute Schallwelle, die sich auf ein Ohr zubewegt, ein winziges Mikrofon, das sie aufnimmt, den Chip, der die invertierte Welle erzeugt, und wie beide Wellen aufeinandertreffen und zu Stille verflachen. Halte die Welle als durchgehendes Objekt in jedem Abschnitt und beschrifte jedes Teil, sobald es erscheint: Lärm, Mikrofon, Gegenschall, Stille. Klarer technischer Diagrammstil: dunkler Graphithintergrund, cyanfarbene und weiße Linien. Ende mit „Stille ist konstruiert.“',
+      prompt: 'Erstelle einen 20-sekündigen Erklärfilm: Wie fokussiert eine Kamera? Beginne mit einem Foto, dessen Schärfe von Blumen über eine Person zu den Bergen wandert, und der Frage „Warum ist nur eines scharf?“. Zeige dann eine optische Bank in Seitenansicht – Motiv, Linse, Sensor – mit Lichtstrahlen nach der Linsengleichung: Treffen sich die Strahlen auf dem Sensor, ist es scharf; rückt das Motiv näher, treffen sie sich dahinter (Unschärfescheibe); die Linse wird verschoben, um nachzufokussieren; die Blende schließt von f/1.8 auf f/5.6 und die Unschärfe eines Hintergrundpunkts schrumpft (Schärfentiefe). Mit Einblendung „Was der Sensor sieht“, klaren zweizeiligen Untertiteln und drei Regeln zum Schluss. Blaupausen-Navy, bernsteinfarbene Strahlen, cyanfarbenes Glas.',
     },
     'pt-BR': {
       title: 'Animação explicativa: como funciona',
-      prompt: 'Crie uma animação explicativa de 20 segundos: como funcionam os fones com cancelamento de ruído. Mostre uma onda sonora ruidosa indo em direção ao ouvido, um microfone minúsculo captando-a, o chip gerando a onda invertida e as duas ondas se encontrando e se anulando em silêncio. Mantenha a onda como o objeto recorrente em cada etapa e rotule cada parte quando ela aparecer: Ruído, Microfone, Antirruído, Silêncio. Estilo limpo de diagrama técnico: fundo grafite escuro, linhas ciano e brancas. Termine com "O silêncio é projetado."',
+      prompt: 'Crie uma animação explicativa de 20 segundos: como uma câmera foca? Abra com uma foto que muda o foco das flores para uma pessoa e depois para as montanhas, com a pergunta "Por que só uma coisa fica nítida?". Depois mostre uma bancada óptica vista de lado — objeto, lente, sensor — com raios de luz que seguem a equação da lente fina: os raios se encontram no sensor (nítido); aproxime o objeto e eles se encontram atrás dele (um disco de desfoque); deslize a lente para refocar; feche a abertura de f/1.8 para f/5.6 e o desfoque de um ponto ao fundo diminui (profundidade de campo). Inclua um quadro "O que o sensor vê", legendas claras de duas linhas e um resumo de três regras. Azul-marinho de planta técnica, raios âmbar, vidro ciano.',
     },
     'es-ES': {
       title: 'Animación explicativa: cómo funciona',
-      prompt: 'Crea una animación explicativa de 20 segundos: cómo funcionan los auriculares con cancelación de ruido. Muestra una onda sonora ruidosa que viaja hacia el oído, un micrófono diminuto que la capta, el chip que genera la onda invertida y las dos ondas que se encuentran y se aplanan en silencio. Mantén la onda como objeto recurrente en cada paso y etiqueta cada parte cuando aparezca: Ruido, Micrófono, Antirruido, Silencio. Estilo limpio de diagrama técnico: fondo grafito oscuro, líneas cian y blancas. Termina con «El silencio se diseña».',
+      prompt: 'Crea una animación explicativa de 20 segundos: ¿cómo enfoca una cámara? Empieza con una foto que pasa el foco de unas flores a una persona y luego a las montañas, con la pregunta «¿Por qué solo una cosa sale nítida?». Después muestra un banco óptico de perfil —sujeto, lente, sensor— con rayos que siguen la ecuación de la lente delgada: los rayos se juntan en el sensor (nítido); acerca el sujeto y se juntan detrás (un disco de desenfoque); desliza la lente para reenfocar; cierra el diafragma de f/1.8 a f/5.6 y el desenfoque de un punto del fondo se reduce (profundidad de campo). Añade un recuadro «Lo que ve el sensor», subtítulos claros de dos líneas y un resumen de tres reglas. Azul marino de plano, rayos ámbar, cristal cian.',
     },
     ru: {
       title: 'Анимация «Как это работает»',
-      prompt: 'Сделай 20-секундную анимацию-объяснение: как работают наушники с шумоподавлением. Покажи шумную звуковую волну, которая движется к уху, крошечный микрофон, улавливающий её, чип, создающий инвертированную волну, и как две волны встречаются и сглаживаются в тишину. Пусть волна будет сквозным объектом в каждом шаге; подписывай каждую часть, когда она появляется: Шум, Микрофон, Антишум, Тишина. Чистый стиль технической схемы: тёмный графитовый фон, голубые и белые линии. Заверши фразой «Тишина — это инженерия».',
+      prompt: 'Сделай 20-секундный обучающий ролик: как фокусируется камера? Начни с фотографии, где фокус переходит с цветов на человека, а затем на горы, и вопроса «Почему резкое только что-то одно?». Затем покажи оптическую скамью сбоку — объект, линза, сенсор — с лучами по формуле тонкой линзы: лучи сходятся на сенсоре — резко; объект ближе — они сходятся за сенсором (кружок рассеяния); линза сдвигается и снова фокусирует; диафрагма закрывается с f/1.8 до f/5.6, и размытие точки на фоне уменьшается (глубина резкости). Добавь врезку «Что видит сенсор», понятные двухстрочные подписи и итог из трёх правил. Тёмно-синий «чертёжный» фон, янтарные лучи, бирюзовое стекло.',
     },
     fa: {
       title: 'انیمیشن توضیحی «چگونه کار می‌کند»',
-      prompt: 'یک انیمیشن توضیحی ۲۰ ثانیه‌ای بساز: هدفون‌های حذف نویز چگونه کار می‌کنند. موج صوتی پرنویزی را نشان بده که به سمت گوش می‌رود، میکروفون کوچکی که آن را دریافت می‌کند، تراشه‌ای که موج معکوس می‌سازد، و دو موج که به هم می‌رسند و به سکوت صاف می‌شوند. موج را عنصر تکرارشوندهٔ همهٔ بخش‌ها قرار بده و هر بخش را هنگام ظاهر شدن برچسب بزن: نویز، میکروفون، ضدنویز، سکوت. سبک نمودار فنی تمیز: پس‌زمینهٔ گرافیتی تیره، خطوط فیروزه‌ای و سفید. با جملهٔ «سکوت مهندسی می‌شود.» تمام کن.',
+      prompt: 'یک انیمیشن توضیحی ۲۰ ثانیه‌ای بساز: دوربین چطور فوکوس می‌کند؟ با عکسی شروع کن که فوکوس آن از گل‌ها به یک آدم و بعد به کوه‌ها می‌رود، همراه با پرسش «چرا فقط یک چیز واضح است؟». سپس یک میز اپتیکی از نمای کناری نشان بده — سوژه، عدسی، حسگر — با پرتوهایی که از معادلهٔ عدسی نازک پیروی می‌کنند: پرتوها روی حسگر به هم می‌رسند (واضح)؛ سوژه نزدیک‌تر شود و پشت حسگر به هم می‌رسند (دایرهٔ تاری)؛ عدسی جابه‌جا می‌شود تا دوباره فوکوس کند؛ دیافراگم از f/1.8 به f/5.6 بسته می‌شود و تاری یک نقطهٔ پس‌زمینه کوچک می‌شود (عمق میدان). یک کادر «آنچه حسگر می‌بیند»، زیرنویس‌های روشن دوخطی و جمع‌بندی سه‌قاعده‌ای اضافه کن. سرمه‌ای نقشه‌فنی، پرتوهای کهربایی، شیشهٔ فیروزه‌ای.',
     },
     ar: {
       title: 'رسوم توضيحية: كيف يعمل',
-      prompt: 'أنشئ رسومًا توضيحية مدتها 20 ثانية: كيف تعمل سماعات إلغاء الضوضاء. اعرض موجة صوتية صاخبة تتجه نحو الأذن، وميكروفونًا صغيرًا يلتقطها، وشريحة تولّد الموجة المعكوسة، ثم تلتقي الموجتان وتتسطّحان إلى صمت. اجعل الموجة العنصر المتكرر في كل مرحلة، وضع تسمية لكل جزء عند ظهوره: ضوضاء، ميكروفون، ضوضاء مضادة، صمت. أسلوب مخطط تقني نظيف: خلفية رمادية غرافيتية داكنة وخطوط سماوية وبيضاء. اختم بعبارة "الصمت يُصمَّم هندسيًا."',
+      prompt: 'اصنع رسومًا توضيحية مدتها 20 ثانية: كيف تركّز الكاميرا؟ ابدأ بصورة ينتقل تركيزها من الزهور إلى شخص ثم إلى الجبال، مع السؤال «لماذا يظهر شيء واحد فقط حادًا؟». ثم اعرض منضدة بصرية من الجانب — الهدف والعدسة والمستشعر — بأشعة تتبع معادلة العدسة الرقيقة: تلتقي الأشعة على المستشعر (حاد)؛ قرّب الهدف فتلتقي خلفه (قرص ضبابي)؛ حرّك العدسة لإعادة التركيز؛ أغلق الفتحة من f/1.8 إلى f/5.6 فيصغر ضباب نقطة في الخلفية (عمق الميدان). أضف نافذة «ما يراه المستشعر» وتعليقات واضحة من سطرين وخلاصة من ثلاث قواعد. كحلي المخططات، وأشعة كهرمانية، وزجاج سماوي.',
     },
     ja: {
       title: 'しくみ解説アニメーション',
-      prompt: 'ノイズキャンセリングヘッドホンのしくみを解説する 20 秒のアニメーションを作ってください。騒がしい音波が耳へ向かい、小さなマイクがそれを拾い、チップが逆位相の波を作り、2 つの波が出会って打ち消し合い、静かな平らな線になる様子を見せます。音波を全段を通じて登場するモチーフにし、各パーツが現れたら「ノイズ」「マイク」「逆位相の音」「静寂」とラベルを付けてください。すっきりした技術図解スタイル：濃いグラファイトの背景にシアンと白の線。最後は「静けさは、設計できる。」で締めます。',
+      prompt: '20 秒の解説アニメーションを作って：カメラはどうやってピントを合わせる？　冒頭は写真で、ピントが花から人物、そして山へ移り、「なぜひとつだけがくっきり写るの？」と問いかける。続いて横から見た光学台（被写体・レンズ・センサー）を描き、光線は薄レンズの公式どおりに計算する。光線がセンサー上で集まればシャープ、被写体が近づくと集まる点がセンサーの後ろに移ってボケの円になり、レンズを動かしてピントを合わせ直す。絞りを f/1.8 から f/5.6 に絞ると背景の点のボケが小さくなる（被写界深度）。「センサーに写る像」の小窓、2 行の分かりやすい字幕、3 つのまとめを入れて。設計図風のネイビー、琥珀色の光線、シアンのガラス。',
     },
     ko: {
       title: '작동 원리 설명 애니메이션',
-      prompt: '노이즈 캔슬링 헤드폰의 작동 원리를 설명하는 20초 애니메이션을 만들어 줘. 시끄러운 음파가 귀로 향하고, 작은 마이크가 그 소리를 받고, 칩이 반대 위상의 파형을 만들고, 두 파형이 만나 평평한 선으로 상쇄되며 조용해지는 과정을 보여 줘. 음파를 모든 단계를 잇는 반복 요소로 쓰고, 각 부분이 나타날 때 라벨을 붙여 줘: 소음, 마이크, 반대 파형, 고요. 깔끔한 기술 도식 스타일로, 짙은 그래파이트 배경에 시안과 흰색 선. 마지막은 "고요는 설계된다."로 마무리해 줘.',
+      prompt: '20초 설명 애니메이션을 만들어 줘: 카메라는 어떻게 초점을 맞출까? 꽃에서 사람, 그리고 산으로 초점이 옮겨 가는 사진과 "왜 하나만 선명할까?"라는 질문으로 시작해. 이어서 피사체·렌즈·센서를 옆에서 본 광학대를 보여 주고, 빛은 얇은 렌즈 공식대로 계산해: 광선이 센서에서 만나면 선명하고, 피사체가 가까워지면 센서 뒤에서 만나 흐림 원이 생기고, 렌즈를 움직여 다시 초점을 맞추고, 조리개를 f/1.8에서 f/5.6으로 조이면 배경 점의 흐림이 작아져(피사계 심도). "센서에 보이는 모습" 미니 창, 명확한 두 줄 자막, 세 가지 요약을 넣어 줘. 청사진 네이비, 호박색 광선, 청록 유리.',
     },
     pl: {
       title: 'Animacja: jak to działa',
-      prompt: 'Stwórz 20-sekundową animację objaśniającą: jak działają słuchawki z redukcją szumów. Pokaż hałaśliwą falę dźwiękową płynącą w stronę ucha, maleńki mikrofon, który ją wychwytuje, układ generujący odwróconą falę oraz spotkanie obu fal, które wygaszają się do ciszy. Niech fala będzie powracającym motywem w każdym etapie, a każda część dostaje etykietę, gdy się pojawia: Hałas, Mikrofon, Antyhałas, Cisza. Czysty styl schematu technicznego: ciemnografitowe tło, cyjanowe i białe linie. Zakończ hasłem „Cisza jest zaprojektowana.”',
+      prompt: 'Stwórz 20-sekundową animację wyjaśniającą: jak aparat ustawia ostrość? Zacznij od zdjęcia, w którym ostrość przechodzi z kwiatów na osobę, a potem na góry, z pytaniem „Dlaczego ostra jest tylko jedna rzecz?”. Następnie pokaż ławę optyczną z boku — obiekt, soczewka, matryca — z promieniami zgodnymi z równaniem soczewki cienkiej: promienie spotykają się na matrycy (ostro); przybliż obiekt, a spotkają się za nią (krążek rozmycia); przesuń soczewkę, by ponownie ustawić ostrość; przymknij przysłonę z f/1.8 do f/5.6, a rozmycie punktu w tle się zmniejszy (głębia ostrości). Dodaj okienko „Co widzi matryca”, czytelne dwuwierszowe napisy i podsumowanie w trzech zasadach. Granat jak z planu technicznego, bursztynowe promienie, cyjanowe szkło.',
     },
     hu: {
       title: 'Magyarázó animáció: hogyan működik',
-      prompt: 'Készíts egy 20 másodperces magyarázó animációt arról, hogyan működik a zajszűrős fejhallgató. Mutasd meg, ahogy egy zajos hanghullám a fül felé halad, egy apró mikrofon felveszi, a chip előállítja az ellentétes fázisú hullámot, majd a két hullám találkozik, és csenddé simul. A hullám legyen minden szakaszon végigvonuló elem, és minden részt lássunk el felirattal, amikor megjelenik: Zaj, Mikrofon, Ellenzaj, Csend. Letisztult műszaki ábra stílus: sötét grafit háttér, cián és fehér vonalak. Zárd ezzel: „A csend tervezés kérdése.”',
+      prompt: 'Készíts egy 20 másodperces magyarázó animációt: hogyan fókuszál a fényképezőgép? Nyiss egy fotóval, amelyen az élesség a virágokról egy emberre, majd a hegyekre vándorol, és a kérdéssel: „Miért csak egy dolog éles?”. Ezután mutass oldalnézetes optikai padot – téma, lencse, szenzor – a vékonylencse-egyenletet követő fénysugarakkal: ha a sugarak a szenzoron találkoznak, éles; ha a téma közelebb jön, mögötte találkoznak (szórási kör); a lencse elmozdul, hogy újra fókuszáljon; a rekesz f/1.8-ról f/5.6-ra szűkül, és egy háttérpont elmosódása kisebb lesz (mélységélesség). Tegyél bele „Amit a szenzor lát” betétet, világos kétsoros feliratokat és háromszabályos összegzést. Tervrajz-sötétkék, borostyán sugarak, cián üveg.',
     },
     fr: {
       title: 'Animation explicative : comment ça marche',
-      prompt: 'Crée une animation explicative de 20 secondes : comment fonctionne un casque à réduction de bruit. Montre une onde sonore bruyante qui se dirige vers l’oreille, un minuscule micro qui la capte, la puce qui génère l’onde inversée, puis les deux ondes qui se rencontrent et s’aplatissent en silence. Garde l’onde comme objet récurrent à chaque étape et étiquette chaque élément quand il apparaît : Bruit, Micro, Anti-bruit, Silence. Style épuré de schéma technique : fond graphite foncé, lignes cyan et blanches. Termine sur « Le silence se conçoit. »',
+      prompt: 'Crée une animation explicative de 20 secondes : comment un appareil photo fait-il la mise au point ? Ouvre sur une photo dont la netteté passe des fleurs à une personne puis aux montagnes, avec la question « Pourquoi une seule chose est-elle nette ? ». Montre ensuite un banc optique vu de côté — sujet, objectif, capteur — avec des rayons qui suivent l’équation des lentilles minces : les rayons se rejoignent sur le capteur (net) ; rapproche le sujet et ils se rejoignent derrière (un disque de flou) ; l’objectif glisse pour refaire la mise au point ; ferme le diaphragme de f/1.8 à f/5.6 et le flou d’un point d’arrière-plan rétrécit (profondeur de champ). Ajoute un encart « Ce que voit le capteur », des sous-titres clairs sur deux lignes et un récapitulatif en trois règles. Bleu nuit de plan technique, rayons ambre, verre cyan.',
     },
     uk: {
       title: 'Анімація «Як це працює»',
-      prompt: 'Створи 20-секундну анімацію-пояснення: як працюють навушники з шумозаглушенням. Покажи гучну звукову хвилю, що рухається до вуха, крихітний мікрофон, який її вловлює, чип, що створює інвертовану хвилю, і як дві хвилі зустрічаються та згладжуються в тишу. Нехай хвиля буде наскрізним об’єктом на кожному кроці; підписуй кожну частину, коли вона з’являється: Шум, Мікрофон, Антишум, Тиша. Чистий стиль технічної схеми: темний графітовий фон, блакитні й білі лінії. Заверши фразою «Тиша — це інженерія».',
+      prompt: 'Створи 20-секундний пояснювальний ролик: як фокусується камера? Почни з фото, де фокус переходить із квітів на людину, а потім на гори, і запитання «Чому різким є лише щось одне?». Далі покажи оптичну лаву збоку — об’єкт, лінза, сенсор — із променями за формулою тонкої лінзи: промені сходяться на сенсорі — різко; об’єкт ближче — вони сходяться за сенсором (коло розсіювання); лінза зсувається й знову фокусує; діафрагма закривається з f/1.8 до f/5.6, і розмиття точки на тлі меншає (глибина різкості). Додай врізку «Що бачить сенсор», зрозумілі двохрядкові підписи й підсумок із трьох правил. Темно-синій «креслярський» фон, бурштинові промені, бірюзове скло.',
     },
     tr: {
       title: 'Nasıl çalışır açıklama animasyonu',
-      prompt: '20 saniyelik bir açıklama animasyonu oluştur: gürültü önleyici kulaklıklar nasıl çalışır. Kulağa doğru ilerleyen gürültülü bir ses dalgasını, onu algılayan minik bir mikrofonu, ters dalgayı üreten çipi ve iki dalganın buluşup sessizliğe düzleşmesini göster. Dalgayı her aşamada tekrar eden ana nesne yap ve her parçayı göründüğünde etiketle: Gürültü, Mikrofon, Karşı gürültü, Sessizlik. Sade teknik diyagram stili: koyu grafit arka plan, camgöbeği ve beyaz çizgiler. "Sessizlik tasarlanır." cümlesiyle bitir.',
+      prompt: '20 saniyelik bir açıklama animasyonu yap: kamera nasıl netleme yapar? Netliğin çiçeklerden bir kişiye, sonra dağlara kaydığı bir fotoğraf ve "Neden yalnızca bir şey net?" sorusuyla aç. Ardından yandan görünen bir optik tezgâh göster — özne, mercek, sensör — ışınlar ince mercek denklemine uysun: ışınlar sensörde buluşursa net; özne yaklaşınca arkasında buluşur (bulanıklık diski); mercek kayarak yeniden netler; diyafram f/1.8’den f/5.6’ya kısılınca arka plandaki bir noktanın bulanıklığı küçülür (alan derinliği). "Sensörün gördüğü" küçük penceresi, net iki satırlık altyazılar ve üç kurallı bir özet ekle. Teknik çizim laciverti, kehribar ışınlar, camgöbeği cam.',
     },
     th: {
       title: 'แอนิเมชันอธิบายหลักการทำงาน',
-      prompt: 'สร้างแอนิเมชันอธิบาย 20 วินาที: หูฟังตัดเสียงรบกวนทำงานอย่างไร แสดงคลื่นเสียงที่มีเสียงรบกวนเคลื่อนเข้าหาหู ไมโครโฟนจิ๋วรับเสียงนั้น ชิปสร้างคลื่นที่กลับเฟส แล้วคลื่นทั้งสองมาเจอกันและหักล้างจนกลายเป็นเส้นเรียบที่เงียบสงบ ให้คลื่นเสียงเป็นองค์ประกอบหลักที่อยู่ในทุกช่วง และติดป้ายกำกับแต่ละส่วนเมื่อปรากฏ: เสียงรบกวน ไมโครโฟน คลื่นต้านเสียง ความเงียบ สไตล์แผนภาพเทคนิคที่สะอาดตา พื้นหลังสีกราไฟต์เข้ม เส้นสีฟ้าอมเขียวและสีขาว ปิดท้ายด้วย "ความเงียบ ถูกออกแบบได้"',
+      prompt: 'สร้างแอนิเมชันอธิบาย 20 วินาที: กล้องโฟกัสอย่างไร? เปิดด้วยภาพถ่ายที่ย้ายโฟกัสจากดอกไม้ไปที่คน แล้วไปที่ภูเขา พร้อมคำถาม "ทำไมมีแค่สิ่งเดียวที่คมชัด?" จากนั้นแสดงแท่นทัศนศาสตร์มุมด้านข้าง — วัตถุ เลนส์ เซนเซอร์ — โดยแสงเดินตามสมการเลนส์บาง: แสงมาบรรจบบนเซนเซอร์ = คมชัด; เลื่อนวัตถุเข้าใกล้ แสงไปบรรจบหลังเซนเซอร์ = วงเบลอ; เลื่อนเลนส์เพื่อโฟกัสใหม่; หรี่รูรับแสงจาก f/1.8 เป็น f/5.6 แล้ววงเบลอของจุดฉากหลังเล็กลง (ระยะชัด) เพิ่มกรอบ "สิ่งที่เซนเซอร์เห็น" คำบรรยายสองบรรทัดที่ชัดเจน และสรุปสามข้อ โทนน้ำเงินพิมพ์เขียว แสงสีอำพัน กระจกสีฟ้าอมเขียว',
     },
     it: {
       title: 'Animazione esplicativa: come funziona',
-      prompt: 'Crea un’animazione esplicativa di 20 secondi: come funzionano le cuffie con cancellazione del rumore. Mostra un’onda sonora rumorosa che viaggia verso l’orecchio, un minuscolo microfono che la cattura, il chip che genera l’onda invertita e le due onde che si incontrano e si appiattiscono nel silenzio. Mantieni l’onda come elemento ricorrente in ogni passaggio ed etichetta ogni parte quando appare: Rumore, Microfono, Anti-rumore, Silenzio. Stile pulito da schema tecnico: sfondo grafite scuro, linee ciano e bianche. Chiudi con «Il silenzio si progetta.»',
-    },
-  },
-  'example-motion-product-launch': {
-    'zh-CN': {
-      title: '产品发布短片',
-      prompt: '为虚构会议 App「Driftnote」制作一段 20 秒产品发布短片。开头立即用超大字号亮出“Meetings in. Decisions out.”。接着展示三个清晰可读的会议对话片段，将其整理成一张醒目的决策总结，再用横贯画面的卡片呈现下一步行动，最后品牌落版。炭青色、暖白色、荧光青柠色，Space Grotesk 字体，用箭头贯穿全片。每个分镜都推进故事，缩成模板卡片时仍能看清主要信息。不要编造业务指标、客户证据或价格。',
-    },
-    'zh-TW': {
-      title: '產品發布短片',
-      prompt: '為虛構的 App「Driftnote」製作一段 20 秒的產品發布短片。它能把雜亂的會議錄音整理成一頁總結。展示核心變化：散落的對話氣泡和逐字稿片段逐行收攏，變成一張整潔的總結卡片，上面有三條待辦事項。品牌口號：「會議進來，決定出去。」介面只為這支短片簡單設計，不要編造數據、客戶或價格。炭青色背景、暖白色文字、螢光青檸色強調色。結尾停在 Driftnote 字標和口號上，保持兩秒。',
-    },
-    en: {
-      title: 'Product Launch Film',
-      prompt: 'Create a 20-second product launch film for fictional meeting app Driftnote. Open immediately with the oversized benefit “Meetings in. Decisions out.” Then show three readable meeting fragments, turn them into a large summary with concrete decisions, reveal full-width next-action cards, and close on the brand. Charcoal-teal, warm white, electric lime, Space Grotesk and a recurring arrow. Every scene advances the story. Make the main message readable at gallery-card size. Do not invent business metrics, customer evidence or pricing.',
-    },
-    id: {
-      title: 'Video Peluncuran Produk',
-      prompt: 'Buat video peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rekaman rapat yang berantakan menjadi ringkasan satu halaman. Tunjukkan perubahan intinya: gelembung percakapan dan potongan transkrip yang tersebar menyatu baris demi baris menjadi kartu ringkasan rapi dengan tiga tugas tindak lanjut. Slogan merek: "Rapat masuk. Keputusan keluar." Buat UI sederhana khusus untuk video ini — tanpa metrik, pelanggan, atau harga. Latar arang kehijauan, teks putih hangat, satu aksen hijau limau. Tutup dengan wordmark Driftnote dan slogannya, tahan selama dua detik.',
-    },
-    de: {
-      title: 'Produkt-Launchfilm',
-      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meeting-Aufnahmen in eine einseitige Zusammenfassung verwandelt. Zeige die zentrale Verwandlung: Verstreute Sprechblasen und Transkriptfragmente verdichten sich Zeile für Zeile zu einer aufgeräumten Zusammenfassungskarte mit drei Aufgaben. Markenclaim: „Meetings rein. Entscheidungen raus.“ Gestalte nur eine einfache UI für diesen Film – keine Kennzahlen, Kunden oder Preise. Dunkles Petrol als Hintergrund, warmweiße Schrift, ein Limettengrünakzent. Ende mit der Driftnote-Wortmarke und dem Claim, zwei Sekunden lang gehalten.',
-    },
-    'pt-BR': {
-      title: 'Filme de lançamento de produto',
-      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma o áudio bagunçado de reuniões em um resumo de uma página. Mostre a transformação central: balões de fala e trechos de transcrição espalhados se condensam, linha por linha, em um cartão de resumo organizado com três tarefas. Slogan: "Reuniões entram. Decisões saem." Crie apenas uma UI simples para este filme — sem métricas, clientes ou preços. Fundo verde-carvão, texto branco quente, um destaque verde-lima. Termine na marca Driftnote e no slogan, mantidos por dois segundos.',
-    },
-    'es-ES': {
-      title: 'Vídeo de lanzamiento de producto',
-      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte el audio caótico de las reuniones en un resumen de una página. Muestra la transformación clave: bocadillos de diálogo y fragmentos de transcripción dispersos se condensan, línea a línea, en una tarjeta de resumen ordenada con tres tareas. Lema: «Entran reuniones. Salen decisiones.» Diseña solo una UI sencilla para este vídeo, sin métricas, clientes ni precios. Fondo verde carbón, texto blanco cálido y un acento lima. Cierra con el logotipo de Driftnote y el lema, durante dos segundos.',
-    },
-    ru: {
-      title: 'Ролик запуска продукта',
-      prompt: 'Сделай 20-секундный ролик запуска для Driftnote — вымышленного приложения, которое превращает сумбурную запись встречи в итог на одну страницу. Покажи главное преображение: разрозненные реплики и фрагменты расшифровки строка за строкой собираются в аккуратную карточку-итог с тремя задачами. Слоган: «На входе встречи. На выходе решения». Интерфейс придумай простой и только для этого ролика — без метрик, клиентов и цен. Тёмный зеленовато-графитовый фон, тёплый белый текст, один лаймовый акцент. Заверши логотипом Driftnote и слоганом, удерживая их две секунды.',
-    },
-    fa: {
-      title: 'ویدیوی معرفی محصول',
-      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز؛ اپی خیالی که صدای شلوغ جلسه‌ها را به خلاصه‌ای یک‌صفحه‌ای تبدیل می‌کند. تحول اصلی را نشان بده: حباب‌های گفت‌وگو و تکه‌های متن پیاده‌شده که پراکنده‌اند، خط‌به‌خط جمع می‌شوند و به کارت خلاصهٔ مرتبی با سه کار پیگیری تبدیل می‌شوند. شعار برند: «جلسه وارد می‌شود، تصمیم بیرون می‌آید.» رابط کاربری را فقط برای همین ویدیو و ساده طراحی کن — بدون آمار، مشتری یا قیمت. پس‌زمینهٔ زغالی سبز، متن سفید گرم، یک رنگ تأکیدی سبز لیمویی. با لوگوی Driftnote و شعار تمام کن و دو ثانیه نگهش دار.',
-    },
-    ar: {
-      title: 'فيلم إطلاق منتج',
-      prompt: 'أنشئ فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل تسجيلات الاجتماعات الفوضوية إلى ملخص من صفحة واحدة. اعرض التحوّل الأساسي: فقاعات حوار ومقتطفات نصية متناثرة تتجمّع سطرًا بعد سطر في بطاقة ملخص مرتبة تتضمن ثلاث مهام. شعار العلامة: "اجتماعات تدخل، وقرارات تخرج." صمّم واجهة بسيطة لهذا الفيلم فقط، من دون أرقام أو عملاء أو أسعار. خلفية كحلية داكنة، ونص أبيض دافئ، ولون إبراز ليموني واحد. اختم بشعار Driftnote المكتوب وعبارته لمدة ثانيتين.',
-    },
-    ja: {
-      title: 'プロダクトローンチ動画',
-      prompt: '散らかった会議の録音を 1 ページの要約に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作ってください。中心となる変化を見せます。散らばった吹き出しと文字起こしの断片が 1 行ずつまとまり、3 つのアクションアイテムを持つ整った要約カードになります。ブランドライン：「会議が入り、決定が出る。」UI はこの動画用にシンプルに作り、数値・顧客・価格は作らないでください。深いネイビーの背景、温かみのある白の文字、ライムのアクセントを 1 色。最後は Driftnote のワードマークとブランドラインで締め、2 秒間キープします。',
-    },
-    ko: {
-      title: '제품 출시 영상',
-      prompt: '지저분한 회의 녹음을 한 페이지 요약으로 바꿔 주는 가상의 앱 "Driftnote"의 20초 출시 영상을 만들어 줘. 핵심 변화를 보여 줘: 흩어진 말풍선과 녹취 조각이 한 줄씩 모여 할 일 세 개가 담긴 깔끔한 요약 카드가 돼. 브랜드 문구: "회의는 들어오고, 결정은 나간다." UI는 이 영상을 위해 간단하게만 만들고, 수치·고객·가격은 지어내지 마. 짙은 네이비 배경, 따뜻한 흰색 글자, 라임 강조색 하나. 마지막은 Driftnote 워드마크와 브랜드 문구로 마무리하고 2초간 유지해 줘.',
-    },
-    pl: {
-      title: 'Film premierowy produktu',
-      prompt: 'Stwórz 20-sekundowy film premierowy dla Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne nagrania spotkań w jednostronicowe podsumowanie. Pokaż kluczową przemianę: rozrzucone dymki i fragmenty transkrypcji linia po linii łączą się w schludną kartę podsumowania z trzema zadaniami. Hasło marki: „Spotkania na wejściu. Decyzje na wyjściu.” Zaprojektuj prosty interfejs tylko na potrzeby filmu — bez wskaźników, klientów i cen. Głębokie granatowe tło, ciepły biały tekst, jeden limonkowy akcent. Zakończ logotypem Driftnote i hasłem, utrzymanymi przez dwie sekundy.',
-    },
-    hu: {
-      title: 'Termékbemutató film',
-      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált alkalmazáshoz, amely a kusza értekezletfelvételekből egyoldalas összefoglalót készít. Mutasd meg a lényegi változást: a szétszórt beszédbuborékok és átiratfoszlányok soronként egy rendezett összefoglaló kártyává állnak össze, három teendővel. Márkaszlogen: „Bemegy a megbeszélés, kijön a döntés.” Csak egyszerű felületet tervezz ehhez a filmhez – ne találj ki mutatókat, ügyfeleket vagy árakat. Mély tengerészkék háttér, meleg fehér szöveg, egy limezöldszínű kiemelés. Zárd a Driftnote logóval és a szlogennel, két másodpercig kitartva.',
-    },
-    fr: {
-      title: 'Film de lancement produit',
-      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme l’audio désordonné des réunions en un résumé d’une page. Montre la transformation clé : des bulles de dialogue et des fragments de transcription épars se condensent, ligne après ligne, en une carte de résumé nette avec trois actions à mener. Signature : « Les réunions entrent. Les décisions sortent. » Conçois une interface simple pour ce film uniquement — pas de chiffres, de clients ni de prix. Fond bleu marine profond, texte blanc chaud, un accent vert citron. Termine sur le logotype Driftnote et la signature, tenus deux secondes.',
-    },
-    uk: {
-      title: 'Ролик запуску продукту',
-      prompt: 'Створи 20-секундний ролик запуску для Driftnote — вигаданого застосунку, що перетворює хаотичний запис зустрічі на підсумок на одну сторінку. Покажи головну зміну: розкидані репліки та фрагменти розшифровки рядок за рядком збираються в охайну картку-підсумок із трьома завданнями. Слоган: «На вході зустрічі. На виході рішення». Інтерфейс придумай простий і лише для цього ролика — без метрик, клієнтів і цін. Темний зеленувато-графітовий фон, теплий білий текст, один лаймовий акцент. Заверши логотипом Driftnote і слоганом, утримуючи їх дві секунди.',
-    },
-    tr: {
-      title: 'Ürün lansman filmi',
-      prompt: 'Dağınık toplantı kayıtlarını tek sayfalık bir özete dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi oluştur. Temel dönüşümü göster: dağınık konuşma balonları ve transkript parçaları satır satır birleşerek üç görev içeren düzenli bir özet kartına dönüşsün. Marka sloganı: "Toplantılar girer. Kararlar çıkar." Arayüzü yalnızca bu film için basit tasarla — metrik, müşteri ya da fiyat uydurma. Koyu kömür yeşili arka plan, sıcak beyaz yazı, tek bir limon yeşili vurgu rengi. Driftnote logosu ve sloganıyla bitir, iki saniye beklet.',
-    },
-    th: {
-      title: 'วิดีโอเปิดตัวสินค้า',
-      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนเสียงประชุมที่ยุ่งเหยิงให้เป็นสรุปหน้าเดียว แสดงการเปลี่ยนแปลงหลัก: บับเบิลบทสนทนาและท่อนถอดความที่กระจัดกระจายค่อย ๆ รวมกันทีละบรรทัดจนกลายเป็นการ์ดสรุปที่เรียบร้อย พร้อมงานที่ต้องทำสามข้อ สโลแกนแบรนด์: "ประชุมเข้ามา การตัดสินใจออกไป" ออกแบบหน้าจอแบบเรียบง่ายสำหรับวิดีโอนี้เท่านั้น ห้ามแต่งตัวเลข ลูกค้า หรือราคา พื้นหลังเขียวถ่านเข้ม ตัวอักษรขาวโทนอุ่น สีเน้นเขียวมะนาวหนึ่งสี ปิดท้ายด้วยโลโก้ตัวอักษร Driftnote และสโลแกน ค้างไว้สองวินาที',
-    },
-    it: {
-      title: 'Video di lancio prodotto',
-      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app immaginaria che trasforma l’audio disordinato delle riunioni in un riepilogo di una pagina. Mostra la trasformazione chiave: fumetti di dialogo e frammenti di trascrizione sparsi si condensano, riga dopo riga, in una scheda di riepilogo ordinata con tre attività. Claim: «Entrano riunioni. Escono decisioni.» Progetta solo una UI semplice per questo video, senza metriche, clienti o prezzi. Sfondo verde carbone, testo bianco caldo, un accento verde lime. Chiudi sul logotipo Driftnote e sul claim, tenuti per due secondi.',
+      prompt: 'Crea un’animazione esplicativa di 20 secondi: come mette a fuoco una fotocamera? Apri con una foto in cui il fuoco passa dai fiori a una persona e poi alle montagne, con la domanda «Perché solo una cosa è nitida?». Poi mostra un banco ottico visto di lato — soggetto, lente, sensore — con raggi che seguono l’equazione della lente sottile: i raggi si incontrano sul sensore (nitido); avvicina il soggetto e si incontrano dietro (un disco di sfocatura); la lente scorre per rimettere a fuoco; chiudi il diaframma da f/1.8 a f/5.6 e la sfocatura di un punto sullo sfondo si riduce (profondità di campo). Aggiungi un riquadro «Cosa vede il sensore», sottotitoli chiari su due righe e un riepilogo in tre regole. Blu notte da progetto tecnico, raggi ambra, vetro ciano.',
     },
   },
   'example-motion-showreel': {
     'zh-CN': {
       title: '动效设计师作品集快剪',
-      prompt: '制作一段 15 秒的动效设计作品集快剪，展示你是一流的动效设计师。融入几种不同的手法：大字号动态排版、一个变形成新物体的图形、一段界面动效和一个简短的数据动画；但整体保持同一种视觉风格，并用一个反复出现的元素串起每一次切换。米白背景、墨黑文字，只用一种鲜明的强调色。结尾是一张自信的署名卡，署名为虚构工作室“Studio Kinetik”，停留两秒。',
+      prompt: '做一段 15 秒的动效设计作品集快剪，证明你是顶尖的动效设计师，全力以赴。深色舞台配摄影机式 HUD（取景角标、时间码、128 BPM 节拍方块），只用一种橙色强调色。跟着节拍切换五种手法：橙色放射星芒开场、TIMING / WEIGHT / RHYTHM 动态大字、变形的几何网格、由旋转 3D 点云球体变成的圆环，最后落在虚构工作室「Studio Kinetik」的签名卡上，开场的圆点变成句号。',
     },
     'zh-TW': {
       title: '動效設計師作品集快剪',
-      prompt: '製作一段 15 秒的動效設計作品集快剪，展示你是一流的動效設計師。融入幾種不同的手法：大字級動態排版、一個變形成新物體的圖形、一段介面動效和一個簡短的數據動畫；但整體保持同一種視覺風格，並用一個反覆出現的元素串起每一次切換。米白背景、墨黑文字，只用一種鮮明的強調色。結尾是一張自信的署名卡，署名為虛構工作室「Studio Kinetik」，停留兩秒。',
+      prompt: '做一段 15 秒的動效設計作品集快剪，證明你是頂尖的動效設計師，全力以赴。深色舞台配攝影機式 HUD（取景角標、時間碼、128 BPM 節拍方塊），只用一種橘色強調色。跟著節拍切換五種手法：橘色放射星芒開場、TIMING / WEIGHT / RHYTHM 動態大字、變形的幾何網格、由旋轉 3D 點雲球體變成的圓環，最後落在虛構工作室「Studio Kinetik」的簽名卡上，開場的圓點變成句號。',
     },
     en: {
       title: 'Motion Designer Showreel',
-      prompt: 'Make a 15-second motion design showreel that proves you are a world-class motion designer. Pack in several distinct techniques — bold kinetic typography, a shape that morphs into something new, an animated interface moment and a quick data flourish — but keep one visual identity and one recurring motif that links every cut. Off-white canvas, ink-black type, a single vivid accent color. End on a confident signature card for the fictional studio "Studio Kinetik", held for two seconds.',
+      prompt: 'Make a dynamic 15-second motion graphics showreel that proves you are an incredible motion designer — go all out. Dark stage with a camera-style HUD (corner brackets, timecode, 128 BPM beat squares) and one orange accent. Cut on the beat through five techniques: an orange starburst identity, the kinetic words TIMING / WEIGHT / RHYTHM, a morphing shape grid, a rotating 3D point sphere that becomes a torus, and a signature card for the fictional "Studio Kinetik" where the opening dot becomes the full stop.',
     },
     id: {
       title: 'Showreel Desainer Motion',
-      prompt: 'Buat showreel motion design berdurasi 15 detik yang membuktikan kamu desainer motion kelas dunia. Masukkan beberapa teknik berbeda — tipografi kinetik yang tegas, bentuk yang berubah menjadi sesuatu yang baru, momen animasi antarmuka, dan sentuhan data singkat — tetapi pertahankan satu identitas visual dan satu motif berulang yang menghubungkan setiap potongan. Latar putih gading, teks hitam tinta, satu warna aksen yang mencolok. Akhiri dengan kartu tanda tangan yang percaya diri untuk studio fiktif "Studio Kinetik", tahan selama dua detik.',
+      prompt: 'Buat showreel motion graphics 15 detik yang dinamis untuk membuktikan kamu desainer motion yang luar biasa — habis-habisan. Panggung gelap dengan HUD bergaya kamera (sudut bingkai, timecode, kotak ketukan 128 BPM) dan satu aksen oranye. Potong mengikuti ketukan melalui lima teknik: identitas ledakan bintang oranye, kata kinetik TIMING / WEIGHT / RHYTHM, grid bentuk yang berubah, bola titik 3D berputar yang menjadi torus, dan kartu tanda tangan studio fiktif "Studio Kinetik" tempat titik pembuka menjadi titik akhir.',
     },
     de: {
       title: 'Motion-Designer-Showreel',
-      prompt: 'Erstelle ein 15-sekündiges Motion-Design-Showreel, das beweist, dass du ein Motion Designer der Weltklasse bist. Kombiniere mehrere Techniken – kräftige kinetische Typografie, eine Form, die sich in etwas Neues verwandelt, einen animierten Interface-Moment und eine kurze Datenanimation –, aber halte eine visuelle Identität und ein wiederkehrendes Motiv, das jeden Schnitt verbindet. Gebrochen weißer Hintergrund, tiefschwarze Schrift, eine einzige kräftige Akzentfarbe. Ende mit einer selbstbewussten Signaturkarte für das fiktive Studio „Studio Kinetik“, zwei Sekunden lang gehalten.',
+      prompt: 'Erstelle ein dynamisches 15-sekündiges Motion-Graphics-Showreel, das beweist, dass du ein großartiger Motion Designer bist – gib alles. Dunkle Bühne mit kameraartigem HUD (Eckmarken, Timecode, 128-BPM-Taktquadrate) und einem orangefarbenen Akzent. Schneide im Takt durch fünf Techniken: orangefarbener Strahlenkranz als Identität, die kinetischen Wörter TIMING / WEIGHT / RHYTHM, ein sich wandelndes Formenraster, eine rotierende 3D-Punktkugel, die zum Torus wird, und eine Signaturkarte des fiktiven „Studio Kinetik“, auf der der Anfangspunkt zum Schlusspunkt wird.',
     },
     'pt-BR': {
       title: 'Showreel de motion designer',
-      prompt: 'Crie um showreel de motion design de 15 segundos que prove que você é um motion designer de nível mundial. Reúna várias técnicas diferentes — tipografia cinética marcante, uma forma que se transforma em algo novo, um momento de interface animada e um toque rápido de dados —, mas mantenha uma única identidade visual e um motivo recorrente que conecte cada corte. Fundo off-white, texto preto, uma única cor de destaque vibrante. Termine com um cartão de assinatura confiante do estúdio fictício "Studio Kinetik", mantido por dois segundos.',
+      prompt: 'Crie um showreel de motion graphics dinâmico de 15 segundos que prove que você é um motion designer incrível — capriche ao máximo. Palco escuro com HUD estilo câmera (cantos de enquadramento, timecode, quadrados de batida a 128 BPM) e um único destaque laranja. Corte no ritmo por cinco técnicas: identidade em explosão laranja, as palavras cinéticas TIMING / WEIGHT / RHYTHM, uma grade de formas que se transformam, uma esfera 3D de pontos girando que vira um toro e um cartão de assinatura do estúdio fictício "Studio Kinetik", onde o ponto inicial vira o ponto final.',
     },
     'es-ES': {
       title: 'Showreel de motion designer',
-      prompt: 'Crea un showreel de motion design de 15 segundos que demuestre que eres un motion designer de primer nivel. Incluye varias técnicas distintas —tipografía cinética contundente, una forma que se transforma en algo nuevo, un momento de interfaz animada y un toque rápido de datos—, pero mantén una sola identidad visual y un motivo recurrente que enlace cada corte. Fondo blanco roto, texto negro tinta y un único color de acento vivo. Termina con una tarjeta de firma segura del estudio ficticio «Studio Kinetik», que se mantenga dos segundos.',
+      prompt: 'Crea un showreel de motion graphics dinámico de 15 segundos que demuestre que eres un motion designer increíble: dalo todo. Escenario oscuro con HUD de cámara (esquinas de encuadre, código de tiempo, cuadrados de compás a 128 BPM) y un único acento naranja. Corta al ritmo a través de cinco técnicas: un estallido naranja como identidad, las palabras cinéticas TIMING / WEIGHT / RHYTHM, una cuadrícula de formas cambiantes, una esfera 3D de puntos que gira y se convierte en un toro, y una tarjeta de firma del estudio ficticio «Studio Kinetik» donde el punto inicial pasa a ser el punto final.',
     },
     ru: {
       title: 'Шоурил моушн-дизайнера',
-      prompt: 'Сделай 15-секундный шоурил по моушн-дизайну, который докажет, что ты моушн-дизайнер мирового уровня. Объедини несколько приёмов — выразительную кинетическую типографику, форму, превращающуюся во что-то новое, анимированный момент интерфейса и короткий акцент с данными, — но сохрани единый визуальный стиль и повторяющийся мотив, который связывает каждую склейку. Молочно-белый фон, чёрный текст, один яркий акцентный цвет. Заверши уверенной финальной карточкой с подписью вымышленной студии «Studio Kinetik» и удержи её две секунды.',
+      prompt: 'Сделай динамичный 15-секундный шоурил моушн-графики, который докажет, что ты потрясающий моушн-дизайнер, — выложись по полной. Тёмная сцена с HUD в стиле камеры (уголки кадра, таймкод, квадраты долей на 128 BPM) и один оранжевый акцент. Монтируй в такт через пять техник: оранжевая вспышка-звезда, кинетические слова TIMING / WEIGHT / RHYTHM, сетка меняющихся фигур, вращающаяся 3D-сфера из точек, превращающаяся в тор, и финальная карточка вымышленной «Studio Kinetik», где начальная точка становится точкой в конце.',
     },
     fa: {
       title: 'شوریل طراح موشن',
-      prompt: 'یک شوریل موشن دیزاین ۱۵ ثانیه‌ای بساز که ثابت کند طراح موشن درجه‌یکی هستی. چند تکنیک متفاوت را کنار هم بیاور — تایپوگرافی پویای پررنگ، شکلی که به چیزی تازه تبدیل می‌شود، یک لحظهٔ انیمیشن رابط کاربری و یک جلوهٔ کوتاه داده‌ای — اما یک هویت بصری واحد و یک نقش‌مایهٔ تکرارشونده داشته باش که همهٔ برش‌ها را به هم وصل کند. پس‌زمینهٔ سفید شیری، متن مشکی، فقط یک رنگ تأکیدی پررنگ. با یک کارت امضای مطمئن برای استودیوی خیالی «Studio Kinetik» تمام کن و دو ثانیه نگهش دار.',
+      prompt: 'یک شوریل موشن‌گرافیک پویای ۱۵ ثانیه‌ای بساز که ثابت کند طراح موشن فوق‌العاده‌ای هستی — با تمام توان. صحنهٔ تیره با HUD شبیه دوربین (گوشه‌های کادر، تایم‌کد، مربع‌های ضرب ۱۲۸ BPM) و تنها یک رنگ تأکیدی نارنجی. روی ضرب بین پنج تکنیک برش بزن: هویت انفجار ستاره‌ای نارنجی، واژه‌های جنبشی TIMING / WEIGHT / RHYTHM، شبکهٔ شکل‌های دگرگون‌شونده، کرهٔ نقطه‌ای سه‌بعدی چرخان که به چنبره تبدیل می‌شود، و کارت امضای استودیوی خیالی «Studio Kinetik» که نقطهٔ آغاز در آن نقطهٔ پایان جمله می‌شود.',
     },
     ar: {
       title: 'عرض أعمال مصمم الحركة',
-      prompt: 'أنشئ عرض أعمال موشن ديزاين مدته 15 ثانية يُثبت أنك مصمم حركة من الطراز العالمي. اجمع عدة تقنيات مختلفة — طباعة حركية جريئة، وشكلًا يتحوّل إلى شيء جديد، ولحظة واجهة متحركة، ولمسة بيانات سريعة — مع الحفاظ على هوية بصرية واحدة وعنصر متكرر يربط كل انتقال. خلفية بيضاء مائلة إلى العاجي، ونص أسود، ولون إبراز واحد زاهٍ. اختم ببطاقة توقيع واثقة للاستوديو الخيالي "Studio Kinetik" تبقى لثانيتين.',
+      prompt: 'اصنع عرض أعمال موشن جرافيك ديناميكيًا مدته 15 ثانية يثبت أنك مصمم حركة مذهل — ابذل كل ما لديك. مسرح داكن بواجهة HUD تشبه الكاميرا (زوايا الإطار، ورمز الوقت، ومربعات إيقاع 128 BPM) ولون تمييز برتقالي واحد. انتقل على الإيقاع بين خمس تقنيات: هوية انفجار نجمي برتقالي، والكلمات الحركية TIMING / WEIGHT / RHYTHM، وشبكة أشكال متحولة، وكرة نقاط ثلاثية الأبعاد دوّارة تتحول إلى حلقة، وبطاقة توقيع للاستوديو الخيالي «Studio Kinetik» حيث تصبح النقطة الأولى نقطة نهاية الكلمة.',
     },
     ja: {
       title: 'モーションデザイナーのショーリール',
-      prompt: '一流のモーションデザイナーであることを証明する 15 秒のモーションデザイン・ショーリールを作ってください。力強いキネティックタイポグラフィ、別の形へ変わるシェイプ、アニメーションする UI の一場面、短いデータ演出など複数の手法を盛り込みつつ、ビジュアルは一貫させ、各カットをつなぐ繰り返しのモチーフを置いてください。オフホワイトの背景、墨黒の文字、鮮やかなアクセントカラーを 1 色だけ使用。最後は架空のスタジオ「Studio Kinetik」の自信あるサインカードで締め、2 秒間キープします。',
+      prompt: '自分がすごいモーションデザイナーだと証明する、ダイナミックな 15 秒のモーショングラフィックス・ショーリールを全力で作って。暗いステージにカメラ風 HUD（フレームの角、タイムコード、128 BPM のビート表示）、アクセントはオレンジ 1 色。ビートに合わせて 5 つの技法を切り替える：オレンジのスターバースト、TIMING / WEIGHT / RHYTHM のキネティックタイポ、変形する図形グリッド、回転する 3D 点群の球がトーラスに変わる場面、そして架空のスタジオ「Studio Kinetik」のサインカード。冒頭の点が最後のピリオドになる。',
     },
     ko: {
       title: '모션 디자이너 쇼릴',
-      prompt: '세계적인 수준의 모션 디자이너임을 보여 주는 15초 모션 디자인 쇼릴을 만들어 줘. 굵직한 키네틱 타이포그래피, 새로운 무언가로 변하는 도형, 움직이는 인터페이스 장면, 짧은 데이터 연출 등 여러 기법을 담되, 하나의 비주얼 아이덴티티와 모든 컷을 잇는 반복 모티프를 유지해 줘. 오프화이트 배경, 먹색 글자, 선명한 강조색은 하나만. 마지막은 가상의 스튜디오 "Studio Kinetik"의 자신감 있는 서명 카드로 마무리하고 2초간 유지해 줘.',
+      prompt: '네가 놀라운 모션 디자이너임을 증명하는 역동적인 15초 모션 그래픽 쇼릴을 전력을 다해 만들어 줘. 어두운 무대에 카메라 스타일 HUD(프레임 모서리, 타임코드, 128 BPM 비트 사각형)와 주황색 강조색 하나. 비트에 맞춰 다섯 가지 기법으로 컷: 주황색 스타버스트 아이덴티티, TIMING / WEIGHT / RHYTHM 키네틱 단어, 변형되는 도형 그리드, 회전하다 토러스로 바뀌는 3D 포인트 구, 그리고 첫 점이 마침표가 되는 가상 스튜디오 "Studio Kinetik"의 시그니처 카드.',
     },
     pl: {
       title: 'Showreel motion designera',
-      prompt: 'Stwórz 15-sekundowy showreel motion designu, który udowodni, że jesteś motion designerem światowej klasy. Połącz kilka różnych technik — wyrazistą typografię kinetyczną, kształt zmieniający się w coś nowego, animowany moment interfejsu i krótki akcent z danymi — ale zachowaj jedną identyfikację wizualną i powracający motyw łączący każde cięcie. Złamana biel w tle, atramentowo czarny tekst, jeden wyrazisty kolor akcentu. Zakończ pewną siebie kartą z podpisem fikcyjnego studia „Studio Kinetik”, utrzymaną przez dwie sekundy.',
+      prompt: 'Stwórz dynamiczny, 15-sekundowy showreel motion graphics, który udowodni, że jesteś niesamowitym motion designerem — daj z siebie wszystko. Ciemna scena z HUD w stylu kamery (narożniki kadru, timecode, kwadraty taktów 128 BPM) i jeden pomarańczowy akcent. Tnij w rytm przez pięć technik: pomarańczowy rozbłysk jako identyfikacja, kinetyczne słowa TIMING / WEIGHT / RHYTHM, siatka zmieniających się kształtów, obracająca się kula punktów 3D, która staje się torusem, oraz karta z podpisem fikcyjnego „Studio Kinetik”, w której początkowa kropka staje się kropką na końcu.',
     },
     hu: {
       title: 'Motion designer bemutatófilm',
-      prompt: 'Készíts egy 15 másodperces motion design bemutatófilmet, amely bizonyítja, hogy világszínvonalú motion designer vagy. Tegyél bele több különböző technikát – erőteljes kinetikus tipográfiát, valami újjá alakuló formát, egy animált felületi pillanatot és egy rövid adatvizualizációt –, de tarts meg egyetlen vizuális arculatot és egy visszatérő motívumot, amely minden vágást összeköt. Törtfehér háttér, tintafekete szöveg, egyetlen élénk kiemelőszín. Zárd egy magabiztos szignókártyával a kitalált „Studio Kinetik” stúdió nevével, és tartsd két másodpercig.',
+      prompt: 'Készíts egy dinamikus, 15 másodperces motion graphics bemutatófilmet, amely bizonyítja, hogy elképesztő motion designer vagy – adj bele mindent. Sötét színpad kameraszerű HUD-dal (képkivágás-sarkok, időkód, 128 BPM-es ütemnégyzetek) és egyetlen narancs kiemelőszín. Ütemre vágj öt technikán át: narancs csillagrobbanás mint arculat, a TIMING / WEIGHT / RHYTHM kinetikus szavak, alakváltó formarács, forgó 3D-pontgömb, amely tóruszzá alakul, és a kitalált „Studio Kinetik” szignókártyája, ahol a nyitó pont lesz a záró pont.',
     },
     fr: {
       title: 'Showreel de motion designer',
-      prompt: 'Crée un showreel de motion design de 15 secondes qui prouve que tu es un motion designer de classe mondiale. Réunis plusieurs techniques — une typographie cinétique affirmée, une forme qui se transforme en autre chose, un moment d’interface animée et une touche de données rapide —, mais garde une seule identité visuelle et un motif récurrent qui relie chaque coupe. Fond blanc cassé, texte noir encre, une seule couleur d’accent vive. Termine sur une carte de signature assurée pour le studio fictif « Studio Kinetik », tenue pendant deux secondes.',
+      prompt: 'Crée un showreel de motion graphics dynamique de 15 secondes qui prouve que tu es un motion designer incroyable — donne tout. Scène sombre avec un HUD façon caméra (coins de cadre, timecode, carrés de mesure à 128 BPM) et un seul accent orange. Coupe sur le temps à travers cinq techniques : un éclat orange en guise d’identité, les mots cinétiques TIMING / WEIGHT / RHYTHM, une grille de formes qui se transforment, une sphère de points 3D en rotation qui devient un tore, et une carte de signature du studio fictif « Studio Kinetik » où le point d’ouverture devient le point final.',
     },
     uk: {
       title: 'Шоурил моушн-дизайнера',
-      prompt: 'Створи 15-секундний шоурил з моушн-дизайну, який доведе, що ти моушн-дизайнер світового рівня. Поєднай кілька прийомів — виразну кінетичну типографіку, форму, що перетворюється на щось нове, анімований момент інтерфейсу та короткий акцент із даними, — але збережи єдиний візуальний стиль і повторюваний мотив, що поєднує кожну склейку. Молочно-білий фон, чорний текст, один яскравий акцентний колір. Заверши впевненою фінальною карткою з підписом вигаданої студії «Studio Kinetik» і втримай її дві секунди.',
+      prompt: 'Створи динамічний 15-секундний шоурил моушн-графіки, який доведе, що ти неймовірний моушн-дизайнер, — викладись на повну. Темна сцена з HUD у стилі камери (кутики кадру, таймкод, квадрати долей на 128 BPM) і один помаранчевий акцент. Монтуй у такт через п’ять технік: помаранчевий спалах-зірка, кінетичні слова TIMING / WEIGHT / RHYTHM, сітка змінних фігур, обертова 3D-сфера з точок, що стає тором, і фінальна картка вигаданої «Studio Kinetik», де початкова крапка стає крапкою в кінці.',
     },
     tr: {
       title: 'Hareket tasarımcısı showreel',
-      prompt: 'Dünya çapında bir hareket tasarımcısı olduğunu kanıtlayan 15 saniyelik bir motion design showreel\'i oluştur. Birkaç farklı tekniği bir araya getir — güçlü kinetik tipografi, yeni bir şeye dönüşen bir şekil, animasyonlu bir arayüz anı ve kısa bir veri dokunuşu — ama tek bir görsel kimlik ve her kesmeyi birbirine bağlayan tekrar eden bir motif koru. Kırık beyaz arka plan, mürekkep siyahı yazı, tek bir canlı vurgu rengi. Hayali "Studio Kinetik" stüdyosu için kendinden emin bir imza kartıyla bitir ve iki saniye beklet.',
+      prompt: 'Harika bir hareket tasarımcısı olduğunu kanıtlayan 15 saniyelik dinamik bir motion graphics showreel yap — tüm gücünle. Kamera tarzı HUD’lu karanlık sahne (kadraj köşeleri, zaman kodu, 128 BPM vuruş kareleri) ve tek bir turuncu vurgu. Ritme göre beş teknik arasında kes: turuncu yıldız patlaması kimliği, TIMING / WEIGHT / RHYTHM kinetik kelimeleri, dönüşen şekil ızgarası, torusa dönüşen dönen 3D nokta küresi ve açılıştaki noktanın son noktaya dönüştüğü hayali "Studio Kinetik" imza kartı.',
     },
     th: {
       title: 'โชว์รีลนักออกแบบโมชัน',
-      prompt: 'สร้างโชว์รีลโมชันดีไซน์ความยาว 15 วินาทีที่พิสูจน์ว่าคุณเป็นนักออกแบบโมชันระดับโลก ใส่หลายเทคนิค ทั้งตัวอักษรเคลื่อนไหวที่หนักแน่น รูปทรงที่แปลงเป็นสิ่งใหม่ ช่วงแอนิเมชันหน้าจอ และลูกเล่นข้อมูลสั้น ๆ แต่คงสไตล์ภาพเดียวกัน และมีองค์ประกอบที่วนกลับมาเชื่อมทุกช็อต พื้นหลังสีขาวนวล ตัวอักษรสีดำหมึก ใช้สีเน้นสดเพียงสีเดียว ปิดท้ายด้วยการ์ดลายเซ็นอย่างมั่นใจของสตูดิโอสมมติ "Studio Kinetik" ค้างไว้สองวินาที',
+      prompt: 'สร้างโชว์รีลโมชันกราฟิก 15 วินาทีที่มีพลัง พิสูจน์ว่าคุณเป็นนักออกแบบโมชันที่ยอดเยี่ยม — จัดเต็ม เวทีสีเข้มพร้อม HUD สไตล์กล้อง (มุมเฟรม ไทม์โค้ด ช่องจังหวะ 128 BPM) และสีเน้นสีส้มเพียงสีเดียว ตัดตามจังหวะผ่านห้าเทคนิค: ประกายดาวสีส้มเปิดตัว คำเคลื่อนไหว TIMING / WEIGHT / RHYTHM กริดรูปทรงที่แปรเปลี่ยน ทรงกลมจุด 3D หมุนแล้วกลายเป็นทอรัส และการ์ดลายเซ็นของสตูดิโอสมมติ "Studio Kinetik" ที่จุดเปิดเรื่องกลายเป็นจุดปิดท้าย',
     },
     it: {
       title: 'Showreel da motion designer',
-      prompt: 'Crea uno showreel di motion design di 15 secondi che dimostri che sei un motion designer di livello mondiale. Inserisci diverse tecniche — tipografia cinetica decisa, una forma che si trasforma in qualcosa di nuovo, un momento di interfaccia animata e un rapido tocco di dati — ma mantieni un’unica identità visiva e un motivo ricorrente che colleghi ogni stacco. Sfondo bianco sporco, testo nero inchiostro, un solo colore d’accento vivace. Chiudi con una sicura card firma dello studio immaginario «Studio Kinetik», tenuta per due secondi.',
+      prompt: 'Crea uno showreel di motion graphics dinamico di 15 secondi che dimostri che sei un motion designer incredibile: dai il massimo. Palco scuro con HUD in stile videocamera (angoli di inquadratura, timecode, quadrati di battuta a 128 BPM) e un solo accento arancione. Taglia a tempo attraverso cinque tecniche: un’esplosione arancione come identità, le parole cinetiche TIMING / WEIGHT / RHYTHM, una griglia di forme che si trasformano, una sfera di punti 3D rotante che diventa un toro e una card con la firma dello studio fittizio «Studio Kinetik», dove il punto iniziale diventa il punto finale.',
     },
   },
-  'example-motion-data-story': {
+  'example-motion-product-launch': {
     'zh-CN': {
-      title: '数据故事动画',
-      prompt: '制作 20 秒数据故事「一百万与十亿」。用大数字对比一百万秒约 11.6 天、十亿秒约 31.7 年，再用 1000 个圆点展示 1000 倍差距，每点代表一百万秒。结尾两张卡片：约 12 天与约 32 年。暖纸白、近黑、朱红，大字和明确分镜。按每天 86400 秒、每年 365.25 天换算，标明近似值。',
+      title: '产品发布短片',
+      prompt: '为虚构应用 Driftnote 做一段 20 秒的产品发布短片，它能把混乱的会议变成明确的决定。暖纸色背景、黑色文字、一种橙色强调色。开场是大号动态文字“Every meeting ends with a mess.”；接着会议碎片散落在“Notes everywhere. Decisions nowhere.”周围；一个写着 Driftnote 的橙色大开关打开后，碎片飞进一张摘要卡片，列出三项决定。再展示三条行动项逐个打勾并分配负责人，按节拍切出“Listens. Sorts. Follows up.”，最后落在开关加品牌名的标志上，配“Meetings, minus the mess.”和“Out today”。',
     },
     'zh-TW': {
-      title: '數據故事動畫',
-      prompt: '製作 20 秒數據故事「一百萬與十億」。用大數字對比一百萬秒約 11.6 天、十億秒約 31.7 年，再用 1000 個圓點展示 1000 倍差距，每點代表一百萬秒。結尾兩張卡片：約 12 天與約 32 年。暖紙白、近黑、朱紅，大字和明確分鏡。按每天 86400 秒、每年 365.25 天換算，標明近似值。',
+      title: '產品發布短片',
+      prompt: '為虛構應用 Driftnote 做一段 20 秒的產品發布短片，它能把混亂的會議變成明確的決定。暖紙色背景、黑色文字、一種橘色強調色。開場是大號動態文字「Every meeting ends with a mess.」；接著會議碎片散落在「Notes everywhere. Decisions nowhere.」周圍；一個寫著 Driftnote 的橘色大開關打開後，碎片飛進一張摘要卡片，列出三項決定。再展示三條待辦事項逐一打勾並指派負責人，按節拍切出「Listens. Sorts. Follows up.」，最後落在開關加品牌名的標誌上，配「Meetings, minus the mess.」和「Out today」。',
     },
     en: {
-      title: 'Animated Data Story',
-      prompt: 'Create a 20-second data story, “A million vs a billion.” Compare one million seconds (about 11.6 days) with one billion seconds (about 31.7 years), then fill 1,000 dots, each representing one million seconds. End with two big cards: approximately 12 days versus 32 years. Warm paper, near-black, vermilion and bold typography. Use 86,400 seconds/day and 365.25 days/year; label rounded values.',
+      title: 'Product Launch Film',
+      prompt: 'Make a 20-second launch film for Driftnote, a fictional app that turns messy meetings into decisions. Warm paper background, black type, one orange accent. Open with big kinetic type: "Every meeting ends with a mess." Scatter note fragments around "Notes everywhere. Decisions nowhere.", then flip a big orange toggle labeled Driftnote: the fragments fly into one summary card with three decisions. Show three action items checking off with owners, cut "Listens. Sorts. Follows up." on the beat, and end on the toggle-and-wordmark lockup with "Meetings, minus the mess." and "Out today".',
     },
     id: {
-      title: 'Cerita Data Animasi',
-      prompt: 'Buat cerita data 20 detik, “Satu juta vs satu miliar”. Bandingkan satu juta detik (sekitar 11,6 hari) dan satu miliar detik (sekitar 31,7 tahun), lalu isi 1000 titik; setiap titik mewakili satu juta detik. Akhiri dengan kartu sekitar 12 hari vs 32 tahun. Putih kertas hangat, hitam, merah terang, angka besar. Gunakan 86400 detik/hari dan 365,25 hari/tahun; tandai pembulatan.',
+      title: 'Video Peluncuran Produk',
+      prompt: 'Buat film peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rapat berantakan menjadi keputusan. Latar kertas hangat, teks hitam, satu aksen oranye. Buka dengan tipografi kinetik besar: "Every meeting ends with a mess." Sebarkan potongan catatan di sekitar "Notes everywhere. Decisions nowhere.", lalu nyalakan toggle oranye besar berlabel Driftnote: potongan itu terbang ke satu kartu ringkasan berisi tiga keputusan. Tampilkan tiga item tindakan yang dicentang beserta pemiliknya, potong "Listens. Sorts. Follows up." mengikuti ketukan, dan akhiri dengan logo toggle dan nama merek bersama "Meetings, minus the mess." serta "Out today".',
     },
     de: {
-      title: 'Animierte Datengeschichte',
-      prompt: 'Erstelle eine 20-sekündige Datengeschichte „Eine Million gegen eine Milliarde“. Vergleiche eine Million Sekunden (etwa 11,6 Tage) mit einer Milliarde Sekunden (etwa 31,7 Jahre). Fülle 1000 Punkte, jeder für eine Million Sekunden. Ende: etwa 12 Tage gegen 32 Jahre. Warmes Papierweiß, Schwarz, Zinnoberrot, große Zahlen. Rechne mit 86400 Sekunden/Tag und 365,25 Tagen/Jahr; kennzeichne Rundungen.',
+      title: 'Produkt-Launchfilm',
+      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meetings in Entscheidungen verwandelt. Warmer Papierhintergrund, schwarze Schrift, ein orangefarbener Akzent. Beginne mit großer kinetischer Typo: „Every meeting ends with a mess.“ Verstreue Notizfetzen um „Notes everywhere. Decisions nowhere.“ und lege dann einen großen orangefarbenen Schalter mit der Aufschrift Driftnote um: Die Fetzen fliegen in eine Zusammenfassungskarte mit drei Entscheidungen. Zeige drei Aufgaben, die mit Verantwortlichen abgehakt werden, schneide „Listens. Sorts. Follows up.“ im Takt und ende mit Schalter und Wortmarke samt „Meetings, minus the mess.“ und „Out today“.',
     },
     'pt-BR': {
-      title: 'História de dados animada',
-      prompt: 'Crie uma história de dados de 20 segundos: “Um milhão vs um bilhão”. Compare um milhão de segundos (cerca de 11,6 dias) com um bilhão (cerca de 31,7 anos). Preencha 1000 pontos, cada um representando um milhão de segundos. Termine com cartões: aproximadamente 12 dias vs 32 anos. Papel branco quente, preto, vermelho e números grandes. Use 86400 segundos/dia e 365,25 dias/ano; indique os arredondamentos.',
+      title: 'Filme de lançamento de produto',
+      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma reuniões bagunçadas em decisões. Fundo de papel quente, texto preto, um destaque laranja. Abra com tipografia cinética grande: "Every meeting ends with a mess." Espalhe fragmentos de notas ao redor de "Notes everywhere. Decisions nowhere." e então ligue um grande botão laranja chamado Driftnote: os fragmentos voam para um cartão de resumo com três decisões. Mostre três tarefas sendo marcadas com responsáveis, corte "Listens. Sorts. Follows up." no ritmo e termine na assinatura com o botão e o nome, com "Meetings, minus the mess." e "Out today".',
     },
     'es-ES': {
-      title: 'Historia de datos animada',
-      prompt: 'Crea una historia de datos de 20 segundos: «Un millón frente a mil millones». Compara un millón de segundos (unos 11,6 días) con mil millones (unos 31,7 años). Llena 1000 puntos, cada uno equivalente a un millón de segundos. Termina con tarjetas: aproximadamente 12 días frente a 32 años. Papel cálido, negro, rojo y números grandes. Usa 86400 segundos/día y 365,25 días/año; indica los redondeos.',
+      title: 'Vídeo de lanzamiento de producto',
+      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte reuniones caóticas en decisiones. Fondo de papel cálido, texto negro y un acento naranja. Empieza con tipografía cinética grande: «Every meeting ends with a mess.». Dispersa fragmentos de notas alrededor de «Notes everywhere. Decisions nowhere.» y luego activa un gran interruptor naranja con el nombre Driftnote: los fragmentos vuelan a una tarjeta de resumen con tres decisiones. Muestra tres tareas que se marcan con sus responsables, corta «Listens. Sorts. Follows up.» al ritmo y cierra con el interruptor y el logotipo, «Meetings, minus the mess.» y «Out today».',
     },
     ru: {
-      title: 'Анимированная история в данных',
-      prompt: 'Создай 20-секундную историю «Миллион против миллиарда». Сравни миллион секунд (около 11,6 дня) с миллиардом (около 31,7 года). Заполни 1000 точек, каждая — миллион секунд. Финал: две крупные карточки, примерно 12 дней против 32 лет. Тёплый бумажный фон, чёрный, красный, крупные числа. Расчёт: 86400 секунд в дне, 365,25 дня в году; обозначь округления.',
+      title: 'Ролик запуска продукта',
+      prompt: 'Сделай 20-секундный ролик запуска Driftnote — вымышленного приложения, которое превращает хаотичные встречи в решения. Тёплый бумажный фон, чёрный текст, один оранжевый акцент. Начни с крупной кинетической типографики: «Every meeting ends with a mess.» Разбросай обрывки заметок вокруг «Notes everywhere. Decisions nowhere.», затем включи большой оранжевый переключатель с надписью Driftnote: обрывки слетаются в одну карточку-сводку с тремя решениями. Покажи три задачи, которые отмечаются с ответственными, смонтируй «Listens. Sorts. Follows up.» в такт и закончи логотипом с переключателем и подписями «Meetings, minus the mess.» и «Out today».',
     },
     fa: {
-      title: 'داستان داده‌ای متحرک',
-      prompt: 'داستان داده‌ای ۲۰ ثانیه‌ای «یک میلیون در برابر یک میلیارد» بساز. یک میلیون ثانیه، حدود 11.6 روز، را با یک میلیارد ثانیه، حدود 31.7 سال، مقایسه کن. 1000 نقطه را پر کن؛ هر نقطه یک میلیون ثانیه است. پایان: حدود 12 روز در برابر 32 سال. کاغذ سفید گرم، مشکی، قرمز و اعداد درشت. مبنا: 86400 ثانیه در روز و 365.25 روز در سال؛ مقادیر گرد‌شده را مشخص کن.',
+      title: 'ویدیوی معرفی محصول',
+      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز، اپی خیالی که جلسه‌های شلوغ را به تصمیم تبدیل می‌کند. پس‌زمینهٔ کاغذی گرم، متن مشکی، یک رنگ تأکیدی نارنجی. با تایپوگرافی جنبشی بزرگ شروع کن: «Every meeting ends with a mess.» تکه‌یادداشت‌ها را دور «Notes everywhere. Decisions nowhere.» پراکنده کن، سپس کلید نارنجی بزرگی با نام Driftnote را روشن کن: تکه‌ها در یک کارت خلاصه با سه تصمیم جمع می‌شوند. سه کار را با مسئولشان تیک بزن، «Listens. Sorts. Follows up.» را روی ضرب برش بزن و با لوگوی کلید و نام برند همراه «Meetings, minus the mess.» و «Out today» تمام کن.',
     },
     ar: {
-      title: 'قصة بيانات متحركة',
-      prompt: 'أنشئ قصة بيانات مدتها 20 ثانية: «مليون مقابل مليار». قارن مليون ثانية (نحو 11.6 يومًا) بمليار ثانية (نحو 31.7 سنة). املأ 1000 نقطة، كل نقطة تمثل مليون ثانية. اختم ببطاقتين كبيرتين: نحو 12 يومًا مقابل 32 سنة. خلفية ورقية دافئة وأسود وأحمر وأرقام كبيرة. احسب على أساس 86400 ثانية في اليوم و365.25 يومًا في السنة، ووضّح القيم التقريبية.',
+      title: 'فيلم إطلاق منتج',
+      prompt: 'اصنع فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل الاجتماعات الفوضوية إلى قرارات. خلفية ورقية دافئة، ونص أسود، ولون تمييز برتقالي واحد. ابدأ بطباعة حركية كبيرة: «Every meeting ends with a mess.» بعثر قصاصات الملاحظات حول «Notes everywhere. Decisions nowhere.»، ثم شغّل مفتاحًا برتقاليًا كبيرًا مكتوبًا عليه Driftnote: فتطير القصاصات إلى بطاقة ملخص واحدة فيها ثلاثة قرارات. اعرض ثلاث مهام تُعلَّم مع أصحابها، وقطّع «Listens. Sorts. Follows up.» على الإيقاع، واختم بالمفتاح مع اسم العلامة و«Meetings, minus the mess.» و«Out today».',
     },
     ja: {
-      title: 'データストーリーアニメーション',
-      prompt: '「100 万と 10 億」を比べる 20 秒のデータアニメーションを作成。100 万秒は約 11.6 日、10 億秒は約 31.7 年。1 点が 100 万秒を表す 1000 個の点を埋め、最後は約 12 日と約 32 年の大きなカードで対比。暖かい紙白、黒、朱赤、大きな数字。1 日 86400 秒、1 年 365.25 日で計算し、概数を明記してください。',
+      title: 'プロダクトローンチ動画',
+      prompt: '雑然とした会議を決定事項に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作って。温かい紙色の背景、黒い文字、アクセントはオレンジ 1 色。冒頭は大きなキネティックタイポで「Every meeting ends with a mess.」。続いて「Notes everywhere. Decisions nowhere.」の周りにメモの断片を散らし、Driftnote と書かれた大きなオレンジのスイッチをオンにすると、断片が 3 つの決定事項をまとめた要約カードに飛び込む。担当者つきのタスク 3 件がチェックされていく様子を見せ、「Listens. Sorts. Follows up.」をビートに合わせて切り替え、最後はスイッチとロゴ、「Meetings, minus the mess.」と「Out today」で締める。',
     },
     ko: {
-      title: '데이터 스토리 애니메이션',
-      prompt: '“백만과 십억”을 비교하는 20초 데이터 애니메이션을 만들어 줘. 백만 초는 약 11.6일, 십억 초는 약 31.7년이야. 점 하나가 백만 초를 나타내는 1000개의 점을 채우고, 마지막은 약 12일과 약 32년의 큰 카드로 비교해 줘. 따뜻한 종이색, 검정, 주홍, 큰 숫자. 하루 86400초, 1년 365.25일로 계산하고 근삿값을 표시해 줘.',
+      title: '제품 출시 영상',
+      prompt: '어수선한 회의를 결정으로 바꿔 주는 가상의 앱 Driftnote의 20초 출시 영상을 만들어 줘. 따뜻한 종이색 배경, 검은 글자, 주황색 강조색 하나. 큰 키네틱 타이포 "Every meeting ends with a mess."로 시작해. "Notes everywhere. Decisions nowhere." 주변에 메모 조각을 흩뿌린 뒤, Driftnote라고 적힌 큰 주황색 토글을 켜면 조각들이 세 가지 결정이 담긴 요약 카드로 날아가. 담당자가 붙은 할 일 세 개가 차례로 체크되고, "Listens. Sorts. Follows up."을 비트에 맞춰 컷한 뒤, 토글과 워드마크, "Meetings, minus the mess.", "Out today"로 마무리해.',
     },
     pl: {
-      title: 'Animowana historia w danych',
-      prompt: 'Stwórz 20-sekundową historię „Milion kontra miliard”. Porównaj milion sekund (około 11,6 dnia) z miliardem (około 31,7 roku). Wypełnij 1000 punktów, każdy oznacza milion sekund. Finał: duże karty, około 12 dni kontra 32 lata. Ciepła biel papieru, czerń, czerwień i duże liczby. Przyjmij 86400 sekund/dzień i 365,25 dnia/rok; oznacz zaokrąglenia.',
+      title: 'Film premierowy produktu',
+      prompt: 'Stwórz 20-sekundowy film premierowy Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne spotkania w decyzje. Ciepłe papierowe tło, czarny tekst, jeden pomarańczowy akcent. Zacznij od dużej typografii kinetycznej: „Every meeting ends with a mess.” Rozrzuć skrawki notatek wokół „Notes everywhere. Decisions nowhere.”, a potem przełącz duży pomarańczowy przełącznik z napisem Driftnote: skrawki wlatują do jednej karty podsumowania z trzema decyzjami. Pokaż trzy zadania odhaczane wraz z osobami odpowiedzialnymi, wytnij „Listens. Sorts. Follows up.” w rytm i zakończ logo z przełącznikiem oraz hasłami „Meetings, minus the mess.” i „Out today”.',
     },
     hu: {
-      title: 'Animált adattörténet',
-      prompt: 'Készíts 20 másodperces adattörténetet „Egymillió és egymilliárd” címmel. Egymillió másodperc körülbelül 11,6 nap; egymilliárd körülbelül 31,7 év. Tölts fel 1000 pontot, mindegyik egymillió másodperc. Zárásként két nagy kártya: körülbelül 12 nap és 32 év. Meleg papírfehér, fekete, vörös és nagy számok. Számolj napi 86400 másodperccel, évi 365,25 nappal; jelöld a kerekítést.',
+      title: 'Termékbemutató film',
+      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált apphoz, amely a kaotikus értekezletekből döntéseket csinál. Meleg papírszínű háttér, fekete szöveg, egy narancs kiemelőszín. Nyiss nagy kinetikus tipográfiával: „Every meeting ends with a mess.” Szórj jegyzetfoszlányokat a „Notes everywhere. Decisions nowhere.” köré, majd kapcsolj be egy nagy narancs, Driftnote feliratú kapcsolót: a foszlányok egyetlen, három döntést tartalmazó összefoglaló kártyába repülnek. Mutass három teendőt, amelyek felelőssel együtt kipipálódnak, vágd ütemre a „Listens. Sorts. Follows up.” szavakat, és zárj a kapcsoló és a logó párosával, „Meetings, minus the mess.” és „Out today” felirattal.',
     },
     fr: {
-      title: 'Récit de données animé',
-      prompt: 'Crée une animation de données de 20 secondes : « Un million contre un milliard ». Compare un million de secondes (environ 11,6 jours) à un milliard (environ 31,7 ans). Remplis 1000 points, chacun représentant un million de secondes. Termine sur deux grandes cartes : environ 12 jours contre 32 ans. Papier chaud, noir, rouge et grands chiffres. Base : 86400 secondes/jour, 365,25 jours/an ; indique les arrondis.',
+      title: 'Film de lancement produit',
+      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme les réunions chaotiques en décisions. Fond papier chaleureux, texte noir, un seul accent orange. Ouvre sur une grande typographie cinétique : « Every meeting ends with a mess. » Éparpille des fragments de notes autour de « Notes everywhere. Decisions nowhere. », puis active un grand interrupteur orange marqué Driftnote : les fragments s’envolent dans une carte de résumé avec trois décisions. Montre trois tâches cochées avec leurs responsables, coupe « Listens. Sorts. Follows up. » sur le temps et termine sur l’interrupteur et le logotype avec « Meetings, minus the mess. » et « Out today ».',
     },
     uk: {
-      title: 'Анімована історія в даних',
-      prompt: 'Створи 20-секундну історію «Мільйон проти мільярда». Порівняй мільйон секунд (приблизно 11,6 дня) з мільярдом (приблизно 31,7 року). Заповни 1000 крапок, кожна — мільйон секунд. Фінал: дві великі картки, приблизно 12 днів проти 32 років. Тепле паперове тло, чорний, червоний, великі числа. Розрахунок: 86400 секунд на день, 365,25 дня на рік; познач округлення.',
+      title: 'Ролик запуску продукту',
+      prompt: 'Створи 20-секундний ролик запуску Driftnote — вигаданого застосунку, що перетворює хаотичні зустрічі на рішення. Теплий паперовий фон, чорний текст, один помаранчевий акцент. Почни з великої кінетичної типографіки: «Every meeting ends with a mess.» Розкидай уривки нотаток навколо «Notes everywhere. Decisions nowhere.», потім увімкни великий помаранчевий перемикач із написом Driftnote: уривки злітаються в одну картку-підсумок із трьома рішеннями. Покажи три завдання, які позначаються з відповідальними, змонтуй «Listens. Sorts. Follows up.» у такт і заверши логотипом із перемикачем та написами «Meetings, minus the mess.» і «Out today».',
     },
     tr: {
-      title: 'Animasyonlu veri hikâyesi',
-      prompt: '“Bir milyon ve bir milyar” başlıklı 20 saniyelik veri animasyonu oluştur. Bir milyon saniyeyi (yaklaşık 11,6 gün) bir milyar saniyeyle (yaklaşık 31,7 yıl) karşılaştır. Her biri bir milyon saniyeyi temsil eden 1000 noktayı doldur. İki büyük kartla bitir: yaklaşık 12 gün ve 32 yıl. Sıcak kâğıt beyazı, siyah, kırmızı, büyük sayılar. Günde 86400 saniye, yılda 365,25 gün kullan; yuvarlamaları belirt.',
+      title: 'Ürün lansman filmi',
+      prompt: 'Dağınık toplantıları kararlara dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi yap. Sıcak kâğıt arka plan, siyah yazı, tek bir turuncu vurgu. Büyük kinetik tipografiyle aç: "Every meeting ends with a mess." "Notes everywhere. Decisions nowhere." çevresine not parçaları saç, sonra üzerinde Driftnote yazan büyük turuncu anahtarı aç: parçalar üç karar içeren tek bir özet kartına uçar. Sorumlularıyla birlikte işaretlenen üç görev göster, "Listens. Sorts. Follows up." kelimelerini ritme göre kes ve anahtar ile marka adıyla, "Meetings, minus the mess." ve "Out today" yazılarıyla bitir.',
     },
     th: {
-      title: 'แอนิเมชันเล่าเรื่องด้วยข้อมูล',
-      prompt: 'สร้างแอนิเมชันข้อมูล 20 วินาที “หนึ่งล้านกับหนึ่งพันล้าน” เปรียบเทียบหนึ่งล้านวินาที (ประมาณ 11.6 วัน) กับหนึ่งพันล้านวินาที (ประมาณ 31.7 ปี) เติมจุด 1000 จุด โดยแต่ละจุดแทนหนึ่งล้านวินาที ปิดท้ายด้วยการ์ดใหญ่ประมาณ 12 วันกับ 32 ปี ใช้พื้นกระดาษโทนอุ่น สีดำ สีแดง และตัวเลขใหญ่ คำนวณจาก 86400 วินาทีต่อวันและ 365.25 วันต่อปี ระบุค่าที่ปัดเศษ',
+      title: 'วิดีโอเปิดตัวสินค้า',
+      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนการประชุมยุ่งเหยิงให้เป็นการตัดสินใจ พื้นหลังสีกระดาษอบอุ่น ตัวอักษรสีดำ และสีเน้นสีส้มเพียงสีเดียว เปิดด้วยตัวอักษรเคลื่อนไหวขนาดใหญ่ "Every meeting ends with a mess." กระจายเศษโน้ตรอบคำว่า "Notes everywhere. Decisions nowhere." แล้วเปิดสวิตช์สีส้มขนาดใหญ่ที่เขียนว่า Driftnote เศษโน้ตจะลอยเข้าไปรวมในการ์ดสรุปที่มีสามการตัดสินใจ แสดงรายการงานสามข้อที่ถูกติ๊กพร้อมผู้รับผิดชอบ ตัด "Listens. Sorts. Follows up." ตามจังหวะ และปิดท้ายด้วยสวิตช์คู่กับชื่อแบรนด์ "Meetings, minus the mess." และ "Out today"',
     },
     it: {
-      title: 'Storia di dati animata',
-      prompt: 'Crea una storia di dati di 20 secondi: «Un milione contro un miliardo». Confronta un milione di secondi (circa 11,6 giorni) con un miliardo (circa 31,7 anni). Riempi 1000 punti, ciascuno pari a un milione di secondi. Chiudi con due grandi schede: circa 12 giorni contro 32 anni. Carta calda, nero, rosso e numeri grandi. Usa 86400 secondi/giorno e 365,25 giorni/anno; indica gli arrotondamenti.',
+      title: 'Video di lancio prodotto',
+      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app fittizia che trasforma riunioni caotiche in decisioni. Sfondo color carta caldo, testo nero, un solo accento arancione. Apri con una grande tipografia cinetica: «Every meeting ends with a mess.» Sparpaglia frammenti di appunti attorno a «Notes everywhere. Decisions nowhere.», poi attiva un grande interruttore arancione con la scritta Driftnote: i frammenti volano in un’unica card di riepilogo con tre decisioni. Mostra tre attività spuntate con i rispettivi responsabili, taglia «Listens. Sorts. Follows up.» a tempo e chiudi con interruttore e logotipo, «Meetings, minus the mess.» e «Out today».',
+    },
+  },
+  'example-motion-3d-scene': {
+    'zh-CN': {
+      title: '3D 程序化海岛',
+      prompt: '用 Three.js 做一段 15 秒的 3D 场景：黄金时刻的一座低多边形小海岛，全部用代码生成，不用任何模型。海浪起伏，岸边浪花随浪呼吸，棕榈树摇摆，小屋带一个小码头，一艘帆船绕岛航行，云慢慢飘，几只鸟飞过。整段只用一个连续镜头：从海面高空出发，下降并绕岛转向太阳，最后稳住。开场标题“A little escape.”，结尾标题“Stay a little longer.”。暖色日落天空、青绿浅海、地平线处柔和的雾。',
+    },
+    'zh-TW': {
+      title: '3D 程序化海島',
+      prompt: '用 Three.js 做一段 15 秒的 3D 場景：黃金時刻的一座低多邊形小海島，全部用程式碼生成，不用任何模型。海浪起伏，岸邊浪花隨浪呼吸，棕櫚樹搖擺，小屋帶一個小碼頭，一艘帆船繞島航行，雲慢慢飄，幾隻鳥飛過。整段只用一個連續鏡頭：從海面高空出發，下降並繞島轉向太陽，最後穩住。開場標題「A little escape.」，結尾標題「Stay a little longer.」。暖色日落天空、青綠淺海、地平線處柔和的霧。',
+    },
+    en: {
+      title: 'Procedural 3D Island',
+      prompt: 'Make a 15-second 3D scene in Three.js: a small procedural low-poly island at golden hour, built entirely in code with no models. Animated waves with breathing foam on the shore, swaying palm trees, a hut with a little dock, a sailboat circling, drifting clouds and a few birds. One continuous camera move: start high above the sea, glide down and arc around the island toward the sun, then settle. Open with "A little escape." and close with "Stay a little longer." Warm sunset sky, turquoise shallows, soft fog at the horizon.',
+    },
+    id: {
+      title: 'Pulau 3D Prosedural',
+      prompt: 'Buat adegan 3D 15 detik dengan Three.js: pulau kecil low-poly prosedural saat golden hour, dibuat sepenuhnya dengan kode tanpa model. Ombak bergerak dengan buih yang bernapas di tepi pantai, pohon palem bergoyang, pondok dengan dermaga kecil, perahu layar mengitari pulau, awan melayang, dan beberapa burung. Satu gerakan kamera kontinu: mulai tinggi di atas laut, meluncur turun dan melengkung mengitari pulau ke arah matahari, lalu berhenti. Buka dengan "A little escape." dan tutup dengan "Stay a little longer." Langit senja hangat, perairan dangkal pirus, kabut lembut di cakrawala.',
+    },
+    de: {
+      title: 'Prozedurale 3D-Insel',
+      prompt: 'Erstelle eine 15-sekündige 3D-Szene in Three.js: eine kleine prozedurale Low-Poly-Insel zur goldenen Stunde, komplett aus Code, ohne Modelle. Animierte Wellen mit atmender Gischt am Ufer, wiegende Palmen, eine Hütte mit kleinem Steg, ein kreisendes Segelboot, ziehende Wolken und ein paar Vögel. Eine durchgehende Kamerafahrt: hoch über dem Meer beginnen, hinabgleiten, im Bogen um die Insel zur Sonne schwenken, dann zur Ruhe kommen. Eröffne mit „A little escape.“ und schließe mit „Stay a little longer.“. Warmer Sonnenuntergangshimmel, türkisfarbene Flachwasser, weicher Dunst am Horizont.',
+    },
+    'pt-BR': {
+      title: 'Ilha 3D procedural',
+      prompt: 'Crie uma cena 3D de 15 segundos em Three.js: uma pequena ilha low-poly procedural na hora dourada, feita só com código, sem modelos. Ondas animadas com espuma que respira na margem, coqueiros balançando, uma cabana com um pequeno píer, um veleiro circulando, nuvens passando e alguns pássaros. Um único movimento de câmera contínuo: começa bem alto sobre o mar, desce planando e faz um arco ao redor da ilha em direção ao sol, depois se estabiliza. Abra com "A little escape." e feche com "Stay a little longer." Céu quente de pôr do sol, águas rasas turquesa, névoa suave no horizonte.',
+    },
+    'es-ES': {
+      title: 'Isla 3D procedural',
+      prompt: 'Crea una escena 3D de 15 segundos en Three.js: una pequeña isla low-poly procedural en la hora dorada, hecha solo con código, sin modelos. Olas animadas con espuma que respira en la orilla, palmeras que se mecen, una cabaña con un pequeño muelle, un velero que da vueltas, nubes que pasan y algunos pájaros. Un único movimiento de cámara continuo: empieza muy alto sobre el mar, desciende planeando y traza un arco alrededor de la isla hacia el sol, y luego se asienta. Abre con «A little escape.» y cierra con «Stay a little longer.». Cielo cálido de atardecer, aguas turquesa poco profundas, bruma suave en el horizonte.',
+    },
+    ru: {
+      title: 'Процедурный 3D-остров',
+      prompt: 'Сделай 15-секундную 3D-сцену на Three.js: маленький процедурный низкополигональный остров в золотой час, целиком из кода, без моделей. Анимированные волны с «дышащей» пеной у берега, качающиеся пальмы, хижина с небольшим причалом, кружащий парусник, плывущие облака и несколько птиц. Один непрерывный пролёт камеры: высоко над морем, плавный спуск, дуга вокруг острова к солнцу, затем остановка. Открой надписью «A little escape.» и закрой «Stay a little longer.». Тёплое закатное небо, бирюзовое мелководье, мягкая дымка на горизонте.',
+    },
+    fa: {
+      title: 'جزیرهٔ سه‌بعدی رویه‌ای',
+      prompt: 'با Three.js یک صحنهٔ سه‌بعدی ۱۵ ثانیه‌ای بساز: جزیرهٔ کوچک کم‌چندضلعی رویه‌ای در ساعت طلایی، کاملاً با کد و بدون مدل. موج‌های متحرک با کف ساحلی که نفس می‌کشد، نخل‌های در حال تاب‌خوردن، کلبه‌ای با اسکلهٔ کوچک، قایق بادبانی که دور جزیره می‌چرخد، ابرهای روان و چند پرنده. یک حرکت پیوستهٔ دوربین: از بالای دریا شروع کن، پایین بیا، در کمانی دور جزیره به سمت خورشید بچرخ و سپس آرام بگیر. با «A little escape.» شروع کن و با «Stay a little longer.» تمام کن. آسمان گرم غروب، آب‌های کم‌عمق فیروزه‌ای، مه ملایم در افق.',
+    },
+    ar: {
+      title: 'جزيرة ثلاثية الأبعاد إجرائية',
+      prompt: 'اصنع مشهدًا ثلاثي الأبعاد مدته 15 ثانية باستخدام Three.js: جزيرة صغيرة إجرائية منخفضة المضلعات في الساعة الذهبية، مبنية بالكامل بالكود دون نماذج. أمواج متحركة مع زبد يتنفس عند الشاطئ، ونخيل يتمايل، وكوخ برصيف صغير، ومركب شراعي يدور حول الجزيرة، وسحب تنجرف، وبضعة طيور. حركة كاميرا واحدة متصلة: تبدأ عاليًا فوق البحر، وتنزلق نزولًا وتدور حول الجزيرة نحو الشمس، ثم تستقر. افتتح بـ«A little escape.» واختم بـ«Stay a little longer.». سماء غروب دافئة، ومياه ضحلة فيروزية، وضباب خفيف عند الأفق.',
+    },
+    ja: {
+      title: 'プロシージャル 3D アイランド',
+      prompt: 'Three.js で 15 秒の 3D シーンを作って。夕暮れの小さなローポリの島を、モデルを使わずすべてコードで生成する。波が動き、岸辺の泡が呼吸するように寄せては返し、ヤシが揺れ、小屋と小さな桟橋、島を回る帆船、流れる雲、数羽の鳥。カメラはひと続きの動き：海の上高くから始まり、降下しながら島を回り込んで太陽の方へ向き、最後に落ち着く。冒頭は「A little escape.」、最後は「Stay a little longer.」。暖かな夕焼け空、ターコイズの浅瀬、水平線のやわらかな霞。',
+    },
+    ko: {
+      title: '절차적 3D 섬',
+      prompt: 'Three.js로 15초 3D 장면을 만들어 줘: 노을 지는 작은 절차적 로폴리 섬을 모델 없이 전부 코드로 생성해. 움직이는 파도와 해안에서 숨 쉬듯 밀려드는 포말, 흔들리는 야자수, 작은 부두가 딸린 오두막, 섬을 도는 범선, 흘러가는 구름과 새 몇 마리. 카메라는 끊김 없는 한 번의 움직임: 바다 위 높은 곳에서 시작해 내려오며 섬을 돌아 해 쪽으로 향한 뒤 멈춰. 시작 문구는 "A little escape.", 마지막 문구는 "Stay a little longer.". 따뜻한 노을 하늘, 청록색 얕은 바다, 수평선의 부드러운 안개.',
+    },
+    pl: {
+      title: 'Proceduralna wyspa 3D',
+      prompt: 'Stwórz 15-sekundową scenę 3D w Three.js: małą proceduralną wyspę low-poly o złotej godzinie, zbudowaną w całości kodem, bez modeli. Animowane fale z „oddychającą” pianą przy brzegu, kołyszące się palmy, chatka z małym pomostem, krążąca żaglówka, sunące chmury i kilka ptaków. Jeden ciągły ruch kamery: start wysoko nad morzem, płynne obniżenie i łuk wokół wyspy w stronę słońca, potem uspokojenie. Otwórz napisem „A little escape.”, a zamknij „Stay a little longer.”. Ciepłe niebo o zachodzie, turkusowe płycizny, miękka mgiełka na horyzoncie.',
+    },
+    hu: {
+      title: 'Procedurális 3D-sziget',
+      prompt: 'Készíts egy 15 másodperces 3D-jelenetet Three.js-ben: egy kis procedurális low-poly sziget az aranyórában, teljesen kódból, modellek nélkül. Mozgó hullámok, a parton „lélegző” tajték, ringó pálmák, kunyhó kis stéggel, a sziget körül haladó vitorlás, sodródó felhők és néhány madár. Egyetlen folyamatos kameramozgás: magasan a tenger fölött indul, lesiklik, ívben megkerüli a szigetet a nap felé, majd megnyugszik. Nyiss az „A little escape.”, zárj a „Stay a little longer.” felirattal. Meleg naplementés ég, türkiz sekélyvíz, lágy pára a horizonton.',
+    },
+    fr: {
+      title: 'Île 3D procédurale',
+      prompt: 'Crée une scène 3D de 15 secondes en Three.js : une petite île low-poly procédurale à l’heure dorée, entièrement générée par le code, sans modèles. Des vagues animées avec une écume qui respire sur le rivage, des palmiers qui se balancent, une cabane avec un petit ponton, un voilier qui tourne autour, des nuages qui dérivent et quelques oiseaux. Un seul mouvement de caméra continu : partir très haut au-dessus de la mer, descendre en glissant, décrire un arc autour de l’île vers le soleil, puis se poser. Ouvre sur « A little escape. » et termine sur « Stay a little longer. ». Ciel chaud de coucher de soleil, hauts-fonds turquoise, brume douce à l’horizon.',
+    },
+    uk: {
+      title: 'Процедурний 3D-острів',
+      prompt: 'Створи 15-секундну 3D-сцену на Three.js: маленький процедурний низькополігональний острів у золоту годину, повністю з коду, без моделей. Анімовані хвилі з «дихаючою» піною біля берега, пальми, що гойдаються, хатина з невеликим причалом, вітрильник, що кружляє, хмари, що пливуть, і кілька птахів. Один безперервний проліт камери: високо над морем, плавний спуск, дуга навколо острова до сонця, потім зупинка. Відкрий написом «A little escape.» і закрий «Stay a little longer.». Тепле західне небо, бірюзове мілководдя, м’який серпанок на обрії.',
+    },
+    tr: {
+      title: 'Prosedürel 3D ada',
+      prompt: 'Three.js ile 15 saniyelik bir 3D sahne yap: altın saatte küçük, prosedürel low-poly bir ada; tamamen kodla, model kullanmadan. Kıyıda nefes alan köpüklerle hareketli dalgalar, sallanan palmiyeler, küçük iskeleli bir kulübe, adanın etrafında dönen bir yelkenli, süzülen bulutlar ve birkaç kuş. Tek ve kesintisiz kamera hareketi: denizin çok üstünden başla, süzülerek alçal, adanın etrafında güneşe doğru kavis çiz ve dur. "A little escape." ile aç, "Stay a little longer." ile kapat. Sıcak gün batımı göğü, turkuaz sığ sular, ufukta yumuşak bir pus.',
+    },
+    th: {
+      title: 'เกาะ 3D แบบโพรซีเดอรัล',
+      prompt: 'สร้างฉาก 3D 15 วินาทีด้วย Three.js: เกาะโลว์โพลีเล็ก ๆ แบบโพรซีเดอรัลยามแสงทอง สร้างด้วยโค้ดทั้งหมดโดยไม่ใช้โมเดล คลื่นเคลื่อนไหวพร้อมฟองคลื่นริมฝั่งที่ขึ้นลงเหมือนหายใจ ต้นมะพร้าวโยกไหว กระท่อมกับท่าเรือเล็ก เรือใบแล่นวนรอบเกาะ เมฆลอยช้า ๆ และนกไม่กี่ตัว กล้องเคลื่อนต่อเนื่องช็อตเดียว: เริ่มสูงเหนือทะเล ร่อนลงและโค้งรอบเกาะไปทางดวงอาทิตย์ แล้วนิ่ง เปิดด้วย "A little escape." และปิดด้วย "Stay a little longer." ท้องฟ้ายามเย็นโทนอุ่น น้ำตื้นสีเทอร์ควอยซ์ หมอกบาง ๆ ที่ขอบฟ้า',
+    },
+    it: {
+      title: 'Isola 3D procedurale',
+      prompt: 'Crea una scena 3D di 15 secondi in Three.js: una piccola isola low-poly procedurale all’ora d’oro, interamente generata dal codice, senza modelli. Onde animate con schiuma che respira sulla riva, palme che ondeggiano, una capanna con un piccolo pontile, una barca a vela che gira attorno, nuvole che scorrono e qualche uccello. Un unico movimento di camera continuo: parte molto in alto sopra il mare, scende planando e gira ad arco attorno all’isola verso il sole, poi si ferma. Apri con «A little escape.» e chiudi con «Stay a little longer.». Cielo caldo al tramonto, bassi fondali turchesi, foschia morbida all’orizzonte.',
+    },
+  },
+  'example-motion-short-story': {
+    'zh-CN': {
+      title: '动画短片',
+      prompt: '做一段 15 秒无台词的动画短片：一个橙色小圆点想碰到星星。它跳进画面，抬头看星星，跳了一下够不着，再用力一跳却摔扁在地上。它垂头丧气时，四个彩色小伙伴从两边跳过来，叠成一座塔；小圆点爬到塔顶，伸长身体碰到星星，星星点亮整片黄昏天空，所有角色都笑了。结尾标题“Higher, together.”。圆滚滚的角色、大眼睛，用挤压拉伸、预备动作和轻柔回弹；黄昏天空从靛蓝过渡到暖橙。',
+    },
+    'zh-TW': {
+      title: '動畫短片',
+      prompt: '做一段 15 秒無台詞的動畫短片：一個橘色小圓點想碰到星星。它跳進畫面，抬頭看星星，跳了一下搆不著，再用力一跳卻摔扁在地上。它垂頭喪氣時，四個彩色小夥伴從兩邊跳過來，疊成一座塔；小圓點爬到塔頂，伸長身體碰到星星，星星點亮整片黃昏天空，所有角色都笑了。結尾標題「Higher, together.」。圓滾滾的角色、大眼睛，用擠壓拉伸、預備動作和輕柔回彈；黃昏天空從靛藍過渡到暖橘。',
+    },
+    en: {
+      title: 'Animated Short Story',
+      prompt: 'Make a wordless 15-second animated short: a little orange dot wants to touch a star. It hops in, looks up, jumps — too short — jumps higher and falls flat. As it droops, four colorful friends hop in and stack into a tower; the dot climbs to the top, stretches, and touches the star, which lights up the whole dusk sky while every face turns happy. End on the title "Higher, together." Round characters with big eyes, squash and stretch, anticipation and gentle settles; a dusk sky from indigo to warm orange.',
+    },
+    id: {
+      title: 'Film Pendek Animasi',
+      prompt: 'Buat film pendek animasi 15 detik tanpa kata: sebuah titik oranye kecil ingin menyentuh bintang. Ia melompat masuk, menengadah, melompat — tidak sampai — melompat lebih tinggi lalu jatuh gepeng. Saat ia lesu, empat teman berwarna-warni melompat datang dan bertumpuk menjadi menara; si titik memanjat ke puncak, meregangkan badan, dan menyentuh bintang yang menyalakan seluruh langit senja sementara semua wajah tersenyum. Akhiri dengan judul "Higher, together." Karakter bulat bermata besar, squash and stretch, antisipasi dan pendaratan lembut; langit senja dari nila ke oranye hangat.',
+    },
+    de: {
+      title: 'Animierter Kurzfilm',
+      prompt: 'Erstelle einen wortlosen 15-sekündigen Animationskurzfilm: Ein kleiner orangefarbener Punkt will einen Stern berühren. Er hüpft herein, schaut hoch, springt – zu kurz –, springt höher und landet platt. Während er den Kopf hängen lässt, hüpfen vier bunte Freunde herbei und stapeln sich zu einem Turm; der Punkt klettert hinauf, streckt sich und berührt den Stern, der den ganzen Abendhimmel erleuchtet, während alle Gesichter strahlen. Ende mit dem Titel „Higher, together.“. Runde Figuren mit großen Augen, Squash and Stretch, Antizipation und sanftes Ausschwingen; Abendhimmel von Indigo bis warmem Orange.',
+    },
+    'pt-BR': {
+      title: 'Curta de animação',
+      prompt: 'Crie um curta de animação de 15 segundos sem falas: um pontinho laranja quer tocar uma estrela. Ele entra pulando, olha para cima, pula — não alcança —, pula mais alto e cai achatado. Enquanto ele fica desanimado, quatro amigos coloridos chegam pulando e se empilham numa torre; o pontinho sobe até o topo, se estica e toca a estrela, que ilumina todo o céu do entardecer enquanto todos sorriem. Termine com o título "Higher, together." Personagens redondos de olhos grandes, squash and stretch, antecipação e assentamentos suaves; céu do anil ao laranja quente.',
+    },
+    'es-ES': {
+      title: 'Cortometraje animado',
+      prompt: 'Crea un cortometraje animado de 15 segundos sin palabras: un puntito naranja quiere tocar una estrella. Entra dando saltitos, mira hacia arriba, salta —no llega—, salta más alto y cae aplastado. Mientras se desanima, cuatro amigos de colores llegan saltando y se apilan en una torre; el puntito trepa hasta arriba, se estira y toca la estrella, que ilumina todo el cielo del atardecer mientras todas las caras sonríen. Termina con el título «Higher, together.». Personajes redondos de ojos grandes, squash and stretch, anticipación y asentamientos suaves; cielo del añil al naranja cálido.',
+    },
+    ru: {
+      title: 'Анимационная короткометражка',
+      prompt: 'Сделай 15-секундную короткометражку без слов: маленькая оранжевая точка хочет дотронуться до звезды. Она впрыгивает в кадр, смотрит вверх, прыгает — не достаёт, — прыгает выше и шлёпается плашмя. Пока она грустит, четыре разноцветных друга прыгают к ней и выстраиваются в башню; точка забирается наверх, тянется и касается звезды, которая озаряет всё вечернее небо, а все лица улыбаются. В конце — заголовок «Higher, together.». Круглые персонажи с большими глазами, сжатие и растяжение, замах и мягкое затухание движения; небо от индиго до тёплого оранжевого.',
+    },
+    fa: {
+      title: 'انیمیشن کوتاه داستانی',
+      prompt: 'یک انیمیشن کوتاه ۱۵ ثانیه‌ای بی‌کلام بساز: نقطهٔ نارنجی کوچکی می‌خواهد ستاره را لمس کند. پرزنان وارد می‌شود، بالا را نگاه می‌کند، می‌پرد — نمی‌رسد — بلندتر می‌پرد و پهن روی زمین می‌افتد. وقتی وا می‌رود، چهار دوست رنگارنگ پرزنان می‌آیند و برجی می‌سازند؛ نقطه تا بالای برج می‌رود، کش می‌آید و ستاره را لمس می‌کند و ستاره کل آسمان غروب را روشن می‌کند و همه لبخند می‌زنند. با عنوان «Higher, together.» تمام کن. شخصیت‌های گرد با چشم‌های درشت، فشرده‌شدن و کشیده‌شدن، پیش‌حرکت و نشستن نرم؛ آسمان غروب از نیلی تا نارنجی گرم.',
+    },
+    ar: {
+      title: 'فيلم رسوم متحركة قصير',
+      prompt: 'اصنع فيلم رسوم متحركة قصيرًا بلا كلمات مدته 15 ثانية: نقطة برتقالية صغيرة تريد أن تلمس نجمة. تدخل قفزًا، وتنظر إلى الأعلى، وتقفز — لا تصل — ثم تقفز أعلى فتسقط مسطّحة. وبينما تنكس رأسها، يقفز أربعة أصدقاء ملوّنون ويتكدسون برجًا؛ تتسلق النقطة إلى القمة وتتمدد وتلمس النجمة التي تضيء سماء الغروب كلها بينما تبتسم كل الوجوه. اختم بالعنوان «Higher, together.». شخصيات مستديرة بعيون كبيرة، مع انضغاط وتمدد وتمهيد للحركة واستقرار لطيف؛ سماء غروب من النيلي إلى البرتقالي الدافئ.',
+    },
+    ja: {
+      title: 'ショートアニメーション',
+      prompt: 'セリフのない 15 秒のショートアニメを作って。オレンジの小さな丸が星にさわりたい。ぴょんぴょん登場して星を見上げ、跳ぶけれど届かず、もっと高く跳んでぺしゃんこに落ちる。しょんぼりしていると、カラフルな仲間 4 人が跳んできて積み重なり塔になる。丸は塔のてっぺんまで登って体を伸ばし、星にタッチ。星が夕空全体を照らし、みんなが笑顔になる。最後はタイトル「Higher, together.」。大きな目の丸いキャラクター、スクワッシュ＆ストレッチ、予備動作とやわらかな着地。夕空は藍色から暖かいオレンジへ。',
+    },
+    ko: {
+      title: '단편 애니메이션',
+      prompt: '대사 없는 15초 단편 애니메이션을 만들어 줘: 작은 주황색 점이 별을 만지고 싶어 해. 통통 튀며 들어와 별을 올려다보고 점프하지만 닿지 않고, 더 높이 뛰다 납작하게 떨어져. 풀이 죽어 있을 때 알록달록한 친구 넷이 뛰어와 탑을 쌓고, 점은 꼭대기까지 올라가 몸을 쭉 늘여 별에 닿아. 별이 노을 하늘 전체를 밝히고 모두가 웃어. 마지막 제목은 "Higher, together.". 큰 눈의 동글동글한 캐릭터, 스쿼시 앤 스트레치, 예비 동작과 부드러운 안착; 남색에서 따뜻한 주황으로 물드는 노을 하늘.',
+    },
+    pl: {
+      title: 'Krótki film animowany',
+      prompt: 'Stwórz 15-sekundowy film animowany bez słów: mała pomarańczowa kropka chce dotknąć gwiazdy. Wskakuje w kadr, patrzy w górę, skacze — za nisko — skacze wyżej i spada na płasko. Gdy się smuci, czterech kolorowych przyjaciół przyskakuje i układa się w wieżę; kropka wspina się na szczyt, wyciąga się i dotyka gwiazdy, która rozświetla całe wieczorne niebo, a wszystkie buzie się uśmiechają. Zakończ tytułem „Higher, together.”. Okrągłe postacie z dużymi oczami, squash and stretch, antycypacja i łagodne wyhamowania; niebo od indygo do ciepłego pomarańczu.',
+    },
+    hu: {
+      title: 'Animációs rövidfilm',
+      prompt: 'Készíts egy szöveg nélküli, 15 másodperces animációs rövidfilmet: egy kis narancs pötty meg akarja érinteni a csillagot. Beugrál, felnéz, ugrik – nem éri el –, nagyobbat ugrik, és laposra huppan. Amíg lógatja az orrát, négy színes barát ugrál oda, és toronnyá áll össze; a pötty felmászik a tetejére, nyújtózkodik, és megérinti a csillagot, amely bevilágítja az egész alkonyi eget, miközben mindenki mosolyog. Zárd a „Higher, together.” címmel. Kerek, nagy szemű figurák, nyúlás-zsugorodás, előkészítő mozdulat és lágy beállás; az ég indigóból meleg narancsba vált.',
+    },
+    fr: {
+      title: 'Court métrage animé',
+      prompt: 'Crée un court métrage animé muet de 15 secondes : un petit point orange veut toucher une étoile. Il entre en sautillant, lève les yeux, saute — trop court —, saute plus haut et retombe à plat. Pendant qu’il se décourage, quatre amis colorés arrivent en sautillant et s’empilent en tour ; le point grimpe au sommet, s’étire et touche l’étoile, qui illumine tout le ciel du crépuscule tandis que tous les visages sourient. Termine sur le titre « Higher, together. ». Personnages ronds aux grands yeux, squash and stretch, anticipation et atterrissages doux ; ciel du crépuscule de l’indigo à l’orange chaud.',
+    },
+    uk: {
+      title: 'Анімаційна короткометражка',
+      prompt: 'Створи 15-секундну короткометражку без слів: маленька помаранчева крапка хоче торкнутися зірки. Вона застрибує в кадр, дивиться вгору, стрибає — не дістає, — стрибає вище й гепається плазом. Поки вона сумує, четверо різнокольорових друзів підстрибують і шикуються в башту; крапка видирається нагору, тягнеться й торкається зірки, яка освітлює все вечірнє небо, а всі обличчя всміхаються. Наприкінці — заголовок «Higher, together.». Круглі персонажі з великими очима, стискання й розтягування, замах і м’яке завершення руху; небо від індиго до теплого помаранчевого.',
+    },
+    tr: {
+      title: 'Kısa animasyon filmi',
+      prompt: 'Sözsüz 15 saniyelik bir kısa animasyon yap: küçük turuncu bir nokta bir yıldıza dokunmak istiyor. Zıplayarak gelir, yukarı bakar, zıplar — yetişemez —, daha yükseğe zıplar ve yere yassı düşer. O boynunu bükerken dört renkli arkadaşı zıplayarak gelir ve üst üste dizilip kule olur; nokta tepeye tırmanır, uzanır ve yıldıza dokunur; yıldız tüm alacakaranlık göğünü aydınlatır, herkesin yüzü güler. "Higher, together." başlığıyla bitir. Büyük gözlü yuvarlak karakterler, squash and stretch, hazırlık hareketi ve yumuşak oturmalar; çivit maviden sıcak turuncuya alacakaranlık göğü.',
+    },
+    th: {
+      title: 'แอนิเมชันเรื่องสั้น',
+      prompt: 'สร้างแอนิเมชันสั้นไร้บทพูดความยาว 15 วินาที: จุดสีส้มตัวเล็กอยากแตะดวงดาว มันกระโดดเข้ามา เงยหน้ามอง กระโดดแต่ไม่ถึง กระโดดสูงขึ้นแล้วล้มแบนแต๋ ขณะที่มันหงอย เพื่อนหลากสีสี่ตัวกระโดดเข้ามาต่อตัวเป็นหอคอย จุดปีนขึ้นไปถึงยอด ยืดตัวแตะดวงดาว ดาวส่องสว่างทั่วท้องฟ้ายามเย็นและทุกคนยิ้ม ปิดท้ายด้วยชื่อเรื่อง "Higher, together." ตัวละครกลม ๆ ตาโต ใช้สควอชแอนด์สเตรตช์ ท่าเตรียม และการลงอย่างนุ่มนวล ท้องฟ้ายามเย็นไล่จากสีครามไปสีส้มอุ่น',
+    },
+    it: {
+      title: 'Cortometraggio animato',
+      prompt: 'Crea un cortometraggio animato muto di 15 secondi: un puntino arancione vuole toccare una stella. Entra saltellando, guarda in alto, salta — troppo basso —, salta più in alto e ricade schiacciato. Mentre si abbatte, quattro amici colorati arrivano saltellando e si impilano in una torre; il puntino sale in cima, si allunga e tocca la stella, che illumina tutto il cielo del crepuscolo mentre tutti sorridono. Chiudi con il titolo «Higher, together.». Personaggi rotondi con occhi grandi, squash and stretch, anticipazione e assestamenti morbidi; cielo dal blu indaco all’arancione caldo.',
     },
   },
 };

@@ -1,0 +1,123 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-short-story",
+  "title": "Animated Short Story",
+  "title_i18n": {
+    "en": "Animated Short Story",
+    "id": "Film Pendek Animasi",
+    "de": "Animierter Kurzfilm",
+    "zh-CN": "动画短片",
+    "zh-TW": "動畫短片",
+    "pt-BR": "Curta de animação",
+    "es-ES": "Cortometraje animado",
+    "ru": "Анимационная короткометражка",
+    "fa": "انیمیشن کوتاه داستانی",
+    "ar": "فيلم رسوم متحركة قصير",
+    "ja": "ショートアニメーション",
+    "ko": "단편 애니메이션",
+    "pl": "Krótki film animowany",
+    "hu": "Animációs rövidfilm",
+    "fr": "Court métrage animé",
+    "uk": "Анімаційна короткометражка",
+    "tr": "Kısa animasyon filmi",
+    "th": "แอนิเมชันเรื่องสั้น",
+    "it": "Cortometraggio animato"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A wordless 15-second animated short: a little dot tries to reach a star, falls short, and its friends stack into a tower to lift it up — classic squash-and-stretch character animation.",
+  "description_i18n": {
+    "en": "A wordless 15-second animated short: a little dot tries to reach a star, falls short, and its friends stack into a tower to lift it up — classic squash-and-stretch character animation.",
+    "id": "Film pendek animasi 15 detik tanpa kata: titik kecil mencoba meraih bintang, gagal, lalu teman-temannya bertumpuk menjadi menara untuk mengangkatnya — animasi karakter squash-and-stretch klasik.",
+    "de": "Ein wortloser 15-sekündiger Animationskurzfilm: Ein kleiner Punkt will einen Stern erreichen, scheitert, und seine Freunde stapeln sich zu einem Turm, um ihn hinaufzuheben – klassische Squash-and-Stretch-Figurenanimation.",
+    "zh-CN": "15 秒无台词动画短片：小圆点想够到星星却摔了下来，朋友们叠成高塔把它托上去。经典的挤压拉伸角色动画。",
+    "zh-TW": "15 秒無台詞動畫短片：小圓點想搆到星星卻摔了下來，朋友們疊成高塔把它托上去。經典的擠壓拉伸角色動畫。",
+    "pt-BR": "Curta de animação de 15 segundos sem falas: um pontinho tenta alcançar uma estrela, não consegue, e os amigos se empilham numa torre para erguê-lo — animação de personagem clássica com squash and stretch.",
+    "es-ES": "Cortometraje animado de 15 segundos sin palabras: un puntito intenta alcanzar una estrella, no llega, y sus amigos se apilan en una torre para subirlo — animación de personajes clásica con squash and stretch.",
+    "ru": "Короткометражка без слов на 15 секунд: маленькая точка пытается дотянуться до звезды, падает, и друзья выстраиваются в башню, чтобы поднять её, — классическая анимация персонажей со сжатием и растяжением.",
+    "fa": "انیمیشن کوتاه ۱۵ ثانیه‌ای بی‌کلام: نقطهٔ کوچکی می‌خواهد به ستاره برسد، نمی‌رسد، و دوستانش برجی می‌سازند تا بالایش ببرند — انیمیشن کلاسیک شخصیت با فشرده‌شدن و کشیده‌شدن.",
+    "ar": "فيلم رسوم متحركة قصير بلا كلمات مدته 15 ثانية: نقطة صغيرة تحاول الوصول إلى نجمة فتفشل، فيتكدّس أصدقاؤها برجًا لرفعها — تحريك شخصيات كلاسيكي بالانضغاط والتمدد.",
+    "ja": "セリフのない 15 秒のショートアニメ。小さな丸が星に届こうとして失敗し、仲間たちが積み重なって塔になり持ち上げる。スクワッシュ＆ストレッチを使った王道のキャラクターアニメーション。",
+    "ko": "대사 없는 15초 단편 애니메이션: 작은 점이 별에 닿으려다 실패하고, 친구들이 탑을 쌓아 들어 올려 줘. 스쿼시 앤 스트레치를 살린 클래식 캐릭터 애니메이션.",
+    "pl": "15-sekundowy film animowany bez słów: mała kropka próbuje dosięgnąć gwiazdy, nie daje rady, a przyjaciele układają się w wieżę, by ją podnieść — klasyczna animacja postaci ze squash and stretch.",
+    "hu": "Szöveg nélküli, 15 másodperces animációs rövidfilm: egy kis pötty el akarja érni a csillagot, nem sikerül, a barátai pedig toronnyá állnak, hogy felemeljék – klasszikus nyúlás-zsugorodásos karakteranimáció.",
+    "fr": "Un court métrage animé muet de 15 secondes : un petit point veut atteindre une étoile, échoue, et ses amis s’empilent en tour pour le hisser — animation de personnages classique en squash and stretch.",
+    "uk": "Короткометражка без слів на 15 секунд: маленька крапка намагається дотягтися до зірки, падає, а друзі шикуються в башту, щоб підняти її, — класична анімація персонажів зі стисканням і розтягуванням.",
+    "tr": "Sözsüz 15 saniyelik kısa animasyon: küçük bir nokta bir yıldıza ulaşmaya çalışır, başaramaz; arkadaşları üst üste dizilip kule olur ve onu yukarı taşır — klasik squash and stretch karakter animasyonu.",
+    "th": "แอนิเมชันสั้น 15 วินาทีไร้บทพูด: จุดเล็ก ๆ อยากแตะดาวแต่กระโดดไม่ถึง เพื่อน ๆ จึงต่อตัวเป็นหอคอยดันมันขึ้นไป — แอนิเมชันตัวละครแบบสควอชแอนด์สเตรตช์คลาสสิก",
+    "it": "Un cortometraggio animato muto di 15 secondi: un puntino vuole raggiungere una stella, non ci riesce, e i suoi amici si impilano in una torre per sollevarlo — animazione dei personaggi classica in squash and stretch."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "animation",
+    "storytelling",
+    "character",
+    "wordless"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Make a wordless 15-second animated short: a little orange dot wants to touch a star. It hops in, looks up, jumps — too short — jumps higher and falls flat. As it droops, four colorful friends hop in and stack into a tower; the dot climbs to the top, stretches, and touches the star, which lights up the whole dusk sky while every face turns happy. End on the title \"Higher, together.\" Round characters with big eyes, squash and stretch, anticipation and gentle settles; a dusk sky from indigo to warm orange.",
+        "zh-CN": "做一段 15 秒无台词的动画短片：一个橙色小圆点想碰到星星。它跳进画面，抬头看星星，跳了一下够不着，再用力一跳却摔扁在地上。它垂头丧气时，四个彩色小伙伴从两边跳过来，叠成一座塔；小圆点爬到塔顶，伸长身体碰到星星，星星点亮整片黄昏天空，所有角色都笑了。结尾标题“Higher, together.”。圆滚滚的角色、大眼睛，用挤压拉伸、预备动作和轻柔回弹；黄昏天空从靛蓝过渡到暖橙。",
+        "zh-TW": "做一段 15 秒無台詞的動畫短片：一個橘色小圓點想碰到星星。它跳進畫面，抬頭看星星，跳了一下搆不著，再用力一跳卻摔扁在地上。它垂頭喪氣時，四個彩色小夥伴從兩邊跳過來，疊成一座塔；小圓點爬到塔頂，伸長身體碰到星星，星星點亮整片黃昏天空，所有角色都笑了。結尾標題「Higher, together.」。圓滾滾的角色、大眼睛，用擠壓拉伸、預備動作和輕柔回彈；黃昏天空從靛藍過渡到暖橘。",
+        "id": "Buat film pendek animasi 15 detik tanpa kata: sebuah titik oranye kecil ingin menyentuh bintang. Ia melompat masuk, menengadah, melompat — tidak sampai — melompat lebih tinggi lalu jatuh gepeng. Saat ia lesu, empat teman berwarna-warni melompat datang dan bertumpuk menjadi menara; si titik memanjat ke puncak, meregangkan badan, dan menyentuh bintang yang menyalakan seluruh langit senja sementara semua wajah tersenyum. Akhiri dengan judul \"Higher, together.\" Karakter bulat bermata besar, squash and stretch, antisipasi dan pendaratan lembut; langit senja dari nila ke oranye hangat.",
+        "de": "Erstelle einen wortlosen 15-sekündigen Animationskurzfilm: Ein kleiner orangefarbener Punkt will einen Stern berühren. Er hüpft herein, schaut hoch, springt – zu kurz –, springt höher und landet platt. Während er den Kopf hängen lässt, hüpfen vier bunte Freunde herbei und stapeln sich zu einem Turm; der Punkt klettert hinauf, streckt sich und berührt den Stern, der den ganzen Abendhimmel erleuchtet, während alle Gesichter strahlen. Ende mit dem Titel „Higher, together.“. Runde Figuren mit großen Augen, Squash and Stretch, Antizipation und sanftes Ausschwingen; Abendhimmel von Indigo bis warmem Orange.",
+        "pt-BR": "Crie um curta de animação de 15 segundos sem falas: um pontinho laranja quer tocar uma estrela. Ele entra pulando, olha para cima, pula — não alcança —, pula mais alto e cai achatado. Enquanto ele fica desanimado, quatro amigos coloridos chegam pulando e se empilham numa torre; o pontinho sobe até o topo, se estica e toca a estrela, que ilumina todo o céu do entardecer enquanto todos sorriem. Termine com o título \"Higher, together.\" Personagens redondos de olhos grandes, squash and stretch, antecipação e assentamentos suaves; céu do anil ao laranja quente.",
+        "es-ES": "Crea un cortometraje animado de 15 segundos sin palabras: un puntito naranja quiere tocar una estrella. Entra dando saltitos, mira hacia arriba, salta —no llega—, salta más alto y cae aplastado. Mientras se desanima, cuatro amigos de colores llegan saltando y se apilan en una torre; el puntito trepa hasta arriba, se estira y toca la estrella, que ilumina todo el cielo del atardecer mientras todas las caras sonríen. Termina con el título «Higher, together.». Personajes redondos de ojos grandes, squash and stretch, anticipación y asentamientos suaves; cielo del añil al naranja cálido.",
+        "ru": "Сделай 15-секундную короткометражку без слов: маленькая оранжевая точка хочет дотронуться до звезды. Она впрыгивает в кадр, смотрит вверх, прыгает — не достаёт, — прыгает выше и шлёпается плашмя. Пока она грустит, четыре разноцветных друга прыгают к ней и выстраиваются в башню; точка забирается наверх, тянется и касается звезды, которая озаряет всё вечернее небо, а все лица улыбаются. В конце — заголовок «Higher, together.». Круглые персонажи с большими глазами, сжатие и растяжение, замах и мягкое затухание движения; небо от индиго до тёплого оранжевого.",
+        "fa": "یک انیمیشن کوتاه ۱۵ ثانیه‌ای بی‌کلام بساز: نقطهٔ نارنجی کوچکی می‌خواهد ستاره را لمس کند. پرزنان وارد می‌شود، بالا را نگاه می‌کند، می‌پرد — نمی‌رسد — بلندتر می‌پرد و پهن روی زمین می‌افتد. وقتی وا می‌رود، چهار دوست رنگارنگ پرزنان می‌آیند و برجی می‌سازند؛ نقطه تا بالای برج می‌رود، کش می‌آید و ستاره را لمس می‌کند و ستاره کل آسمان غروب را روشن می‌کند و همه لبخند می‌زنند. با عنوان «Higher, together.» تمام کن. شخصیت‌های گرد با چشم‌های درشت، فشرده‌شدن و کشیده‌شدن، پیش‌حرکت و نشستن نرم؛ آسمان غروب از نیلی تا نارنجی گرم.",
+        "ar": "اصنع فيلم رسوم متحركة قصيرًا بلا كلمات مدته 15 ثانية: نقطة برتقالية صغيرة تريد أن تلمس نجمة. تدخل قفزًا، وتنظر إلى الأعلى، وتقفز — لا تصل — ثم تقفز أعلى فتسقط مسطّحة. وبينما تنكس رأسها، يقفز أربعة أصدقاء ملوّنون ويتكدسون برجًا؛ تتسلق النقطة إلى القمة وتتمدد وتلمس النجمة التي تضيء سماء الغروب كلها بينما تبتسم كل الوجوه. اختم بالعنوان «Higher, together.». شخصيات مستديرة بعيون كبيرة، مع انضغاط وتمدد وتمهيد للحركة واستقرار لطيف؛ سماء غروب من النيلي إلى البرتقالي الدافئ.",
+        "ja": "セリフのない 15 秒のショートアニメを作って。オレンジの小さな丸が星にさわりたい。ぴょんぴょん登場して星を見上げ、跳ぶけれど届かず、もっと高く跳んでぺしゃんこに落ちる。しょんぼりしていると、カラフルな仲間 4 人が跳んできて積み重なり塔になる。丸は塔のてっぺんまで登って体を伸ばし、星にタッチ。星が夕空全体を照らし、みんなが笑顔になる。最後はタイトル「Higher, together.」。大きな目の丸いキャラクター、スクワッシュ＆ストレッチ、予備動作とやわらかな着地。夕空は藍色から暖かいオレンジへ。",
+        "ko": "대사 없는 15초 단편 애니메이션을 만들어 줘: 작은 주황색 점이 별을 만지고 싶어 해. 통통 튀며 들어와 별을 올려다보고 점프하지만 닿지 않고, 더 높이 뛰다 납작하게 떨어져. 풀이 죽어 있을 때 알록달록한 친구 넷이 뛰어와 탑을 쌓고, 점은 꼭대기까지 올라가 몸을 쭉 늘여 별에 닿아. 별이 노을 하늘 전체를 밝히고 모두가 웃어. 마지막 제목은 \"Higher, together.\". 큰 눈의 동글동글한 캐릭터, 스쿼시 앤 스트레치, 예비 동작과 부드러운 안착; 남색에서 따뜻한 주황으로 물드는 노을 하늘.",
+        "pl": "Stwórz 15-sekundowy film animowany bez słów: mała pomarańczowa kropka chce dotknąć gwiazdy. Wskakuje w kadr, patrzy w górę, skacze — za nisko — skacze wyżej i spada na płasko. Gdy się smuci, czterech kolorowych przyjaciół przyskakuje i układa się w wieżę; kropka wspina się na szczyt, wyciąga się i dotyka gwiazdy, która rozświetla całe wieczorne niebo, a wszystkie buzie się uśmiechają. Zakończ tytułem „Higher, together.”. Okrągłe postacie z dużymi oczami, squash and stretch, antycypacja i łagodne wyhamowania; niebo od indygo do ciepłego pomarańczu.",
+        "hu": "Készíts egy szöveg nélküli, 15 másodperces animációs rövidfilmet: egy kis narancs pötty meg akarja érinteni a csillagot. Beugrál, felnéz, ugrik – nem éri el –, nagyobbat ugrik, és laposra huppan. Amíg lógatja az orrát, négy színes barát ugrál oda, és toronnyá áll össze; a pötty felmászik a tetejére, nyújtózkodik, és megérinti a csillagot, amely bevilágítja az egész alkonyi eget, miközben mindenki mosolyog. Zárd a „Higher, together.” címmel. Kerek, nagy szemű figurák, nyúlás-zsugorodás, előkészítő mozdulat és lágy beállás; az ég indigóból meleg narancsba vált.",
+        "fr": "Crée un court métrage animé muet de 15 secondes : un petit point orange veut toucher une étoile. Il entre en sautillant, lève les yeux, saute — trop court —, saute plus haut et retombe à plat. Pendant qu’il se décourage, quatre amis colorés arrivent en sautillant et s’empilent en tour ; le point grimpe au sommet, s’étire et touche l’étoile, qui illumine tout le ciel du crépuscule tandis que tous les visages sourient. Termine sur le titre « Higher, together. ». Personnages ronds aux grands yeux, squash and stretch, anticipation et atterrissages doux ; ciel du crépuscule de l’indigo à l’orange chaud.",
+        "uk": "Створи 15-секундну короткометражку без слів: маленька помаранчева крапка хоче торкнутися зірки. Вона застрибує в кадр, дивиться вгору, стрибає — не дістає, — стрибає вище й гепається плазом. Поки вона сумує, четверо різнокольорових друзів підстрибують і шикуються в башту; крапка видирається нагору, тягнеться й торкається зірки, яка освітлює все вечірнє небо, а всі обличчя всміхаються. Наприкінці — заголовок «Higher, together.». Круглі персонажі з великими очима, стискання й розтягування, замах і м’яке завершення руху; небо від індиго до теплого помаранчевого.",
+        "tr": "Sözsüz 15 saniyelik bir kısa animasyon yap: küçük turuncu bir nokta bir yıldıza dokunmak istiyor. Zıplayarak gelir, yukarı bakar, zıplar — yetişemez —, daha yükseğe zıplar ve yere yassı düşer. O boynunu bükerken dört renkli arkadaşı zıplayarak gelir ve üst üste dizilip kule olur; nokta tepeye tırmanır, uzanır ve yıldıza dokunur; yıldız tüm alacakaranlık göğünü aydınlatır, herkesin yüzü güler. \"Higher, together.\" başlığıyla bitir. Büyük gözlü yuvarlak karakterler, squash and stretch, hazırlık hareketi ve yumuşak oturmalar; çivit maviden sıcak turuncuya alacakaranlık göğü.",
+        "th": "สร้างแอนิเมชันสั้นไร้บทพูดความยาว 15 วินาที: จุดสีส้มตัวเล็กอยากแตะดวงดาว มันกระโดดเข้ามา เงยหน้ามอง กระโดดแต่ไม่ถึง กระโดดสูงขึ้นแล้วล้มแบนแต๋ ขณะที่มันหงอย เพื่อนหลากสีสี่ตัวกระโดดเข้ามาต่อตัวเป็นหอคอย จุดปีนขึ้นไปถึงยอด ยืดตัวแตะดวงดาว ดาวส่องสว่างทั่วท้องฟ้ายามเย็นและทุกคนยิ้ม ปิดท้ายด้วยชื่อเรื่อง \"Higher, together.\" ตัวละครกลม ๆ ตาโต ใช้สควอชแอนด์สเตรตช์ ท่าเตรียม และการลงอย่างนุ่มนวล ท้องฟ้ายามเย็นไล่จากสีครามไปสีส้มอุ่น",
+        "it": "Crea un cortometraggio animato muto di 15 secondi: un puntino arancione vuole toccare una stella. Entra saltellando, guarda in alto, salta — troppo basso —, salta più in alto e ricade schiacciato. Mentre si abbatte, quattro amici colorati arrivano saltellando e si impilano in una torre; il puntino sale in cima, si allunga e tocca la stella, che illumina tutto il cielo del crepuscolo mentre tutti sorridono. Chiudi con il titolo «Higher, together.». Personaggi rotondi con occhi grandi, squash and stretch, anticipazione e assestamenti morbidi; cielo dal blu indaco all’arancione caldo."
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Animated Short Story"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

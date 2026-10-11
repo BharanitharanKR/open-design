@@ -41,16 +41,15 @@ describe('curated motion design templates', () => {
     expect(existsSync(path.join(dir!, 'example.html'))).toBe(true);
   });
 
-  it('seeds the revised data story from Home in every locale, consistently with its plugin context', () => {
-    const id = 'example-motion-data-story';
+  it('seeds the animated short from Home in every locale, consistently with its plugin context', () => {
+    const id = 'example-motion-short-story';
     const manifest = JSON.parse(readFileSync(path.join(dirs.get(id)!, 'open-design.json'), 'utf8'));
     const record = { id, manifest } as InstalledPluginRecord;
     for (const locale of LOCALES) {
       const seed = examplePresetSeedPrompt(record, locale, () => 'missing prompt');
       expect(seed.text, locale).toBe(manifest.od.useCase.query[locale]);
-      expect(seed.text, locale).toMatch(/11[.,]6/);
-      expect(seed.text, locale).toMatch(/31[.,]7/);
-      expect(seed.text, locale).not.toContain('1804');
+      expect(seed.text, locale).toContain('Higher, together.');
+      expect(seed.text, locale).toMatch(/15|۱۵/);
     }
   });
 });

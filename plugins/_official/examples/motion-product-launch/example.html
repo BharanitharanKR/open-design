@@ -1,91 +1,340 @@
-<!doctype html>
-<html lang="en" data-od-preview-ready="false"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Driftnote — Meetings in. Decisions out.</title><style>
+<!DOCTYPE html>
+<html lang="en" data-od-preview-ready="false">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driftnote — Launch film</title>
+<script src="assets/gsap.min.js"></script>
+<style>
 @font-face{font-family:Space;src:url('assets/space-grotesk.ttf') format('truetype');font-weight:300 700;font-display:block}
-*{box-sizing:border-box;margin:0}html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Space,Arial,sans-serif}
-#viewport{position:fixed;inset:0;overflow:hidden}#main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;overflow:hidden;background:var(--bg);isolation:isolate}
-.scene{position:absolute;inset:0;opacity:0;visibility:hidden}.abs{position:absolute}.eyebrow{font-size:25px;font-weight:500;letter-spacing:.15em;text-transform:uppercase}.muted{color:var(--muted)}
-.head{font-size:158px;line-height:.98;font-weight:700;letter-spacing:-.065em}.sub{font-size:36px;line-height:1.3;letter-spacing:-.025em}.accent{color:var(--accent)}.rule{height:2px;background:currentColor;opacity:.18}
-.footer{position:absolute;left:86px;right:86px;bottom:50px;display:flex;justify-content:space-between;font-size:22px;letter-spacing:.08em}.brand{font-size:34px;letter-spacing:-.04em;font-weight:700}
-#controls{position:fixed;z-index:100;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:16px;padding:12px 18px;border-radius:14px;background:#000c;color:#fff;font:16px Space,Arial;opacity:0}
-#controls:hover,#controls:focus-within{opacity:1}#controls button{border:1px solid #ffffff50;background:transparent;border-radius:7px;padding:8px 14px;color:inherit;font:inherit;cursor:pointer}#controls input{width:360px;accent-color:var(--accent)}
-html.od-export #controls{display:none}html.od-export #main{left:0;top:0;transform:none!important}
+:root{--bg:#EFEAE0;--ink:#121212;--accent:#FF4F1F}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+#viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
+#main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:var(--bg);overflow:hidden}
+#main canvas{display:block;width:1920px;height:1080px}
+#controls{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:14px;width:min(900px,92vw);padding:12px 18px;border-radius:14px;background:#101214dd;color:#fff;font:600 13px ui-monospace,Menlo,monospace;opacity:0;transition:opacity .2s}
+#controls:hover,#controls:focus-within{opacity:1}
+#controls button{font:inherit;letter-spacing:.06em;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
+#controls button:focus-visible,#scrub:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#scrub{flex:1;accent-color:var(--accent)}
+#tc{min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
+html.od-export #controls{display:none!important}
+html.od-export #main{left:0!important;top:0!important;transform:none!important}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080">
+    <canvas id="stage" width="1920" height="1080"></canvas>
+  </div>
+</div>
+<div id="controls">
+  <button id="playBtn" type="button" aria-label="Play or pause">PAUSE</button>
+  <input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position">
+  <span id="tc">0.00 / 20.00</span>
+</div>
 
-:root{--bg:#10191b;--fg:#f2f4e9;--accent:#d8ff79;--muted:#a2b0ac}
-.p-grid{position:absolute;inset:0;background-image:linear-gradient(#ffffff06 1px,transparent 1px),linear-gradient(90deg,#ffffff06 1px,transparent 1px);background-size:96px 96px}
-.p-heading{left:86px;top:190px}.p-heading .head{font-size:172px}.p-heading .sub{margin-top:44px}.pill{display:inline-flex;align-items:center;gap:14px;border:1px solid #ffffff30;padding:13px 21px;border-radius:40px;font-size:24px}
-.p-orb{left:1190px;top:260px;width:440px;height:440px;border-radius:100px;background:var(--accent);transform:rotate(-12deg);box-shadow:20px 30px 0 #d8ff7920;display:grid;place-items:center;color:#10191b;font-size:240px;font-weight:500;letter-spacing:-.14em;padding-right:24px}
-.orbit{position:absolute;width:690px;height:690px;border:1px solid #ffffff20;border-radius:50%;left:1065px;top:135px}.orbit:after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent);left:88px;top:88px}
-.bubble{position:absolute;border:1px solid #ffffff30;background:#223034;border-radius:28px;padding:26px 34px;font-size:39px;box-shadow:0 30px 60px #0003;white-space:nowrap}.bubble b{color:var(--accent)}
-#chaos .head{position:absolute;left:86px;top:155px;font-size:125px}.p-wave{position:absolute;left:0;bottom:120px;width:1920px;height:210px;opacity:.65}
-.summary{position:absolute;left:980px;top:160px;width:820px;height:730px;padding:48px;background:#f2f4e9;color:#122124;border-radius:30px;box-shadow:0 30px 80px #0004;transform-origin:center}
-.summary .eyebrow{font-size:20px;color:#62716d}.summary h2{font-size:64px;line-height:1.02;letter-spacing:-.05em;margin:32px 0}.summary .line{padding:22px 0;border-top:1px solid #12212425;font-size:31px;line-height:1.3;display:flex;gap:22px}.check{width:36px;height:36px;border-radius:50%;background:#c8ed73;display:inline-grid;place-items:center;flex-shrink:0;font-size:25px}
-.summary .tag{display:inline-block;background:#dbe4d5;padding:11px 16px;border-radius:8px;font-size:22px;margin-top:18px}.p-copy{position:absolute;left:86px;top:245px;width:820px}.p-copy .head{font-size:150px}.p-copy .sub{margin-top:42px;width:690px}
-.action{position:absolute;left:86px;right:86px;background:var(--accent);color:#132122;border-radius:25px;padding:30px 36px;display:flex;justify-content:space-between;align-items:center;font-size:44px;letter-spacing:-.04em}.action small{font-size:24px;letter-spacing:0}.action .number{font-size:30px;margin-right:35px}.endbrand{position:absolute;left:86px;top:300px;font-size:218px;font-weight:700;letter-spacing:-.085em}.endline{position:absolute;left:98px;top:565px;font-size:57px;letter-spacing:-.04em}.p-end-icon{left:1370px;top:355px;width:280px;height:280px;font-size:170px;border-radius:65px}
-</style></head>
-<body><div id="viewport"><main id="main" data-composition-id="main" data-start="0" data-duration="20" data-width="1920" data-height="1080"><div class="p-grid"></div>
-<section id="intro" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">Driftnote / A clearer way to meet</div><div id="introCopy" class="abs p-heading"><span class="pill">● Meet your next clear thought</span><h1 class="head" style="margin-top:38px">Meetings in.<br><span class="accent">Decisions out.</span></h1><p class="sub muted">Turn the conversation into the next move.</p></div><div id="introOrbit" class="orbit"></div><div id="introOrb" class="abs p-orb">↗</div></section>
-<section id="chaos" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">01 / Sound familiar?</div><h2 class="head">Great conversation.<br><span class="muted">Now what?</span></h2><div id="b0" class="bubble" style="left:1090px;top:480px;rotate:-7deg">Who owns the <b>next step?</b></div><div id="b1" class="bubble" style="left:190px;top:565px;rotate:5deg">“Can you send that again?”</div><div id="b2" class="bubble" style="left:1020px;top:650px;rotate:-3deg">“Wait. What did we decide?”</div><canvas id="wave" class="p-wave" width="1920" height="210"></canvas></section>
-<section id="result" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">02 / Bring it into focus</div><div id="resultCopy" class="p-copy"><h2 class="head">All the talk.<br><span class="accent">One clear<br>page.</span></h2><p class="sub muted">The decision. The owner.<br>The next step.</p></div><div id="summary" class="summary"><div id="summaryContent"><div class="eyebrow">↗ Meeting, distilled.</div><h2>Launch sync.<br>Clarity delivered.</h2><div id="sum0" class="line"><span class="check">✓</span><span>Launch review moves<br>to Thursday.</span></div><div id="sum1" class="line"><span class="check">✓</span><span>Alex owns the<br>revised brief.</span></div><div id="sum2" class="line"><span class="check">✓</span><span>Share the final notes<br>with the team.</span></div><span class="tag">Decisions, ready to go.</span></div></div></section>
-<section id="actions" class="scene"><div class="abs eyebrow" style="left:86px;top:64px">03 / Less follow-up. More follow-through.</div><h2 id="actionTitle" class="abs head" style="left:86px;top:170px;font-size:145px">Everyone knows<br>the <span class="accent">next move.</span></h2><div id="a0" class="action" style="top:540px"><span><span class="number">01</span>Revise the brief.</span><small>Alex ↗</small></div><div id="a1" class="action" style="top:680px;background:#b9d57c"><span><span class="number">02</span>Book Thursday’s review.</span><small>Team ↗</small></div><div id="a2" class="action" style="top:820px;background:#97ad6c"><span><span class="number">03</span>Keep the work moving.</span><small>Done ✓</small></div></section>
-<section id="end" class="scene"><span class="abs pill" style="left:98px;top:210px">Less meeting. More meaning.</span><h2 id="wordmark" class="endbrand">Driftnote<span class="accent">.</span></h2><p class="endline">Meetings in. Decisions out.</p><div id="endOrb" class="abs p-orb p-end-icon">↗</div><div class="abs rule" style="left:98px;right:98px;top:790px"></div><p class="abs sub muted" style="left:98px;top:835px">Your next move starts here.</p></section>
-<div class="footer"><span class="brand">driftnote ↗</span><span>Product launch / Fictional concept</span></div></main></div>
-<div id="controls"><button id="play" aria-label="Play or pause">Pause</button><button id="replay" aria-label="Replay from start">Replay</button><input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position"><span id="time"></span></div>
-<script src="assets/gsap.min.js"></script><script>
-// Every visible value is derived from timeline time, including backward seeks.
-const DURATION=20, POSTER_AT=8.8;
-const $=id=>document.getElementById(id), clamp=v=>Math.min(1,Math.max(0,v));
-const ease=v=>1-Math.pow(1-clamp(v),3), mix=(a,b,p)=>a+(b-a)*p;
-function scene(id,t,a,b){const el=$(id),active=t>=a&&t<b;el.style.visibility=active?'visible':'hidden';el.style.opacity=active?1:0;return active;}
-function enter(id,t,a,delay=0){const p=ease((t-a-delay+.22)/.65);$(id).style.transform='translateY('+((1-p)*65)+'px)';$(id).style.opacity=p;}
-function pose(id,x,y,s=1,r=0){$(id).style.transform='translate('+x+'px,'+y+'px) scale('+s+') rotate('+r+'deg)';}
-const clock={t:0},tl=gsap.timeline({paused:true});tl.to(clock,{t:DURATION,duration:DURATION,ease:'none'},0);window.__timelines={main:tl};
-function render(t){
+<script>
+/* ============================================================
+   Driftnote — a 20-second product launch film (fictional app).
+   Kinetic type + one toggle that turns meeting chaos into order.
+   render(t) is a pure function of timeline time.
+   ============================================================ */
+const CFG = {
+  duration: 20, w: 1920, h: 1080,
+  bg: '#EFEAE0', ink: '#121212', accent: '#FF4F1F', card: '#FFFFFF', soft: '#D9D2C4', mute: '#7A746A',
+  product: 'Driftnote', tagline: 'Meetings, minus the mess.',
+  fragments: ['ship by Fri?', 'who owns QA', 'budget +10%?', 'ping Lee re: deck', 'move launch??', 'decided: v2 pricing', 'notes… somewhere', 'action item?', 'send recap'],
+  summary: { title: 'Weekly product sync', lines: ['Launch stays on Oct 24', 'v2 pricing approved', 'QA owned by Maya'] },
+  actions: [['Send recap to the team', 'AK', 'Today'], ['Update pricing page', 'LR', 'Wed'], ['Book QA review', 'MS', 'Thu']]
+};
+const DISPLAY = 'Space, "Helvetica Neue", Arial, sans-serif';
+const MONO = 'ui-monospace, Menlo, Consolas, monospace';
+const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+const E = n => gsap.parseEase(n);
+const EZ = { o3: E('power3.out'), i3: E('power3.in'), io3: E('power3.inOut'), o4: E('power4.out'), expo: E('expo.out'), back: E('back.out(1.8)'), el: E('elastic.out(1,0.5)') };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const TAU = Math.PI * 2;
+function rnd(i) { const s = Math.sin(i * 91.7 + 17.3) * 43758.5453; return s - Math.floor(s); }
 
-  const intro=scene('intro',t,0,3.2), chaos=scene('chaos',t,3.2,7.15),result=scene('result',t,6.05,14.05),actions=scene('actions',t,13.0,17),end=scene('end',t,17,20.01);
-  if(intro){enter('introCopy',t,0);pose('introOrb',0,Math.sin(t*2)*14,1,-12+t*6);pose('introOrbit',0,0,1,t*12);}
-  if(chaos){
-    const gather=ease((t-5.95)/1.1);
-    $('chaos').querySelector('h2').style.opacity=1-ease((t-5.95)/.3);
-    $('chaos').querySelector('.eyebrow').style.opacity=1-ease((t-6.05)/.15);
-    const starts=[[1090,480],[190,565],[1020,650]],rotations=[-7,5,-3];
-    for(let i=0;i<3;i++){
-      const p=ease((t-3.2-i*.18)/.7),[x,y]=starts[i];
-      pose('b'+i,mix((1-p)*(i%2?160:-160),1048-x,gather),mix(Math.sin(t*2+i)*15,425+i*105-y,gather),mix(1,.7,gather),-rotations[i]*gather);
-      $('b'+i).style.opacity=p*(1-ease((t-6.5)/.55));
-    }
-    $('wave').style.opacity=.65*(1-gather);pose('wave',gather*450,0,1-gather*.65);
-    const c=$('wave').getContext('2d');c.clearRect(0,0,1920,210);c.fillStyle='#d8ff79';
-    for(let x=0;x<1920;x+=15){const h=14+Math.abs(Math.sin(x*.014+t*3)*Math.cos(x*.027-t*2))*145;c.fillRect(x,105-h/2,5,h);}
-  }
-  if(result){
-    const arrive=ease((t-6.15)/.8),unfold=ease((t-13.0)/.8),leave=ease((t-13.7)/.35);
-    enter('resultCopy',t,6.4);$('resultCopy').style.opacity=ease((t-6.3)/.7)*(1-ease((t-13)/.25));
-    $('result').querySelector('.eyebrow').style.opacity=ease((t-6.3)/.5)*(1-ease((t-13)/.2));
-    const card=$('summary');card.style.opacity=arrive*(1-leave);card.style.overflow='hidden';card.style.transformOrigin='top left';
-    card.style.width=mix(820,1748,unfold)+'px';card.style.height=mix(730,116,unfold)+'px';card.style.borderRadius=mix(30,25,unfold)+'px';
-    card.style.background='rgb('+Math.round(mix(242,216,unfold))+','+Math.round(mix(244,255,unfold))+','+Math.round(mix(233,121,unfold))+')';
-    pose('summary',mix((1-arrive)*90,-894,unfold),mix((1-arrive)*70,380,unfold),mix(.97,1,arrive));
-    $('summaryContent').style.opacity=1-ease((t-13)/.4);
-    for(let i=0;i<3;i++)enter('sum'+i,t,7.1+i*1.5);
-  }
-  if(actions){
-    enter('actionTitle',t,13.4);
-    for(let i=0;i<3;i++){
-      const p=ease((t-(13.55+i*.45))/.6);pose('a'+i,0,(1-p)*(i===0?0:65));$('a'+i).style.opacity=p;
-    }
-  }
-  if(end){enter('wordmark',t,17);pose('endOrb',0,Math.sin((t-17)*2)*8,1,-7+ease((t-17)/1)*7);}
-  $('main').dataset.beat=intro?'hook':chaos?'problem':result?'transformation':actions?'outcome':'brand';
-
-  $('scrub').value=t;$('time').textContent=t.toFixed(1)+' / '+DURATION+' s';
-  $('main').dataset.time=t.toFixed(3);
+function text(str, x, y, size, color, weight = 700, font = DISPLAY, align = 'left', alpha = 1, spacing = 0) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${font}`; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = spacing + 'px'; ctx.fillText(str, x, y); ctx.restore();
 }
-function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);$('main').style.transform='translate(-50%,-50%) scale('+s+')';}addEventListener('resize',fit);fit();
-$('play').onclick=()=>{tl.progress()===1?tl.restart():tl.paused(!tl.paused());$('play').textContent=tl.paused()?'Play':'Pause';};$('replay').onclick=()=>tl.restart();$('scrub').oninput=e=>{tl.pause();tl.time(Number(e.target.value),true);};
-render(0);let last=-1;
-function tick(){if(window.__odFrameRenderer)document.documentElement.classList.add('od-export');const t=tl.time();if(t!==last){render(t);last=t;}requestAnimationFrame(tick);}tick();
-document.fonts.ready.then(()=>{render(tl.time());if(matchMedia('(prefers-reduced-motion: reduce)').matches){tl.pause(POSTER_AT);render(POSTER_AT);}else tl.play(0);function ready(){if(tl.time()>=POSTER_AT){document.documentElement.dataset.odPreviewReady='true';}else requestAnimationFrame(ready);}ready();});
-</script><audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="20" data-track-index="2" data-volume="1" preload="auto"></audio>
+/* the product's own UI atom: a toggle */
+function toggle(x, y, w, on, scale = 1, alpha = 1) {
+  if (alpha <= 0 || scale <= 0) return;
+  const h = w * 0.52;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(scale, scale);
+  ctx.fillStyle = on > 0.5 ? CFG.accent : CFG.soft;
+  ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
+  const r = h * 0.4, kx = lerp(-w / 2 + h / 2, w / 2 - h / 2, on);
+  const squash = 1 + 0.35 * Math.sin(on * Math.PI);
+  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.ellipse(kx, 0, r * squash, r / Math.sqrt(squash), 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- 1. the problem, in kinetic type (0 – 3.2) ---------- */
+function sceneHook(t) {
+  if (t >= 3.4) return;
+  const lines = [['Every meeting', 0.2], ['ends with', 0.75], ['a mess.', 1.3]];
+  const exit = EZ.i3(seg(t, 2.7, 3.2));
+  lines.forEach(([str, at], i) => {
+    const p = EZ.o4(seg(t, at, at + 0.45));
+    if (p <= 0) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 150 + i * 230, 1920, 236); ctx.clip();
+    const y = 340 + i * 230 + (1 - p) * 240 - exit * 260;
+    if (i === 2) {
+      // "a mess." jitters apart
+      const jitter = seg(t, 1.9, 2.7);
+      let x = 140;
+      ctx.font = `700 220px ${DISPLAY}`;
+      for (let k = 0; k < str.length; k++) {
+        const ch = str[k], w = ctx.measureText(ch).width;
+        const dx = (rnd(k) - 0.5) * 40 * jitter, dy = (rnd(k + 7) - 0.5) * 60 * jitter, rot = (rnd(k + 3) - 0.5) * 0.5 * jitter;
+        ctx.save(); ctx.translate(x + w / 2 + dx, y + dy); ctx.rotate(rot);
+        ctx.fillStyle = ch === '.' ? CFG.accent : CFG.ink; ctx.textAlign = 'center'; ctx.fillText(ch, 0, 0); ctx.restore();
+        x += w - 6;
+      }
+    } else text(str, 140, y, 220, CFG.ink, 700, DISPLAY, 'left', 1, -6);
+    ctx.restore();
+  });
+}
+
+/* ---------- 2. chaos: fragments everywhere (2.9 – 7.4) ---------- */
+function chip(str, x, y, rot, alpha, scale = 1, color = CFG.card, ink = CFG.ink) {
+  if (alpha <= 0) return;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
+  ctx.font = `500 34px ${DISPLAY}`;
+  const w = ctx.measureText(str).width + 56;
+  ctx.fillStyle = 'rgba(0,0,0,.08)'; ctx.beginPath(); ctx.roundRect(-w / 2 + 4, -32 + 8, w, 64, 32); ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(-w / 2, -32, w, 64, 32); ctx.fill();
+  ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(str, 0, 2);
+  ctx.restore();
+}
+const CHIP_HOME = CFG.fragments.map((_, i) => [260 + (i % 3) * 620 + (rnd(i) - 0.5) * 160, 330 + Math.floor(i / 3) * 210 + (rnd(i + 11) - 0.5) * 80]);
+const CARD = { x: 560, y: 250, w: 800, h: 470 };
+function sceneChaos(t) {
+  if (t < 2.9 || t >= 9.6) return;
+  const head = EZ.o3(seg(t, 3.3, 3.8)) * (1 - seg(t, 6.2, 6.5));
+  text('Notes everywhere.', 960, 170, 76, CFG.ink, 700, DISPLAY, 'center', head, -2);
+  text('Decisions nowhere.', 960, 250, 76, CFG.accent, 700, DISPLAY, 'center', head * EZ.o3(seg(t, 3.6, 4.1)), -2);
+  CFG.fragments.forEach((str, i) => {
+    const arrive = EZ.back(seg(t, 3.0 + i * 0.12, 3.5 + i * 0.12));
+    if (arrive <= 0) return;
+    const [hx, hy] = CHIP_HOME[i];
+    const drift = Math.sin(t * 1.3 + i) * 14, rot = Math.sin(t * 0.9 + i * 2) * 0.08 + (rnd(i + 5) - 0.5) * 0.25;
+    // after the toggle flips, chips fly into the summary card and dissolve
+    const gather = EZ.io3(seg(t, 7.3 + i * 0.05, 8.1 + i * 0.05));
+    const tx = CARD.x + CARD.w / 2, ty = CARD.y + 210 + (i % 3) * 72;
+    const x = lerp(hx, tx, gather), y = lerp(hy + drift + (1 - arrive) * 80, ty, gather);
+    chip(str, x, y, rot * (1 - gather), arrive * (1 - seg(gather, 0.7, 1)), lerp(1, 0.6, gather));
+  });
+}
+
+/* ---------- 3. the toggle flips (6.4 – 7.4) ---------- */
+function sceneToggle(t) {
+  if (t < 6.2 || t >= 8.0) return;
+  const inA = EZ.back(seg(t, 6.3, 6.75));
+  const on = EZ.o3(seg(t, 6.95, 7.2));
+  const out = EZ.i3(seg(t, 7.3, 7.65));
+  const y = 540 - out * 380;
+  // the toggle sits on a cleared stage
+  ctx.save(); ctx.globalAlpha = 0.96 * inA * (1 - out); ctx.fillStyle = CFG.bg; ctx.beginPath(); ctx.roundRect(470, 410, 980, 260, 130); ctx.fill(); ctx.restore();
+  toggle(860, y, 240, on, inA * (1 - out * 0.4), 1 - out);
+  text(CFG.product, 1010, y + 26, 84, CFG.ink, 700, DISPLAY, 'left', inA * (1 - out), -2);
+  // flash on switch
+  const flash = seg(t, 6.95, 7.5);
+  if (flash > 0 && flash < 1) {
+    ctx.save(); ctx.strokeStyle = CFG.accent; ctx.lineWidth = 6 * (1 - flash); ctx.globalAlpha = 1 - flash;
+    ctx.beginPath(); ctx.arc(920, y, 140 + 400 * EZ.o3(flash), 0, TAU); ctx.stroke(); ctx.restore();
+  }
+}
+
+/* ---------- 4. order: the summary card (7.6 – 10.8) ---------- */
+function sceneSummary(t) {
+  if (t < 7.5 || t >= 11.2) return;
+  const inA = EZ.o4(seg(t, 7.7, 8.3)), out = EZ.i3(seg(t, 10.6, 11.1));
+  const yOff = (1 - inA) * 60 - out * 80;
+  ctx.save(); ctx.globalAlpha = inA * (1 - out);
+  ctx.fillStyle = 'rgba(0,0,0,.08)'; ctx.beginPath(); ctx.roundRect(CARD.x + 10, CARD.y + 22 + yOff, CARD.w, CARD.h, 28); ctx.fill();
+  ctx.fillStyle = CFG.card; ctx.beginPath(); ctx.roundRect(CARD.x, CARD.y + yOff, CARD.w, CARD.h, 28); ctx.fill();
+  const cardA = inA * (1 - out);
+  toggle(CARD.x + 76, CARD.y + 70 + yOff, 72, 1, 1, cardA);
+  text('SUMMARY · 32 MIN · 6 PEOPLE', CARD.x + 136, CARD.y + 80 + yOff, 22, CFG.mute, 600, MONO, 'left', cardA);
+  text(CFG.summary.title, CARD.x + 56, CARD.y + 160 + yOff, 56, CFG.ink, 700, DISPLAY, 'left', cardA, -1);
+  CFG.summary.lines.forEach((line, i) => {
+    const p = EZ.o3(seg(t, 8.0 + i * 0.18, 8.4 + i * 0.18));
+    const ly = CARD.y + 250 + i * 72 + yOff;
+    ctx.globalAlpha = inA * (1 - out) * p;
+    ctx.fillStyle = CFG.accent; ctx.beginPath(); ctx.arc(CARD.x + 72, ly - 12, 9, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+    text(line, CARD.x + 104 + (1 - p) * 30, ly, 40, CFG.ink, 500, DISPLAY, 'left', inA * (1 - out) * p);
+  });
+  ctx.restore();
+  const side = EZ.o3(seg(t, 8.8, 9.3)) * (1 - out);
+  text('Every decision,', 140, 900, 64, CFG.ink, 700, DISPLAY, 'left', side, -2);
+  text('in one place.', 140, 970, 64, CFG.accent, 700, DISPLAY, 'left', side * EZ.o3(seg(t, 9.0, 9.5)), -2);
+}
+
+/* ---------- 5. follow-through: action items (10.8 – 14.6) ---------- */
+function sceneActions(t) {
+  if (t < 10.8 || t >= 14.9) return;
+  const out = EZ.i3(seg(t, 14.2, 14.7));
+  text('Action items', 260, 250, 72, CFG.ink, 700, DISPLAY, 'left', EZ.o3(seg(t, 10.9, 11.3)) * (1 - out), -2);
+  CFG.actions.forEach(([task, who, due], i) => {
+    const p = EZ.o4(seg(t, 11.0 + i * 0.15, 11.5 + i * 0.15));
+    const y = 340 + i * 150 - out * 40;
+    ctx.save(); ctx.globalAlpha = p * (1 - out); ctx.translate((1 - p) * 120, 0);
+    ctx.fillStyle = CFG.card; ctx.beginPath(); ctx.roundRect(260, y, 1400, 120, 24); ctx.fill();
+    // checkbox
+    const check = EZ.o3(seg(t, 11.9 + i * 0.5, 12.2 + i * 0.5));
+    ctx.fillStyle = check > 0 ? CFG.accent : 'transparent'; ctx.strokeStyle = check > 0 ? CFG.accent : CFG.soft; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(300, y + 36, 48, 48, 12); ctx.fill(); ctx.stroke();
+    if (check > 0) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const pts = [[312, y + 60], [322, y + 72], [338, y + 48]];
+      ctx.beginPath(); ctx.moveTo(...pts[0]);
+      if (check < 0.5) ctx.lineTo(lerp(pts[0][0], pts[1][0], check * 2), lerp(pts[0][1], pts[1][1], check * 2));
+      else { ctx.lineTo(...pts[1]); ctx.lineTo(lerp(pts[1][0], pts[2][0], (check - 0.5) * 2), lerp(pts[1][1], pts[2][1], (check - 0.5) * 2)); }
+      ctx.stroke();
+    }
+    ctx.restore();
+    text(task, 384, y + 74, 42, check > 0.99 ? CFG.mute : CFG.ink, 500, DISPLAY, 'left', p * (1 - out));
+    // owner avatar + due chip
+    ctx.save(); ctx.globalAlpha = p * (1 - out);
+    ctx.fillStyle = [CFG.ink, CFG.accent, '#3E5BFF'][i]; ctx.beginPath(); ctx.arc(1440, y + 60, 32, 0, TAU); ctx.fill(); ctx.restore();
+    text(who, 1440, y + 70, 26, '#fff', 700, DISPLAY, 'center', p * (1 - out));
+    text(due, 1580, y + 70, 28, CFG.mute, 600, MONO, 'center', p * (1 - out));
+  });
+  const sent = EZ.back(seg(t, 13.5, 13.9)) * (1 - out);
+  if (sent > 0) chip('✓  Sent to owners automatically', 960, 860, 0, sent, sent, CFG.ink, '#fff');
+}
+
+/* ---------- 6. three verbs on the beat (14.6 – 17.6) ---------- */
+function icon(kind, x, y, s, p) {
+  ctx.save(); ctx.translate(x, y); ctx.strokeStyle = CFG.accent; ctx.fillStyle = CFG.accent; ctx.lineWidth = 14; ctx.lineCap = 'round';
+  if (kind === 0) { for (let i = 0; i < 5; i++) { const h = s * (0.3 + 0.7 * Math.abs(Math.sin(i * 1.7 + p * 9))); ctx.beginPath(); ctx.moveTo(-s + i * s / 2, -h / 2); ctx.lineTo(-s + i * s / 2, h / 2); ctx.stroke(); } }
+  if (kind === 1) { for (let i = 0; i < 3; i++) { const w = s * 2 * EZ.o3(clamp(p * 3 - i * 0.4)); ctx.beginPath(); ctx.roundRect(-s, -s * 0.8 + i * s * 0.7, w, s * 0.42, 10); ctx.fill(); } }
+  if (kind === 2) { const k = EZ.o3(clamp(p * 2)); ctx.beginPath(); ctx.moveTo(-s, 0); ctx.lineTo(-s + 2 * s * k, 0); ctx.stroke(); if (k > 0.6) { ctx.beginPath(); ctx.moveTo(s * 0.4, -s * 0.6); ctx.lineTo(s, 0); ctx.lineTo(s * 0.4, s * 0.6); ctx.stroke(); } }
+  ctx.restore();
+}
+function sceneVerbs(t) {
+  if (t < 14.6 || t >= 17.7) return;
+  const verbs = [['Listens.', 14.7], ['Sorts.', 15.6], ['Follows up.', 16.5]];
+  verbs.forEach(([word, at], i) => {
+    const end = i < 2 ? verbs[i + 1][1] : 17.6;
+    if (t < at || t >= end) return;
+    const p = EZ.o4(seg(t, at, at + 0.35));
+    const punch = 1 + 0.05 * Math.exp(-(t - at) * 10);
+    ctx.save(); ctx.translate(960, 600); ctx.scale(punch, punch);
+    ctx.beginPath(); ctx.rect(-960, -260, 1920, 330); ctx.clip();
+    text(word, 0, 40 + (1 - p) * 300, 260, CFG.ink, 700, DISPLAY, 'center', 1, -10);
+    ctx.restore();
+    icon(i, 960, 310, 70, seg(t, at, end));
+  });
+}
+
+/* ---------- 7. lockup (17.5 – 20) ---------- */
+function sceneLockup(t) {
+  if (t < 17.5) return;
+  const inA = EZ.back(seg(t, 17.6, 18.0));
+  const on = EZ.o3(seg(t, 18.0, 18.25));
+  toggle(700, 470, 200, on, inA);
+  text(CFG.product, 830, 500, 150, CFG.ink, 700, DISPLAY, 'left', EZ.o3(seg(t, 17.7, 18.1)), -5);
+  const tag = EZ.o3(seg(t, 18.4, 18.9));
+  text(CFG.tagline, 960, 640 + (1 - tag) * 20, 56, CFG.ink, 500, DISPLAY, 'center', tag, -1);
+  const pill = EZ.back(seg(t, 18.9, 19.3));
+  if (pill > 0) chip('Out today', 960, 760, 0, pill, pill, CFG.accent, '#fff');
+}
+
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = CFG.bg; ctx.fillRect(0, 0, CFG.w, CFG.h);
+  sceneHook(t);
+  sceneChaos(t);
+  sceneToggle(t);
+  sceneSummary(t);
+  sceneActions(t);
+  sceneVerbs(t);
+  sceneLockup(t);
+  // persistent frame chrome
+  text(CFG.product.toUpperCase() + ' · LAUNCH FILM', 140, 84, 22, CFG.mute, 600, MONO, 'left', 1, 2);
+  text('FICTIONAL PRODUCT', 1780, 84, 22, CFG.mute, 600, MONO, 'right', 1, 2);
+}
+
+/* ---------- master timeline: the only clock ---------- */
+const tl = gsap.timeline({ paused: true });
+const clock = { t: 0 };
+tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
+tl.eventCallback('onUpdate', () => render(tl.time()));
+window.__timelines = { main: tl };
+render(0);
+// Plugin previews may block bundled fonts; the fallback stack then renders the film.
+document.fonts.load('700 100px Space').then(() => render(tl.time()), () => render(tl.time()));
+
+/* ---------- preview shell (outside the composition) ---------- */
+const main = document.getElementById('main');
+const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub'), tcEl = document.getElementById('tc');
+function fit() { const s = Math.min(window.innerWidth / CFG.w, window.innerHeight / CFG.h); main.style.transform = 'translate(-50%,-50%) scale(' + s + ')'; }
+window.addEventListener('resize', fit); fit();
+function sync() {
+  const t = tl.time();
+  scrub.value = t; tcEl.textContent = t.toFixed(2) + ' / ' + CFG.duration.toFixed(2);
+  playBtn.textContent = tl.isActive() ? 'PAUSE' : (t >= CFG.duration - 0.01 ? 'REPLAY' : 'PLAY');
+}
+gsap.ticker.add(sync);
+playBtn.addEventListener('click', () => { if (tl.time() >= CFG.duration - 0.01) tl.restart(); else if (tl.paused()) tl.play(); else tl.pause(); sync(); });
+scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); sync(); });
+window.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); playBtn.click(); } });
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) { tl.pause(); tl.time(9.6); }
+else document.fonts.ready.then(() => tl.play(0));
+sync();
+</script>
+<script>
+// Video export seeks with timeline callbacks suppressed, so the onUpdate
+// drawing also runs from a per-frame loop whenever the timeline time moves.
+(function install() {
+  var tls = window.__timelines;
+  var tl = tls && tls[Object.keys(tls)[0]];
+  if (!tl) { setTimeout(install, 50); return; }
+  var draw = tl.eventCallback('onUpdate');
+  if (!draw) return;
+  var drawnAt = null;
+  tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
+  (function loop() {
+    if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) {
+      document.documentElement.classList.add('od-export');
+    }
+    var t = tl.time();
+    if (t !== drawnAt) { drawnAt = t; draw(); }
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+<script>
+// Preview bake: mark ready once the timeline reaches the poster frame.
+(function () {
+  var POSTER_AT = 9.6;
+  function check() {
+    var tls = window.__timelines;
+    var tl = tls && tls[Object.keys(tls)[0]];
+    if (tl && tl.time() >= POSTER_AT) {
+      document.documentElement.setAttribute('data-od-preview-ready', 'true');
+      return;
+    }
+    requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+})();
+</script>
+<audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="20" data-track-index="2" data-volume="1" preload="auto"></audio>
 <script>
 // A user gesture enables sound; the master timeline owns play, pause and seek.
 (function() {
@@ -107,4 +356,5 @@ document.fonts.ready.then(()=>{render(tl.time());if(matchMedia('(prefers-reduced
   }sync();
 })();
 </script>
-</body></html>
+</body>
+</html>

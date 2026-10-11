@@ -1,57 +1,50 @@
 # Motion templates: sources and maintenance
 
 Five official HTML examples populate the Motion design Home entry and Community
-category: a procedural island, noise-cancellation explainer, product launch,
-showreel, and data story. They use the existing plugin preview, example binding,
-frozen reference package, Remix, and HyperFrames MP4 export paths.
+category: a camera-focus explainer, a motion designer showreel, a product
+launch, a procedural 3D island and a wordless animated short. They use the
+existing plugin preview, example binding, frozen reference package, Remix, and
+HyperFrames MP4 export paths.
 
 ## Selection evidence
 
-Topic selection used the October 8, 2026 snapshot of
-[awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video/blob/main/cases.json):
-1,402 cases, captured at `2026-10-08T09:18:38.003Z`, SHA-256
-`0e443a045a62b6494ffb2f90b8d5b550b978064031d9543a256343d328bec027`.
-The original selection record and snapshot are archived in the
-[implementation evidence document](https://powerformer.feishu.cn/docx/NvfoduBi4oj5pgxqnoYccdonn0g).
+Topics follow the most-viewed single posts in the October 9, 2026 snapshot of
+[awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video/blob/main/cases.json)
+(1,427 cases, `stats_checked_at` `2026-10-09T09:26:20.426Z`). Games and
+model-vs-model comparisons were excluded because they are not reusable video
+templates; posts that relied on non-code tools (image/video generators, After
+Effects, Blender) were excluded because OD renders from HTML. Each template is
+anchored to the most-viewed eligible post of its genre:
 
-The original keyword grouping, recalculated from that snapshot, yielded:
+| Template | Anchor post | Recorded views |
+| --- | --- | ---: |
+| Explainer | [Interactive camera focus lens lab](https://x.com/RyanSael/status/2102591147927654847) | 3,492,763 |
+| Showreel | [15-second motion designer showreel](https://x.com/stephanlivera/status/2103315922098470926) | 2,246,353 |
+| Product launch | [Motion design launch video](https://x.com/uxmiles/status/2104618175803609305) | 1,775,824 |
+| 3D island | [Procedural ocean island](https://x.com/dangreenheck/status/2102878170089169235) | 888,215 |
+| Animated short | [Dot prompt becomes Pixar-style animation](https://x.com/cherry_mx_reds/status/2105825930799432073) | 828,141 |
 
-| Direction | Matching cases | Summed recorded views |
-| --- | ---: | ---: |
-| Explainer | 117 | 12,427,430 |
-| Product launch / promo | 95 | 9,950,709 |
-| Showreel | 44 | 9,701,547 |
-| Data / chart | 78 | 7,498,070 |
-
-Groups can overlap. Counts describe the collected posts at the snapshot time.
-The selection also included [Dan Greenheck's procedural island](https://x.com/dangreenheck/status/2102878170089169235),
-with 888,215 recorded views, and [Stephan Livera's showreel](https://x.com/stephanlivera/status/2103315922098470926),
-with 2,246,353. These informed the template directions. OD-specific prompts and
-compositions implement those directions; the Home order is curated.
+The earlier data story was replaced: the most-viewed eligible data
+visualization had 421,430 views. Home order follows the table. Anchors inform
+genre and pacing only; every composition, copy line and soundtrack is original.
 
 ## Template content
 
-Initial HTML was generated in OD and subsequently refined in source. The source
-project mapping is retained from the original generator's `sources.json`.
+All five `example.html` files were authored directly by Claude Opus 5.5 as
+hand-written code and checked frame by frame. They are not exported from an OD
+generation run.
 
-| Template | Original OD project | Current content |
-| --- | --- | --- |
-| 3D island | `5873852b-3e24-4734-a909-903ad038a8e3` | Procedural island, shader water, continuous camera orbit |
-| Explainer | `baab39ba-f4ee-4261-a302-a98cd2c58dac` | Idealized equal-amplitude, opposite-phase noise cancellation |
-| Product launch | `d38769ce-f3d6-4451-9977-72887e551fce` | Fictional Driftnote meeting app |
-| Showreel | `aebf983b-6223-46eb-bf63-4f7d03087695` | Fictional Studio Kinetik; illustrative chart figures |
-| Data story | `515296bd-a73b-475d-b343-ee1451b2b695` | One million seconds versus one billion seconds |
+| Template | Content |
+| --- | --- |
+| Explainer | How a camera focuses; rays follow the thin-lens equation `1/f = 1/u + 1/v` |
+| Showreel | Fictional Studio Kinetik; five techniques cut to 128 BPM |
+| Product launch | Fictional Driftnote meeting app; toggle turns fragments into a summary |
+| 3D island | Procedural low-poly island in Three.js; one continuous camera move |
+| Animated short | Wordless story of a dot reaching a star with its friends |
 
-The data story uses 86,400 seconds/day and 365.25 days/year: 11.574 days versus
-31.688 years, rounded in the film to 11.6 days and 31.7 years. One thousand dots
-each represent one million seconds. The explainer labels phase cancellation as
-idealized; real headphones reduce noise with practical limits.
-
-Visual refinements use large typography, a distinct palette per film, readable
-story beats, locally bundled fonts, and deterministic per-frame animation.
-The island applies tone mapping and output color-space conversion in its custom
-shaders and keeps the dock and sailboat in frame. Generated posters and gallery
-clips are derived from each committed `example.html`.
+The explainer computes blur on the sensor as `2A·|v − d| / v`, so focusing and
+aperture changes show the physically correct result. Each film draws every
+frame in a single `render(t)` from the GSAP master timeline time.
 
 ## Gallery publication
 
@@ -86,22 +79,18 @@ vendored Three.js file, regenerate its compressed copy deterministically:
 gzip -n -9 -c plugins/_official/examples/motion-3d-scene/assets/three.min.js > plugins/_official/examples/motion-3d-scene/assets/three.min.js.gz
 ```
 
-The package regression checks that all referenced local scripts can be restored
-byte-for-byte. The browser regression checks callback-suppressed export seeking,
-including backward scrubbing of the Showreel's slider, graph, and signature.
-Keep procedural drawing in the shared per-frame renderer: nested tween callbacks
-alone do not execute during MP4 export.
+The package regression checks that all referenced local scripts, fonts and the
+soundtrack restore byte-for-byte. The browser regression seeks each film with
+callbacks suppressed, forward and backward, and requires identical canvas
+output at each timestamp. Keep all drawing in the per-frame renderer: nested
+tween callbacks alone do not execute during MP4 export.
 
 ## Audio
 
-The island, product launch and showreel include locally authored procedural
-soundtracks in `assets/soundtrack.mp3`. No reference-post audio was copied.
-HTML preview sound is enabled by the Sound on control and follows the master
-timeline. The desktop export path resolves timed local audio files and mixes
-them into the MP4 with FFmpeg. The explainer and data story remain silent.
-Gallery clips continue using the existing muted preview behavior.
-
-Original generation runs for all five examples used OpenDesign Cloud
-(`agentId: amr`, `model: claude-sonnet-5.5`); subsequent source edits refined
-the visuals. Soundtracks were synthesized locally from oscillators and noise,
-without an audio-generation model.
+All five templates include locally authored procedural soundtracks in
+`assets/soundtrack.mp3`, timed to their beats. No reference-post audio was
+copied and no audio-generation model was used: they are synthesized from
+oscillators and filtered noise. HTML preview sound is enabled by the Sound on
+control and follows the master timeline. The desktop export path resolves timed
+local audio files and mixes them into the MP4 with FFmpeg. Gallery clips keep
+the existing muted preview behavior.
