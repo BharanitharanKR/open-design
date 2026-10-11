@@ -85,6 +85,14 @@ callbacks suppressed, forward and backward, and requires identical canvas
 output at each timestamp. Keep all drawing in the per-frame renderer: nested
 tween callbacks alone do not execute during MP4 export.
 
+## Fonts in previews
+
+Plugin previews serve `example.html` under a restrictive CSP. The preview and
+asset routes allow same-origin fonts (`font-src 'self' data:`), and relative
+`url()` references inside inline `<style>` blocks are mapped to the plugin
+asset route, so `@font-face` rules load the bundled Space Grotesk in the
+gallery, covers and Remix alike.
+
 ## Audio
 
 All five templates include locally authored procedural soundtracks in
