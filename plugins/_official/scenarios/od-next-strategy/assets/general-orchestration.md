@@ -82,6 +82,13 @@ recognizable in the resolved Task Profile.
 
 ## The ship-on-write boundary (non-negotiable)
 
+The sole exception is an accepted frozen `taskProfile.taskSpecific.motionDelivery.mode`
+of `video`: follow the motion profile's bounded video check (one review, up to
+three representative frames plus caption/fact and clock checks, at most one
+targeted repair and re-render). This exception does not apply to interactive
+motion or any task without that video contract. No acceptance Children or
+new workflow stage is permitted. All other ship-on-write rules below remain.
+
 Writing every required deliverable to disk IS the delivery. Contracted media
 rendering is Build production, not post-generation quality checking: author
 the source, dispatch the supplied host renderer, and wait for success. Do not
@@ -434,7 +441,7 @@ In simple mode, the main Agent reads the frozen Task Profile, Design Spec,
 Full Plan, and RunManifest, performs the ordered Build against the current
 task-type profile, and produces every required deliverable. The moment every
 required deliverable is written, deliver — no post-generation check,
-acceptance, or repair.
+acceptance, or repair except the bounded frozen-video exception above.
 
 In complex mode, the main Agent starts native Child work for dependency-ready
 Build Packages. Each Child receives only its package, necessary inputs, frozen

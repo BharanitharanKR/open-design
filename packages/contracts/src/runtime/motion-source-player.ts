@@ -2,10 +2,27 @@ import { findRealTagOffset, HTML_TAG_PATTERNS, prependAfterDoctype } from './htm
 
 export const MOTION_PLAYER_MARKER = 'data-od-motion-source-player';
 
+// One clock contract for editable video playback and frame rendering. Check the
+// authored timeline BEFORE HyperFrames can pad it or reset its playback speed.
+export const MOTION_TIMELINE_CHECK_SCRIPT = `
+window.__odValidateMotionTimeline = function (root, tl) {
+  var mode = document.querySelector('meta[name="od-motion-output"]');
+  if (!mode || mode.content !== 'video') return null;
+  var seconds = Number(root && root.getAttribute('data-duration'));
+  if (!Number.isFinite(seconds) || seconds <= 0) return 'Motion video requires a positive data-duration.';
+  if (!tl || typeof tl.duration !== 'function' || typeof tl.timeScale !== 'function') return 'Motion video requires a registered GSAP timeline.';
+  if (!Number.isFinite(tl.timeScale()) || Math.abs(tl.timeScale() - 1) > 0.000001) return 'Motion video timeScale must be 1. Do not use duration(seconds) to stretch the timeline; author tracks in real seconds.';
+  if (!Number.isFinite(tl.duration()) || Math.abs(tl.duration() - seconds) > 0.001) return 'Motion video timeline duration must equal data-duration. Add a clock tween at time 0 for the full duration; do not change playback speed.';
+  if ((typeof tl.repeat === 'function' && tl.repeat() !== 0) || (typeof tl.delay === 'function' && tl.delay() !== 0)) return 'Motion video master timeline must have no repeat or delay.';
+  return null;
+};`;
+
+
 // Shared by URL previews, srcdoc previews and the persisted editable source.
 // The renderer installs its flag before author scripts; it never sees chrome,
 // layout scaling, poster seeking, or wall-clock playback from this runtime.
 const PLAYER = `<script data-od-motion-source-player>
+${MOTION_TIMELINE_CHECK_SCRIPT}
 (function () {
   function boot() {
     if (window.__odMotionRender || window.__odMotionSourcePlayer) return;
@@ -41,6 +58,8 @@ const PLAYER = `<script data-od-motion-source-player>
         if (Date.now()-started < 15000) { setTimeout(connect, 100); return; }
         status.textContent = '动效未就绪，请检查时间轴或依赖文件'; return;
       }
+      var timingError = window.__odValidateMotionTimeline(root, tl);
+      if (timingError) { tl.pause(); status.textContent = timingError; return; }
       var duration = tl.duration();
       play.disabled = replay.disabled = slider.disabled = false;
       slider.max = String(duration);

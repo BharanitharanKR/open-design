@@ -239,7 +239,7 @@ ${withAudio ? '<audio src="tone.wav" data-start="0" data-duration="0.1"></audio>
 
   it.each([['video', false], ['interactive', true], ['', true]])('keeps procedural drawing callbacks only for declared motion video: %s', async (mode, expectedSuppression) => {
     const source = `<!doctype html><html><head><meta name="od-motion-output" content="${mode}"></head><body>
-      <script>window.__renderReady=true; window.__player={getDuration:()=>20,renderSeek:(time,options)=>{window.capture={time,options,renderMode:window.__odMotionRender};}};</script>
+      <main data-composition-id="main" data-duration="20"></main><script>window.__timelines={main:{duration:()=>20,timeScale:()=>1}}; window.__renderReady=true; window.__player={getDuration:()=>20,renderSeek:(time,options)=>{window.capture={time,options,renderMode:window.__odMotionRender};}};</script>
       </body></html>`;
     const dom = new JSDOM(injectHyperFramesFrameBridge(source, ''), { pretendToBeVisual:true, runScripts:'dangerously' });
     try {

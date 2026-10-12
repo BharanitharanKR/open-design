@@ -682,6 +682,18 @@ describe('OD Next V2 prompt recipe', () => {
     expect(production).not.toContain('task is locked to executionIntent plan_only');
   });
 
+  it('allows bounded checks only on the frozen video continuation', () => {
+    const input = { stage: 'production' as const, nativeSessionResume: true as const,
+      taskExecutionId: 'video-task', taskRunIndex: 1, planContractHash: A };
+    expect(composeOdNextStrategyContinuationV2(input)).not.toContain('Video-only exception');
+    expect(composeOdNextStrategyContinuationV2({ ...input, motionDelivery: {
+      mode:'interactive', sourcePath:'index.html',
+    } })).not.toContain('Video-only exception');
+    expect(composeOdNextStrategyContinuationV2({ ...input, motionDelivery: {
+      mode:'video', sourcePath:'source/index.html', videoPath:'film.mp4',
+    } })).toContain('at most one targeted repair');
+  });
+
   it('emits native-session-only deltas and gives Production the frozen plan plus terminal state shape', () => {
     const clarification = composeOdNextStrategyContinuationV2({
       stage: 'clarification',

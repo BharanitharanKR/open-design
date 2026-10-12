@@ -1,4 +1,4 @@
-import { injectMotionSourcePlayer, markMotionFrameRender } from '@open-design/contracts/runtime/motion-source-player';
+import { injectMotionSourcePlayer, markMotionFrameRender, MOTION_TIMELINE_CHECK_SCRIPT } from '@open-design/contracts/runtime/motion-source-player';
 // Media-generation dispatcher. The unifying contract is:
 //
 //   skills + metadata + system-prompt
@@ -4037,7 +4037,22 @@ export function hyperFramesCompositionMetrics(html: string): {
 export function injectHyperFramesFrameBridge(sourceHtml: string, runtimeScript: string): string {
   const motionVideo = loadHtml(sourceHtml)('meta[name="od-motion-output"]').attr('content') === 'video';
   const safeRuntime = runtimeScript.replace(/<\/script/gi, '<\\/script');
-  const bridge = `<script>${safeRuntime}</script><script>
+  const guardedRuntime = motionVideo ? `
+${MOTION_TIMELINE_CHECK_SCRIPT}
+(async () => {
+  try {
+    const deadline = Date.now() + 15000;
+    const root = document.querySelector('[data-composition-id]');
+    let tl;
+    while (!(tl = window.__timelines && root && window.__timelines[root.dataset.compositionId]) && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    const error = window.__odValidateMotionTimeline(root, tl);
+    if (error) throw new Error(error);
+    ${safeRuntime}
+  } catch (error) { window.__odMotionTimingError = String(error.message || error); }
+})();` : safeRuntime;
+  const bridge = `<script>${guardedRuntime}</script><script>
 (() => {
   const nextPaint = () => new Promise((resolve) => {
     let settled = false;
@@ -4052,6 +4067,7 @@ export function injectHyperFramesFrameBridge(sourceHtml: string, runtimeScript: 
   const waitForRuntime = async () => {
     const deadline = Date.now() + 45000;
     while (Date.now() < deadline) {
+      if (window.__odMotionTimingError) throw new Error(window.__odMotionTimingError);
       const player = window.__player;
       const duration = Number(player && typeof player.getDuration === 'function' && player.getDuration());
       if (window.__renderReady === true && player && typeof player.renderSeek === 'function' && duration > 0) {
