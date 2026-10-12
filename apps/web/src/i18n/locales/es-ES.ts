@@ -2263,6 +2263,7 @@ export const esES: Dict = {
   'chat.support.title': 'Contactar con soporte',
   'chat.support.join': 'Unirse',
   'chat.sendFailedRetryAria': 'Error al enviar: reintentar',
+  'chat.sendTargetMissing': "No se puede enviar: el proyecto o la conversación se ha eliminado o ya no existe.",
   'chat.audio.play': 'Reproducir',
   'chat.audio.pause': 'Pausar',
   'chat.audio.download': 'Descargar {name}',

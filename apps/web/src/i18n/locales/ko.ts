@@ -2254,6 +2254,7 @@ export const ko: Dict = {
   'chat.support.title': '지원팀 문의',
   'chat.support.join': '참여',
   'chat.sendFailedRetryAria': '전송 실패 — 다시 시도',
+  'chat.sendTargetMissing': "프로젝트 또는 대화가 삭제되었거나 존재하지 않아 전송할 수 없습니다.",
   'chat.audio.play': '재생',
   'chat.audio.pause': '일시정지',
   'chat.audio.download': '{name} 다운로드',

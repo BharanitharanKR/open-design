@@ -2254,6 +2254,7 @@ export const fr: Dict = {
   'chat.support.title': 'Contacter le support',
   'chat.support.join': 'Rejoindre',
   'chat.sendFailedRetryAria': 'Échec de l’envoi — réessayer',
+  'chat.sendTargetMissing': "Envoi impossible : le projet ou la conversation a été supprimé ou n’existe plus.",
   'chat.audio.play': 'Lire',
   'chat.audio.pause': 'Pause',
   'chat.audio.download': 'Télécharger {name}',

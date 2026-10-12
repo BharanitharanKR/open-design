@@ -2254,6 +2254,7 @@ export const th: Dict = {
   'chat.support.title': 'ติดต่อฝ่ายสนับสนุน',
   'chat.support.join': 'เข้าร่วม',
   'chat.sendFailedRetryAria': 'ส่งไม่สำเร็จ — ลองอีกครั้ง',
+  'chat.sendTargetMissing': "ไม่สามารถส่งได้: โปรเจกต์หรือการสนทนาถูกลบหรือไม่มีอยู่อีกต่อไป",
   'chat.audio.play': 'เล่น',
   'chat.audio.pause': 'หยุดชั่วคราว',
   'chat.audio.download': 'ดาวน์โหลด {name}',

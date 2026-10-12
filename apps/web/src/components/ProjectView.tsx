@@ -9988,6 +9988,14 @@ export function ProjectView({
           if (config.mode === 'daemon' && !currentRunId) {
             if (runMayFinalize) {
               setError(null);
+              if (errorCode === 'CONVERSATION_NOT_FOUND') {
+                setProjectActionsToast({
+                  message: t('chat.sendTargetMissing'),
+                  details: null,
+                  tone: 'error',
+                  scope: 'chat-pane',
+                });
+              }
               activeCompletionNotificationRunsRef.current.delete(assistantId);
               setConversations((current) =>
                 current.map((conversation) => {

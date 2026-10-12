@@ -2254,6 +2254,7 @@ export const it: Dict = {
   'chat.support.title': 'Contatta il supporto',
   'chat.support.join': 'Unisciti',
   'chat.sendFailedRetryAria': 'Invio non riuscito — riprova',
+  'chat.sendTargetMissing': "Impossibile inviare: il progetto o la conversazione è stato eliminato o non esiste più.",
   'chat.audio.play': 'Riproduci',
   'chat.audio.pause': 'Pausa',
   'chat.audio.download': 'Scarica {name}',

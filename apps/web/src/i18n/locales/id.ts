@@ -2254,6 +2254,7 @@ export const id: Dict = {
   'chat.support.title': 'Hubungi dukungan',
   'chat.support.join': 'Gabung',
   'chat.sendFailedRetryAria': 'Gagal terkirim — coba lagi',
+  'chat.sendTargetMissing': "Tidak dapat mengirim: proyek atau percakapan telah dihapus atau tidak lagi ada.",
   'chat.audio.play': 'Putar',
   'chat.audio.pause': 'Jeda',
   'chat.audio.download': 'Unduh {name}',

@@ -2254,6 +2254,7 @@ export const hu: Dict = {
   'chat.support.title': 'Kapcsolat a támogatással',
   'chat.support.join': 'Csatlakozás',
   'chat.sendFailedRetryAria': 'Sikertelen küldés – újra',
+  'chat.sendTargetMissing': "Nem lehet elküldeni: a projekt vagy a beszélgetés törölve lett vagy már nem létezik.",
   'chat.audio.play': 'Lejátszás',
   'chat.audio.pause': 'Szünet',
   'chat.audio.download': '{name} letöltése',
