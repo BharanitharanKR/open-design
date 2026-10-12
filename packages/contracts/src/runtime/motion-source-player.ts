@@ -1,6 +1,9 @@
 import { findRealTagOffset, HTML_TAG_PATTERNS, prependAfterDoctype } from './html-injection-points';
 
 export const MOTION_PLAYER_MARKER = 'data-od-motion-source-player';
+export const MOTION_PREVIEW_REQUEST = 'od:motion-preview-request';
+export const MOTION_PREVIEW_ACTIVITY = 'od:motion-preview-activity';
+export const MOTION_PREVIEW_PROBE = 'od:motion-preview-probe';
 
 // One clock contract for editable video playback and frame rendering. Check the
 // authored timeline BEFORE HyperFrames can pad it or reset its playback speed.
@@ -21,7 +24,7 @@ window.__odValidateMotionTimeline = function (root, tl) {
 // Shared by URL previews, srcdoc previews and the persisted editable source.
 // The renderer installs its flag before author scripts; it never sees chrome,
 // layout scaling, poster seeking, or wall-clock playback from this runtime.
-const PLAYER = `<script data-od-motion-source-player="4">
+const PLAYER = `<script data-od-motion-source-player="5">
 ${MOTION_TIMELINE_CHECK_SCRIPT}
 (function () {
   function boot() {
@@ -37,27 +40,43 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
     hint.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;padding:6px 10px;border-radius:6px;background:#17191d;color:white;font:13px system-ui;display:none';
     document.body.appendChild(hint);
     function notice(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
+    var hosted = window.__odMotionPreview === true || new URL(location.href).searchParams.get('odMotionPreview') === '1';
+    var instance = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    var active = !hosted, playing = false, wantsPlay = true, pageActive = true, updateTimer = null;
+    var applyPlayback = function () {};
+    function requestActivity() { window.parent.postMessage({type:'${MOTION_PREVIEW_REQUEST}', id:instance}, '*'); }
+    function onActivity(event) {
+      var data = event.data;
+      if (!hosted || event.source !== window.parent || !data) return;
+      if (data.type === '${MOTION_PREVIEW_PROBE}') { requestActivity(); return; }
+      if (data.type !== '${MOTION_PREVIEW_ACTIVITY}' || typeof data.active !== 'boolean' || (data.active && data.id !== instance)) return;
+      active = data.active; applyPlayback();
+    }
+    window.addEventListener('message', onActivity);
     var tracks = Array.prototype.map.call(document.querySelectorAll('audio[src]'), function (audio) {
       audio.pause(); audio.autoplay = false;
       return { audio: audio, start: Number(audio.dataset.start || 0), duration: Number(audio.dataset.duration), volume: Number(audio.dataset.volume || 1), pending: false, blocked: false };
     });
     var muted = false;
-    function syncAudio(time, playing, force) {
+    function syncAudio(time, shouldPlay, force) {
       tracks.forEach(function (track) {
         var audio = track.audio, local = time - track.start;
-        var active = local >= 0 && local < track.duration;
+        var trackActive = local >= 0 && local < track.duration;
         audio.volume = Math.max(0, Math.min(1, track.volume)); audio.muted = muted;
-        if (!active || !playing) audio.pause();
+        if (!trackActive || !shouldPlay) audio.pause();
         var target = Math.max(0, Math.min(track.duration, local));
         if (audio.readyState > 0 && (force || Math.abs(audio.currentTime - target) > .2)) audio.currentTime = target;
-        if (active && playing && audio.paused && !track.pending && !track.blocked) {
+        if (trackActive && shouldPlay && audio.paused && !track.pending && !track.blocked) {
           track.pending = true;
           var promise = audio.play();
           if (promise) promise.catch(function (error) {
             if (error && error.name === 'AbortError') return;
             track.blocked = true;
             notice(error && error.name === 'NotAllowedError' ? '点击画面开启声音' : '音频无法播放，请检查素材');
-          }).finally(function () { track.pending = false; });
+          }).finally(function () {
+            track.pending = false;
+            if (!active || !pageActive || !playing || !wantsPlay) audio.pause();
+          });
           else track.pending = false;
         }
       });
@@ -81,15 +100,23 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
       }
       var timingError = window.__odValidateMotionTimeline(root, tl);
       if (timingError) { tl.pause(); notice(timingError); return; }
-      var duration = tl.duration(), playing = true;
-      function play() { playing = true; if (tl.time() >= duration) tl.seek(0, false); tl.play(); syncAudio(tl.time(), true, true); }
-      function pause() { playing = false; tl.pause(); syncAudio(tl.time(), false, true); }
+      var duration = tl.duration();
+      applyPlayback = function () {
+        clearTimeout(updateTimer); updateTimer = null;
+        playing = active && pageActive && wantsPlay;
+        if (playing) {
+          if (tl.time() >= duration) tl.seek(0, false);
+          tl.play(); syncAudio(tl.time(), true, true); update();
+        } else { tl.pause(); syncAudio(tl.time(), false, true); }
+      };
+      function play() { wantsPlay = true; applyPlayback(); }
+      function pause() { wantsPlay = false; applyPlayback(); }
       function seek(time) { pause(); tl.seek(Math.max(0, Math.min(duration, Number(time))), false); syncAudio(tl.time(), false, true); }
       function replay() { seek(0); play(); }
       window.__odMotionPlayer = {
         play: play, pause: pause, seek: seek, replay: replay,
         setMuted: function (value) { muted = !!value; syncAudio(tl.time(), playing, false); },
-        state: function () { return { playing: playing, time: tl.time(), duration: duration, muted: muted,
+        state: function () { return { playing: playing, active: active, time: tl.time(), duration: duration, muted: muted,
           audio: tracks.map(function (track) { return { paused: track.audio.paused, time: track.audio.currentTime, muted: track.audio.muted, volume: track.audio.volume, blocked: track.blocked }; }) }; }
       };
       root.addEventListener('click', function () {
@@ -97,15 +124,22 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
         if (blocked) { tracks.forEach(function (track) { track.blocked = false; }); notice(''); if (playing) syncAudio(tl.time(), true, true); else play(); }
         else if (playing) pause(); else play();
       });
-      tl.seek(0, false); play();
+      tl.seek(0, false); applyPlayback();
       function update() {
-        if (!stage.isConnected) { pause(); return; }
+        if (!stage.isConnected) { active = false; applyPlayback(); return; }
+        if (!active || !pageActive || !playing) return;
         if (playing && tl.time() >= duration) { tl.seek(0, false); tl.play(); syncAudio(0, true, true); }
         syncAudio(tl.time(), playing && !tl.paused(), false);
-        setTimeout(update, playing ? 33 : 200);
+        updateTimer = setTimeout(update, 33);
       }
-      update();
     }
+    window.addEventListener('pagehide', function () { pageActive = false; applyPlayback(); tracks.forEach(function (track) { track.audio.pause(); }); });
+    window.addEventListener('pageshow', function () {
+      pageActive = true;
+      if (hosted) { active = false; requestActivity(); }
+      applyPlayback();
+    });
+    if (hosted) requestActivity();
     connect();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true}); else boot();
@@ -126,7 +160,7 @@ export function injectMotionSourcePlayer(html: string): string {
   const existing = findRealTagOffset(html, /<script\b[^>]*\bdata-od-motion-source-player\b/i);
   if (existing >= 0) {
     const script = /^<script\b[^>]*>[\s\S]*?<\/script\s*>/i.exec(html.slice(existing));
-    if (!script || /data-od-motion-source-player="4"/.test(script[0])) return html;
+    if (!script || /data-od-motion-source-player="5"/.test(script[0])) return html;
     return html.slice(0, existing) + PLAYER + html.slice(existing + script[0].length);
   }
   const end = findRealTagOffset(html, HTML_TAG_PATTERNS.bodyClose);
@@ -135,4 +169,12 @@ export function injectMotionSourcePlayer(html: string): string {
 
 export function markMotionFrameRender(html: string): string {
   return prependAfterDoctype(html, '<script>window.__odMotionRender=true;</script>');
+}
+
+/** Only live embedded previews wait for host activity; exports and standalone
+ * editable sources retain their existing autoplay/render behavior. */
+export function markMotionHostedPreview(html: string): string {
+  return isMotionVideoComposition(html)
+    ? prependAfterDoctype(html, '<script>window.__odMotionPreview=true;</script>')
+    : html;
 }
