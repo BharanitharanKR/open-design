@@ -1,4 +1,4 @@
-# OD Next Document Task Profile v3.1.8
+# OD Next Document Task Profile v3.1.9
 
 Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
@@ -15,9 +15,11 @@ appropriate when the user actually requests invention.
 
 - Preserve stated facts and explicit relationships, including before/after
   sequence. Missing causes or measurements do not erase a stated relationship.
-- Paraphrase at the source's level of detail. Do not turn a category into a
-  specific object, make separate subjects the same physical item, or supply
-  unmentioned participants, settings, procedures, observations, or outcomes.
+- Preserve the source's subject labels and level of detail. Labels for plans,
+  versions, groups, or conditions do not establish physical identity: do not
+  assert that their objects are either the same or distinct unless stated.
+  Do not supply unmentioned participants, settings, procedures, observations,
+  or outcomes.
 - An omitted detail is only absent from the supplied material. Do not claim
   it was never measured, recorded, or performed unless the source says so.
 - Keep unlinked facts independent. Table rows, captions, and connecting phrases
@@ -34,7 +36,7 @@ appropriate when the user actually requests invention.
 
 ## Production rules
 
-- Establish the information hierarchy first: the title names the subject, the opening explains the purpose, and sections follow the reader's workflow or the argument. Manuals cover prerequisites, concrete steps, success states, and common exceptions. Do not turn the body into a marketing landing page.
+- Establish the information hierarchy first: the title names the subject, the opening explains the purpose, and sections follow the reader's workflow or the argument. Manuals organize the supplied prerequisites, operating steps, success states, and exceptions. Completeness means covering the provided rules, not filling unspecified control behavior, specifications, or policies from familiar products. Omit unsupported detail; ask only when a missing detail prevents the requested document from being useful. Do not turn the body into a marketing landing page.
 - Distinguish facts, user data, assumptions, and examples. Preserve units, dates, and measurement definitions for numbers. Give tables titles, headers, and necessary notes. Do not remove requested details for visual polish.
 - Use one main heading and a sequential section hierarchy. Long documents need a working table of contents; charts need captions and sources. Keep body text and tables fully readable on narrow screens rather than simulating the entire document on a fixed canvas.
 - Hide navigation controls in print styles. Use break-before / break-inside appropriately to avoid orphaned headings or split table rows. Do not replace selectable text with screenshots. Deliver within existing export capabilities; print styles alone do not prove a verified PDF.
