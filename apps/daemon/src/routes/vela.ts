@@ -649,12 +649,16 @@ function proxyTouchpointRuntimeRequest(
     return;
   }
   let operationFinished = false;
+  // Both attempts of a bounded assembly retry belong to one classification.
+  const operationTickets = new Set<number>();
   let resolveOperation: () => void = () => undefined;
   const operationDone = new Promise<void>(resolve => { resolveOperation = resolve; });
   const finishOperation = (): void => {
     if (operationFinished) return;
     operationFinished = true;
     if (operation && authorityScope) contentCache?.settleAuthority(authorityScope, operation);
+    for (const ticket of operationTickets) contentCache?.finishTicket(ticket);
+    operationTickets.clear();
     requests?.active.delete(abortUpstream);
     resolveOperation();
   };
@@ -733,6 +737,7 @@ function proxyTouchpointRuntimeRequest(
    */
   const send = (held: HeldContentRef | null, fallback: boolean): void => {
     const ticket = contentKey && contentCache ? contentCache.ticket(contentKey) : undefined;
+    if (ticket !== undefined) operationTickets.add(ticket);
     const attempt = new URL(target);
     if (contentKey && contentCache && !attempt.searchParams.get('activeDecisionId')) {
       const persistedDecisionId = contentCache.activeDecisionId(contentKey);
@@ -1044,7 +1049,6 @@ function proxyTouchpointRuntimeRequest(
     });
     currentUpstream = upstream;
     upstream.once('close', () => {
-      if (ticket !== undefined) contentCache?.finishTicket(ticket);
       // ClientRequest.close can precede body classification. A received body
       // owns settlement; only a request with no response may finish here.
       if (currentUpstream === upstream && upstreamStatus === null) finishOperation();

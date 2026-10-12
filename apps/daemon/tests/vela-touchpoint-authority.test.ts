@@ -291,6 +291,38 @@ describe('revocation history eviction through the real proxy sequence', () => {
 });
 
 
+describe('request ticket survives body classification', () => {
+  it('records a full grant when request close arrives before response end', async () => {
+    const grant = decision();
+    const call = await start();
+    const stream = respond(call.attempt, 200);
+    const payload = JSON.stringify(grant);
+    stream.write(payload.slice(0, 20));
+    // Controlled adversarial ordering, not a claim about native Node's normal order.
+    call.attempt.request.emit('close');
+    stream.end(payload.slice(20));
+    expect((await call.done).body).toEqual(grant);
+    const offline = await answer(503, {});
+    expect(offline.offline).toBe('1');
+    expect(offline.body.endsAt).toBe(grant.endsAt);
+  });
+
+  it('persists a shortened trimmed renewal despite request close before response end', async () => {
+    await answer(200, decision());
+    const renewal = decision({ startsIn: -HOUR, endsIn: 300_000 });
+    const { content: _content, ...envelope } = renewal;
+    const call = await start();
+    expect(call.attempt.url).toContain('heldContentId=version-1');
+    const stream = respond(call.attempt, 200);
+    call.attempt.request.emit('close');
+    stream.end(JSON.stringify({ ...envelope, contentOmitted: true }));
+    expect((await call.done).body.endsAt).toBe(renewal.endsAt);
+    const offline = await answer(503, {});
+    expect(offline.offline).toBe('1');
+    expect(offline.body.endsAt).toBe(renewal.endsAt);
+  });
+});
+
 describe('pre-dispatch durability and route shutdown', () => {
   it.each(['write', 'rename', 'file-fsync', 'directory-fsync'] as const)('never dispatches when pre-marker %s fails', async fault => {
     await answer(200, decision());
