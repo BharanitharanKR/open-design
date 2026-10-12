@@ -16,6 +16,7 @@ import { Button } from '@open-design/components';
 import { createPortal } from 'react-dom';
 import type { DesignSystemEditClickProps, TrackingArtifactKind, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { isObservedShareFileSwitch, type ObservedPublicShareLink, type ObservedShareUpdateRequest } from './share/observed-public-share-link';
+import type { ShareLoginReturn } from './share/share-login-return';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackFileManagerClick,
@@ -233,6 +234,8 @@ interface Props {
   observedPublicShareLink?: ObservedPublicShareLink | null;
   loginUpdateRequest?: ObservedShareUpdateRequest | null;
   onLoginUpdateRequestHandled?: (nonce: number) => void;
+  shareLoginReturn?: ShareLoginReturn | null;
+  onShareLoginReturnChange?: (request: ShareLoginReturn | null) => void;
   isDeck: boolean;
   streaming?: boolean;
   /**
@@ -1337,6 +1340,8 @@ export function FileWorkspace({
   observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
+  shareLoginReturn,
+  onShareLoginReturnChange,
   isDeck,
   streaming,
   runInFlight = false,
@@ -3516,6 +3521,8 @@ export function FileWorkspace({
       loginUpdateRequest={workspaceActive && loginUpdateRequest?.link.filePath === file.name
         && loginUpdateRequest.link.projectId === projectId ? loginUpdateRequest : null}
       onLoginUpdateRequestHandled={onLoginUpdateRequestHandled}
+      shareLoginReturn={workspaceActive ? shareLoginReturn : null}
+      onShareLoginReturnChange={workspaceActive ? onShareLoginReturnChange : undefined}
       onOpenFileReplacing={stableOpenFileReplacing}
       commentPortalId={workspaceActive ? commentPortalId : undefined}
       onCommentModeChange={workspaceActive ? onCommentModeChange : undefined}

@@ -6,6 +6,7 @@ import type { ArtifactExportFormat } from '../runtime/chat/artifact-export';
 import { useSharePlan } from './share/useSharePlan';
 import { boundedPublishProgress, ShareTab, type SharePublishFailureKey } from './share/ShareTab';
 import type { ObservedPublicShareLink, ObservedShareUpdateRequest } from './share/observed-public-share-link';
+import { shareLoginReturnMatches, type ShareLoginReturn } from './share/share-login-return';
 
 import { AfterExportShareGuide } from './share/AfterExportShareGuide';
 import { CommentSyncBanner } from './share/CommentSyncBanner';
@@ -1772,6 +1773,8 @@ interface Props {
   observedPublicShareLink?: ObservedPublicShareLink | null;
   loginUpdateRequest?: ObservedShareUpdateRequest | null;
   onLoginUpdateRequestHandled?: (nonce: number) => void;
+  shareLoginReturn?: ShareLoginReturn | null;
+  onShareLoginReturnChange?: (request: ShareLoginReturn | null) => void;
   // Bumped nonce asking this viewer to open its Share/Export menu (chat-side
   // "Share" next-step action). Only HTML artifacts expose a Share menu.
   shareRequest?: { nonce: number; anchorId?: string } | null;
@@ -1873,6 +1876,8 @@ export const FileViewer = memo(function FileViewer({
   observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
+  shareLoginReturn,
+  onShareLoginReturnChange,
   shareRequest,
   downloadRequest,
   slideNavRequest,
@@ -1892,6 +1897,10 @@ export const FileViewer = memo(function FileViewer({
   const t = useT();
   // Survives a temporary HtmlViewer unmount while workspace authority refreshes.
   const pendingShareUpdateAfterLoginRef = useRef<PendingShareUpdateAfterLogin | null>(null);
+  const shareLoginReturnRef = useRef<ShareLoginReturn | null>(null);
+  if (shareLoginReturnRef.current && (!workspaceActive || !shareLoginReturnMatches(shareLoginReturnRef.current, projectId, file.name))) {
+    shareLoginReturnRef.current = null;
+  }
   if (pendingShareUpdateAfterLoginRef.current
     && (pendingShareUpdateAfterLoginRef.current.projectId !== projectId
       || pendingShareUpdateAfterLoginRef.current.fileName !== file.name)) {
@@ -1954,6 +1963,9 @@ export const FileViewer = memo(function FileViewer({
         projectKind={projectKind}
         file={file}
         pendingShareUpdateAfterLoginRef={pendingShareUpdateAfterLoginRef}
+        shareLoginReturnRef={shareLoginReturnRef}
+        shareLoginReturn={shareLoginReturn}
+        onShareLoginReturnChange={onShareLoginReturnChange}
         onObservedPublicShareLink={onObservedPublicShareLink}
         observedPublicShareLink={observedPublicShareLink}
         loginUpdateRequest={loginUpdateRequest}
@@ -7170,6 +7182,9 @@ function HtmlViewer({
   observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
+  shareLoginReturnRef,
+  shareLoginReturn,
+  onShareLoginReturnChange,
   shareRequest,
   downloadRequest,
   slideNavRequest,
@@ -7194,6 +7209,9 @@ function HtmlViewer({
   observedPublicShareLink?: ObservedPublicShareLink | null;
   loginUpdateRequest?: ObservedShareUpdateRequest | null;
   onLoginUpdateRequestHandled?: (nonce: number) => void;
+  shareLoginReturnRef: { current: ShareLoginReturn | null };
+  shareLoginReturn?: ShareLoginReturn | null;
+  onShareLoginReturnChange?: (request: ShareLoginReturn | null) => void;
   liveHtml?: string;
   filesRefreshKey?: number;
   isDeck: boolean;
@@ -9728,6 +9746,20 @@ function HtmlViewer({
    * 试过在这里也清一遍,消融时没有任何用例因此变红 —— 那就是没用的代码,不留。
    */
   const closeDeployMenu = useCallback(() => setDeployMenuOpen(false), []);
+  useEffect(() => {
+    const request = shareLoginReturn ?? shareLoginReturnRef.current;
+    if (!request || !shareLoginReturnMatches(request, projectId, file.name)
+      || !workspaceActive || viewerOnly || !canPublishPublic) return;
+    // Restore only UI intent, after exact authority resolves. Publication still
+    // requires the user's Generate action and all normal plan/permission gates.
+    shareLoginReturnRef.current = null;
+    onShareLoginReturnChange?.(null);
+    setMenuAnchorId(null);
+    setMenuOrigin('toolbar');
+    setUnifiedActionTab('share');
+    setDeployMenuOpen(true);
+  }, [shareLoginReturn, shareLoginReturnRef, projectId, file.name, workspaceActive, viewerOnly,
+    canPublishPublic, onShareLoginReturnChange]);
   // portal 出去的那一份要单独算「点在里面」,否则外点关闭会把它自己关掉
   const anchoredMenuRef = useRef<HTMLDivElement | null>(null);
   const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
@@ -17467,6 +17499,14 @@ function HtmlViewer({
                         publicationFreshness={fileShareFreshness}
                         updateCurrentFilePublic={updateCurrentFilePublic}
                         canResumeUpdateAfterLogin={Boolean(retainedShareWasOutdatedRef.current && retainedShareAuthorizationScopeKeyRef.current && fileShareStatus === 'active' && publishedFileUrl)}
+                        onSignInSuccess={() => {
+                          const request = { projectId, filePath: file.name, expiresAt: Date.now() + 120_000 };
+                          // App owns this across ProjectView remounts. Only an
+                          // embedded viewer needs the local fallback; keeping
+                          // both would resurrect intent after App cancels it.
+                          if (onShareLoginReturnChange) onShareLoginReturnChange(request);
+                          else shareLoginReturnRef.current = request;
+                        }}
                         onUpdateLoginSuccess={() => {
                           const priorScope = retainedShareAuthorizationScopeKeyRef.current;
                           if (!priorScope || !retainedShareWasOutdatedRef.current || !publishedFileSlug

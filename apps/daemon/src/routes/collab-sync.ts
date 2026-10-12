@@ -16,7 +16,8 @@ import type { ShareContentFingerprints } from '../collab/share-content-fingerpri
 import { createShareFileMapping, publishedPathForSource, type ShareFileMapping } from '../collab/share-file-mapping.js';
 import { publicFileMutationHandler } from './public-file-mutation-handler.js';
 import type { PublicFileMutations } from '../collab/public-file-mutations.js';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { stageShareFiles } from '../collab/share-staging.js';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -1577,15 +1578,7 @@ export function registerCollabSyncRoutes(
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'od-public-file-'));
     let stage: 'push' | 'snapshot' | 'persist' = 'push';
     try {
-      for (const file of sharePlan.files) {
-        const targetFile = path.join(tempDir, file.file);
-        const relative = path.relative(tempDir, targetFile);
-        if (relative.startsWith('..') || path.isAbsolute(relative)) {
-          throw new Error('share plan file escapes staging directory');
-        }
-        await mkdir(path.dirname(targetFile), { recursive: true });
-        await writeFile(targetFile, file.data);
-      }
+      await stageShareFiles(tempDir, sharePlan.files);
       const metadata = {
         source: 'open-design',
         projectId,

@@ -2254,6 +2254,7 @@ export const tr: Dict = {
   'chat.support.title': 'Desteğe ulaş',
   'chat.support.join': 'Katıl',
   'chat.sendFailedRetryAria': 'Gönderilemedi — yeniden dene',
+  'chat.sendTargetMissing': "Gönderilemiyor: proje veya konuşma silinmiş ya da artık mevcut değil.",
   'chat.audio.play': 'Oynat',
   'chat.audio.pause': 'Duraklat',
   'chat.audio.download': '{name} indir',

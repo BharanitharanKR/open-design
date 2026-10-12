@@ -2263,6 +2263,7 @@ export const fa: Dict = {
   'chat.support.title': 'تماس با پشتیبانی',
   'chat.support.join': 'پیوستن',
   'chat.sendFailedRetryAria': 'ارسال ناموفق — تلاش دوباره',
+  'chat.sendTargetMissing': "ارسال ممکن نیست: پروژه یا گفتگو حذف شده یا دیگر وجود ندارد.",
   'chat.audio.play': 'پخش',
   'chat.audio.pause': 'مکث',
   'chat.audio.download': 'دانلود {name}',

@@ -2254,6 +2254,7 @@ export const uk: Dict = {
   'chat.support.title': 'Звʼязатися з підтримкою',
   'chat.support.join': 'Приєднатися',
   'chat.sendFailedRetryAria': 'Не надіслано — повторити',
+  'chat.sendTargetMissing': "Неможливо надіслати: проєкт або розмову видалено чи вони більше не існують.",
   'chat.audio.play': 'Відтворити',
   'chat.audio.pause': 'Пауза',
   'chat.audio.download': 'Завантажити {name}',

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as deployPlanner from '../src/deploy.js';
 import express from 'express';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
@@ -343,6 +344,7 @@ async function publicShareFixture(options: {
 
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   vi.mocked(runVelaResourceCommand).mockReset();
   vi.mocked(publishReservedVelaShareVersion).mockReset();
   vi.mocked(readVelaControlApiContext).mockReturnValue(null);
@@ -2490,6 +2492,51 @@ describe('collab sync routes', () => {
     expect(response.body.error).toBe('PUBLIC_SHARE_PREPARATION_UNAVAILABLE');
     expect(runVelaResourceCommand).not.toHaveBeenCalled();
     expect(publishReservedVelaShareVersion).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['file', 'assets/Logo.svg', 'assets/logo.svg'],
+    ['directory', 'Assets/upper.svg', 'assets/lower.svg'],
+  ])('OPEND-3745 never uploads a case-collapsed %s staging tree', async (_kind, upperPath, lowerPath) => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'od-case-stage-'));
+    tempDirs.push(dir);
+    await writeFile(path.join(dir, 'index.html'), '<img src="assets/Logo.svg"><img src="assets/logo.svg">');
+    // The source volume can be case-sensitive even when os.tmpdir() is not.
+    // Supply the planner's valid bytes at that boundary, not a malformed cloud response.
+    const plan = await deployPlanner.buildDeployFilePlan(path.dirname(dir), path.basename(dir), 'index.html', {
+      hookScriptUrl: '', assetUrlPolicy: 'share-relative',
+    });
+    plan.files.push(
+      { file: upperPath, sourcePath: upperPath, data: Buffer.from('UPPER'), contentType: 'image/svg+xml' },
+      { file: lowerPath, sourcePath: lowerPath, data: Buffer.from('lower'), contentType: 'image/svg+xml' },
+    );
+    vi.spyOn(deployPlanner, 'buildDeployFilePlan').mockResolvedValue(plan);
+    await writeFile(path.join(dir, 'CaseProbe'), 'probe');
+    const caseSensitive = await readFile(path.join(dir, 'caseprobe')).then(() => false, () => true);
+    let pushes = 0;
+    const staged: Record<string, string> = {};
+    const fixture = await publicShareFixture({ run: async args => {
+      if (args[0] === 'resource' && args[1] === 'push') {
+        pushes++;
+        staged.upper = await readFile(path.join(args[4]!, upperPath), 'utf8');
+        staged.lower = await readFile(path.join(args[4]!, lowerPath), 'utf8');
+        return JSON.stringify({ id: 'v1', version: 1 });
+      }
+      if (args[0] === 'share' && args[1] === 'publish') return confirmedShareOutput(args);
+      throw new Error('unexpected command');
+    } });
+    const api = await startSyncServer(fixedShareContextProvider(true), {
+      ...fixture, resolveProjectDir: () => dir, resolveSharedProject: async () => null,
+    });
+    const response = await api.json('/api/projects/p1/files/index.html/publish-public', { method: 'POST' });
+    if (caseSensitive) {
+      expect(response.status).toBe(200);
+      expect(staged).toEqual({ upper: 'UPPER', lower: 'lower' });
+    } else {
+      expect(response.status).toBe(502);
+      expect(pushes).toBe(0);
+      expect(response.body.error).toBe('PUBLIC_FILE_PUBLISH_UNAVAILABLE');
+    }
   });
 
   it('pins each publication to its own push while retaining one stable alias', async () => {

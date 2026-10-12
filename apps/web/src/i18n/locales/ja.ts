@@ -2254,6 +2254,7 @@ export const ja: Dict = {
   'chat.support.title': 'サポートに連絡',
   'chat.support.join': '参加',
   'chat.sendFailedRetryAria': '送信に失敗しました。再試行',
+  'chat.sendTargetMissing': "プロジェクトまたは会話が削除されたか存在しないため、送信できません。",
   'chat.audio.play': '再生',
   'chat.audio.pause': '一時停止',
   'chat.audio.download': '{name} をダウンロード',

@@ -2254,6 +2254,7 @@ export const pl: Dict = {
   'chat.support.title': 'Kontakt z pomocą',
   'chat.support.join': 'Dołącz',
   'chat.sendFailedRetryAria': 'Nie wysłano — ponów',
+  'chat.sendTargetMissing': "Nie można wysłać: projekt lub rozmowa zostały usunięte albo już nie istnieją.",
   'chat.audio.play': 'Odtwórz',
   'chat.audio.pause': 'Pauza',
   'chat.audio.download': 'Pobierz {name}',

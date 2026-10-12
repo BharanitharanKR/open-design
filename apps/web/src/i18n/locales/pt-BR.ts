@@ -2254,6 +2254,7 @@ export const ptBR: Dict = {
   'chat.support.title': 'Falar com o suporte',
   'chat.support.join': 'Entrar',
   'chat.sendFailedRetryAria': 'Falha ao enviar — tentar de novo',
+  'chat.sendTargetMissing': "Não é possível enviar: o projeto ou a conversa foi excluído ou não existe mais.",
   'chat.audio.play': 'Reproduzir',
   'chat.audio.pause': 'Pausar',
   'chat.audio.download': 'Baixar {name}',

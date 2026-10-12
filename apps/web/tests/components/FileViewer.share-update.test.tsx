@@ -6,6 +6,7 @@ import type { ComponentProps } from 'react';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { FileViewer } from '../../src/components/FileViewer';
 import { CollabProvider, type CollabContextValue } from '../../src/collab/collab-context';
+import type { ShareLoginReturn } from '../../src/components/share/share-login-return';
 
 const publication = { url: 'https://example.invalid/artifact/proj/stable', slug: 'stable', fileName: 'index.html' };
 const context: WorkspaceCollabContext = {
@@ -93,6 +94,56 @@ it('S0 login success returns to the first-share panel without automatically gene
   await act(async () => fireEvent.click(screen.getByTestId('share-cloud-signin')));
   view.rerender(<CollabProvider value={collab}><FileViewer {...props} /></CollabProvider>);
   await waitFor(() => expect(screen.getByRole('menuitem', { name: /generate and copy link/i })).toBeEnabled());
+  expect(posts(route.fetch)).toHaveLength(0);
+});
+
+it('OPEND-3691 keeps the sign-in share panel across pending workspace authority without publishing', async () => {
+  const route = publishedRoute({ noPublication: true, amrAuthenticated: true });
+  const view = render(<CollabProvider value={{ ...collab, workspaceContext: null }}><FileViewer {...props} /></CollabProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await act(async () => fireEvent.click(screen.getByTestId('share-cloud-signin')));
+  view.rerender(<CollabProvider value={{ ...collab, workspaceContext: null, workspaceContextLoading: true }}><FileViewer {...props} /></CollabProvider>);
+  expect(screen.queryByTestId('share-cloud-signin')).toBeNull();
+  view.rerender(<CollabProvider value={collab}><FileViewer {...props} /></CollabProvider>);
+  await waitFor(() => expect(screen.getByRole('menuitem', { name: /generate and copy link/i })).toBeEnabled());
+  expect(posts(route.fetch)).toHaveLength(0);
+});
+
+it('OPEND-3691 restores only the UI continuation after the whole authenticated viewer remounts', async () => {
+  const route = publishedRoute({ noPublication: true, amrAuthenticated: true });
+  let continuation: ShareLoginReturn | null = null;
+  const record = vi.fn((request: ShareLoginReturn | null) => { continuation = request; });
+  const view = render(<CollabProvider value={{ ...collab, workspaceContext: null }}><FileViewer key="signed-out" {...props} onShareLoginReturnChange={record} /></CollabProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await act(async () => fireEvent.click(screen.getByTestId('share-cloud-signin')));
+  expect(record).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'proj', filePath: 'index.html' }));
+  view.rerender(<CollabProvider value={collab}><FileViewer key="new-authority" {...props} shareLoginReturn={continuation} onShareLoginReturnChange={record} /></CollabProvider>);
+  await waitFor(() => expect(screen.getByRole('menuitem', { name: /generate and copy link/i })).toBeEnabled());
+  expect(record).toHaveBeenLastCalledWith(null);
+  expect(posts(route.fetch)).toHaveLength(0);
+});
+
+it('OPEND-3691 does not resurrect a parent-cancelled panel from a local fallback', async () => {
+  const route = publishedRoute({ noPublication: true, amrAuthenticated: true });
+  const record = vi.fn();
+  const view = render(<CollabProvider value={{ ...collab, workspaceContext: null }}><FileViewer {...props} onShareLoginReturnChange={record} /></CollabProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  await act(async () => fireEvent.click(screen.getByTestId('share-cloud-signin')));
+  expect(record).toHaveBeenCalledWith(expect.objectContaining({ filePath: 'index.html' }));
+  view.rerender(<CollabProvider value={{ ...collab, workspaceContext: null, workspaceContextLoading: true }}><FileViewer {...props} shareLoginReturn={null} onShareLoginReturnChange={record} /></CollabProvider>);
+  view.rerender(<CollabProvider value={collab}><FileViewer {...props} shareLoginReturn={null} onShareLoginReturnChange={record} /></CollabProvider>);
+  await act(async () => {});
+  expect(screen.queryByRole('menuitem', { name: /generate and copy link/i })).toBeNull();
+  expect(posts(route.fetch)).toHaveLength(0);
+});
+
+it.each(['expired', 'other-file', 'denied'] as const)('OPEND-3691 does not restore a %s login continuation', async (reason) => {
+  const route = publishedRoute({ noPublication: true, amrAuthenticated: true });
+  const continuation = { projectId: 'proj', filePath: reason === 'other-file' ? 'other.html' : 'index.html',
+    expiresAt: Date.now() + (reason === 'expired' ? -1 : 120_000) };
+  render(<CollabProvider value={reason === 'denied' ? { ...collab, projectResourceAuthority: 'denied' } : collab}><FileViewer {...props} shareLoginReturn={continuation} /></CollabProvider>);
+  await act(async () => {});
+  expect(screen.queryByRole('menuitem', { name: /generate and copy link/i })).toBeNull();
   expect(posts(route.fetch)).toHaveLength(0);
 });
 
