@@ -1,4 +1,4 @@
-# OD Next Document Task Profile v3.1.7
+# OD Next Document Task Profile v3.1.8
 
 Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
@@ -6,13 +6,35 @@ Organize the body with semantic article markup, heading levels, paragraphs, list
 
 Cite user-provided or actually read sources; do not invent data, quotations, or sources. Preserve the confirmed structure and tone. Limit small edits to the relevant sections; one Skill's delivery requirements do not override another's. Deliver the agreed HTML honestly without claiming exports outside the product's capabilities.
 
+## Writing from supplied material
+
+When organizing supplied material, its facts and relationships are the content
+boundary. This applies to the plan as well as every heading, summary, caption,
+table, illustration, and body paragraph. Open-ended creative writing remains
+appropriate when the user actually requests invention.
+
+- Preserve stated facts and explicit relationships, including before/after
+  sequence. Missing causes or measurements do not erase a stated relationship.
+- Paraphrase at the source's level of detail. Do not turn a category into a
+  specific object, make separate subjects the same physical item, or supply
+  unmentioned participants, settings, procedures, observations, or outcomes.
+- An omitted detail is only absent from the supplied material. Do not claim
+  it was never measured, recorded, or performed unless the source says so.
+- Keep unlinked facts independent. Table rows, captions, and connecting phrases
+  must not bind a change to a trial or imply a shared condition or cause.
+  State uncertainty only where needed; do not invent a connection and then
+  qualify it elsewhere.
+- Keep derived values traceable to supplied numbers. If proposing an explanation
+  or future method, label it locally as a hypothesis or proposal, not history.
+  A general fictional-data disclaimer does not authorize additional facts.
+- Let the supplied content determine length. A continuous document can be short;
+  do not impose a word target or fill sections with invented background. Use
+  concise paragraphs and omit unsupported detail rather than narrating how a
+  plausible experiment, organization, or product would usually work.
+
 ## Production rules
 
-- Preserve explicit relationships as well as individual facts. If the source says an event occurred before or after a change, keep that relationship; do not relabel it unknown merely because an exact date, individual measurements, or causal proof is absent. An unknown magnitude or cause does not make a stated sequence unknown. Apply uncertainty only to the specific information the source leaves unspecified.
 - Establish the information hierarchy first: the title names the subject, the opening explains the purpose, and sections follow the reader's workflow or the argument. Manuals cover prerequisites, concrete steps, success states, and common exceptions. Do not turn the body into a marketing landing page.
 - Distinguish facts, user data, assumptions, and examples. Preserve units, dates, and measurement definitions for numbers. Give tables titles, headers, and necessary notes. Do not remove requested details for visual polish.
-- Treat supplied records as a closed set of observations, even when labeled fictional or sample data. Do not add unrecorded events, causes, measurements, or parameter values to make the story fuller. A qualitative change stays qualitative unless its magnitude was supplied. Label any proposed explanation next to the claim as an unverified hypothesis; a document-wide sample-data disclaimer does not make invented observations part of the record. Derived numbers must be traceable to the provided values. Preserve uncertainty about sequence and controls: do not place an intervention before or after a specific trial, call it the only change, or claim all other conditions stayed equal unless the source states that relationship.
 - Use one main heading and a sequential section hierarchy. Long documents need a working table of contents; charts need captions and sources. Keep body text and tables fully readable on narrow screens rather than simulating the entire document on a fixed canvas.
-- Compose every title, opening summary, caption, and table from the same source facts used in the body. An introduction describes the document's contents; it must not supply a connecting story that the record lacks. Keep independent observations and changes independent, including in short phrases and illustrations. Omit an unsupported relationship instead of asserting it in a summary and qualifying it later. Preserve relationships the source does state; uncertainty applies only to missing information.
-- Preserve relationships while organizing source records. During the existing content outline, distinguish supplied facts, direct calculations, proposed explanations, and unspecified relationships. A table cell also asserts a relationship: do not assign an independent fact to a dated row, trial, person, or condition unless the source links them. Present an unassigned change separately from the result rows and state that its timing is unspecified. Keep the source's action at its stated level of detail; do not invent an implementation mechanism. Prefer a neutral label such as "Recorded change" when a stronger heading would add exclusivity or causality. Apply this while composing; it requires no extra tools, output file, or post-delivery review.
 - Hide navigation controls in print styles. Use break-before / break-inside appropriately to avoid orphaned headings or split table rows. Do not replace selectable text with screenshots. Deliver within existing export capabilities; print styles alone do not prove a verified PDF.
