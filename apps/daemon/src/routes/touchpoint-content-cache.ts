@@ -116,7 +116,7 @@ export interface TouchpointContentCache {
    * Such answers are still served; only persisting their authority is refused.
    */
   ticket(key: TouchpointContentKey): number;
-  /** Release the request-local fence when the upstream attempt closes. */
+  /** Release the request-local fence after its response is classified or aborted. */
   finishTicket(ticket: number): void;
   /**
    * The whole decision to answer with while the runtime is unreachable, or
