@@ -132,7 +132,7 @@ export const CURATED_MOTION_DESIGN_PLUGIN_IDS = [
   'example-motion-showreel',
   'example-motion-product-launch',
   'example-motion-3d-scene',
-  'example-motion-short-story',
+  'example-motion-kinetic-type',
 ] as const;
 
 export const CURATED_PLUGIN_IDS_BY_CHIP = {

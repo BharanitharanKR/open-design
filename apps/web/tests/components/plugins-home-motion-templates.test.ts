@@ -41,14 +41,14 @@ describe('curated motion design templates', () => {
     expect(existsSync(path.join(dir!, 'example.html'))).toBe(true);
   });
 
-  it('seeds the animated short from Home in every locale, consistently with its plugin context', () => {
-    const id = 'example-motion-short-story';
+  it('seeds the kinetic typography template from Home in every locale, consistently with its plugin context', () => {
+    const id = 'example-motion-kinetic-type';
     const manifest = JSON.parse(readFileSync(path.join(dirs.get(id)!, 'open-design.json'), 'utf8'));
     const record = { id, manifest } as InstalledPluginRecord;
     for (const locale of LOCALES) {
       const seed = examplePresetSeedPrompt(record, locale, () => 'missing prompt');
       expect(seed.text, locale).toBe(manifest.od.useCase.query[locale]);
-      expect(seed.text, locale).toContain('Higher, together.');
+      expect(seed.text, locale).toContain('ALMOST / THE / WEEK— / END.');
       expect(seed.text, locale).toMatch(/15|۱۵/);
     }
   });

@@ -15,7 +15,7 @@ test('[P1] motion soundtrack follows preview play, pause and backward seek', asy
   await expect(sound).toHaveAttribute('aria-pressed', 'false');
 });
 
-for (const name of ['explainer', 'showreel', 'product-launch', '3d-scene', 'short-story']) {
+for (const name of ['explainer', 'showreel', 'product-launch', '3d-scene', 'kinetic-type']) {
   test(`[P1] motion-${name} gallery capture contains only the composition`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(`/api/plugins/example-motion-${name}/preview`);

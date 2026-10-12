@@ -1,38 +1,46 @@
 # Motion templates: sources and maintenance
 
 Five official HTML examples populate the Motion design Home entry and Community
-category: a camera-focus explainer, a motion designer showreel, a product
-launch, a procedural 3D island and a wordless animated short. They use the
-existing plugin preview, example binding, frozen reference package, Remix, and
-HyperFrames MP4 export paths.
+category. They use the existing plugin preview, example binding, frozen
+reference package, Remix, and HyperFrames MP4 export paths.
 
-## Selection evidence
+## Selection
 
-Topics follow the most-viewed single posts in the October 9, 2026 snapshot of
+**Scope.** The motion design spec defines motion design as dynamic design that
+communicates through composition, type, graphics and timing, covering four
+content types: brand and product films, kinetic typography, explainer
+animation, and procedural art. Templates are video deliverables: an MP4 plus
+editable HTML source.
+
+**Source of reach.** The October 9, 2026 snapshot of
 [awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video/blob/main/cases.json)
-(1,427 cases, `stats_checked_at` `2026-10-09T09:26:20.426Z`). Games and
-model-vs-model comparisons were excluded because they are not reusable video
-templates; posts that relied on non-code tools (image/video generators, After
-Effects, Blender) were excluded because OD renders from HTML. Each template is
-anchored to the most-viewed eligible post of its genre:
+(1,427 cases, `stats_checked_at` `2026-10-09T09:26:20.426Z`), ranked by
+single-post views.
 
-| Template | Anchor post | Recorded views |
-| --- | --- | ---: |
-| Explainer | [Interactive camera focus lens lab](https://x.com/RyanSael/status/2102591147927654847) | 3,492,763 |
-| Showreel | [15-second motion designer showreel](https://x.com/stephanlivera/status/2103315922098470926) | 2,246,353 |
-| Product launch | [Motion design launch video](https://x.com/uxmiles/status/2104618175803609305) | 1,775,824 |
-| 3D island | [Procedural ocean island](https://x.com/dangreenheck/status/2102878170089169235) | 888,215 |
-| Animated short | [Dot prompt becomes Pixar-style animation](https://x.com/cherry_mx_reds/status/2105825930799432073) | 828,141 |
+**Rule.**
+1. A post qualifies when it shows a finished film (not a game, app demo or
+   model comparison) whose content belongs to one of the four types, made in
+   code that runs in a browser, with content identifiable from its title,
+   prompt or video.
+2. Each type takes its most-viewed qualifying post.
+3. The fifth template takes the most-viewed remaining qualifying post across
+   the four types.
 
-The earlier data story was replaced: the most-viewed eligible data
-visualization had 421,430 views. Home order follows the table. Anchors inform
-genre and pacing only; every composition, copy line and soundtrack is original.
+| Template | Type | Anchor post | Recorded views |
+| --- | --- | --- | ---: |
+| Explainer | Explainer animation | [Interactive camera focus lens lab](https://x.com/RyanSael/status/2102591147927654847) | 3,492,763 |
+| Showreel | Brand film | [15-second motion designer showreel](https://x.com/stephanlivera/status/2103315922098470926) | 2,246,353 |
+| Product launch | Product film | [Motion design launch video](https://x.com/uxmiles/status/2104618175803609305) | 1,775,824 |
+| 3D island | Procedural art | [Procedural ocean island](https://x.com/dangreenheck/status/2102878170089169235) | 888,215 |
+| Kinetic typography | Kinetic typography | [Day-of-week kinetic motion graphic](https://x.com/nokonoko_1203/status/2105922366190784915) | 132,347 |
+
+Home order follows the table. Anchors set the subject, genre and pacing; every
+composition, copy line and soundtrack is original.
 
 ## Template content
 
-All five `example.html` files were authored directly by Claude Opus 5.5 as
-hand-written code and checked frame by frame. They are not exported from an OD
-generation run.
+All five `example.html` files are hand-written code authored by Claude Opus 5.5
+and checked frame by frame.
 
 | Template | Content |
 | --- | --- |
@@ -40,7 +48,7 @@ generation run.
 | Showreel | Fictional Studio Kinetik; five techniques cut to 128 BPM |
 | Product launch | Fictional Driftnote meeting app; toggle turns fragments into a summary |
 | 3D island | Procedural low-poly island in Three.js; one continuous camera move |
-| Animated short | Wordless story of a dot reaching a star with its friends |
+| Kinetic typography | "What day is it?": a weekday reel, the answer, four beat cuts and a countdown, at 120 BPM |
 
 The explainer computes blur on the sensor as `2A·|v − d| / v`, so focusing and
 aperture changes show the physically correct result. Each film draws every

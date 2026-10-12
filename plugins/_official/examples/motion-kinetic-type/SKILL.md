@@ -1,6 +1,6 @@
 ---
-name: motion-short-story
-description: "Animated Short Story — motion design template. A wordless 15-second animated short: a little dot tries to reach a star, falls, and its friends stack into a tower to lift it up — classic squash-and-stretch character animation."
+name: motion-kinetic-type
+description: "What Day Is It? — motion design template. 15 seconds of kinetic typography: a stacked question, a slot-machine reel of weekdays, the answer on a yellow flood, four beat-cut words and an odometer countdown to the weekend."
 od:
   mode: video
   scenario: video
@@ -9,11 +9,11 @@ od:
     entry: example.html
 ---
 
-# Animated Short Story
+# What Day Is It?
 
-A wordless 15-second animated short in a soft, Pixar-like register: a little
-orange dot wants to touch a star. It jumps, falls, and its friends build the
-way. `example.html` is the finished reference — start from it.
+A 15-second kinetic typography film at 120 BPM. Type is the only visual: it
+asks a question, scans the week, answers, and signs off. `example.html` is the
+finished reference — start from it.
 
 ## Reference files
 Copy `example.html`, `assets/gsap.min.js`, `assets/space-grotesk.ttf`,
@@ -23,24 +23,25 @@ License; keep its license file with it. Use these frozen local bytes; no
 runtime script or font CDN is needed.
 
 ## Art direction
-- Dusk sky from indigo `#1D2142` through violet to warm orange, layered hills,
-  twinkling background stars and one large star.
-- Round characters with big eyes, cheeks and a soft rim light: hero orange
-  `#FF8A3D`; friends teal, yellow, pink and blue.
-- One closing title in Space Grotesk: "Higher, together." 
+- Swiss poster palette: paper `#EFEAE0`, ink `#121212`, blue `#2B4BFF`,
+  yellow `#FFD23A`, red `#FF4B2B`. Flat fills only.
+- Space Grotesk 700 for display type; monospace for the frame chrome.
+- Frame chrome: corner marks, the question and week stamp on top, scene
+  counter, an 80-tick progress rule and a running timecode at the bottom.
 
 ## Beat map (15s)
-- 0–1.7s: the hero hops in and stops; looks up at the star and blinks.
-- 2.4–4.8s: a small jump, then a big one that falls short — hard landing, "> <" eyes, dust.
-- 4.8–7.4s: it droops; four friends hop in from both sides.
-- 8.1–10.6s: the friends stack into a tower; the hero hops to the top.
-- 10.7–12.5s: it stretches, touches the star, the sky lights up, every face turns happy.
-- 12.6–15s: the title fades in and holds.
+- 0–2.4s QUESTION: WHAT / DAY / IS IT? rise out of masks on the beat; the "?" wobbles blue.
+- 2.5–5.0s SCAN: weekdays spin past a slot window with motion blur and settle on the answer; a list on the right tracks the reel.
+- 5.0–7.6s ANSWER: a yellow flood; the answer grows, letters bounce in turn, "IT'S" and seven weekday dots land.
+- 7.6–9.6s CUTS: ALMOST / THE / WEEK— / END. — one word per beat, full frame, a new colour each cut.
+- 9.6–11.3s COUNTDOWN: an odometer runs 08:00:00 down to zero and flashes red.
+- 11.3–15s SIGN-OFF: the answer is drawn in outline, filled, and closed with a blue full stop.
 
 ## Adapting the template
-- Keep: one character with a clear want, a failure, help, and a payoff —
-  told without words. Use anticipation, squash and stretch, and settling.
-- Swap characters, goal and palette to the brief; keep the story under 15s.
+- Keep: type as the only image, one beat grid, and a clear question → answer → payoff.
+- `CFG` holds the copy: change `days`, `answer`, `question`, `cuts`, `countFrom`,
+  `countLabel` and `signoff` to retell it for another message or language.
+- Fit long words by measuring them (`width()`) and scaling to the frame, as the cuts do.
 
 ## How the reference is built
 - One `<canvas>` stage. A single `render(t)` function draws the

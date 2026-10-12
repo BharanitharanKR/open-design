@@ -12135,10 +12135,10 @@
       "taskKind": "new-generation"
     },
     {
-      "name": "open-design/example-motion-short-story",
-      "title": "Animated Short Story",
+      "name": "open-design/example-motion-kinetic-type",
+      "title": "Kinetic Typography",
       "version": "0.1.0",
-      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-short-story",
+      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-kinetic-type",
       "publisher": {
         "id": "open-design",
         "url": "https://open-design.ai"
@@ -12146,16 +12146,16 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A wordless 15-second animated short: a little dot tries to reach a star, falls short, and its friends stack into a tower to lift it up — classic squash-and-stretch character animation.",
+      "description": "15 seconds of kinetic typography at 120 BPM: a question, a slot-machine reel of weekdays, the answer on a yellow flood, four beat-cut words and an odometer countdown to the weekend.",
       "tags": [
         "example",
         "first-party",
         "video",
         "motion-design",
-        "animation",
-        "storytelling",
-        "character",
-        "wordless"
+        "kinetic-typography",
+        "typography",
+        "poster",
+        "countdown"
       ],
       "homepage": "https://github.com/nexu-io/open-design",
       "license": "Apache-2.0",

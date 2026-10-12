@@ -13,7 +13,7 @@ import {
 
 const examples = fileURLToPath(new URL('../../../plugins/_official/examples/', import.meta.url));
 
-test.each(['explainer', 'showreel', 'product-launch', '3d-scene', 'short-story'])(
+test.each(['explainer', 'showreel', 'product-launch', '3d-scene', 'kinetic-type'])(
   '[P1] motion-%s carries its offline scripts, font and license through the frozen reference package',
   async (name) => {
     const source = path.join(examples, `motion-${name}`);
