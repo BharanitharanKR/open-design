@@ -4,7 +4,6 @@ import type {
   TestRuntimeContextRequest,
 } from '@open-design/contracts/api/touchpointTestRuntime';
 import { createHash, randomUUID } from 'node:crypto';
-import dns from 'node:dns';
 import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
@@ -295,13 +294,13 @@ export function pipeProxyStreamWithGuard(
   source.pipe(dest);
 }
 
-function proxyAmrApiRequest(req: Request, res: Response): void {
+function proxyAmrApiRequest(req: Request, res: Response, apiOrigin: string): void {
   const suffix = req.originalUrl.slice(AMR_API_PROXY_PREFIX.length);
   if (!suffix.startsWith('/api/v1/')) {
     res.status(404).json({ error: 'unknown_amr_api_proxy_path' });
     return;
   }
-  const target = new URL(suffix, AMR_API_UPSTREAM_ORIGIN);
+  const target = new URL(suffix, apiOrigin);
   if (!target.pathname.startsWith('/api/v1/')) {
     res.status(404).json({ error: 'unknown_amr_api_proxy_path' });
     return;
@@ -332,14 +331,16 @@ function proxyAmrApiRequest(req: Request, res: Response): void {
   }
   if (body) headers['content-length'] = String(body.length);
 
-  const upstream = https.request(
+  const transport = target.protocol === 'http:' ? http : https;
+  const upstream = transport.request(
     target,
     {
       method: req.method,
       headers,
-      lookup: (hostname, options, callback) => {
-        dns.lookup(hostname, { ...options, family: 4, all: false }, callback);
-      },
+      // Select IPv4 at the socket boundary. Overriding DNS `all: false`
+      // alone violates Node's auto-family callback contract (`all: true`)
+      // and fails locally with ERR_INVALID_IP_ADDRESS before connecting.
+      family: 4,
     },
     (upstreamRes) => {
       res.status(upstreamRes.statusCode ?? 502);
@@ -1114,7 +1115,38 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
     }
   });
 
-  app.all('/api/integrations/vela/api-proxy/*splat', proxyAmrApiRequest);
+  app.all('/api/integrations/vela/api-proxy/*splat', async (req, res) => {
+    if (!req.originalUrl.slice(AMR_API_PROXY_PREFIX.length).startsWith('/api/v1/')) {
+      res.status(404).json({ error: 'unknown_amr_api_proxy_path' });
+      return;
+    }
+    try {
+      const appConfig = await readAppConfig(RUNTIME_DATA_DIR);
+      const configuredEnv = agentCliEnvForAgent(appConfig.agentCliEnv, 'amr');
+      const context = readVelaApiContext(env, configuredEnv);
+      const mergedEnv = mergeVelaEnv(env, configuredEnv);
+      const apiUrl = mergedEnv.VELA_API_URL?.trim() || context.apiUrl;
+      const target = new URL(apiUrl);
+      // Internal profiles must supply their own endpoint. Never silently
+      // send their authorization requests or keys to the production fallback.
+      if (context.profile !== 'prod' && target.origin === AMR_API_UPSTREAM_ORIGIN) {
+        res.status(503).json({ error: 'amr_api_origin_required' });
+        return;
+      }
+      if (
+        !['https:', 'http:'].includes(target.protocol)
+        || target.username
+        || target.password
+        || target.pathname.startsWith(AMR_API_PROXY_PREFIX)
+      ) {
+        res.status(503).json({ error: 'invalid_amr_api_origin' });
+        return;
+      }
+      proxyAmrApiRequest(req, res, target.origin);
+    } catch {
+      res.status(503).json({ error: 'invalid_amr_api_origin' });
+    }
+  });
 
   // The helper is a strict method/path allowlist; register it for POST so the
   // authenticated Test context selection can reach Vela, while unknown paths
@@ -1258,13 +1290,11 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
       }
       // Start device authorization over a direct connection first. The
       // daemon-local IPv4 proxy (added in #4210 for hosts whose direct
-      // amr-api.open-design.ai edge path is broken, #3726) re-originates the
-      // request through the daemon. Behind a corporate transparent proxy that
-      // hijacks amr-api.open-design.ai onto an internal gateway (e.g.
-      // 飞连/CorpLink → 30.x), that extra hop makes the upstream lose the
-      // client IP and reject device authorization with
-      // "502: Invalid IP address: undefined", even though the direct path
-      // resolves fine. So only fall back to the proxy when the direct child
+      // edge path is broken, #3726) re-originates the request through the
+      // daemon using the selected profile's API origin. Its IPv4 choice must
+      // preserve Node's DNS callback contract; a local resolver-shape error
+      // must not be mistaken for an upstream or corporate gateway rejection.
+      // Only fall back to the proxy when the direct child
       // actually terminates before activation (including after this request
       // returns) — never merely because it is slow, already activated, or a
       // login is already in flight.

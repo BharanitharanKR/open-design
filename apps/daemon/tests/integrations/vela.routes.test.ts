@@ -2062,6 +2062,130 @@ describe('POST /api/integrations/vela/login', () => {
 });
 
 describe('ALL /api/integrations/vela/api-proxy/*', () => {
+  let previousAmrEnv: Record<string, string>;
+
+  beforeEach(async () => {
+    const config = await readAppConfig(process.env.OD_DATA_DIR as string);
+    previousAmrEnv = { ...agentEnv(config) };
+    await setSettingsAmrEnv({
+      OPEN_DESIGN_AMR_PROFILE: 'prod',
+      VELA_PROFILE: 'prod',
+      VELA_API_URL: 'https://amr-api.open-design.ai',
+    });
+  });
+
+  afterEach(async () => {
+    const dataDir = process.env.OD_DATA_DIR as string;
+    const config = await readAppConfig(dataDir);
+    await writeAppConfig(dataDir, {
+      ...config,
+      agentCliEnv: { ...config.agentCliEnv, amr: previousAmrEnv },
+    });
+  });
+
+  function agentEnv(config: Awaited<ReturnType<typeof readAppConfig>>): Record<string, string> {
+    return (config.agentCliEnv?.amr as Record<string, string>) ?? {};
+  }
+
+  it('preserves the native Node IPv4 DNS callback contract through a real socket', async () => {
+    const upstream = await startWalletApi((_req, res) => {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ ok: true }));
+    });
+    const target = new URL(upstream.url);
+    target.hostname = 'localhost';
+    const requestSpy = vi.spyOn(https, 'request').mockImplementation(((_url, options, callback) =>
+      http.request(target, options, callback)
+    ) as typeof https.request);
+    try {
+      const response = await getJson(
+        `${baseUrl}/api/integrations/vela/api-proxy/api/v1/cli/device-authorizations`,
+      );
+      expect(response).toEqual({ status: 200, body: { ok: true } });
+    } finally {
+      requestSpy.mockRestore();
+      await upstream.close();
+    }
+  });
+
+  it('routes feature-test fallback to its configured API, not production', async () => {
+    await setSettingsAmrEnv({
+      OPEN_DESIGN_AMR_PROFILE: 'feature-test',
+      VELA_API_URL: 'https://feature-api.example.test',
+    });
+    const requestSpy = vi.spyOn(https, 'request').mockImplementation(((target, _options, callback) => {
+      expect(String(target)).toBe('https://feature-api.example.test/api/v1/cli/device-authorizations');
+      const upstream = new PassThrough() as any;
+      upstream.on('finish', () => {
+        const response = new PassThrough() as any;
+        response.statusCode = 200;
+        response.headers = { 'content-type': 'application/json' };
+        callback?.(response);
+        response.end(JSON.stringify({ ok: true }));
+      });
+      upstream.setTimeout = () => upstream;
+      return upstream;
+    }) as typeof https.request);
+    try {
+      const response = await getJson(
+        `${baseUrl}/api/integrations/vela/api-proxy/api/v1/cli/device-authorizations`,
+      );
+      expect(response.status).toBe(200);
+      expect(requestSpy).toHaveBeenCalledOnce();
+    } finally {
+      requestSpy.mockRestore();
+    }
+  });
+
+  it('fails closed when a non-production profile has no API origin', async () => {
+    await setSettingsAmrEnv({ OPEN_DESIGN_AMR_PROFILE: 'feature-test', VELA_API_URL: undefined });
+    const requestSpy = vi.spyOn(https, 'request');
+    try {
+      const response = await getJson(
+        `${baseUrl}/api/integrations/vela/api-proxy/api/v1/cli/device-authorizations`,
+      );
+      expect(response).toEqual({ status: 503, body: { error: 'amr_api_origin_required' } });
+      expect(requestSpy).not.toHaveBeenCalled();
+    } finally {
+      requestSpy.mockRestore();
+    }
+  });
+
+  it('supports a configured local HTTP API without invoking production HTTPS', async () => {
+    const upstream = await startWalletApi((_req, res) => {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ ok: true }));
+    });
+    await setSettingsAmrEnv({ OPEN_DESIGN_AMR_PROFILE: 'local', VELA_API_URL: upstream.url });
+    const requestSpy = vi.spyOn(https, 'request');
+    try {
+      expect(await getJson(`${baseUrl}/api/integrations/vela/api-proxy/api/v1/cli/device-authorizations`))
+        .toEqual({ status: 200, body: { ok: true } });
+      expect(upstream.requests).toHaveLength(1);
+      expect(requestSpy).not.toHaveBeenCalled();
+    } finally {
+      requestSpy.mockRestore();
+      await upstream.close();
+    }
+  });
+
+  it.each([
+    'https://amr-api.open-design.ai',
+    'http://localhost:1234/api/integrations/vela/api-proxy',
+    'ftp://feature-api.example.test',
+    'not-a-url',
+  ])('rejects an unsafe feature-test fallback origin %s before forwarding', async (apiUrl) => {
+    await setSettingsAmrEnv({ OPEN_DESIGN_AMR_PROFILE: 'feature-test', VELA_API_URL: apiUrl });
+    const requestSpy = vi.spyOn(https, 'request');
+    try {
+      const response = await getJson(`${baseUrl}/api/integrations/vela/api-proxy/api/v1/cli/device-authorizations`);
+      expect(response.status).toBe(503);
+      expect(requestSpy).not.toHaveBeenCalled();
+    } finally {
+      requestSpy.mockRestore();
+    }
+  });
+
   it('forwards form-encoded POST bodies to the AMR API upstream', async () => {
     const upstreamRequests: Array<{
       href: string;
