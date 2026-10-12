@@ -63,6 +63,7 @@ describe('Vela billing preflight adapter', () => {
       { workspaceId: 'other' },
       { modelId: 'other' },
       { generatedAt: 'bad' },
+      { fundingCheck: 'reject_everything' },
       {
         codingPlan: {
           ...preview.codingPlan,

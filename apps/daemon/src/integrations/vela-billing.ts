@@ -68,6 +68,7 @@ export function parseBillingPreflight(
       !raw.workspaceMemberId?.trim() || raw.modelId !== modelId || !date(raw.generatedAt) ||
       typeof raw.balanceUsd !== 'string' || !/^-?\d+(\.\d+)?$/.test(raw.balanceUsd) ||
       !['coding_plan', 'wallet', 'gateway'].includes(raw.funding) ||
+      (raw.fundingCheck !== undefined && !['available', 'insufficient', 'unknown'].includes(raw.fundingCheck)) ||
       (raw.modelCovered !== null && typeof raw.modelCovered !== 'boolean') ||
       !plan || plan.workspaceId !== workspaceId || !date(plan.generatedAt) ||
       typeof plan.eligible !== 'boolean' ||

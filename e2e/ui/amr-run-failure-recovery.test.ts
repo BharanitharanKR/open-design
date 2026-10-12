@@ -13,6 +13,7 @@ import { T } from '@/timeouts';
 import { createFakeAgentRuntimes } from '@/playwright/fake-agents';
 import {
   AMR_PERSONAL_WORKSPACE_HEADERS,
+  AMR_PERSONAL_WORKSPACE_ITEM,
   createProjectViaApi,
   gotoEntryHome,
   gotoProject,
@@ -226,6 +227,56 @@ test('[P0] @critical AMR insufficient-balance failures open a dialog and preserv
       }),
     )
     .toBeTruthy();
+});
+
+test('[P0] @critical AMR preflight opens before agent startup and never cancels a successful run', async ({ page }, testInfo) => {
+  await stubRuntimeAgents(page);
+  await page.route('**/api/integrations/vela/status', (route) => route.fulfill({ json: {
+    loggedIn: true, profile: 'local',
+    user: { id: 'funding-user', email: 'funding@example.test', plan: 'free' },
+  } }));
+  const amr = await setupAmrWorkspace(page, {
+    selectedAgentId: 'amr', requireLoginConfig: false, fundingCheck: 'insufficient',
+    assistantText: 'The gateway admitted this run.',
+  });
+  await gotoProject(page, amr.projectId);
+  // Hold the real run POST, while the independent daemon -> Vela preflight
+  // remains live. No agent process can start before we release this request.
+  let releaseRun!: () => void;
+  const heldRun = new Promise<void>((resolve) => { releaseRun = resolve; });
+  let runForwarded = false;
+  let cancellations = 0;
+  page.on('request', (request) => {
+    if (/\/api\/runs\/[^/]+\/cancel/.test(request.url())) cancellations++;
+  });
+  await page.route('**/api/runs', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await heldRun;
+    runForwarded = true;
+    await route.continue();
+  });
+  const input = page.getByTestId('chat-composer-input');
+  await input.fill('Check funding independently of agent startup');
+  await expect(page.getByTestId('chat-send')).toBeEnabled();
+  const startedAt = Date.now();
+  try {
+    await input.press('Enter');
+    const dialog = page.getByTestId('amr-balance-dialog');
+    await expect(dialog).toBeVisible({ timeout: T.long });
+    expect(runForwarded).toBe(false);
+    await testInfo.attach('independent-preflight-timing', { contentType: 'application/json',
+      body: JSON.stringify({ elapsedMs: Date.now() - startedAt, runForwarded, source: 'local fake Vela preflight; real daemon and browser' }) });
+    await testInfo.attach('independent-preflight-before-agent', {
+      body: await page.screenshot(), contentType: 'image/png',
+    });
+    await expect(page.getByTestId('chat-upgrade-card')).toHaveCount(0);
+    releaseRun();
+    await expect(page.getByText('The gateway admitted this run.').first()).toBeVisible({ timeout: T.long });
+    await expect(dialog).toBeHidden();
+    expect(cancellations).toBe(0);
+  } finally {
+    releaseRun();
+  }
 });
 
 test('[P0] @critical AMR auth failures return to the existing sign-in gate without auto-retry', async ({ page }) => {
@@ -1073,6 +1124,7 @@ async function setupAmrWorkspace(
     assistantText?: string;
     accountSummaryAvailable?: boolean;
     workspaceBalanceAvailable?: boolean;
+    fundingCheck?: 'available' | 'insufficient' | 'unknown';
   },
 ) {
   await stubCatalogsEmpty(page);
@@ -1082,6 +1134,8 @@ async function setupAmrWorkspace(
   const fakeVelaSessionId = `fake-amr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const velaBin = await writeFakeVelaBin(join(root, 'bin'), {
     sessionId: fakeVelaSessionId,
+    ...(options.fundingCheck ? { fundingCheck: { status: options.fundingCheck,
+      workspaceMemberId: AMR_PERSONAL_WORKSPACE_ITEM.workspaceMemberId } } : {}),
     ...(options.assistantText !== undefined ? { assistantText: options.assistantText } : {}),
     ...(options.failAuthAtPrompt !== undefined ? { failAuthAtPrompt: options.failAuthAtPrompt } : {}),
     ...(options.failAuthAtPromptOnce !== undefined ? { failAuthAtPromptOnce: options.failAuthAtPromptOnce } : {}),

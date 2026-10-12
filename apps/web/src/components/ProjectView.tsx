@@ -179,6 +179,7 @@ import {
   isAmrBalanceGateScope,
   type AmrBalanceGateScope,
 } from '../runtime/amr-balance-gate';
+import { checkAmrFundingFeedback } from '../runtime/amr-funding-feedback';
 import {
   amrBalanceBlockedDialog,
   amrBalanceDialogUpgradeIntent,
@@ -2936,6 +2937,8 @@ export function ProjectView({
       conversationId: string;
       /** Live gateway rejections do not wait for a wallet display read. */
       failureAuthorityKey?: string;
+      fundingRunKey?: string;
+      fundingSource?: 'preflight' | 'gateway';
       workspaceContext?: WorkspaceCollabContext | null;
     } | null
   >(null);
@@ -3559,6 +3562,7 @@ export function ProjectView({
   projectRunAuthorityKeyRef.current = projectRunAuthorityKey;
   const shownFundingFailuresRef = useRef(new Set<string>());
   const fundingDialogContext = {
+    isAmr: config.mode === 'daemon' && config.agentId === 'amr',
     branch: amrBalanceBranch,
     scope: amrBalanceCardScope,
     workspaceContext: projectRunBillingAuthorityContext,
@@ -3566,7 +3570,7 @@ export function ProjectView({
   };
   const fundingDialogContextRef = useRef(fundingDialogContext);
   fundingDialogContextRef.current = fundingDialogContext;
-  // A live rejection owns one dialog in its original conversation/account.
+  // AMR funding feedback owns one dialog in its original conversation/account.
   // Display-wallet reads and historical replays cannot open or reopen it.
   const showAmrFundingFailure = useCallback((input: {
     code: string | undefined;
@@ -3574,18 +3578,29 @@ export function ProjectView({
     conversationId: string;
     authorityKey: string;
     accountGeneration: number;
+    source?: 'preflight' | 'gateway';
+    modelId?: string | null;
   }) => {
     if (
       input.code !== AMR_INSUFFICIENT_BALANCE_CODE
       || input.conversationId !== messagesConversationIdRef.current
       || input.authorityKey !== projectRunAuthorityKeyRef.current
       || input.accountGeneration !== currentWorkspaceAccountGeneration()
+      || !fundingDialogContextRef.current.isAmr
+      || (input.source === 'preflight' && input.modelId !== fundingDialogContextRef.current.modelId)
     ) return;
+    const source = input.source ?? 'gateway';
+    // Only an actual gateway failure pauses pending sends. The independent
+    // read never cancels a run or changes task status.
+    if (source === 'gateway') amrGatePausedQueueConversationsRef.current.add(input.conversationId);
     const key = `${input.accountGeneration}:${input.conversationId}:${input.runKey}`;
-    if (shownFundingFailuresRef.current.has(key)) return;
+    if (shownFundingFailuresRef.current.has(key)) {
+      if (source === 'gateway') setAmrBalanceGateBlock((previous) =>
+        previous?.fundingRunKey === input.runKey ? { ...previous, fundingSource: source } : previous);
+      return;
+    }
     shownFundingFailuresRef.current.add(key);
     const { branch, scope, workspaceContext, modelId } = fundingDialogContextRef.current;
-    amrGatePausedQueueConversationsRef.current.add(input.conversationId);
     setAmrBalanceGateBlock({
       reason: 'insufficient',
       dialog: amrBalanceBlockedDialog(branch),
@@ -3596,15 +3611,18 @@ export function ProjectView({
       workspaceContext,
       conversationId: input.conversationId,
       failureAuthorityKey: input.authorityKey,
+      fundingRunKey: input.runKey,
+      fundingSource: source,
     });
   }, []);
   useEffect(() => {
     if (amrBalanceGateBlock?.failureAuthorityKey === undefined) return;
     if (amrBalanceGateBlock.conversationId !== activeConversationId
-      || amrBalanceGateBlock.failureAuthorityKey !== projectRunAuthorityKey) {
+      || amrBalanceGateBlock.failureAuthorityKey !== projectRunAuthorityKey
+      || config.mode !== 'daemon' || config.agentId !== 'amr') {
       setAmrBalanceGateBlock(null);
     }
-  }, [activeConversationId, projectRunAuthorityKey, amrBalanceGateBlock]);
+  }, [activeConversationId, projectRunAuthorityKey, amrBalanceGateBlock, config.mode, config.agentId]);
   const conversationsLoadedProjectIdRef = useRef<string | null>(null);
   // Live mirror of the full project prop, for async handlers whose useCallback
   // deps only track `project.id` (e.g. the project-events handler below):
@@ -7681,9 +7699,9 @@ export function ProjectView({
               const runMayFinalize =
                 !supersededRunsRef.current.has(controller);
               keepManualFileWritesForRecovery = genericDisconnect && runMayFinalize;
-              if (runMayFinalize && isActiveRunStatus(status.status)) {
+              if (runMayFinalize && isActiveRunStatus(status.status) && (message.agentId ?? status.agentId) === 'amr') {
                 showAmrFundingFailure({
-                  code: errorCode, runKey: activeReattachRunId, conversationId: reattachConversationId,
+                  code: errorCode, runKey: message.id, conversationId: reattachConversationId,
                   authorityKey: projectRunAuthorityKey,
                   accountGeneration: reattachAccountGeneration,
                 });
@@ -8855,6 +8873,28 @@ export function ProjectView({
         return nextVisibleMessages;
       });
       markStreamingConversation(runConversationId);
+      let fundingHintRelevant = true;
+      const retireFundingHint = () => {
+        if (!fundingHintRelevant) return;
+        fundingHintRelevant = false;
+        setAmrBalanceGateBlock((previous) => previous?.fundingSource === 'preflight'
+          && previous.fundingRunKey === assistantId ? null : previous);
+      };
+      if (config.mode === 'daemon' && assistantAgentId === 'amr') {
+        const modelId = effectiveAgentModelId(selectedAgent, selectedAgentChoice);
+        // Start alongside send preparation, before any agent spawn or run POST.
+        // A stalled/unsupported preflight has no effect on sending.
+        void checkAmrFundingFeedback(amrBalanceCardScope, modelId).then((result) => {
+          if (result !== 'insufficient' || !fundingHintRelevant ||
+            streamingConversationIdRef.current !== runConversationId ||
+            memoryTurnAssistantRef.current?.assistantId !== assistantId) return;
+          showAmrFundingFailure({
+            code: AMR_INSUFFICIENT_BALANCE_CODE, runKey: assistantId,
+            conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+            accountGeneration: sendAccountGeneration, source: 'preflight', modelId,
+          });
+        });
+      }
       /**
        * 把刚画出去的那一轮收回 —— 只有预检拒绝时才走这里。
        *
@@ -8863,6 +8903,7 @@ export function ProjectView({
        * 进行中标记仍要清 —— 它是按会话 id 认领的,清的就是这一条。
        */
       const retractPaintedTurn = () => {
+        retireFundingHint();
         const restore = paintedFrom.messages;
         paintedFrom.messages = null;
         clearStreamingMarker(runConversationId);
@@ -9621,6 +9662,7 @@ export function ProjectView({
       cancelRef.current = cancelController;
       const handlers = {
         onDelta: (delta: string) => {
+          if (delta.trim()) retireFundingHint();
           // See reattach-path comment above for rationale.  PR #4651 round 9.
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
@@ -9631,6 +9673,7 @@ export function ProjectView({
           textBuffer.appendContent(delta);
         },
         onAgentEvent: (ev: AgentEvent) => {
+          if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use') retireFundingHint();
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
             genericDisconnectRetriesRef.current.delete(currentRunId);
@@ -9692,6 +9735,7 @@ export function ProjectView({
           });
         },
         onDone: (fullText = '') => {
+          retireFundingHint();
           liveFocusClosed = true;
           // The daemon delivers onDone even for a canceled run, so a run
           // superseded by a "send now" interrupt can still land here and must
@@ -10005,6 +10049,8 @@ export function ProjectView({
           // this stale pre-probe timestamp.
           let endedAt = Date.now();
           const errorCode = (err as Error & { code?: string }).code;
+          if (errorCode !== AMR_INSUFFICIENT_BALANCE_CODE) retireFundingHint();
+          else fundingHintRelevant = false;
           const resumable = (err as Error & { resumable?: boolean }).resumable === true;
           let finalRunStatusAfterError: ChatMessage['runStatus'] = 'failed';
           let refreshConversationAfterError = false;
@@ -10025,9 +10071,9 @@ export function ProjectView({
           // tagged superseded. See the onDone above for the ownership rationale.
           const runMayFinalize =
             !supersededRunsRef.current.has(controller);
-          if (runMayFinalize) {
+          if (runMayFinalize && config.mode === 'daemon' && assistantAgentId === 'amr') {
             showAmrFundingFailure({
-              code: errorCode, runKey: currentRunId ?? assistantId,
+              code: errorCode, runKey: assistantId,
               conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
               accountGeneration: sendAccountGeneration,
             });
@@ -10850,6 +10896,7 @@ export function ProjectView({
       projectMutationReadOnly,
       projectWorkspaceScopeState.scope,
       showAmrFundingFailure,
+      amrBalanceCardScope,
     ],
   );
 

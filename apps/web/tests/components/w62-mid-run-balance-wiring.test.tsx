@@ -31,6 +31,7 @@ import { resetWorkspaceContextCache } from '../../src/collab/useWorkspaceContext
 import { advanceWorkspaceAccountGeneration, resetWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 import { fetchAmrWalletSnapshot, fetchChatRunStatus, reattachDaemonRun, streamViaDaemon } from '../../src/providers/daemon';
 import { checkAmrBalanceGate } from '../../src/runtime/amr-balance-gate';
+import { checkAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
 import {
   createConversation,
   listConversations,
@@ -169,6 +170,10 @@ vi.mock('../../src/runtime/amr-balance-gate', async () => {
 
 vi.mock('../../src/providers/project-events', () => ({
   useProjectFileEvents: vi.fn(),
+}));
+
+vi.mock('../../src/runtime/amr-funding-feedback', () => ({
+  checkAmrFundingFeedback: vi.fn().mockResolvedValue('unknown'),
 }));
 
 // 呈现层曾经用 `isPaidAmrPlan(await resolveAmrPlan(...))` 把免费档的告警滤掉。
@@ -547,6 +552,7 @@ describe('跑到一半余额不足:谁点亮升级卡', () => {
     // 发送前那道闸门放行 —— 这一页要的正是「闸门看不出问题,run 起来了,
     // 跑到一半才死在钱上」那一格。
     mockedCheckAmrBalanceGate.mockResolvedValue({ kind: 'allow' });
+    vi.mocked(checkAmrFundingFeedback).mockResolvedValue('unknown');
     workspaceScopeMocks.projectScope = { loading: true, scope: null };
     workspaceScopeMocks.ambientContext = CALLER_CONTEXT;
     projectCollabMocks.writerAuthority = 'allowed';
@@ -581,6 +587,45 @@ describe('跑到一半余额不足:谁点亮升级卡', () => {
     failMidRunWith('AMR_INSUFFICIENT_BALANCE');
     await sendOnce();
     await waitFor(() => expect(screen.queryByTestId('amr-balance-dialog')).not.toBeNull());
+  });
+
+  it('shows independent funding feedback while agent startup is still pending, without cancellation', async () => {
+    vi.mocked(checkAmrFundingFeedback).mockResolvedValue('insufficient');
+    mockedStreamViaDaemon.mockImplementation(() => new Promise(() => {}));
+    await sendOnce();
+    await screen.findByTestId('amr-balance-dialog');
+    const options = mockedStreamViaDaemon.mock.calls[0]![0];
+    expect(options.signal?.aborted).toBe(false);
+    expect(options.cancelSignal?.aborted).toBe(false);
+    expect(screen.getByTestId('failed-assistant-id').textContent).toBe('');
+  });
+
+  it('starts the run while preflight is pending and ignores its negative result after output', async () => {
+    let finish!: (result: 'insufficient') => void;
+    vi.mocked(checkAmrFundingFeedback).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    mockedStreamViaDaemon.mockImplementation(() => new Promise(() => {}));
+    await sendOnce();
+    const options = mockedStreamViaDaemon.mock.calls[0]![0];
+    await act(async () => {
+      options.handlers.onDelta('The task is already generating.');
+      finish('insufficient');
+    });
+    expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
+    expect(options.cancelSignal?.aborted).toBe(false);
+  });
+
+  it('does not check funding for a local agent', async () => {
+    mockedStreamViaDaemon.mockImplementation(() => new Promise(() => {}));
+    renderProjectView({
+      project: { ...project(), pendingPrompt: null } as never,
+      config: { ...config, agentId: 'codex' },
+      agents: [{ id: 'codex', name: 'Codex', available: true }] as unknown as AgentInfo[],
+    });
+    const send = await screen.findByTestId('normal-send');
+    await waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(send);
+    await waitFor(() => expect(mockedStreamViaDaemon).toHaveBeenCalled());
+    expect(checkAmrFundingFeedback).not.toHaveBeenCalled();
   });
 
   it('does not reopen a dismissed dialog when the same run reports its failure again', async () => {
