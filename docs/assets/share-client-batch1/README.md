@@ -13,7 +13,7 @@ The top 40 pixels were cropped from both screenshots to exclude account status. 
 
 ## Reproducible red/green tests
 
-The current regression tests were copied into a detached worktree of the pinned main-derived base `a8dfb3a48cf49cb7ad658218b7caefbc9f739daa`, without any production fixes. The assertions reproduce:
+The current regression tests were copied into a detached worktree of the pinned `feat/share-comment-p0` base `a8dfb3a48cf49cb7ad658218b7caefbc9f739daa`, without any production fixes. The assertions reproduce:
 
 | Test | Base | Fixed branch |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ The current regression tests were copied into a detached worktree of the pinned 
 | `OPEND-3691 keeps the exact panel continuation above the project authorization remount` | Expected index.html, received none | Pass |
 | `OPEND-3722 settles a deleted Team route instead of restarting absence resolution on its own list read` | No alert; Loading workspace remains | Pass; finite retry budget and terminal feedback |
 
-The base reproduction has seven failing targeted assertions overall (two daemon, five web, including the parent-cancelled continuation case). This is a pinned-base comparison, **not a claim that the latest main was tested**.
+The base reproduction has seven failing targeted assertions overall (two daemon, five web, including the parent-cancelled continuation case). This is a pinned-feature-base comparison, **not a claim that the latest target head or main was tested**. The PR targets `feat/share-comment-p0`, like the preceding share fixes; main does not yet contain this share implementation.
 
 Fixed-branch commands:
 
