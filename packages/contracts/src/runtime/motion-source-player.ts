@@ -21,7 +21,7 @@ window.__odValidateMotionTimeline = function (root, tl) {
 // Shared by URL previews, srcdoc previews and the persisted editable source.
 // The renderer installs its flag before author scripts; it never sees chrome,
 // layout scaling, poster seeking, or wall-clock playback from this runtime.
-const PLAYER = `<script data-od-motion-source-player>
+const PLAYER = `<script data-od-motion-source-player="2">
 ${MOTION_TIMELINE_CHECK_SCRIPT}
 (function () {
   function boot() {
@@ -36,10 +36,34 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
     host.setAttribute('data-od-motion-controls', '');
     host.style.cssText = 'position:fixed;inset:auto 0 0;z-index:2147483647;height:52px;display:block';
     var shadow = host.attachShadow({mode:'open'});
-    shadow.innerHTML = '<style>:host{color-scheme:dark}*{box-sizing:border-box}.bar{height:52px;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#17191d;color:#fff;font:13px system-ui}button{border:1px solid #626772;border-radius:6px;background:#252932;color:white;padding:6px 10px;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #8bb8ff}input{min-width:40px;flex:1;accent-color:#2f6feb}output{white-space:nowrap}</style><div class="bar"><button id="play" disabled>播放</button><button id="replay" disabled>重播</button><input aria-label="播放进度" type="range" min="0" max="1" step="0.01" value="0" disabled><output role="status">正在加载动效…</output></div>';
+    shadow.innerHTML = '<style>:host{color-scheme:dark}*{box-sizing:border-box}.bar{height:52px;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#17191d;color:#fff;font:13px system-ui}button{border:1px solid #626772;border-radius:6px;background:#252932;color:white;padding:6px 10px;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #8bb8ff}input{min-width:40px;flex:1;accent-color:#2f6feb}output{white-space:nowrap}</style><div class="bar"><button id="play" disabled>播放</button><button id="replay" disabled>重播</button><button id="sound" hidden aria-pressed="false">静音</button><input aria-label="播放进度" type="range" min="0" max="1" step="0.01" value="0" disabled><output role="status">正在加载动效…</output></div>';
     document.body.appendChild(host);
     var play = shadow.getElementById('play'), replay = shadow.getElementById('replay');
     var slider = shadow.querySelector('input'), status = shadow.querySelector('output');
+    var sound = shadow.getElementById('sound');
+    var tracks = Array.prototype.map.call(root.querySelectorAll('audio[src]'), function (audio) {
+      audio.pause(); audio.autoplay = false;
+      return { audio: audio, start: Number(audio.dataset.start || 0), duration: Number(audio.dataset.duration), volume: Number(audio.dataset.volume || 1), pending: false };
+    });
+    var muted = false, audioError = '';
+    sound.hidden = tracks.length === 0;
+    sound.onclick = function () { muted = !muted; sound.textContent = muted ? '开启声音' : '静音'; sound.setAttribute('aria-pressed', String(muted)); tracks.forEach(function (track) { track.audio.muted = muted; }); };
+    function syncAudio(time, playing, force) {
+      tracks.forEach(function (track) {
+        var audio = track.audio, local = time - track.start;
+        var active = local >= 0 && local < track.duration;
+        audio.volume = Math.max(0, Math.min(1, track.volume)); audio.muted = muted;
+        if (!active || !playing) audio.pause();
+        var target = Math.max(0, Math.min(track.duration, local));
+        if (audio.readyState > 0 && (force || Math.abs(audio.currentTime - target) > .2)) audio.currentTime = target;
+        if (active && playing && audio.paused && !track.pending) {
+          track.pending = true;
+          var promise = audio.play();
+          if (promise) promise.catch(function (error) { if (error && error.name === 'AbortError') return; audioError = '音频无法播放，请检查素材或点击播放重试'; }).finally(function () { track.pending = false; });
+          else track.pending = false;
+        }
+      });
+    }
     var fitStyle = document.createElement('style');
     fitStyle.textContent = 'html,body{width:100% !important;height:100% !important;margin:0 !important;overflow:hidden !important}';
     document.head.appendChild(fitStyle);
@@ -65,14 +89,14 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
       slider.max = String(duration);
       // Render a useful still without overriding authored onUpdate callbacks.
       tl.pause(); tl.seek(Math.min(0.5, duration / 10), false);
-      play.onclick = function () { if (tl.paused() || tl.time() >= duration) { if (tl.time() >= duration) tl.seek(0, false); tl.play(); } else tl.pause(); };
-      replay.onclick = function () { tl.pause(); tl.seek(0, false); tl.play(); };
-      slider.oninput = function () { tl.pause(); tl.seek(Number(slider.value), false); };
+      play.onclick = function () { audioError = ''; if (tl.paused() || tl.time() >= duration) { if (tl.time() >= duration) tl.seek(0, false); tl.play(); } else tl.pause(); syncAudio(tl.time(), !tl.paused(), true); };
+      replay.onclick = function () { audioError = ''; tl.pause(); tl.seek(0, false); tl.play(); syncAudio(0, true, true); };
+      slider.oninput = function () { tl.pause(); tl.seek(Number(slider.value), false); syncAudio(tl.time(), false, true); };
       function update() {
         if (!host.isConnected) return;
-        var time = tl.time(); slider.value = String(time);
+        var time = tl.time(); slider.value = String(time); syncAudio(time, !tl.paused() && time < duration, false);
         play.textContent = tl.paused() || time >= duration ? '播放' : '暂停';
-        status.textContent = time.toFixed(1) + ' / ' + duration.toFixed(1) + ' s';
+        status.textContent = audioError || (time.toFixed(1) + ' / ' + duration.toFixed(1) + ' s');
         setTimeout(update, tl.paused() || time >= duration ? 200 : 33);
       }
       update();
@@ -86,8 +110,13 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
 export function injectMotionSourcePlayer(html: string): string {
   // Runtime checks the actual DOM too; these prefilters avoid adding code to
   // ordinary prototypes/decks and do not mistake JS samples for HTML tags.
-  if (findRealTagOffset(html, /<[^/!][^>]*\bdata-composition-id\s*=/i) < 0
-    || findRealTagOffset(html, /<script\b[^>]*\bdata-od-motion-source-player\b/i) >= 0) return html;
+  if (findRealTagOffset(html, /<[^/!][^>]*\bdata-composition-id\s*=/i) < 0) return html;
+  const existing = findRealTagOffset(html, /<script\b[^>]*\bdata-od-motion-source-player\b/i);
+  if (existing >= 0) {
+    const script = /^<script\b[^>]*>[\s\S]*?<\/script\s*>/i.exec(html.slice(existing));
+    if (!script || /data-od-motion-source-player="2"/.test(script[0])) return html;
+    return html.slice(0, existing) + PLAYER + html.slice(existing + script[0].length);
+  }
   const end = findRealTagOffset(html, HTML_TAG_PATTERNS.bodyClose);
   return end < 0 ? html + PLAYER : html.slice(0, end) + PLAYER + html.slice(end);
 }

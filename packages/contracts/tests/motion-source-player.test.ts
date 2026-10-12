@@ -18,6 +18,22 @@ describe('motion source player boundaries', () => {
   });
 });
 
+describe('motion audio contract isolation', () => {
+  it('accepts optional video audio decisions but rejects audio on interactive motion', () => {
+    for (const audio of ['required', 'silent']) {
+      expect(MotionDeliveryContractSchema.safeParse({ mode: 'video', sourcePath: 'index.html', videoPath: 'film.mp4', audio }).success).toBe(true);
+      expect(MotionDeliveryContractSchema.safeParse({ mode: 'interactive', sourcePath: 'index.html', audio }).success).toBe(false);
+    }
+  });
+  it('upgrades an existing host player without duplicating it', () => {
+    const source = '<div data-composition-id="main"></div><script data-od-motion-source-player>oldPlayer();</script>';
+    const result = injectMotionSourcePlayer(source);
+    expect(result).not.toContain('oldPlayer');
+    expect(result).toContain('data-od-motion-source-player="2"');
+    expect(injectMotionSourcePlayer(result)).toBe(result);
+  });
+});
+
 describe('frozen motion output paths', () => {
   it.each(['../escape.mp4', '/absolute.mp4', 'https://host/video.mp4', 'clip.mp4?x=1', 'dir/../clip.mp4'])('rejects unsafe video path %s', (videoPath) => {
     expect(MotionDeliveryContractSchema.safeParse({ mode:'video', sourcePath:'source/index.html', videoPath }).success).toBe(false);

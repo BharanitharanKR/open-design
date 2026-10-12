@@ -2,6 +2,21 @@ import type { MotionDeliveryContract } from '@open-design/contracts';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
+import { execFile } from 'node:child_process';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import { prepareHyperFramesAudio } from '../media/hyperframes-audio.js';
+
+/** Only called for explicitly contracted audible motion videos. */
+function hasAudibleTrack(file: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile(process.env.HYPERFRAMES_FFMPEG_PATH?.trim() || ffmpegInstaller.path,
+      ['-hide_banner', '-i', file, '-map', '0:a:0', '-af', 'volumedetect', '-f', 'null', '-'],
+      { timeout: 30_000, maxBuffer: 128 * 1024 }, (error, _stdout, stderr) => {
+        const peak = /max_volume:\s*(-?[\d.]+) dB/.exec(stderr);
+        resolve(!error && !!peak && Number(peak[1]) > -80);
+      });
+  });
+}
 
 /** The frozen plan owns delivery mode and exact paths; HTML cannot downgrade it.
  * This checks existence/identity, not visual quality or model claims. */
@@ -31,8 +46,15 @@ export async function validateMotionDelivery(input: {
     try {
       const header = Buffer.alloc(12);
       const { bytesRead } = await handle.read(header, 0, header.length, 0);
-      return bytesRead === 12 && header.toString('ascii', 4, 8) === 'ftyp'
+      const valid = bytesRead === 12 && header.toString('ascii', 4, 8) === 'ftyp'
         && (await handle.stat()).size > 32;
+      if (!valid) return false;
+      if (input.contract.audio === 'required') {
+        const { tracks } = await prepareHyperFramesAudio(await fs.readFile(source, 'utf8'), path.dirname(source));
+        if (!tracks.some((track) => track.volume > 0)) return false;
+        return await hasAudibleTrack(realTarget);
+      }
+      return input.contract.audio !== 'silent' || $('audio').length === 0;
     } finally {
       await handle.close();
     }
