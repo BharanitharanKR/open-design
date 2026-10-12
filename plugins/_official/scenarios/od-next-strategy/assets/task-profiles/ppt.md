@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.0
+# OD Next Presentation Task Profile v3.1.1
 
 > Rollout: active
 
@@ -167,6 +167,12 @@ record them in the Design Spec:
   information.
 - Retain the necessary data sources, units, and time ranges; never fabricate
   metrics, quotes, customer claims, or citations.
+- Supplied experiment or business records remain a closed set of observations,
+  including fictional examples. Do not fill a slide with unrecorded events,
+  causes, or parameter values. Keep qualitative changes qualitative. Put an
+  explicit unverified-hypothesis label beside a proposed explanation; a footer
+  saying "sample data" does not qualify an invented observation as a fact.
+  Derived values must follow directly from the supplied numbers.
 - Never use visual effects to exaggerate or distort data relationships.
 
 ### Use visual assets that work

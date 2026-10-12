@@ -1,4 +1,4 @@
-# OD Next HyperFrames Task Profile v3.1.0
+# OD Next HyperFrames Task Profile v3.1.1
 
 > Rollout: active
 
@@ -79,6 +79,12 @@ scope; this profile's defaults fill in only what has not been specified.
   sustain high-intensity change end to end.
 - Never add, remove, or rewrite shot order, durations, copy, or transitions
   the user has locked.
+- A requested hold or freeze starts at its specified boundary, for every
+  visible property, including glow, opacity, background, particles, and camera.
+  Work backward from that boundary when choosing tween start and duration;
+  finish all motion by the hold start. Do not let decorative loops or easing
+  tails run into the hold. Keep the timeline's total duration through the end
+  of the hold without adding further visual changes.
 
 ### Give every motion a reason
 

@@ -1,10 +1,12 @@
-# OD Next WebGL Task Profile v3.1.1
+# OD Next WebGL Task Profile v3.1.2
 
 Deliver HTML with actual GPU, shader, or 3D interaction, with route=webgl-html and kind=interactive. Choose a WebGL technique appropriate to the request; a static image is not a real-time effect.
 
 Use canvas.getContext('webgl2'), with a readable unsupported-capability message or working webgl fallback when necessary. Record shader compilation errors, cap DPR at 2, and update canvas resolution and viewport on resize. Manage animation through requestAnimationFrame, reduce work when the page is hidden, and release unused GPU resources. Keep text overlays readable and keyboard-accessible.
 
 Separate the camera from the subject: when the model is at the origin, move the view an appropriate distance away instead of placing the camera inside geometry. Adapt framing to the canvas aspect ratio, keeping the subject fully visible with margins. Stop unnecessary drawing while paused and resume animation afterward. Pause requestAnimationFrame when the page is hidden to avoid continuous background GPU use.
+
+Derive camera framing from the combined world-space bounds of all subject meshes after their transforms, excluding decorative floors or backgrounds. Orbit around the bounds center. For perspective framing, a conservative rotation-safe choice is a bounding sphere of radius `r` and distance at least `1.15 * r / sin(min(verticalFov, horizontalFov) / 2)`, where `horizontalFov = 2 * atan(tan(verticalFov / 2) * aspect)`. Use the actual canvas aspect, keep near/far planes outside the sphere, and recompute on resize. Initial, reset, and automatic/drag rotation views must preserve these bounds; do not substitute guessed half-widths or an origin-centered camera for the actual subject bounds. Reserve space for overlays so a fitted subject is not hidden behind controls.
 
 Prefer one self-contained HTML file; declare and bundle Worker/WASM dependencies when actually needed. The host recognizes WebGL/Worker/SharedArrayBuffer and supplies powered preview; do not bypass its sandbox. Meet quality and performance boundaries appropriate to the request, then deliver without claiming extra GPU compatibility testing.
 

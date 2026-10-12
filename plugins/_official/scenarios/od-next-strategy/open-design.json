@@ -47,7 +47,7 @@
           {
             "taskType": "prototype",
             "path": "./assets/task-profiles/prototype.md",
-            "version": "3.1.1",
+            "version": "3.1.2",
             "rollout": "active",
             "projectKinds": [
               "prototype"
@@ -74,7 +74,7 @@
           {
             "taskType": "ppt",
             "path": "./assets/task-profiles/ppt.md",
-            "version": "3.1.0",
+            "version": "3.1.1",
             "rollout": "active",
             "projectKinds": [
               "deck"
@@ -92,7 +92,7 @@
           {
             "taskType": "hyperframes",
             "path": "./assets/task-profiles/hyperframes.md",
-            "version": "3.1.0",
+            "version": "3.1.1",
             "rollout": "active",
             "projectKinds": [
               "video"
@@ -109,15 +109,15 @@
             "resources": [
               {
                 "path": "./assets/task-profiles/prototype.md",
-                "version": "3.1.1"
+                "version": "3.1.2"
               },
               {
                 "path": "./assets/task-profiles/ppt.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/document.md",
-                "version": "3.1.1"
+                "version": "3.1.2"
               },
               {
                 "path": "./assets/task-profiles/image.md",
@@ -129,11 +129,11 @@
               },
               {
                 "path": "./assets/task-profiles/hyperframes.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/webgl.md",
-                "version": "3.1.1"
+                "version": "3.1.2"
               },
               {
                 "path": "./assets/task-profiles/live-artifact.md",
@@ -141,7 +141,7 @@
               },
               {
                 "path": "./assets/task-profiles/video.md",
-                "version": "3.1.1"
+                "version": "3.1.2"
               },
               {
                 "path": "./assets/task-profiles/audio.md",

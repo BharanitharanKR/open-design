@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.1
+# OD Next Prototype Task Profile v3.1.2
 
 > Rollout: active
 
@@ -167,6 +167,11 @@ fact and quotes its source in `device-frame-shell`.
   styles and behavior. Do not reconstruct the shell from memory or copy only
   its body: its head styles, safe-area variables, system chrome, and responsive
   fallback are required together. Keep them intact when adding layout.css.
+- Add product tokens in a separate `:root` block; never replace the shell's
+  existing block. Preserve every `--phone-*` definition and its references,
+  especially screen dimensions, bezel, radii, and safe areas. A new palette
+  must not remove geometry defaults. Keep `.phone-content` safe-area padding
+  outside the app's own header and scroll layout, including below 480px.
 - One handset persists across the whole prototype. Screen navigation and hash
   routes swap the content inside the screen; a new handset per route appears
   only when the user asks for a side-by-side board.

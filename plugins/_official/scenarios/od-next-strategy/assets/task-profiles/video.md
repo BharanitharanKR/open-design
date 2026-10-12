@@ -1,4 +1,4 @@
-# OD Next Video Task Profile v3.1.1
+# OD Next Video Task Profile v3.1.2
 
 Deliver an actual playable MP4. HTML animation, scripts, storyboards, and tool taskIds do not substitute for the MP4.
 
@@ -32,3 +32,4 @@ The model catalog lists supported models, not proof of configured providers or a
 - For local motion graphics, preserve the scaffold's fixed canvas, data-duration, paused timeline, and window.__timelines registration. Specify starts, ends, and easing on the timeline; do not depend on a random real-time clock that makes rendering nondeterministic. Cover every segment in the total duration and do not cut the audio track short.
 - Preserve input-image aspect ratios and complete subjects. Use reference images when supported for generative shots. Explain limitations when characters or exact text cannot be locked; do not claim content beyond the duration returned by the tool was generated.
 - Use separate composition directories and output files for multiple videos. Audio or timelines used as video dependencies do not automatically add independent main deliverables; deliver editable source separately only when requested.
+- Keep requested settings distinct from observed output metadata in the final reply. A generation request for a duration does not prove an exact file duration. Use returned metadata when available; otherwise describe the duration as a target or approximate and do not invent a measurement. Likewise, "no audible sound" and "no audio track" are different claims: a silent track may exist. Claim a track is absent only when output metadata establishes that fact. Do not claim playback or inspection that did not happen.
