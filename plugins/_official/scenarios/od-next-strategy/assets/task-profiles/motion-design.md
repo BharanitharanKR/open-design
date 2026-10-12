@@ -31,7 +31,8 @@ Follow the active host's task route, stage, capability, and delivery contract.
 This skill supplies motion craft; it does not create tool access or change the
 host's workflow. In OD Next, retain its Core, general orchestration, machine
 blocks, and ship-on-write boundary. Plan during planning; author during Build.
-Do not add a post-generation quality-review phase. For a video brief (a timed
+Do not add a general quality-review phase. Only a frozen `motionDelivery.mode=video`
+contract permits the bounded video check below. For a video brief (a timed
 film, promo, explainer or showreel), declare BOTH editable HTML source and MP4
 as required deliverables. Rendering the MP4 is Build production and must finish
 before delivery. For pointer/scroll-driven interaction or UI micro-animation,
@@ -210,6 +211,24 @@ window.__timelines = { main: tl };
 
 This is a protocol skeleton, not a finished visual template. Author the real
 composition. Root duration, timeline duration, aspect and the brief must agree.
+Use real seconds: the master timeline must keep `timeScale(1)`, no repeat or
+start delay, and its actual `duration()` must equal `data-duration`. The setter
+`tl.duration(seconds)` changes playback speed; it does NOT add a reading hold.
+Use the full-length clock tween above, and keep all tracks within its duration.
+The player and renderer reject inconsistent video clocks before export.
+
+For SVG pop/scale entrances, establish a shared origin BEFORE the from state.
+Animate a common group for related shapes (a disk and its shading), or set the
+same `svgOrigin` in both states. Do not set it only in the destination: GSAP
+smooth-origin compensation can offset shapes with different bounding boxes.
+
+```js
+function popShape(tl, node, cx, cy, at, duration = 0.45) {
+  const svgOrigin = cx + ' ' + cy;
+  tl.fromTo(node, { scale: 0, svgOrigin },
+    { scale: 1, svgOrigin, duration, ease: 'back.out(2)' }, at);
+}
+```
 Use the actual composition id consistently. Register timelines before signalling
 readiness; all image/font dependencies need a known ready state. Keep assets
 local when possible and avoid relying on inaccessible remote URLs.
@@ -281,8 +300,23 @@ prototype does not turn it into a video request.
 
 If the host reports a renderer failure, preserve the editable source and report
 that blocker truthfully. Never fabricate a download or label HTML-only output
-as a finished video. Rendering to produce the deliverable does not authorize a
-post-generation playback/review loop.
+as a finished video. Only the frozen video contract permits this bounded check:
+
+- During planning, retain factual invariants and exact required copy in the
+  existing Design Spec/beat map. An explainer must preserve the causal mechanism
+  and exceptions when shortening subtitles; decorative metaphors are not facts.
+- After the first render, perform one review of the actual source and exported
+  video: check the clock/dimensions, compare captions against those invariants,
+  and inspect at most three representative frames (opening, key explanation,
+  ending). Check related SVG shapes stay aligned. Use available host/browser/
+  frame tools and actually view the images; source reading alone is not visual
+  evidence. Do not claim a check that tool access did not allow.
+- If that review or the renderer identifies a concrete defect, make at most one
+  targeted repair and re-render; recheck only the affected facts/frames. If still
+  incorrect or unverifiable, report the limitation instead of certifying it.
+- Do not spawn acceptance agents, score aesthetics, add a separate pipeline
+  stage, or repeat an open-ended polish loop. Interactive motion, prototypes,
+  slides, documents and other tasks keep their existing ship-on-write policy.
 
 ## Quality while composing
 

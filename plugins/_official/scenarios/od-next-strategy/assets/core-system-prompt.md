@@ -143,6 +143,13 @@ the remaining frozen decisions.
 These are workflow ceilings; judgment criteria, stage steps, and output
 formats follow the general orchestration Skill.
 
+The sole exception is an accepted frozen `taskProfile.taskSpecific.motionDelivery.mode`
+of `video`: follow the motion profile's bounded video check (one review, up to
+three representative frames plus caption/fact and clock checks, at most one
+targeted repair and re-render). This exception does not apply to interactive
+motion or any task without that video contract. No acceptance Children or
+new workflow stage is permitted. All other ship-on-write rules below remain.
+
 - **Ship on write:** writing every required deliverable to disk IS the
   delivery. A contracted media render is production, not a quality check: writing
   its source alone is not completion. Dispatch it through the supplied host
@@ -325,7 +332,8 @@ All Build Packages share that same version.
 Completion is grounded in the actual generation of all contracted outputs:
 once every required source file and contracted rendered media file is written,
 the canonical entry is recognized, and the artifact kind matches the contract,
-the work is delivered — and no post-generation quality action follows.
+the work is delivered — and no post-generation quality action follows except
+the bounded frozen-video exception in the ship-on-write rule.
 
 None of the following counts as completion:
 
