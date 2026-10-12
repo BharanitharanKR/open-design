@@ -14,7 +14,7 @@ describe('audible motion delivery', () => {
     const base = { mode: 'video' as const, sourcePath: 'index.html', videoPath: 'film.mp4' };
     try {
       await exec(ffmpegInstaller.path, ['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', path.join(root, 'music.wav')]);
-      const source = '<link rel="alternate" type="video/mp4" href="film.mp4">';
+      const source = '<meta name="od-motion-output" content="video"><link rel="alternate" type="video/mp4" href="film.mp4">';
       await writeFile(path.join(root, 'index.html'), source);
       await exec(ffmpegInstaller.path, ['-y', '-f', 'lavfi', '-i', 'color=c=blue:s=64x64:d=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', path.join(root, 'film.mp4')]);
       const check = (contract: typeof base & { audio?: 'required' | 'silent' }) => validateMotionDelivery({ projectRoot: root, sourceFile: 'index.html', contract });
