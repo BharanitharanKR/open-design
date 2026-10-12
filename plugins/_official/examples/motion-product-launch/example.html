@@ -286,7 +286,15 @@ document.fonts.load('700 100px Space').then(() => render(tl.time()), () => rende
 const main = document.getElementById('main');
 const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub'), tcEl = document.getElementById('tc');
 function fit() { const s = Math.min(window.innerWidth / CFG.w, window.innerHeight / CFG.h); main.style.transform = 'translate(-50%,-50%) scale(' + s + ')'; }
+// Inside an Open Design project the motion source player wraps the stage,
+// fits it and adds its own controls; leave both to it there.
+const hostPlayer = () => window.__odMotionSourcePlayer || main.parentElement.id !== 'viewport';
+const ownFit = fit;
+fit = function () { if (hostPlayer()) { main.style.transform = 'translate(-50%,-50%)'; return; } ownFit(); };
 window.addEventListener('resize', fit); fit();
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+  fit(); if (hostPlayer()) document.getElementById('controls').style.display = 'none';
+}, 0));
 function sync() {
   const t = tl.time();
   scrub.value = t; tcEl.textContent = t.toFixed(2) + ' / ' + CFG.duration.toFixed(2);
