@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
-  "collab.contentUpdate.check": "클라우드 업데이트 확인",
+  "collab.contentUpdate.available": "클라우드에 새 버전이 있습니다",
   "collab.contentUpdate.updating": "업데이트 중…",
   "collab.contentUpdate.askAgain": "업데이트 전에 확인",
   "collab.contentUpdate.title": "클라우드 업데이트가 있습니다",

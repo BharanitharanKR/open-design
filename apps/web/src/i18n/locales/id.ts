@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const id: Dict = {
-  "collab.contentUpdate.check": "Periksa pembaruan cloud",
+  "collab.contentUpdate.available": "Versi cloud baru tersedia",
   "collab.contentUpdate.updating": "Memperbarui…",
   "collab.contentUpdate.askAgain": "Tanya sebelum memperbarui",
   "collab.contentUpdate.title": "Pembaruan cloud tersedia",

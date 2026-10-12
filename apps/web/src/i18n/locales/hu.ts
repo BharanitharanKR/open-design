@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
-  "collab.contentUpdate.check": "Felhőfrissítések keresése",
+  "collab.contentUpdate.available": "Új felhőverzió",
   "collab.contentUpdate.updating": "Frissítés…",
   "collab.contentUpdate.askAgain": "Kérdezzen frissítés előtt",
   "collab.contentUpdate.title": "Felhőfrissítés érhető el",

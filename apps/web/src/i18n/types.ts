@@ -4008,7 +4008,7 @@ export interface Dict {
   'fileViewer.versions.countMany': string;
   'fileViewer.versions.current': string;
   'fileViewer.versions.sourceAi': string;
-  'collab.contentUpdate.check': string;
+  'collab.contentUpdate.available': string;
   'collab.contentUpdate.updating': string;
   'collab.contentUpdate.askAgain': string;
   'collab.contentUpdate.title': string;

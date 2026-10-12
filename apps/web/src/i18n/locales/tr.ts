@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const tr: Dict = {
-  "collab.contentUpdate.check": "Bulut güncellemelerini kontrol et",
+  "collab.contentUpdate.available": "Bulutta yeni sürüm var",
   "collab.contentUpdate.updating": "Güncelleniyor…",
   "collab.contentUpdate.askAgain": "Güncellemeden önce sor",
   "collab.contentUpdate.title": "Bulut güncellemesi mevcut",

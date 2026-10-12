@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const uk: Dict = {
-  "collab.contentUpdate.check": "Перевірити оновлення в хмарі",
+  "collab.contentUpdate.available": "Нова версія в хмарі",
   "collab.contentUpdate.updating": "Оновлення…",
   "collab.contentUpdate.askAgain": "Запитувати перед оновленням",
   "collab.contentUpdate.title": "Доступне оновлення з хмари",

@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
-  "collab.contentUpdate.check": "بررسی به‌روزرسانی ابری",
+  "collab.contentUpdate.available": "نسخه جدید ابری موجود است",
   "collab.contentUpdate.updating": "در حال به‌روزرسانی…",
   "collab.contentUpdate.askAgain": "پرسش پیش از به‌روزرسانی",
   "collab.contentUpdate.title": "به‌روزرسانی ابری موجود است",

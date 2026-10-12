@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
-  "collab.contentUpdate.check": "クラウドの更新を確認",
+  "collab.contentUpdate.available": "クラウドに新しいバージョンがあります",
   "collab.contentUpdate.updating": "更新中…",
   "collab.contentUpdate.askAgain": "更新前に確認する",
   "collab.contentUpdate.title": "クラウドに更新があります",

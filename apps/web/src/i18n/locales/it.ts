@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const it: Dict = {
-  "collab.contentUpdate.check": "Controlla aggiornamenti cloud",
+  "collab.contentUpdate.available": "Nuova versione cloud",
   "collab.contentUpdate.updating": "Aggiornamento…",
   "collab.contentUpdate.askAgain": "Chiedi prima degli aggiornamenti",
   "collab.contentUpdate.title": "Aggiornamento cloud disponibile",

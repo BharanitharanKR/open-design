@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const ar: Dict = {
-  "collab.contentUpdate.check": "التحقق من تحديثات السحابة",
+  "collab.contentUpdate.available": "يتوفر إصدار سحابي جديد",
   "collab.contentUpdate.updating": "جارٍ التحديث…",
   "collab.contentUpdate.askAgain": "السؤال قبل التحديث",
   "collab.contentUpdate.title": "يتوفر تحديث سحابي",

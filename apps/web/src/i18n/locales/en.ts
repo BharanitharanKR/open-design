@@ -1,11 +1,11 @@
 import type { Dict } from '../types';
 
 export const en: Dict = {
-  "collab.contentUpdate.check": "Check cloud updates",
+  "collab.contentUpdate.available": "Cloud update available",
   "collab.contentUpdate.updating": "Updating…",
   "collab.contentUpdate.askAgain": "Ask before updates",
   "collab.contentUpdate.title": "Cloud update available",
-  "collab.contentUpdate.description": "Replace this project with the latest cloud content? HTML can be recovered from local history; other overwritten files may be lost.",
+  "collab.contentUpdate.description": "Replace this project on this device with the latest cloud version? Pages can be restored from version history afterward; images and other files may not be recoverable.",
   "collab.contentUpdate.dontPrompt": "Do not ask again for this project for 24 hours",
   "collab.contentUpdate.later": "Not now",
   "collab.contentUpdate.replace": "Replace with cloud version",

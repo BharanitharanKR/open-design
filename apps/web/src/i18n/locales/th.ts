@@ -1,7 +1,7 @@
 import type { Dict } from '../types';
 
 export const th: Dict = {
-  "collab.contentUpdate.check": "ตรวจสอบการอัปเดตคลาวด์",
+  "collab.contentUpdate.available": "มีเวอร์ชันใหม่บนคลาวด์",
   "collab.contentUpdate.updating": "กำลังอัปเดต…",
   "collab.contentUpdate.askAgain": "ถามก่อนอัปเดต",
   "collab.contentUpdate.title": "มีการอัปเดตบนคลาวด์",

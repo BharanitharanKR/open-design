@@ -1,7 +1,7 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
-  "collab.contentUpdate.check": "檢查雲端更新",
+  "collab.contentUpdate.available": "雲端有新版本",
   "collab.contentUpdate.updating": "正在更新…",
   "collab.contentUpdate.askAgain": "恢復更新提示",
   "collab.contentUpdate.title": "雲端有新內容",

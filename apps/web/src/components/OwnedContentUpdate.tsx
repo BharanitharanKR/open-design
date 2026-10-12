@@ -29,10 +29,16 @@ export function OwnedContentUpdate({ update, request }: {
   const dismiss = () => void act({ action: 'dismiss', version: update?.latestVersion ?? undefined });
   return (
     <div className={styles.controls} data-testid="owned-content-update">
-      <Button size="sm" variant="ghost" disabled={downloading}
-        onClick={() => void act({ action: 'check', manual: true })}>
-        {downloading ? t('collab.contentUpdate.updating') : t('collab.contentUpdate.check')}
-      </Button>
+      {downloading ? (
+        <Button size="sm" variant="ghost" disabled>{t('collab.contentUpdate.updating')}</Button>
+      ) : update?.state === 'ignored' ? (
+        // Only a dismissed version earns a header entry; it re-offers the dialog.
+        <Button size="sm" variant="ghost" className={styles.available}
+          onClick={() => void act({ action: 'check', manual: true })}>
+          <span className={styles.dot} aria-hidden />
+          {t('collab.contentUpdate.available')}
+        </Button>
+      ) : null}
       {update?.autoApplyUntil ? (
         <Button size="sm" variant="ghost" disabled={downloading}
           onClick={() => void act({ action: 'reset-preference' })}>

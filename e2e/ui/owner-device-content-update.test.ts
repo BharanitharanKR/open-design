@@ -47,8 +47,8 @@ test('[P1] owner device offers page-entry and SSE updates with scoped 24h consen
     const entryCheck = b.waitForRequest(request => request.url().endsWith(`/api/projects/${id}/collab/update`) && request.method() === 'POST' && request.postDataJSON()?.action === 'check');
     await b.goto(`/projects/${id}/files/index.html`);
     const controls = b.getByTestId('owned-content-update');
-    await expect(controls).toBeVisible({ timeout: 60_000 });
     await entryCheck;
+    await expect(controls.getByRole('button')).toHaveCount(0);
     await b.screenshot({ path: testInfo.outputPath('owner-update-check-entry.png'), animations: 'disabled' });
     await testInfo.attach('Owner manual check entrypoint', { path: testInfo.outputPath('owner-update-check-entry.png'), contentType: 'image/png' });
     await expect(b.getByRole('alertdialog')).toHaveCount(0);
@@ -60,10 +60,14 @@ test('[P1] owner device offers page-entry and SSE updates with scoped 24h consen
     await testInfo.attach('Owner update entrypoint', { path: testInfo.outputPath('owner-update-entrypoint.png'), contentType: 'image/png' });
     await dialog.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(dialog).toHaveCount(0);
+    const badge = controls.getByRole('button', { name: 'Cloud update available' });
+    await expect(badge).toBeVisible();
+    await b.screenshot({ path: testInfo.outputPath('owner-update-badge.png'), animations: 'disabled' });
+    await testInfo.attach('Dismissed version badge', { path: testInfo.outputPath('owner-update-badge.png'), contentType: 'image/png' });
     await b.reload();
-    await expect(controls).toBeVisible({ timeout: 60_000 });
+    await expect(badge).toBeVisible({ timeout: 60_000 });
     await expect(dialog).toHaveCount(0);
-    await controls.getByRole('button', { name: 'Check cloud updates' }).click();
+    await badge.click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole('checkbox').check();
     await dialog.getByRole('button', { name: 'Replace with cloud version' }).click();
