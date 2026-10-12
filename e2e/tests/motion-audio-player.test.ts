@@ -7,8 +7,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
-import { injectMotionSourcePlayer } from '../../packages/contracts/src/runtime/motion-source-player';
-import { T } from '../lib/timeouts';
+import { injectMotionSourcePlayer } from '../../packages/contracts/src/runtime/motion-source-player.js';
+import { T } from '../lib/timeouts.js';
 const require = createRequire(import.meta.url);
 
 test('[P1] source sound follows play, pause, backward seek, timed effects and replay', async () => {
