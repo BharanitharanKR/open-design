@@ -68,16 +68,18 @@ frame expensive and slow the MP4 export.
 ## Sound
 `assets/soundtrack.mp3` is an original 20-second score made for this template
 and timed to its beats; no audio from the source video is used.
-The music is part of the look being remade. Apply the first rule that matches
-the brief:
+The music is part of the look being remade. These rules replace the general
+sound guidance for this remake; apply the first one that matches the brief:
 
-1. The user asks for no music: remove the `<audio>` element and do not copy the
-   file.
+1. The user asks for no music: remove the `<audio>` element, do not copy the
+   file, and freeze `motionDelivery.audio` as `silent`.
 2. The user supplies an audio file and asks to use it: copy it into the film's
    `assets/` and point `<audio id="soundtrack">` at it.
 3. Otherwise keep this score, including when the brief asks for different
    music, a genre or a mood. This flow cannot generate music: never generate,
    download or synthesize audio, and do not add voiceover.
+
+Under rules 2 and 3, freeze `motionDelivery.audio` as `required`.
 
 Keep `id="soundtrack"`, `data-start="0"` and a numeric `data-volume`. Set
 `data-duration` to the shorter of the music and the film (the film's length
