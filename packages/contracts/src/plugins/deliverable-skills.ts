@@ -1,4 +1,4 @@
-export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.3';
+export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.4';
 
 /** Main deliverable catalog. Describes outputs; never a machine-plan admission gate. */
 export const DELIVERABLE_SKILL_IDS = [
@@ -28,7 +28,7 @@ export const DELIVERABLE_SKILLS: readonly DeliverableSkillDefinition[] = [
   { id: 'web-clone', title: 'Web Clone', description: 'Rebuild pages from a specified URL or screenshot while preserving source attribution and authorization boundaries.', version: '3.1.1', routes: [{ id: 'web-clone-html', kind: 'prototype', extensions: ['html'] }] },
   { id: 'hyperframes', title: 'HyperFrames', description: 'Editable timeline-animation HTML source; declare a separate video deliverable when an actual MP4 is needed.', version: '3.1.0', routes: [{ id: 'hyperframes-html', kind: 'source', extensions: ['html'] }] },
   { id: 'webgl', title: 'WebGL', description: 'GPU, shaders, and interactive 3D delivered as real-time HTML.', version: '3.1.1', routes: [{ id: 'webgl-html', kind: 'interactive', extensions: ['html'] }] },
-  { id: 'live-artifact', title: 'Live Artifact', description: 'Views that refresh from local JSON or connected data, including task lists and dashboards; register the actual source, then refresh the same artifact without rebuilding its template.', version: '3.1.3', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
+  { id: 'live-artifact', title: 'Live Artifact', description: 'Views that refresh from local JSON or connected data, including task lists and dashboards; register the actual source, then refresh the same artifact without rebuilding its template.', version: '3.1.4', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
   { id: 'video', title: 'Video', description: 'Playable video files; deliver MP4 after media generation or declared animation rendering completes.', version: '3.1.1', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
   { id: 'audio', title: 'Audio', description: 'Narration, music, and sound effects delivered as actual audio files through media interfaces.', version: '3.1.1', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
 ];

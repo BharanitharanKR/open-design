@@ -1,4 +1,4 @@
-# OD Next Live Artifact Task Profile v3.1.3
+# OD Next Live Artifact Task Profile v3.1.4
 
 Use for refreshable dashboards and synchronized reports with route=live-artifact and kind=live. Resolve the real data source and refresh method first, using user-authorized local data or existing connectors. Do not describe static examples as live synchronization.
 
@@ -35,3 +35,22 @@ Report registration failures honestly and retain source files. Rendering source 
 - Every displayed field that changes with its source must update through sourceJson/outputMapping. A source containing only a task array can be displayed directly as a list. Do not hard-code initial total/completed counts into data.json and claim they refresh live. Omit derived metrics that cannot be recomputed reliably.
 - Binding supports escaped text and single-level repeat only: no nested loops, filters, or script expressions. Do not interpolate into script/style, event attributes, tag names, or srcdoc. Design the empty state in the original template: for example, repeated `.task-row` elements inside `.task-list`, an adjacent `.empty-state`, and CSS that shows the empty state when `.task-list` has no `.task-row`. An empty source array must render zero previous rows without editing the template or substituting sample data. Show understandable stale-data and read-failure states.
 - Initial registration and later updates both undergo host validation. Correct your input according to specific errors; do not bypass validation. Keep the last valid content when refresh fails, and do not label failure as synchronization success. Do not schedule refresh without user authorization.
+
+## Stable list and empty-state structure
+
+Put `data-od-repeat` on each row, never on the list container: the renderer repeats or removes the marked element itself. Keep one unmarked list container even when the array is empty, so the adjacent empty-state selector can still match. Adapt field names and translate the empty-state text to the user's language.
+
+```html
+<style>
+  .empty-state { display: none; }
+  .task-list:not(:has(> .task-row)) + .empty-state { display: block; }
+</style>
+<div class="task-list">
+  <div class="task-row" data-od-repeat="item in data.tasks">
+    <span>{{item.name}}</span><span>{{item.status}}</span>
+  </div>
+</div>
+<p class="empty-state">No tasks yet.</p>
+```
+
+Define this structure at initial creation. A later data-only refresh must preserve it, including when the source becomes empty. Do not repair an empty state by changing a user-locked template during that refresh.
