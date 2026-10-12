@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.1
+# OD Next Presentation Task Profile v3.1.2
 
 > Rollout: active
 
@@ -173,6 +173,9 @@ record them in the Design Spec:
   explicit unverified-hypothesis label beside a proposed explanation; a footer
   saying "sample data" does not qualify an invented observation as a fact.
   Derived values must follow directly from the supplied numbers.
+  Do not add a before/after relationship between a change and a specific trial,
+  call it the only change, or claim other conditions were held constant unless
+  the source states that relationship. Keep unspecified chronology unspecified.
 - Never use visual effects to exaggerate or distort data relationships.
 
 ### Use visual assets that work
