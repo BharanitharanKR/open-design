@@ -478,11 +478,20 @@ function AssistantMessageImpl({
     () => dedupeToolUsesById(dropSupersededInFlightToolUses(events)),
     [events],
   );
+  // Folded history and live task continuations keep earlier Runs for display.
+  // Authenticate only the current Run's key and text: predecessor completion
+  // cannot finish this Run, and this Run's prose cannot complete an old marker.
+  // Slice before display normalization, since deduplication changes offsets.
+  const currentRunEvents = useMemo(
+    () => events.slice(message.strategyTaskPrefixEventCount ?? 0),
+    [events, message.strategyTaskPrefixEventCount],
+  );
+  const currentRunContent = message.content.slice(message.strategyTaskPrefixLength ?? 0);
   const completedWithAuthenticatedDone = useMemo(
     () =>
       message.runStatus === "succeeded" &&
-      eventsHaveAuthenticatedDoneConclusion(displayEvents),
-    [displayEvents, message.runStatus],
+      eventsHaveAuthenticatedDoneConclusion(currentRunEvents),
+    [currentRunEvents, message.runStatus],
   );
   /**
    * **这一轮的 done 标记到了没有** —— 和上面那个同一条判据,只是**不问 run 结没结束**。
@@ -503,8 +512,8 @@ function AssistantMessageImpl({
    * 边界钉在 `shell-collapse-on-done.test.tsx`。
    */
   const turnDoneMarkerLanded = useMemo(
-    () => eventsHaveAuthenticatedDoneConclusion(displayEvents),
-    [displayEvents],
+    () => eventsHaveAuthenticatedDoneConclusion(currentRunEvents),
+    [currentRunEvents],
   );
   // ChatPane owns one canonical conversation-level Todo card above the
   // composer. Strip TodoWrite snapshots from individual messages so plans do
@@ -911,9 +920,9 @@ function AssistantMessageImpl({
     ? []
     : continuableUnfinishedTodos({
         events,
-        // The rendered text, so "did this turn ask?" is answered from the same
-        // source `hasPendingQuestionForm` reads.
-        content: message.content,
+        // Earlier Runs may contain answered forms; only this Run can end by
+        // asking. Keep the turn's latest Todo snapshot as the remaining work.
+        content: currentRunContent,
         runStatus: message.runStatus,
       });
   const hasTodoSnapshot = events.some(
