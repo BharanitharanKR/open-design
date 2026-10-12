@@ -38,7 +38,7 @@ vi.mock('node:crypto', async (importOriginal) => {
   };
 });
 
-import { closeDatabase, openDatabase } from '../src/db.js';
+import { closeDatabase, listMessages, openDatabase, upsertMessage } from '../src/db.js';
 import { AGENT_DEFS } from '../src/runtimes/registry.js';
 import { agentBinEnvKey } from '../src/runtimes/executables.js';
 import { execAgentFile } from '../src/runtimes/invocation.js';
@@ -1040,6 +1040,55 @@ process.exit(127);
       expect(retry.runId).toBe(continued.runId);
       expect((await readProjectInvocations(fixture.logPath, fixture.projectId))).toHaveLength(2);
     }, 45_000);
+
+  it('sends compact historical context to the agent while still accepting another clarification form', async () => {
+    const fixture = await createPublicRolloutFixture('marker-question', 'design');
+    started = fixture.started; binDir = fixture.binDir;
+    process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
+    const original = 'Original handoff request: create a blue page with keyboard navigation.';
+    const first = await postRun(started.url, publicRunRequest(fixture, original, 'history-context-first'));
+    const previous = await waitForTask(first.strategyTask!.taskExecutionId, 'completed');
+    await waitForRunTerminal(started.url, previous.latestRunId);
+    const callsBefore = await readProjectInvocations(fixture.logPath, fixture.projectId);
+    const body = '<!doctype html><html><body>' + 'STORED_PAGE_BODY_SENTINEL'.repeat(1000) + '</body></html>';
+    await writeFile(path.join(callsBefore[0]!.cwd, 'history-page.html'), body);
+    const prior = listMessages(database(), fixture.conversationId)
+      .find(message => message.runId === previous.latestRunId)!;
+    expect(prior).toBeDefined();
+    upsertMessage(database(), fixture.conversationId, {
+      ...prior,
+      content: 'Plan: keep the blue palette and keyboard navigation.\n'
+        + '<question-form id="scope">{"questions":[{"id":"audience","label":"Who is this for?"}]}</question-form>\n'
+        + `<artifact identifier="history-page" type="text/html" title="Existing page">${body}</artifact>`,
+      producedFiles: [{ name: 'history-page.html', path: 'history-page.html', size: body.length,
+        mtime: Date.now(), kind: 'html', mime: 'text/html',
+        artifactManifest: { metadata: { identifier: 'history-page' } } }],
+    });
+    const followup = 'Continue the blue page. Ask for more detail if useful.';
+    const next = await postRun(started.url, {
+      ...publicRunRequest(fixture, followup, 'history-context-second'),
+      // Changed instructions require the full bundle rather than native incremental input.
+      systemPrompt: 'Current instruction: retain keyboard navigation.',
+    });
+    const current = await waitForTask(next.strategyTask!.taskExecutionId, 'completed');
+    expect((await waitForRunTerminal(started.url, current.latestRunId)).status).toBe('succeeded');
+    const calls = await readProjectInvocations(fixture.logPath, fixture.projectId);
+    expect(calls).toHaveLength(2);
+    const context = parseOdNextPromptBundleV2(calls[1]!.stdin).context.priorTranscript!;
+    for (const text of [original, 'blue palette', 'keyboard navigation', 'Who is this for?', 'history-page.html']) {
+      expect(context).toContain(text);
+    }
+    expect(context).not.toContain('STORED_PAGE_BODY_SENTINEL');
+    expect(context).not.toContain('<question-form');
+    expect(context).not.toContain('already answered');
+    expect(calls[1]!.stdin).toContain(followup);
+    // The fixture agent asks the same question again. It remains an ordinary
+    // succeeded reply: historical formatting must never become a repetition gate.
+    const reply = listMessages(database(), fixture.conversationId)
+      .find(message => message.runId === current.latestRunId)!;
+    expect(reply.content).toContain('<question-form id="scope">');
+    expect(reply.content).toContain('Who is this for?');
+  }, 45_000);
 
   it('rejects a handoff during an active run and continues under the current strategy after daemon restart', async () => {
     const fixture = await createPublicRolloutFixture('marker-handoff', 'design');
