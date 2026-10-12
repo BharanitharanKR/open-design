@@ -18,7 +18,7 @@ editable HTML source.
 single-post views.
 
 **Rule.**
-1. A post qualifies when it shows a finished film (not a game, app demo or
+1. A post qualifies when it shows a complete work (not a game, app demo or
    model comparison) whose content belongs to one of the four types, made in
    code that runs in a browser, with content identifiable from its title,
    prompt or video.
