@@ -67,6 +67,7 @@ import {
   type ProjectNameAuthorityResolution,
 } from './components/ProjectView';
 import type { ObservedPublicShareLink, ObservedShareUpdateRequest } from './components/share/observed-public-share-link';
+import type { ShareLoginReturn } from './components/share/share-login-return';
 import { SignedOutObservedShare } from './components/share/SignedOutObservedShare';
 import { ProjectCreationPendingView } from './components/ProjectCreationPendingView';
 import { projectsForWorkspaceChrome } from './runtime/workspace-chrome-projects';
@@ -1723,6 +1724,29 @@ function AppInner() {
   >(null);
   const [loginUpdateRequest, setLoginUpdateRequest] = useState<ObservedShareUpdateRequest | null>(null);
   const loginUpdateNonceRef = useRef(0);
+  // Above ProjectView's authorization lifetime: login deliberately remounts
+  // that subtree, but the user's exact first-share panel should return.
+  const [shareLoginReturn, setShareLoginReturn] = useState<ShareLoginReturn | null>(null);
+  const onShareLoginReturnChange = useCallback((request: ShareLoginReturn | null) => {
+    if (!request) { setShareLoginReturn(null); return; }
+    const current = routeRef.current;
+    if (current.kind !== 'project' || current.projectId !== request.projectId
+      || (current.fileName !== null && current.fileName !== request.filePath)) return;
+    setShareLoginReturn(request);
+    // Pin the active file so a fresh workspace does not select a sibling tab.
+    navigate({ ...current, fileName: request.filePath });
+  }, []);
+  useEffect(() => {
+    if (!shareLoginReturn) return;
+    const remaining = shareLoginReturn.expiresAt - Date.now();
+    if (remaining <= 0 || route.kind !== 'project' || route.projectId !== shareLoginReturn.projectId
+      || (route.fileName !== null && route.fileName !== shareLoginReturn.filePath)) {
+      setShareLoginReturn(null);
+      return;
+    }
+    const timer = window.setTimeout(() => setShareLoginReturn(null), remaining);
+    return () => window.clearTimeout(timer);
+  }, [route, shareLoginReturn]);
   const onLoginUpdateRequestHandled = useCallback((nonce: number) => {
     setLoginUpdateRequest((current) => current?.nonce === nonce ? null : current);
   }, []);
@@ -4812,10 +4836,10 @@ function AppInner() {
   // window, and once the hub has confirmed team membership even once, never
   // fall through to the not-found/navigate-home path for this project — only
   // a hub-confirmed absence does.
+  const routeProjectListed = route.kind === 'project' && projects.some((p) => p.id === route.projectId);
   useEffect(() => {
     if (route.kind !== 'project') return;
-    if (loadedActiveProject) return;
-    if (projects.some((p) => p.id === route.projectId)) return;
+    if (loadedActiveProject || routeProjectListed) return;
     let cancelled = false;
     const projectId = route.projectId;
     setDeepLinkResolutionFailure((current) =>
@@ -4991,7 +5015,12 @@ function AppInner() {
   }, [
     route,
     loadedActiveProject,
-    projects,
+    // The resolver itself reconciles the list. Depend on presence, not array
+    // identity, so its own absent→absent read cannot restart the retry budget
+    // and erase the terminal failure. Real identity changes still revalidate.
+    routeProjectListed,
+    currentProjectListScope,
+    activeAccountGeneration,
     projectsLoading,
     daemonLive,
     deepLinkRetryRevision,
@@ -5631,6 +5660,8 @@ function AppInner() {
           observedPublicShareLink={signedOutObservedShare ?? localObservedShare}
           loginUpdateRequest={loginUpdateRequest}
           onLoginUpdateRequestHandled={onLoginUpdateRequestHandled}
+          shareLoginReturn={shareLoginReturn}
+          onShareLoginReturnChange={onShareLoginReturnChange}
           amrAuthRetryContinuation={amrAuthRetryContinuation}
           onArmAmrAuthRetryContinuation={armAmrAuthRetryContinuation}
           onConsumeAmrAuthRetryContinuation={consumeAmrAuthRetryContinuation}

@@ -119,6 +119,7 @@ export function ShareTab({
   updateCurrentFilePublic,
   canResumeUpdateAfterLogin = false,
   onUpdateLoginSuccess,
+  onSignInSuccess,
   projectId,
   filePath,
   workspaceContext,
@@ -159,6 +160,7 @@ export function ShareTab({
   updateCurrentFilePublic?: () => Promise<void>;
   canResumeUpdateAfterLogin?: boolean;
   onUpdateLoginSuccess?: () => void;
+  onSignInSuccess?: () => void;
   projectId?: string;
   filePath?: string;
   workspaceContext: WorkspaceCollabContext | null;
@@ -436,7 +438,7 @@ export function ShareTab({
                               S13's secondary "sign in to update" role next to it. */}
                           <ShareSignInButton variant={filePublished && publishedFileUrl ? 'soft' : 'primary'}
                             actionLabel={canResumeUpdateAfterLogin ? t('fileViewer.signInToUpdate') : t('fileViewer.signInToShare')}
-                            onLoginSuccess={canResumeUpdateAfterLogin ? onUpdateLoginSuccess : undefined} />
+                            onLoginSuccess={canResumeUpdateAfterLogin ? onUpdateLoginSuccess : onSignInSuccess} />
                         </div>
                       )}
                       {/* Team-only, same as ReactComponentViewer's copy of this card above —

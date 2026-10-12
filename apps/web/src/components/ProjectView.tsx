@@ -1,5 +1,6 @@
 import { readRetriedErrorSurface, retriedErrorSurfaceKey, writeRetriedErrorSurface } from '../runtime/chat/retried-error-surface';
 import type { ObservedPublicShareLink, ObservedShareUpdateRequest } from './share/observed-public-share-link';
+import type { ShareLoginReturn } from './share/share-login-return';
 import {
   startTransition,
   useCallback,
@@ -850,6 +851,8 @@ interface Props {
   observedPublicShareLink?: ObservedPublicShareLink | null;
   loginUpdateRequest?: ObservedShareUpdateRequest | null;
   onLoginUpdateRequestHandled?: (nonce: number) => void;
+  shareLoginReturn?: ShareLoginReturn | null;
+  onShareLoginReturnChange?: (request: ShareLoginReturn | null) => void;
   amrAuthRetryContinuation?: AmrAuthRetryContinuation | null;
   onArmAmrAuthRetryContinuation?: (
     continuation: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
@@ -2125,6 +2128,8 @@ export function ProjectView({
   observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
+  shareLoginReturn,
+  onShareLoginReturnChange,
   config,
   agents,
   skills,
@@ -14140,6 +14145,8 @@ export function ProjectView({
           observedPublicShareLink={observedPublicShareLink}
           loginUpdateRequest={loginUpdateRequest}
           onLoginUpdateRequestHandled={onLoginUpdateRequestHandled}
+          shareLoginReturn={shareLoginReturn}
+          onShareLoginReturnChange={onShareLoginReturnChange}
           isDeck={isDeck}
           streaming={currentConversationActionDisabled}
           // The building preview needs a real run, not the disabled-actions
