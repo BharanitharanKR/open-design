@@ -93,6 +93,24 @@ describe('owner content overwrite authority', () => {
     } finally { f.close(); }
   });
 
+  it('re-offers a dismissed version when a manual check joins an ordinary check', async () => {
+    const f = setup();
+    try {
+      await f.controller.request(scope, { action: 'dismiss', version: 4 });
+      let releaseHead!: (version: number) => void;
+      f.deps.head = vi.fn()
+        .mockImplementationOnce(() => new Promise<number>(resolve => { releaseHead = resolve; }))
+        .mockResolvedValue(4);
+      const ordinary = f.controller.request(scope, { action: 'check' });
+      await vi.waitFor(() => expect(f.deps.head).toHaveBeenCalledOnce());
+      const manual = f.controller.request(scope, { action: 'check', manual: true });
+      releaseHead(4);
+      await expect(ordinary).resolves.toMatchObject({ state: 'ignored' });
+      await expect(manual).resolves.toMatchObject({ state: 'confirmation_required', latestVersion: 4 });
+      expect(f.deps.head).toHaveBeenCalledTimes(2);
+    } finally { f.close(); }
+  });
+
   it('materializes a fresh device without approval, while BUSY and failures never grant preference or cursor', async () => {
     const f = setup();
     try {

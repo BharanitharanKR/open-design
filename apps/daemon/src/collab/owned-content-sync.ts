@@ -111,7 +111,7 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
         if (propagateError) throw error;
         return update;
       }
-      if (input.action !== 'check' || (hintedVersion != null && hintedVersion > (deps.store.read(scope).latestVersion ?? -1))) {
+      if (input.action !== 'check' || input.manual || (hintedVersion != null && hintedVersion > (deps.store.read(scope).latestVersion ?? -1))) {
         return request(scope, input, hintedVersion, propagateError);
       }
       return read(scope);
