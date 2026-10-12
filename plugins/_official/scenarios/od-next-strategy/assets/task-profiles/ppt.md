@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.2
+# OD Next Presentation Task Profile v3.1.3
 
 > Rollout: active
 
@@ -52,6 +52,21 @@ separate order. Where higher-level instructions and the contract are silent,
 edit tasks carry forward the confirmed brand guidelines, the existing deck,
 and existing templates; user references apply only within their designated
 scope; this profile's defaults fill only what remains unspecified.
+
+### Preserve the source before choosing a narrative
+
+For supplied records, factual organization takes precedence over the persuasive
+structures, conclusion-title defaults, and copy formulas below. During the
+existing content outline, distinguish supplied facts, direct calculations,
+proposed explanations, and unspecified relationships. Keep the source's action
+at its stated level of detail; do not invent an implementation mechanism.
+Do not connect independent facts with a timeline, a cause, or a shared condition
+unless the source connects them. Table placement and diagram arrows count as
+claims too: show an unassigned change separately from trial results rather than
+attaching it to a row. Use a neutral title such as "Recorded change" when a
+conclusion would imply exclusivity, causality, or unprovided chronology. Preserve
+these limits in headings, captions, and body text while composing; no additional
+tools, output file, or post-delivery review is needed.
 
 ### Choose a proven narrative structure
 
