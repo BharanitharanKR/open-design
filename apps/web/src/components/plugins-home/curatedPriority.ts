@@ -125,14 +125,14 @@ const CURATED_HYPERFRAMES_PLUGIN_IDS = [
   'video-template-hyperframes-flight-map-route',
 ] as const;
 
-// Motion design: five complementary examples in the Home display order,
-// ranked by the reach of the community posts each one is modelled on.
+// Motion design: five remakes of viral motion posts, in the Home display order
+// ranked by the reach of each original post.
 export const CURATED_MOTION_DESIGN_PLUGIN_IDS = [
-  'example-motion-explainer',
   'example-motion-showreel',
-  'example-motion-product-launch',
-  'example-motion-3d-scene',
-  'example-motion-kinetic-type',
+  'example-motion-energy-reel',
+  'example-motion-ui-morph',
+  'example-motion-pixel-wizard',
+  'example-motion-future',
 ] as const;
 
 export const CURATED_PLUGIN_IDS_BY_CHIP = {

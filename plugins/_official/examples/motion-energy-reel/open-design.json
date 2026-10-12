@@ -1,0 +1,123 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-energy-reel",
+  "title": "High-Energy Motion Reel",
+  "title_i18n": {
+    "en": "High-Energy Motion Reel",
+    "id": "Reel Motion Penuh Energi",
+    "de": "Energiegeladenes Motion-Reel",
+    "zh-CN": "高能动效展示片",
+    "zh-TW": "高能動效展示片",
+    "pt-BR": "Reel de motion de alta energia",
+    "es-ES": "Reel de motion de alta energía",
+    "ru": "Энергичный моушн-рил",
+    "fa": "ریل موشن پرانرژی",
+    "ar": "ريل موشن عالي الطاقة",
+    "ja": "ハイエナジーなモーションリール",
+    "ko": "하이 에너지 모션 릴",
+    "pl": "Energetyczny reel motion",
+    "hu": "Energikus motion reel",
+    "fr": "Reel motion très énergique",
+    "uk": "Енергійний моушн-рил",
+    "tr": "Yüksek enerjili motion reel",
+    "th": "โมชันรีลพลังสูง",
+    "it": "Reel motion ad alta energia"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 15-second high-energy motion reel, rebuilt from the viral original: kinetic words on hard color cuts, a breathing grid of shapes, extruded 3D type, rhythm stripes, a frame counter and an end card.",
+  "description_i18n": {
+    "en": "A 15-second high-energy motion reel, rebuilt from the viral original: kinetic words on hard color cuts, a breathing grid of shapes, extruded 3D type, rhythm stripes, a frame counter and an end card.",
+    "id": "Reel motion penuh energi 15 detik, dibuat ulang dari versi viral aslinya: kata-kata kinetik dengan potongan warna tegas, grid bentuk yang bernapas, tipografi 3D timbul, garis ritme, penghitung frame, dan kartu penutup.",
+    "de": "Ein energiegeladenes 15-Sekunden-Motion-Reel, nachgebaut nach dem viralen Original: kinetische Wörter auf harten Farbschnitten, ein atmendes Formenraster, extrudierte 3D-Typo, Rhythmusstreifen, ein Frame-Zähler und eine Endkarte.",
+    "zh-CN": "按爆款原片复刻的 15 秒高能动效展示片：大字随色块硬切、会呼吸的图形网格、立体挤出文字、节奏斜条纹、帧数计数器和结尾署名卡。",
+    "zh-TW": "按爆款原片復刻的 15 秒高能動效展示片：大字隨色塊硬切、會呼吸的圖形網格、立體擠出文字、節奏斜條紋、影格計數器和結尾署名卡。",
+    "pt-BR": "Um reel de motion de alta energia de 15 segundos, recriado a partir do original viral: palavras cinéticas em cortes de cor secos, uma grade de formas que respira, tipografia 3D extrudada, faixas de ritmo, contador de frames e cartela final.",
+    "es-ES": "Un reel de motion de alta energía de 15 segundos, recreado a partir del original viral: palabras cinéticas con cortes de color secos, una cuadrícula de formas que respira, tipografía 3D extruida, franjas de ritmo, un contador de fotogramas y cierre.",
+    "ru": "15-секундный энергичный моушн-рил, воссозданный по вирусному оригиналу: кинетические слова на резких цветовых склейках, «дышащая» сетка фигур, объёмная 3D-типографика, ритмичные полосы, счётчик кадров и финальная карточка.",
+    "fa": "ریل موشن پرانرژی ۱۵ ثانیه‌ای که از روی نسخهٔ اصلی پربازدید بازسازی شده: کلمات متحرک با برش‌های رنگی تند، شبکه‌ای از اشکال که نفس می‌کشد، تایپوگرافی سه‌بعدی برجسته، نوارهای ریتم، شمارندهٔ فریم و کارت پایانی.",
+    "ar": "ريل موشن عالي الطاقة مدته 15 ثانية، أُعيد بناؤه من الأصل الفيروسي: كلمات حركية مع قطعات لونية حادة، شبكة أشكال تتنفس، طباعة ثلاثية الأبعاد بارزة، أشرطة إيقاع، عدّاد إطارات وبطاقة ختام.",
+    "ja": "バズった原作を再現した 15 秒のハイエナジーなモーションリール。色のハードカットに乗る言葉、呼吸する図形のグリッド、押し出し 3D 文字、リズムのストライプ、フレームカウンター、エンドカード。",
+    "ko": "바이럴 원본을 재현한 15초 하이 에너지 모션 릴: 강렬한 컬러 컷 위의 키네틱 단어, 숨 쉬는 도형 그리드, 입체 3D 타이포, 리듬 스트라이프, 프레임 카운터, 엔드 카드.",
+    "pl": "15-sekundowy, energetyczny reel motion odtworzony z wiralowego oryginału: kinetyczne słowa na ostrych cięciach kolorów, oddychająca siatka kształtów, wytłoczona typografia 3D, rytmiczne pasy, licznik klatek i plansza końcowa.",
+    "hu": "15 másodperces energikus motion reel a virális eredeti alapján újraépítve: kinetikus szavak éles színvágásokon, lélegző formarács, kihúzott 3D betűk, ritmuscsíkok, képkockaszámláló és záró kártya.",
+    "fr": "Un reel motion de 15 secondes très énergique, reconstruit d’après l’original viral : mots cinétiques sur des coupes de couleur franches, une grille de formes qui respire, une typo 3D extrudée, des bandes rythmiques, un compteur d’images et une carte de fin.",
+    "uk": "15-секундний енергійний моушн-рил, відтворений за вірусним оригіналом: кінетичні слова на різких кольорових склейках, «дихаюча» сітка фігур, об’ємна 3D-типографіка, ритмічні смуги, лічильник кадрів і фінальна картка.",
+    "tr": "Viral orijinalden yeniden kurulan 15 saniyelik yüksek enerjili motion reel: sert renk kesmeleriyle kinetik kelimeler, nefes alan şekil ızgarası, kabartmalı 3D yazı, ritim şeritleri, kare sayacı ve kapanış kartı.",
+    "th": "โมชันรีลพลังสูงยาว 15 วินาที สร้างใหม่ตามต้นฉบับไวรัล: คำเคลื่อนไหวบนการตัดสีที่ฉับไว กริดรูปทรงที่หายใจได้ ตัวอักษร 3D นูน แถบจังหวะ ตัวนับเฟรม และการ์ดปิดท้าย",
+    "it": "Un reel motion ad alta energia di 15 secondi, ricostruito dall’originale virale: parole cinetiche su tagli di colore netti, una griglia di forme che respira, tipografia 3D estrusa, strisce ritmiche, un contatore di fotogrammi e una card finale."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "showreel",
+    "kinetic-typography",
+    "grid",
+    "viral-remake"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Craft a high-energy, 15-second motion graphics piece that flexes your top-tier animation skills like a killer portfolio reel. Pull out all the stops, like the creative work on Dribbble, fps 60",
+        "id": "Buat karya motion graphics 15 detik yang penuh energi untuk memamerkan kemampuan animasi kelas atasmu seperti reel portofolio yang memukau. Kerahkan semua jurus, seperti karya kreatif di Dribbble, fps 60",
+        "de": "Gestalte ein energiegeladenes 15-Sekunden-Motion-Graphics-Stück, das deine Top-Animationsskills zeigt wie ein starkes Portfolio-Reel. Zieh alle Register, wie die kreativen Arbeiten auf Dribbble, fps 60",
+        "zh-CN": "做一段 15 秒的高能动效作品，像一支惊艳的作品集展示片那样秀出你顶级的动画功力。使出浑身解数，像 Dribbble 上的创意作品那样，60 fps",
+        "zh-TW": "做一段 15 秒的高能動效作品，像一支驚豔的作品集展示片那樣秀出你頂級的動畫功力。使出渾身解數，像 Dribbble 上的創意作品那樣，60 fps",
+        "pt-BR": "Crie uma peça de motion graphics de 15 segundos cheia de energia que mostre suas habilidades de animação de alto nível como um reel de portfólio matador. Use todos os recursos, como os trabalhos criativos do Dribbble, fps 60",
+        "es-ES": "Crea una pieza de motion graphics de 15 segundos llena de energía que luzca tus habilidades de animación de primer nivel como un reel de portafolio brutal. Échale todo, como el trabajo creativo de Dribbble, fps 60",
+        "ru": "Создай энергичную 15-секундную моушн-работу, которая покажет твой топовый уровень анимации, как сильный рил для портфолио. Выложись по полной, как креативные работы на Dribbble, fps 60",
+        "fa": "یک قطعهٔ موشن‌گرافیک پرانرژی ۱۵ ثانیه‌ای بساز که مهارت انیمیشن سطح بالایت را مثل یک ریل نمونه‌کار درجه‌یک به رخ بکشد. همهٔ توانت را بگذار، مثل کارهای خلاقانهٔ Dribbble، fps 60",
+        "ar": "اصنع عملاً موشن جرافيك عالي الطاقة مدته 15 ثانية يستعرض مهاراتك المتميزة في التحريك كأنه ريل أعمال قاتل. ابذل كل ما لديك، مثل الأعمال الإبداعية على Dribbble، fps 60",
+        "ja": "トップクラスのアニメーションスキルを見せつける、キラーなポートフォリオリールのようなハイエナジーな 15 秒のモーショングラフィックスを作って。Dribbble のクリエイティブ作品のように全力で、60 fps",
+        "ko": "최상급 애니메이션 실력을 뽐내는 강력한 포트폴리오 릴 같은, 하이 에너지 15초 모션 그래픽 작품을 만들어 줘. Dribbble의 크리에이티브 작품처럼 모든 걸 쏟아부어서, 60 fps",
+        "pl": "Stwórz energetyczny, 15-sekundowy utwór motion graphics, który pokaże twoje topowe umiejętności animacji jak mocny reel portfolio. Wykorzystaj wszystkie chwyty, jak kreatywne prace na Dribbble, fps 60",
+        "hu": "Készíts egy energikus, 15 másodperces motion graphics munkát, ami csúcsszintű animációs tudásodat mutatja meg, mint egy ütős portfólió-reel. Vess be mindent, mint a Dribbble kreatív munkái, fps 60",
+        "fr": "Crée une pièce de motion design de 15 secondes très énergique qui met en valeur tes talents d’animation de haut niveau comme un reel de portfolio percutant. Sors le grand jeu, comme les créations sur Dribbble, fps 60",
+        "uk": "Створи енергійну 15-секундну моушн-роботу, яка покаже твій топовий рівень анімації, як сильний рил для портфоліо. Викладись по повній, як креативні роботи на Dribbble, fps 60",
+        "tr": "Üst düzey animasyon becerilerini güçlü bir portfolyo reel’i gibi sergileyen, 15 saniyelik yüksek enerjili bir motion graphics işi yap. Dribbble’daki yaratıcı işler gibi tüm hünerini göster, fps 60",
+        "th": "สร้างงานโมชันกราฟิกพลังสูงยาว 15 วินาทีที่อวดฝีมือแอนิเมชันระดับท็อปเหมือนพอร์ตโฟลิโอรีลสุดปัง ใส่ให้สุดเหมือนงานครีเอทีฟบน Dribbble, fps 60",
+        "it": "Crea un pezzo di motion graphics di 15 secondi ad alta energia che metta in mostra le tue abilità di animazione di alto livello come un reel portfolio da urlo. Dai il massimo, come i lavori creativi su Dribbble, fps 60"
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "High-Energy Motion Reel"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

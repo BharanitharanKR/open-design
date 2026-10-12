@@ -1,112 +1,94 @@
 # Motion templates: sources and maintenance
 
 Five official HTML examples populate the Motion design Home entry and Community
-category. They use the existing plugin preview, example binding, frozen
-reference package, Remix, and HyperFrames MP4 export paths.
+category. Each one is a remake of a viral motion post, rebuilt in code so the
+template preview shows that post's look. They use the existing plugin preview,
+example binding, frozen reference package, Remix, and HyperFrames MP4 export
+paths.
 
 ## Selection
 
-**Scope.** The motion design spec defines motion design as dynamic design that
-communicates through composition, type, graphics and timing, covering four
-content types: brand and product films, kinetic typography, explainer
-animation, and procedural art. Templates are video deliverables: an MP4 plus
-editable HTML source.
+Four templates come from the Motion design category of
+[awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video)
+(1,483 cases, `updated_at` `2026-10-11T05:17:47.827Z`; view counts checked
+`2026-10-05`): the most-viewed posts with a creator-published prompt that code
+alone can reproduce, one per kind. The fifth is a Douyin post chosen by the
+product owner. The library's top-10% view threshold is 255,312.
 
-**Source of reach.** The October 9, 2026 snapshot of
-[awesome-opus-5.5-video](https://github.com/zhuyansen/awesome-opus-5.5-video/blob/main/cases.json)
-(1,427 cases, `stats_checked_at` `2026-10-09T09:26:20.426Z`), ranked by
-single-post views.
+| Template | Original post | Views | Likes | Saves | Rank (all / Motion) |
+| --- | --- | ---: | ---: | ---: | --- |
+| Motion Designer Showreel | [@stephanlivera](https://x.com/stephanlivera/status/2103315922098470926) | 2,246,353 | 17,030 | 13,027 | 9 / 1 |
+| High-Energy Motion Reel | [@crvdesign0](https://x.com/crvdesign0/status/2103817034618339682) | 1,093,842 | 2,826 | 6,164 | 24 / 6 |
+| One-Shape UI Motion | [@twoclipping](https://x.com/twoclipping/status/2103273003555402193) | 1,034,374 | 12,100 | 20,060 | 28 / 7 |
+| Pixel Art Wizard | [@majidmanzarpour](https://x.com/majidmanzarpour/status/2102476258948927543) | 453,228 | 2,557 | 2,673 | 81 / 14 |
+| The Future Is Already Here | [Douyin](https://www.douyin.com/video/7690393045783346918) | — | 6,439 | 2,164 | — |
 
-**Rule.**
-1. A post qualifies when it shows a complete work (not a game, app demo or
-   model comparison) whose content belongs to one of the four types, made in
-   code that runs in a browser, with content identifiable from its title,
-   prompt or video.
-2. Each type takes its most-viewed qualifying post.
-3. The fifth template takes the most-viewed remaining qualifying post across
-   the four types.
-
-| Template | Type | Anchor post | Recorded views |
-| --- | --- | --- | ---: |
-| Explainer | Explainer animation | [Interactive camera focus lens lab](https://x.com/RyanSael/status/2102591147927654847) | 3,492,763 |
-| Showreel | Brand film | [15-second motion designer showreel](https://x.com/stephanlivera/status/2103315922098470926) | 2,246,353 |
-| Product launch | Product film | [Motion design launch video](https://x.com/uxmiles/status/2104618175803609305) | 1,775,824 |
-| 3D island | Procedural art | [Procedural ocean island](https://x.com/dangreenheck/status/2102878170089169235) | 888,215 |
-| Kinetic typography | Kinetic typography | [Day-of-week kinetic motion graphic](https://x.com/nokonoko_1203/status/2105922366190784915) | 132,347 |
-
-Home order follows the table. Anchors set the subject, genre and pacing; every
-composition, copy line and soundtrack is original.
+Douyin does not publish play counts; its figures were read on 2026-10-12.
+Home order follows the table.
 
 ## Template content
 
-All five `example.html` files are hand-written code authored by Claude Opus 5.5
-and checked frame by frame.
+Each `example.html` is rebuilt frame by frame against its original: layout,
+palette, type, motion and timing. On-screen copy is English. Brand names in the
+originals are kept only where they are the work's own subject (the showreel
+signs as the model that made it); the soundtrack of every template is original.
 
-| Template | Content |
-| --- | --- |
-| Explainer | How a camera focuses; rays follow the thin-lens equation `1/f = 1/u + 1/v` |
-| Showreel | Fictional Studio Kinetik; five techniques cut to 128 BPM |
-| Product launch | Fictional Driftnote meeting app; toggle turns fragments into a summary |
-| 3D island | Procedural tropical island in a turquoise lagoon, built in Three.js; one continuous camera move |
-| Kinetic typography | "What day is it?": a weekday reel, the answer, four beat cuts and a countdown, at 120 BPM |
+| Template | Length | Differences from the original |
+| --- | --- | --- |
+| Motion Designer Showreel | 15 s | Fonts are the closest open equivalents |
+| High-Energy Motion Reel | 15 s | Arabic copy set in English |
+| One-Shape UI Motion | 14 s | 1440×1440 square kept at scale on a 1920×1080 stage |
+| Pixel Art Wizard | 11.28 s | Two IDLE → CHARGE → CAST → RECOVER cycles |
+| The Future Is Already Here | 20 s | 20 s highlight cut of the 62 s original, in English |
 
-The explainer computes blur on the sensor as `2A·|v − d| / v`, so focusing and
-aperture changes show the physically correct result. Each film draws every
-frame in a single `render(t)` from the GSAP master timeline time.
+The "Use" prompt is the creator's published prompt where one exists (showreel,
+high-energy reel, UI motion, wizard; the UI motion and wizard prompts are
+condensed to their visual brief). The Douyin prompt is not public, so its
+prompt describes the cut.
+
+## Fonts
+
+All fonts are SIL Open Font License families from the
+[Google Fonts repository](https://github.com/google/fonts), subset to the glyphs
+the template draws and bundled with their license files: Archivo, Instrument
+Serif, JetBrains Mono, IBM Plex Sans, Geist and Unbounded. Plugin previews allow
+same-origin fonts and map relative `url()` references in inline styles to the
+plugin asset route, so the gallery, covers and Remix render the bundled fonts.
 
 ## Gallery publication
 
 `open-design.json` points to `example.html`; source and referenced assets ship
 with the official plugin. The existing pre-merge preview workflow validates
 rendering. After merge, `bake-plugin-previews.yml` uploads content-addressed
-posters and clips to R2 and opens the rolling preview-manifest PR. The release
-bake writes the authoritative manifest for its release branch. Verify that
+posters and clips to R2 and opens the rolling preview-manifest PR. Each
+template signals preview-ready within the baker's 15-second budget. Verify the
 release's five preview entries and remote resources before release acceptance.
-
-Local preview overrides and verification output stay outside tracked source.
-The release pipeline owns publication; template authors maintain HTML and assets.
 
 ## Local dependencies and export
 
-The bundled script versions are GSAP 3.12.5 and Three.js 0.160.0, originally
-retrieved from their version-pinned jsDelivr package URLs. No runtime script CDN
-is required. Each SKILL explicitly names the dependencies that the existing
-frozen-package scanner should carry.
-
-Space Grotesk is bundled locally with its SIL Open Font License from the
-[official Google Fonts directory](https://github.com/google/fonts/tree/main/ofl/spacegrotesk).
-Keep the font and license in each portable package. A downloaded font/library
-is a dependency; it should not be described as AI-generated visual footage.
-
-Three.js exceeds the existing 256 KiB side-file limit. The gallery and Remix
-use the original `assets/three.min.js`; the frozen reference carries an identical
-gzip copy, with decompression instructions in its SKILL. When changing the
-vendored Three.js file, regenerate its compressed copy deterministically:
+GSAP 3.12.5 and Three.js 0.160.0 are vendored; no runtime script CDN is used.
+Every SKILL names each asset so the frozen-package scanner carries it.
+Three.js exceeds the 256 KiB side-file limit: the gallery and Remix use
+`assets/three.min.js`, and the frozen reference carries an identical gzip copy
+with decompression instructions in the SKILL. When changing the vendored file:
 
 ```sh
-gzip -n -9 -c plugins/_official/examples/motion-3d-scene/assets/three.min.js > plugins/_official/examples/motion-3d-scene/assets/three.min.js.gz
+gzip -n -9 -c plugins/_official/examples/motion-future/assets/three.min.js > plugins/_official/examples/motion-future/assets/three.min.js.gz
 ```
 
-The package regression checks that all referenced local scripts, fonts and the
+`motion-future` keeps its scene sources outside the repository; `assets/app.js`
+is the bundled, self-contained build and must be loaded by a static
+`<script src>` so plugin previews can rewrite its URL.
+
+The package regression checks that referenced scripts, fonts, licenses and the
 soundtrack restore byte-for-byte. The browser regression seeks each film with
 callbacks suppressed, forward and backward, and requires identical canvas
-output at each timestamp. Keep all drawing in the per-frame renderer: nested
-tween callbacks alone do not execute during MP4 export.
-
-## Fonts in previews
-
-Plugin previews serve `example.html` under a restrictive CSP. The preview and
-asset routes allow same-origin fonts (`font-src 'self' data:`), and relative
-`url()` references inside inline `<style>` blocks are mapped to the plugin
-asset route, so `@font-face` rules load the bundled Space Grotesk in the
-gallery, covers and Remix alike.
+output at each timestamp, including hidden layers.
 
 ## Audio
 
-All five templates include locally authored procedural soundtracks in
-`assets/soundtrack.mp3`, timed to their beats. No reference-post audio was
-copied and no audio-generation model was used: they are synthesized from
-oscillators and filtered noise. HTML preview sound is enabled by the Sound on
-control and follows the master timeline. The desktop export path resolves timed
-local audio files and mixes them into the MP4 with FFmpeg. Gallery clips keep
-the existing muted preview behavior.
+Every template carries an original procedural soundtrack in
+`assets/soundtrack.mp3`, timed to its beats. No audio from the original posts is
+used and no audio-generation model was involved. HTML preview sound is enabled
+by the Sound on control and follows the master timeline. The desktop export
+path mixes the timed local audio into the MP4 with FFmpeg.

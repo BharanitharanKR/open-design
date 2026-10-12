@@ -1569,394 +1569,394 @@ const HOME_PRESET_COPY: Record<string, Record<Locale, HomePresetCopy>> = {
       prompt: 'Progetta un sito ispirato alle riviste per il mio marchio, presentando il prodotto con titoli d’impatto, collage di immagini e animazioni di scorrimento.',
     },
   },
-  'example-motion-explainer': {
-    'zh-CN': {
-      title: '原理讲解动画',
-      prompt: '做一段 20 秒的原理讲解动画：相机是怎么对焦的？开场是一张照片，焦点从花移到人再移到远山，配上问题“为什么只有一样东西是清楚的？”。然后切到侧视光学台：被摄物、镜头、传感器，光线按薄透镜公式真实计算：光线汇聚在传感器上就清楚；被摄物靠近后汇聚点跑到传感器后面，形成模糊光斑；移动镜头重新对焦；光圈从 f/1.8 收到 f/5.6，背景点的模糊光斑随之变小，这就是景深。加一个“传感器看到的画面”小窗、清楚的两行字幕和三条总结。蓝图深蓝底、琥珀色光线、青色镜片。',
-    },
-    'zh-TW': {
-      title: '原理講解動畫',
-      prompt: '做一段 20 秒的原理講解動畫：相機是怎麼對焦的？開場是一張照片，焦點從花移到人再移到遠山，配上問題「為什麼只有一樣東西是清楚的？」。然後切到側視光學台：被攝物、鏡頭、感光元件，光線按薄透鏡公式真實計算：光線匯聚在感光元件上就清楚；被攝物靠近後匯聚點跑到感光元件後面，形成模糊光斑；移動鏡頭重新對焦；光圈從 f/1.8 收到 f/5.6，背景點的模糊光斑隨之變小，這就是景深。加一個「感光元件看到的畫面」小窗、清楚的兩行字幕和三條總結。藍圖深藍底、琥珀色光線、青色鏡片。',
-    },
-    en: {
-      title: 'How-It-Works Explainer',
-      prompt: 'Make a 20-second explainer: how does a camera focus? Open on a photo that pulls focus from flowers to a person to the mountains, with the question "Why is only one thing sharp?". Then show a side-view optical bench — subject, lens, sensor — with light rays that follow the thin-lens equation: rays meet on the sensor (sharp); move the subject closer and they meet behind it (a blur disc); slide the lens to refocus; close the aperture from f/1.8 to f/5.6 and a background point\'s blur shrinks (depth of field). Add a "What the sensor sees" inset, clear two-line captions and a three-rule recap. Blueprint navy, amber rays, cyan glass.',
-    },
-    id: {
-      title: 'Animasi Penjelas Cara Kerja',
-      prompt: 'Buat animasi penjelas 20 detik: bagaimana kamera fokus? Buka dengan foto yang memindahkan fokus dari bunga ke orang lalu ke gunung, dengan pertanyaan "Mengapa hanya satu hal yang tajam?". Lalu tampilkan bangku optik tampak samping — subjek, lensa, sensor — dengan sinar yang mengikuti persamaan lensa tipis: sinar bertemu di sensor (tajam); dekatkan subjek dan sinar bertemu di belakangnya (lingkaran blur); geser lensa untuk fokus ulang; kecilkan bukaan dari f/1.8 ke f/5.6 dan blur titik latar menyusut (kedalaman ruang tajam). Tambahkan sisipan "Yang dilihat sensor", teks dua baris yang jelas, dan ringkasan tiga aturan. Biru tua cetak biru, sinar kuning amber, kaca sian.',
-    },
-    de: {
-      title: 'Erklärfilm: So funktioniert es',
-      prompt: 'Erstelle einen 20-sekündigen Erklärfilm: Wie fokussiert eine Kamera? Beginne mit einem Foto, dessen Schärfe von Blumen über eine Person zu den Bergen wandert, und der Frage „Warum ist nur eines scharf?“. Zeige dann eine optische Bank in Seitenansicht – Motiv, Linse, Sensor – mit Lichtstrahlen nach der Linsengleichung: Treffen sich die Strahlen auf dem Sensor, ist es scharf; rückt das Motiv näher, treffen sie sich dahinter (Unschärfescheibe); die Linse wird verschoben, um nachzufokussieren; die Blende schließt von f/1.8 auf f/5.6 und die Unschärfe eines Hintergrundpunkts schrumpft (Schärfentiefe). Mit Einblendung „Was der Sensor sieht“, klaren zweizeiligen Untertiteln und drei Regeln zum Schluss. Blaupausen-Navy, bernsteinfarbene Strahlen, cyanfarbenes Glas.',
-    },
-    'pt-BR': {
-      title: 'Animação explicativa: como funciona',
-      prompt: 'Crie uma animação explicativa de 20 segundos: como uma câmera foca? Abra com uma foto que muda o foco das flores para uma pessoa e depois para as montanhas, com a pergunta "Por que só uma coisa fica nítida?". Depois mostre uma bancada óptica vista de lado — objeto, lente, sensor — com raios de luz que seguem a equação da lente fina: os raios se encontram no sensor (nítido); aproxime o objeto e eles se encontram atrás dele (um disco de desfoque); deslize a lente para refocar; feche a abertura de f/1.8 para f/5.6 e o desfoque de um ponto ao fundo diminui (profundidade de campo). Inclua um quadro "O que o sensor vê", legendas claras de duas linhas e um resumo de três regras. Azul-marinho de planta técnica, raios âmbar, vidro ciano.',
-    },
-    'es-ES': {
-      title: 'Animación explicativa: cómo funciona',
-      prompt: 'Crea una animación explicativa de 20 segundos: ¿cómo enfoca una cámara? Empieza con una foto que pasa el foco de unas flores a una persona y luego a las montañas, con la pregunta «¿Por qué solo una cosa sale nítida?». Después muestra un banco óptico de perfil —sujeto, lente, sensor— con rayos que siguen la ecuación de la lente delgada: los rayos se juntan en el sensor (nítido); acerca el sujeto y se juntan detrás (un disco de desenfoque); desliza la lente para reenfocar; cierra el diafragma de f/1.8 a f/5.6 y el desenfoque de un punto del fondo se reduce (profundidad de campo). Añade un recuadro «Lo que ve el sensor», subtítulos claros de dos líneas y un resumen de tres reglas. Azul marino de plano, rayos ámbar, cristal cian.',
-    },
-    ru: {
-      title: 'Анимация «Как это работает»',
-      prompt: 'Сделай 20-секундный обучающий ролик: как фокусируется камера? Начни с фотографии, где фокус переходит с цветов на человека, а затем на горы, и вопроса «Почему резкое только что-то одно?». Затем покажи оптическую скамью сбоку — объект, линза, сенсор — с лучами по формуле тонкой линзы: лучи сходятся на сенсоре — резко; объект ближе — они сходятся за сенсором (кружок рассеяния); линза сдвигается и снова фокусирует; диафрагма закрывается с f/1.8 до f/5.6, и размытие точки на фоне уменьшается (глубина резкости). Добавь врезку «Что видит сенсор», понятные двухстрочные подписи и итог из трёх правил. Тёмно-синий «чертёжный» фон, янтарные лучи, бирюзовое стекло.',
-    },
-    fa: {
-      title: 'انیمیشن توضیحی «چگونه کار می‌کند»',
-      prompt: 'یک انیمیشن توضیحی ۲۰ ثانیه‌ای بساز: دوربین چطور فوکوس می‌کند؟ با عکسی شروع کن که فوکوس آن از گل‌ها به یک آدم و بعد به کوه‌ها می‌رود، همراه با پرسش «چرا فقط یک چیز واضح است؟». سپس یک میز اپتیکی از نمای کناری نشان بده — سوژه، عدسی، حسگر — با پرتوهایی که از معادلهٔ عدسی نازک پیروی می‌کنند: پرتوها روی حسگر به هم می‌رسند (واضح)؛ سوژه نزدیک‌تر شود و پشت حسگر به هم می‌رسند (دایرهٔ تاری)؛ عدسی جابه‌جا می‌شود تا دوباره فوکوس کند؛ دیافراگم از f/1.8 به f/5.6 بسته می‌شود و تاری یک نقطهٔ پس‌زمینه کوچک می‌شود (عمق میدان). یک کادر «آنچه حسگر می‌بیند»، زیرنویس‌های روشن دوخطی و جمع‌بندی سه‌قاعده‌ای اضافه کن. سرمه‌ای نقشه‌فنی، پرتوهای کهربایی، شیشهٔ فیروزه‌ای.',
-    },
-    ar: {
-      title: 'رسوم توضيحية: كيف يعمل',
-      prompt: 'اصنع رسومًا توضيحية مدتها 20 ثانية: كيف تركّز الكاميرا؟ ابدأ بصورة ينتقل تركيزها من الزهور إلى شخص ثم إلى الجبال، مع السؤال «لماذا يظهر شيء واحد فقط حادًا؟». ثم اعرض منضدة بصرية من الجانب — الهدف والعدسة والمستشعر — بأشعة تتبع معادلة العدسة الرقيقة: تلتقي الأشعة على المستشعر (حاد)؛ قرّب الهدف فتلتقي خلفه (قرص ضبابي)؛ حرّك العدسة لإعادة التركيز؛ أغلق الفتحة من f/1.8 إلى f/5.6 فيصغر ضباب نقطة في الخلفية (عمق الميدان). أضف نافذة «ما يراه المستشعر» وتعليقات واضحة من سطرين وخلاصة من ثلاث قواعد. كحلي المخططات، وأشعة كهرمانية، وزجاج سماوي.',
-    },
-    ja: {
-      title: 'しくみ解説アニメーション',
-      prompt: '20 秒の解説アニメーションを作って：カメラはどうやってピントを合わせる？　冒頭は写真で、ピントが花から人物、そして山へ移り、「なぜひとつだけがくっきり写るの？」と問いかける。続いて横から見た光学台（被写体・レンズ・センサー）を描き、光線は薄レンズの公式どおりに計算する。光線がセンサー上で集まればシャープ、被写体が近づくと集まる点がセンサーの後ろに移ってボケの円になり、レンズを動かしてピントを合わせ直す。絞りを f/1.8 から f/5.6 に絞ると背景の点のボケが小さくなる（被写界深度）。「センサーに写る像」の小窓、2 行の分かりやすい字幕、3 つのまとめを入れて。設計図風のネイビー、琥珀色の光線、シアンのガラス。',
-    },
-    ko: {
-      title: '작동 원리 설명 애니메이션',
-      prompt: '20초 설명 애니메이션을 만들어 줘: 카메라는 어떻게 초점을 맞출까? 꽃에서 사람, 그리고 산으로 초점이 옮겨 가는 사진과 "왜 하나만 선명할까?"라는 질문으로 시작해. 이어서 피사체·렌즈·센서를 옆에서 본 광학대를 보여 주고, 빛은 얇은 렌즈 공식대로 계산해: 광선이 센서에서 만나면 선명하고, 피사체가 가까워지면 센서 뒤에서 만나 흐림 원이 생기고, 렌즈를 움직여 다시 초점을 맞추고, 조리개를 f/1.8에서 f/5.6으로 조이면 배경 점의 흐림이 작아져(피사계 심도). "센서에 보이는 모습" 미니 창, 명확한 두 줄 자막, 세 가지 요약을 넣어 줘. 청사진 네이비, 호박색 광선, 청록 유리.',
-    },
-    pl: {
-      title: 'Animacja: jak to działa',
-      prompt: 'Stwórz 20-sekundową animację wyjaśniającą: jak aparat ustawia ostrość? Zacznij od zdjęcia, w którym ostrość przechodzi z kwiatów na osobę, a potem na góry, z pytaniem „Dlaczego ostra jest tylko jedna rzecz?”. Następnie pokaż ławę optyczną z boku — obiekt, soczewka, matryca — z promieniami zgodnymi z równaniem soczewki cienkiej: promienie spotykają się na matrycy (ostro); przybliż obiekt, a spotkają się za nią (krążek rozmycia); przesuń soczewkę, by ponownie ustawić ostrość; przymknij przysłonę z f/1.8 do f/5.6, a rozmycie punktu w tle się zmniejszy (głębia ostrości). Dodaj okienko „Co widzi matryca”, czytelne dwuwierszowe napisy i podsumowanie w trzech zasadach. Granat jak z planu technicznego, bursztynowe promienie, cyjanowe szkło.',
-    },
-    hu: {
-      title: 'Magyarázó animáció: hogyan működik',
-      prompt: 'Készíts egy 20 másodperces magyarázó animációt: hogyan fókuszál a fényképezőgép? Nyiss egy fotóval, amelyen az élesség a virágokról egy emberre, majd a hegyekre vándorol, és a kérdéssel: „Miért csak egy dolog éles?”. Ezután mutass oldalnézetes optikai padot – téma, lencse, szenzor – a vékonylencse-egyenletet követő fénysugarakkal: ha a sugarak a szenzoron találkoznak, éles; ha a téma közelebb jön, mögötte találkoznak (szórási kör); a lencse elmozdul, hogy újra fókuszáljon; a rekesz f/1.8-ról f/5.6-ra szűkül, és egy háttérpont elmosódása kisebb lesz (mélységélesség). Tegyél bele „Amit a szenzor lát” betétet, világos kétsoros feliratokat és háromszabályos összegzést. Tervrajz-sötétkék, borostyán sugarak, cián üveg.',
-    },
-    fr: {
-      title: 'Animation explicative : comment ça marche',
-      prompt: 'Crée une animation explicative de 20 secondes : comment un appareil photo fait-il la mise au point ? Ouvre sur une photo dont la netteté passe des fleurs à une personne puis aux montagnes, avec la question « Pourquoi une seule chose est-elle nette ? ». Montre ensuite un banc optique vu de côté — sujet, objectif, capteur — avec des rayons qui suivent l’équation des lentilles minces : les rayons se rejoignent sur le capteur (net) ; rapproche le sujet et ils se rejoignent derrière (un disque de flou) ; l’objectif glisse pour refaire la mise au point ; ferme le diaphragme de f/1.8 à f/5.6 et le flou d’un point d’arrière-plan rétrécit (profondeur de champ). Ajoute un encart « Ce que voit le capteur », des sous-titres clairs sur deux lignes et un récapitulatif en trois règles. Bleu nuit de plan technique, rayons ambre, verre cyan.',
-    },
-    uk: {
-      title: 'Анімація «Як це працює»',
-      prompt: 'Створи 20-секундний пояснювальний ролик: як фокусується камера? Почни з фото, де фокус переходить із квітів на людину, а потім на гори, і запитання «Чому різким є лише щось одне?». Далі покажи оптичну лаву збоку — об’єкт, лінза, сенсор — із променями за формулою тонкої лінзи: промені сходяться на сенсорі — різко; об’єкт ближче — вони сходяться за сенсором (коло розсіювання); лінза зсувається й знову фокусує; діафрагма закривається з f/1.8 до f/5.6, і розмиття точки на тлі меншає (глибина різкості). Додай врізку «Що бачить сенсор», зрозумілі двохрядкові підписи й підсумок із трьох правил. Темно-синій «креслярський» фон, бурштинові промені, бірюзове скло.',
-    },
-    tr: {
-      title: 'Nasıl çalışır açıklama animasyonu',
-      prompt: '20 saniyelik bir açıklama animasyonu yap: kamera nasıl netleme yapar? Netliğin çiçeklerden bir kişiye, sonra dağlara kaydığı bir fotoğraf ve "Neden yalnızca bir şey net?" sorusuyla aç. Ardından yandan görünen bir optik tezgâh göster — özne, mercek, sensör — ışınlar ince mercek denklemine uysun: ışınlar sensörde buluşursa net; özne yaklaşınca arkasında buluşur (bulanıklık diski); mercek kayarak yeniden netler; diyafram f/1.8’den f/5.6’ya kısılınca arka plandaki bir noktanın bulanıklığı küçülür (alan derinliği). "Sensörün gördüğü" küçük penceresi, net iki satırlık altyazılar ve üç kurallı bir özet ekle. Teknik çizim laciverti, kehribar ışınlar, camgöbeği cam.',
-    },
-    th: {
-      title: 'แอนิเมชันอธิบายหลักการทำงาน',
-      prompt: 'สร้างแอนิเมชันอธิบาย 20 วินาที: กล้องโฟกัสอย่างไร? เปิดด้วยภาพถ่ายที่ย้ายโฟกัสจากดอกไม้ไปที่คน แล้วไปที่ภูเขา พร้อมคำถาม "ทำไมมีแค่สิ่งเดียวที่คมชัด?" จากนั้นแสดงแท่นทัศนศาสตร์มุมด้านข้าง — วัตถุ เลนส์ เซนเซอร์ — โดยแสงเดินตามสมการเลนส์บาง: แสงมาบรรจบบนเซนเซอร์ = คมชัด; เลื่อนวัตถุเข้าใกล้ แสงไปบรรจบหลังเซนเซอร์ = วงเบลอ; เลื่อนเลนส์เพื่อโฟกัสใหม่; หรี่รูรับแสงจาก f/1.8 เป็น f/5.6 แล้ววงเบลอของจุดฉากหลังเล็กลง (ระยะชัด) เพิ่มกรอบ "สิ่งที่เซนเซอร์เห็น" คำบรรยายสองบรรทัดที่ชัดเจน และสรุปสามข้อ โทนน้ำเงินพิมพ์เขียว แสงสีอำพัน กระจกสีฟ้าอมเขียว',
-    },
-    it: {
-      title: 'Animazione esplicativa: come funziona',
-      prompt: 'Crea un’animazione esplicativa di 20 secondi: come mette a fuoco una fotocamera? Apri con una foto in cui il fuoco passa dai fiori a una persona e poi alle montagne, con la domanda «Perché solo una cosa è nitida?». Poi mostra un banco ottico visto di lato — soggetto, lente, sensore — con raggi che seguono l’equazione della lente sottile: i raggi si incontrano sul sensore (nitido); avvicina il soggetto e si incontrano dietro (un disco di sfocatura); la lente scorre per rimettere a fuoco; chiudi il diaframma da f/1.8 a f/5.6 e la sfocatura di un punto sullo sfondo si riduce (profondità di campo). Aggiungi un riquadro «Cosa vede il sensore», sottotitoli chiari su due righe e un riepilogo in tre regole. Blu notte da progetto tecnico, raggi ambra, vetro ciano.',
-    },
-  },
   'example-motion-showreel': {
     'zh-CN': {
-      title: '动效设计师作品集快剪',
-      prompt: '做一段 15 秒的动效设计作品集快剪，证明你是顶尖的动效设计师，全力以赴。深色舞台配摄影机式 HUD（取景角标、时间码、128 BPM 节拍方块），只用一种橙色强调色。跟着节拍切换五种手法：橙色放射星芒开场、TIMING / WEIGHT / RHYTHM 动态大字、变形的几何网格、由旋转 3D 点云球体变成的圆环，最后落在虚构工作室「Studio Kinetik」的签名卡上，开场的圆点变成句号。',
+      title: '动效设计师自荐片',
+      prompt: '做一段动感的 15 秒动效视频，展示你是一位多么出色的动效设计师，就像放进简历里的作品集自荐片。全力以赴。',
     },
     'zh-TW': {
-      title: '動效設計師作品集快剪',
-      prompt: '做一段 15 秒的動效設計作品集快剪，證明你是頂尖的動效設計師，全力以赴。深色舞台配攝影機式 HUD（取景角標、時間碼、128 BPM 節拍方塊），只用一種橘色強調色。跟著節拍切換五種手法：橘色放射星芒開場、TIMING / WEIGHT / RHYTHM 動態大字、變形的幾何網格、由旋轉 3D 點雲球體變成的圓環，最後落在虛構工作室「Studio Kinetik」的簽名卡上，開場的圓點變成句號。',
+      title: '動效設計師自薦片',
+      prompt: '做一段動感的 15 秒動效影片，展示你是一位多麼出色的動效設計師，就像放進履歷裡的作品集自薦片。全力以赴。',
     },
     en: {
       title: 'Motion Designer Showreel',
-      prompt: 'Make a dynamic 15-second motion graphics showreel that proves you are an incredible motion designer — go all out. Dark stage with a camera-style HUD (corner brackets, timecode, 128 BPM beat squares) and one orange accent. Cut on the beat through five techniques: an orange starburst identity, the kinetic words TIMING / WEIGHT / RHYTHM, a morphing shape grid, a rotating 3D point sphere that becomes a torus, and a signature card for the fictional "Studio Kinetik" where the opening dot becomes the full stop.',
+      prompt: 'make a dynamic 15-second motion graphics video that shows what an incredible motion designer you are, like it\'s your showreel for a résumé. go all out.',
     },
     id: {
       title: 'Showreel Desainer Motion',
-      prompt: 'Buat showreel motion graphics 15 detik yang dinamis untuk membuktikan kamu desainer motion yang luar biasa — habis-habisan. Panggung gelap dengan HUD bergaya kamera (sudut bingkai, timecode, kotak ketukan 128 BPM) dan satu aksen oranye. Potong mengikuti ketukan melalui lima teknik: identitas ledakan bintang oranye, kata kinetik TIMING / WEIGHT / RHYTHM, grid bentuk yang berubah, bola titik 3D berputar yang menjadi torus, dan kartu tanda tangan studio fiktif "Studio Kinetik" tempat titik pembuka menjadi titik akhir.',
+      prompt: 'buat video motion graphics dinamis 15 detik yang menunjukkan betapa hebatnya kamu sebagai desainer motion, seperti showreel untuk CV-mu. kerahkan semuanya.',
     },
     de: {
       title: 'Motion-Designer-Showreel',
-      prompt: 'Erstelle ein dynamisches 15-sekündiges Motion-Graphics-Showreel, das beweist, dass du ein großartiger Motion Designer bist – gib alles. Dunkle Bühne mit kameraartigem HUD (Eckmarken, Timecode, 128-BPM-Taktquadrate) und einem orangefarbenen Akzent. Schneide im Takt durch fünf Techniken: orangefarbener Strahlenkranz als Identität, die kinetischen Wörter TIMING / WEIGHT / RHYTHM, ein sich wandelndes Formenraster, eine rotierende 3D-Punktkugel, die zum Torus wird, und eine Signaturkarte des fiktiven „Studio Kinetik“, auf der der Anfangspunkt zum Schlusspunkt wird.',
+      prompt: 'Mach ein dynamisches 15-Sekunden-Motion-Graphics-Video, das zeigt, was für ein unglaublicher Motion Designer du bist – wie dein Showreel für den Lebenslauf. Gib alles.',
     },
     'pt-BR': {
-      title: 'Showreel de motion designer',
-      prompt: 'Crie um showreel de motion graphics dinâmico de 15 segundos que prove que você é um motion designer incrível — capriche ao máximo. Palco escuro com HUD estilo câmera (cantos de enquadramento, timecode, quadrados de batida a 128 BPM) e um único destaque laranja. Corte no ritmo por cinco técnicas: identidade em explosão laranja, as palavras cinéticas TIMING / WEIGHT / RHYTHM, uma grade de formas que se transformam, uma esfera 3D de pontos girando que vira um toro e um cartão de assinatura do estúdio fictício "Studio Kinetik", onde o ponto inicial vira o ponto final.',
+      title: 'Showreel de Motion Designer',
+      prompt: 'faça um vídeo de motion graphics dinâmico de 15 segundos que mostre o motion designer incrível que você é, como o seu showreel para o currículo. capriche ao máximo.',
     },
     'es-ES': {
       title: 'Showreel de motion designer',
-      prompt: 'Crea un showreel de motion graphics dinámico de 15 segundos que demuestre que eres un motion designer increíble: dalo todo. Escenario oscuro con HUD de cámara (esquinas de encuadre, código de tiempo, cuadrados de compás a 128 BPM) y un único acento naranja. Corta al ritmo a través de cinco técnicas: un estallido naranja como identidad, las palabras cinéticas TIMING / WEIGHT / RHYTHM, una cuadrícula de formas cambiantes, una esfera 3D de puntos que gira y se convierte en un toro, y una tarjeta de firma del estudio ficticio «Studio Kinetik» donde el punto inicial pasa a ser el punto final.',
+      prompt: 'haz un vídeo de motion graphics dinámico de 15 segundos que muestre el increíble motion designer que eres, como tu showreel para el currículum. dalo todo.',
     },
     ru: {
       title: 'Шоурил моушн-дизайнера',
-      prompt: 'Сделай динамичный 15-секундный шоурил моушн-графики, который докажет, что ты потрясающий моушн-дизайнер, — выложись по полной. Тёмная сцена с HUD в стиле камеры (уголки кадра, таймкод, квадраты долей на 128 BPM) и один оранжевый акцент. Монтируй в такт через пять техник: оранжевая вспышка-звезда, кинетические слова TIMING / WEIGHT / RHYTHM, сетка меняющихся фигур, вращающаяся 3D-сфера из точек, превращающаяся в тор, и финальная карточка вымышленной «Studio Kinetik», где начальная точка становится точкой в конце.',
+      prompt: 'сделай динамичное 15-секундное моушн-видео, которое покажет, какой ты потрясающий моушн-дизайнер, — как шоурил для резюме. выложись на полную.',
     },
     fa: {
       title: 'شوریل طراح موشن',
-      prompt: 'یک شوریل موشن‌گرافیک پویای ۱۵ ثانیه‌ای بساز که ثابت کند طراح موشن فوق‌العاده‌ای هستی — با تمام توان. صحنهٔ تیره با HUD شبیه دوربین (گوشه‌های کادر، تایم‌کد، مربع‌های ضرب ۱۲۸ BPM) و تنها یک رنگ تأکیدی نارنجی. روی ضرب بین پنج تکنیک برش بزن: هویت انفجار ستاره‌ای نارنجی، واژه‌های جنبشی TIMING / WEIGHT / RHYTHM، شبکهٔ شکل‌های دگرگون‌شونده، کرهٔ نقطه‌ای سه‌بعدی چرخان که به چنبره تبدیل می‌شود، و کارت امضای استودیوی خیالی «Studio Kinetik» که نقطهٔ آغاز در آن نقطهٔ پایان جمله می‌شود.',
+      prompt: 'یک ویدیوی موشن‌گرافیک پویا و ۱۵ ثانیه‌ای بساز که نشان دهد چه طراح موشن فوق‌العاده‌ای هستی، مثل شوریل رزومه‌ات. سنگ تمام بگذار.',
     },
     ar: {
-      title: 'عرض أعمال مصمم الحركة',
-      prompt: 'اصنع عرض أعمال موشن جرافيك ديناميكيًا مدته 15 ثانية يثبت أنك مصمم حركة مذهل — ابذل كل ما لديك. مسرح داكن بواجهة HUD تشبه الكاميرا (زوايا الإطار، ورمز الوقت، ومربعات إيقاع 128 BPM) ولون تمييز برتقالي واحد. انتقل على الإيقاع بين خمس تقنيات: هوية انفجار نجمي برتقالي، والكلمات الحركية TIMING / WEIGHT / RHYTHM، وشبكة أشكال متحولة، وكرة نقاط ثلاثية الأبعاد دوّارة تتحول إلى حلقة، وبطاقة توقيع للاستوديو الخيالي «Studio Kinetik» حيث تصبح النقطة الأولى نقطة نهاية الكلمة.',
+      title: 'شوريل مصمم موشن',
+      prompt: 'اصنع فيديو موشن جرافيك ديناميكيًا مدته 15 ثانية يُظهر كم أنت مصمم موشن مذهل، كأنه الشوريل الخاص بسيرتك الذاتية. ابذل أقصى ما لديك.',
     },
     ja: {
       title: 'モーションデザイナーのショーリール',
-      prompt: '自分がすごいモーションデザイナーだと証明する、ダイナミックな 15 秒のモーショングラフィックス・ショーリールを全力で作って。暗いステージにカメラ風 HUD（フレームの角、タイムコード、128 BPM のビート表示）、アクセントはオレンジ 1 色。ビートに合わせて 5 つの技法を切り替える：オレンジのスターバースト、TIMING / WEIGHT / RHYTHM のキネティックタイポ、変形する図形グリッド、回転する 3D 点群の球がトーラスに変わる場面、そして架空のスタジオ「Studio Kinetik」のサインカード。冒頭の点が最後のピリオドになる。',
+      prompt: 'あなたがどれほどすごいモーションデザイナーかを見せる、ダイナミックな 15 秒のモーショングラフィックス動画を作って。履歴書に添えるショーリールのように。全力で。',
     },
     ko: {
       title: '모션 디자이너 쇼릴',
-      prompt: '네가 놀라운 모션 디자이너임을 증명하는 역동적인 15초 모션 그래픽 쇼릴을 전력을 다해 만들어 줘. 어두운 무대에 카메라 스타일 HUD(프레임 모서리, 타임코드, 128 BPM 비트 사각형)와 주황색 강조색 하나. 비트에 맞춰 다섯 가지 기법으로 컷: 주황색 스타버스트 아이덴티티, TIMING / WEIGHT / RHYTHM 키네틱 단어, 변형되는 도형 그리드, 회전하다 토러스로 바뀌는 3D 포인트 구, 그리고 첫 점이 마침표가 되는 가상 스튜디오 "Studio Kinetik"의 시그니처 카드.',
+      prompt: '당신이 얼마나 뛰어난 모션 디자이너인지 보여 주는 역동적인 15초 모션 그래픽 영상을 만들어 줘. 이력서용 쇼릴처럼. 전력을 다해서.',
     },
     pl: {
       title: 'Showreel motion designera',
-      prompt: 'Stwórz dynamiczny, 15-sekundowy showreel motion graphics, który udowodni, że jesteś niesamowitym motion designerem — daj z siebie wszystko. Ciemna scena z HUD w stylu kamery (narożniki kadru, timecode, kwadraty taktów 128 BPM) i jeden pomarańczowy akcent. Tnij w rytm przez pięć technik: pomarańczowy rozbłysk jako identyfikacja, kinetyczne słowa TIMING / WEIGHT / RHYTHM, siatka zmieniających się kształtów, obracająca się kula punktów 3D, która staje się torusem, oraz karta z podpisem fikcyjnego „Studio Kinetik”, w której początkowa kropka staje się kropką na końcu.',
+      prompt: 'zrób dynamiczny, 15-sekundowy film motion graphics, który pokaże, jak niesamowitym motion designerem jesteś — jak showreel do CV. daj z siebie wszystko.',
     },
     hu: {
-      title: 'Motion designer bemutatófilm',
-      prompt: 'Készíts egy dinamikus, 15 másodperces motion graphics bemutatófilmet, amely bizonyítja, hogy elképesztő motion designer vagy – adj bele mindent. Sötét színpad kameraszerű HUD-dal (képkivágás-sarkok, időkód, 128 BPM-es ütemnégyzetek) és egyetlen narancs kiemelőszín. Ütemre vágj öt technikán át: narancs csillagrobbanás mint arculat, a TIMING / WEIGHT / RHYTHM kinetikus szavak, alakváltó formarács, forgó 3D-pontgömb, amely tóruszzá alakul, és a kitalált „Studio Kinetik” szignókártyája, ahol a nyitó pont lesz a záró pont.',
+      title: 'Motion designer showreel',
+      prompt: 'készíts egy dinamikus, 15 másodperces motion graphics videót, ami megmutatja, milyen elképesztő motion designer vagy — mint egy showreel az önéletrajzodhoz. hozd ki belőle a maximumot.',
     },
     fr: {
       title: 'Showreel de motion designer',
-      prompt: 'Crée un showreel de motion graphics dynamique de 15 secondes qui prouve que tu es un motion designer incroyable — donne tout. Scène sombre avec un HUD façon caméra (coins de cadre, timecode, carrés de mesure à 128 BPM) et un seul accent orange. Coupe sur le temps à travers cinq techniques : un éclat orange en guise d’identité, les mots cinétiques TIMING / WEIGHT / RHYTHM, une grille de formes qui se transforment, une sphère de points 3D en rotation qui devient un tore, et une carte de signature du studio fictif « Studio Kinetik » où le point d’ouverture devient le point final.',
+      prompt: 'fais une vidéo de motion design dynamique de 15 secondes qui montre quel motion designer incroyable tu es, comme ton showreel pour un CV. donne tout.',
     },
     uk: {
       title: 'Шоурил моушн-дизайнера',
-      prompt: 'Створи динамічний 15-секундний шоурил моушн-графіки, який доведе, що ти неймовірний моушн-дизайнер, — викладись на повну. Темна сцена з HUD у стилі камери (кутики кадру, таймкод, квадрати долей на 128 BPM) і один помаранчевий акцент. Монтуй у такт через п’ять технік: помаранчевий спалах-зірка, кінетичні слова TIMING / WEIGHT / RHYTHM, сітка змінних фігур, обертова 3D-сфера з точок, що стає тором, і фінальна картка вигаданої «Studio Kinetik», де початкова крапка стає крапкою в кінці.',
+      prompt: 'зроби динамічне 15-секундне моушн-відео, яке покаже, який ти неймовірний моушн-дизайнер, — як шоурил для резюме. викладись на повну.',
     },
     tr: {
-      title: 'Hareket tasarımcısı showreel',
-      prompt: 'Harika bir hareket tasarımcısı olduğunu kanıtlayan 15 saniyelik dinamik bir motion graphics showreel yap — tüm gücünle. Kamera tarzı HUD’lu karanlık sahne (kadraj köşeleri, zaman kodu, 128 BPM vuruş kareleri) ve tek bir turuncu vurgu. Ritme göre beş teknik arasında kes: turuncu yıldız patlaması kimliği, TIMING / WEIGHT / RHYTHM kinetik kelimeleri, dönüşen şekil ızgarası, torusa dönüşen dönen 3D nokta küresi ve açılıştaki noktanın son noktaya dönüştüğü hayali "Studio Kinetik" imza kartı.',
+      title: 'Motion tasarımcısı showreel',
+      prompt: 'ne kadar inanılmaz bir motion tasarımcısı olduğunu gösteren, özgeçmişin için bir showreel gibi dinamik, 15 saniyelik bir motion graphics videosu yap. elinden gelenin en iyisini yap.',
     },
     th: {
       title: 'โชว์รีลนักออกแบบโมชัน',
-      prompt: 'สร้างโชว์รีลโมชันกราฟิก 15 วินาทีที่มีพลัง พิสูจน์ว่าคุณเป็นนักออกแบบโมชันที่ยอดเยี่ยม — จัดเต็ม เวทีสีเข้มพร้อม HUD สไตล์กล้อง (มุมเฟรม ไทม์โค้ด ช่องจังหวะ 128 BPM) และสีเน้นสีส้มเพียงสีเดียว ตัดตามจังหวะผ่านห้าเทคนิค: ประกายดาวสีส้มเปิดตัว คำเคลื่อนไหว TIMING / WEIGHT / RHYTHM กริดรูปทรงที่แปรเปลี่ยน ทรงกลมจุด 3D หมุนแล้วกลายเป็นทอรัส และการ์ดลายเซ็นของสตูดิโอสมมติ "Studio Kinetik" ที่จุดเปิดเรื่องกลายเป็นจุดปิดท้าย',
+      prompt: 'ทำวิดีโอโมชันกราฟิกไดนามิกยาว 15 วินาทีที่แสดงให้เห็นว่าคุณเป็นนักออกแบบโมชันที่เก่งแค่ไหน เหมือนโชว์รีลสำหรับเรซูเม่ ทุ่มให้สุด',
     },
     it: {
       title: 'Showreel da motion designer',
-      prompt: 'Crea uno showreel di motion graphics dinamico di 15 secondi che dimostri che sei un motion designer incredibile: dai il massimo. Palco scuro con HUD in stile videocamera (angoli di inquadratura, timecode, quadrati di battuta a 128 BPM) e un solo accento arancione. Taglia a tempo attraverso cinque tecniche: un’esplosione arancione come identità, le parole cinetiche TIMING / WEIGHT / RHYTHM, una griglia di forme che si trasformano, una sfera di punti 3D rotante che diventa un toro e una card con la firma dello studio fittizio «Studio Kinetik», dove il punto iniziale diventa il punto finale.',
+      prompt: 'crea un video di motion graphics dinamico di 15 secondi che mostri che motion designer incredibile sei, come il tuo showreel per il curriculum. dai il massimo.',
     },
   },
-  'example-motion-product-launch': {
+  'example-motion-energy-reel': {
     'zh-CN': {
-      title: '产品发布短片',
-      prompt: '为虚构应用 Driftnote 做一段 20 秒的产品发布短片，它能把混乱的会议变成明确的决定。暖纸色背景、黑色文字、一种橙色强调色。开场是大号动态文字“Every meeting ends with a mess.”；接着会议碎片散落在“Notes everywhere. Decisions nowhere.”周围；一个写着 Driftnote 的橙色大开关打开后，碎片飞进一张摘要卡片，列出三项决定。再展示三条行动项逐个打勾并分配负责人，按节拍切出“Listens. Sorts. Follows up.”，最后落在开关加品牌名的标志上，配“Meetings, minus the mess.”和“Out today”。',
+      title: '高能动效展示片',
+      prompt: '做一段 15 秒的高能动效作品，像一支惊艳的作品集展示片那样秀出你顶级的动画功力。使出浑身解数，像 Dribbble 上的创意作品那样，60 fps',
     },
     'zh-TW': {
-      title: '產品發布短片',
-      prompt: '為虛構應用 Driftnote 做一段 20 秒的產品發布短片，它能把混亂的會議變成明確的決定。暖紙色背景、黑色文字、一種橘色強調色。開場是大號動態文字「Every meeting ends with a mess.」；接著會議碎片散落在「Notes everywhere. Decisions nowhere.」周圍；一個寫著 Driftnote 的橘色大開關打開後，碎片飛進一張摘要卡片，列出三項決定。再展示三條待辦事項逐一打勾並指派負責人，按節拍切出「Listens. Sorts. Follows up.」，最後落在開關加品牌名的標誌上，配「Meetings, minus the mess.」和「Out today」。',
+      title: '高能動效展示片',
+      prompt: '做一段 15 秒的高能動效作品，像一支驚豔的作品集展示片那樣秀出你頂級的動畫功力。使出渾身解數，像 Dribbble 上的創意作品那樣，60 fps',
     },
     en: {
-      title: 'Product Launch Film',
-      prompt: 'Make a 20-second launch film for Driftnote, a fictional app that turns messy meetings into decisions. Warm paper background, black type, one orange accent. Open with big kinetic type: "Every meeting ends with a mess." Scatter note fragments around "Notes everywhere. Decisions nowhere.", then flip a big orange toggle labeled Driftnote: the fragments fly into one summary card with three decisions. Show three action items checking off with owners, cut "Listens. Sorts. Follows up." on the beat, and end on the toggle-and-wordmark lockup with "Meetings, minus the mess." and "Out today".',
+      title: 'High-Energy Motion Reel',
+      prompt: 'Craft a high-energy, 15-second motion graphics piece that flexes your top-tier animation skills like a killer portfolio reel. Pull out all the stops, like the creative work on Dribbble, fps 60',
     },
     id: {
-      title: 'Video Peluncuran Produk',
-      prompt: 'Buat film peluncuran 20 detik untuk Driftnote, aplikasi fiktif yang mengubah rapat berantakan menjadi keputusan. Latar kertas hangat, teks hitam, satu aksen oranye. Buka dengan tipografi kinetik besar: "Every meeting ends with a mess." Sebarkan potongan catatan di sekitar "Notes everywhere. Decisions nowhere.", lalu nyalakan toggle oranye besar berlabel Driftnote: potongan itu terbang ke satu kartu ringkasan berisi tiga keputusan. Tampilkan tiga item tindakan yang dicentang beserta pemiliknya, potong "Listens. Sorts. Follows up." mengikuti ketukan, dan akhiri dengan logo toggle dan nama merek bersama "Meetings, minus the mess." serta "Out today".',
+      title: 'Reel Motion Penuh Energi',
+      prompt: 'Buat karya motion graphics 15 detik yang penuh energi untuk memamerkan kemampuan animasi kelas atasmu seperti reel portofolio yang memukau. Kerahkan semua jurus, seperti karya kreatif di Dribbble, fps 60',
     },
     de: {
-      title: 'Produkt-Launchfilm',
-      prompt: 'Erstelle einen 20-sekündigen Launchfilm für Driftnote, eine fiktive App, die chaotische Meetings in Entscheidungen verwandelt. Warmer Papierhintergrund, schwarze Schrift, ein orangefarbener Akzent. Beginne mit großer kinetischer Typo: „Every meeting ends with a mess.“ Verstreue Notizfetzen um „Notes everywhere. Decisions nowhere.“ und lege dann einen großen orangefarbenen Schalter mit der Aufschrift Driftnote um: Die Fetzen fliegen in eine Zusammenfassungskarte mit drei Entscheidungen. Zeige drei Aufgaben, die mit Verantwortlichen abgehakt werden, schneide „Listens. Sorts. Follows up.“ im Takt und ende mit Schalter und Wortmarke samt „Meetings, minus the mess.“ und „Out today“.',
+      title: 'Energiegeladenes Motion-Reel',
+      prompt: 'Gestalte ein energiegeladenes 15-Sekunden-Motion-Graphics-Stück, das deine Top-Animationsskills zeigt wie ein starkes Portfolio-Reel. Zieh alle Register, wie die kreativen Arbeiten auf Dribbble, fps 60',
     },
     'pt-BR': {
-      title: 'Filme de lançamento de produto',
-      prompt: 'Crie um filme de lançamento de 20 segundos para o Driftnote, um app fictício que transforma reuniões bagunçadas em decisões. Fundo de papel quente, texto preto, um destaque laranja. Abra com tipografia cinética grande: "Every meeting ends with a mess." Espalhe fragmentos de notas ao redor de "Notes everywhere. Decisions nowhere." e então ligue um grande botão laranja chamado Driftnote: os fragmentos voam para um cartão de resumo com três decisões. Mostre três tarefas sendo marcadas com responsáveis, corte "Listens. Sorts. Follows up." no ritmo e termine na assinatura com o botão e o nome, com "Meetings, minus the mess." e "Out today".',
+      title: 'Reel de motion de alta energia',
+      prompt: 'Crie uma peça de motion graphics de 15 segundos cheia de energia que mostre suas habilidades de animação de alto nível como um reel de portfólio matador. Use todos os recursos, como os trabalhos criativos do Dribbble, fps 60',
     },
     'es-ES': {
-      title: 'Vídeo de lanzamiento de producto',
-      prompt: 'Crea un vídeo de lanzamiento de 20 segundos para Driftnote, una app ficticia que convierte reuniones caóticas en decisiones. Fondo de papel cálido, texto negro y un acento naranja. Empieza con tipografía cinética grande: «Every meeting ends with a mess.». Dispersa fragmentos de notas alrededor de «Notes everywhere. Decisions nowhere.» y luego activa un gran interruptor naranja con el nombre Driftnote: los fragmentos vuelan a una tarjeta de resumen con tres decisiones. Muestra tres tareas que se marcan con sus responsables, corta «Listens. Sorts. Follows up.» al ritmo y cierra con el interruptor y el logotipo, «Meetings, minus the mess.» y «Out today».',
+      title: 'Reel de motion de alta energía',
+      prompt: 'Crea una pieza de motion graphics de 15 segundos llena de energía que luzca tus habilidades de animación de primer nivel como un reel de portafolio brutal. Échale todo, como el trabajo creativo de Dribbble, fps 60',
     },
     ru: {
-      title: 'Ролик запуска продукта',
-      prompt: 'Сделай 20-секундный ролик запуска Driftnote — вымышленного приложения, которое превращает хаотичные встречи в решения. Тёплый бумажный фон, чёрный текст, один оранжевый акцент. Начни с крупной кинетической типографики: «Every meeting ends with a mess.» Разбросай обрывки заметок вокруг «Notes everywhere. Decisions nowhere.», затем включи большой оранжевый переключатель с надписью Driftnote: обрывки слетаются в одну карточку-сводку с тремя решениями. Покажи три задачи, которые отмечаются с ответственными, смонтируй «Listens. Sorts. Follows up.» в такт и закончи логотипом с переключателем и подписями «Meetings, minus the mess.» и «Out today».',
+      title: 'Энергичный моушн-рил',
+      prompt: 'Создай энергичную 15-секундную моушн-работу, которая покажет твой топовый уровень анимации, как сильный рил для портфолио. Выложись по полной, как креативные работы на Dribbble, fps 60',
     },
     fa: {
-      title: 'ویدیوی معرفی محصول',
-      prompt: 'یک ویدیوی معرفی ۲۰ ثانیه‌ای برای Driftnote بساز، اپی خیالی که جلسه‌های شلوغ را به تصمیم تبدیل می‌کند. پس‌زمینهٔ کاغذی گرم، متن مشکی، یک رنگ تأکیدی نارنجی. با تایپوگرافی جنبشی بزرگ شروع کن: «Every meeting ends with a mess.» تکه‌یادداشت‌ها را دور «Notes everywhere. Decisions nowhere.» پراکنده کن، سپس کلید نارنجی بزرگی با نام Driftnote را روشن کن: تکه‌ها در یک کارت خلاصه با سه تصمیم جمع می‌شوند. سه کار را با مسئولشان تیک بزن، «Listens. Sorts. Follows up.» را روی ضرب برش بزن و با لوگوی کلید و نام برند همراه «Meetings, minus the mess.» و «Out today» تمام کن.',
+      title: 'ریل موشن پرانرژی',
+      prompt: 'یک قطعهٔ موشن‌گرافیک پرانرژی ۱۵ ثانیه‌ای بساز که مهارت انیمیشن سطح بالایت را مثل یک ریل نمونه‌کار درجه‌یک به رخ بکشد. همهٔ توانت را بگذار، مثل کارهای خلاقانهٔ Dribbble، fps 60',
     },
     ar: {
-      title: 'فيلم إطلاق منتج',
-      prompt: 'اصنع فيلم إطلاق مدته 20 ثانية لتطبيق Driftnote، وهو تطبيق خيالي يحوّل الاجتماعات الفوضوية إلى قرارات. خلفية ورقية دافئة، ونص أسود، ولون تمييز برتقالي واحد. ابدأ بطباعة حركية كبيرة: «Every meeting ends with a mess.» بعثر قصاصات الملاحظات حول «Notes everywhere. Decisions nowhere.»، ثم شغّل مفتاحًا برتقاليًا كبيرًا مكتوبًا عليه Driftnote: فتطير القصاصات إلى بطاقة ملخص واحدة فيها ثلاثة قرارات. اعرض ثلاث مهام تُعلَّم مع أصحابها، وقطّع «Listens. Sorts. Follows up.» على الإيقاع، واختم بالمفتاح مع اسم العلامة و«Meetings, minus the mess.» و«Out today».',
+      title: 'ريل موشن عالي الطاقة',
+      prompt: 'اصنع عملاً موشن جرافيك عالي الطاقة مدته 15 ثانية يستعرض مهاراتك المتميزة في التحريك كأنه ريل أعمال قاتل. ابذل كل ما لديك، مثل الأعمال الإبداعية على Dribbble، fps 60',
     },
     ja: {
-      title: 'プロダクトローンチ動画',
-      prompt: '雑然とした会議を決定事項に変える架空のアプリ「Driftnote」の 20 秒ローンチ動画を作って。温かい紙色の背景、黒い文字、アクセントはオレンジ 1 色。冒頭は大きなキネティックタイポで「Every meeting ends with a mess.」。続いて「Notes everywhere. Decisions nowhere.」の周りにメモの断片を散らし、Driftnote と書かれた大きなオレンジのスイッチをオンにすると、断片が 3 つの決定事項をまとめた要約カードに飛び込む。担当者つきのタスク 3 件がチェックされていく様子を見せ、「Listens. Sorts. Follows up.」をビートに合わせて切り替え、最後はスイッチとロゴ、「Meetings, minus the mess.」と「Out today」で締める。',
+      title: 'ハイエナジーなモーションリール',
+      prompt: 'トップクラスのアニメーションスキルを見せつける、キラーなポートフォリオリールのようなハイエナジーな 15 秒のモーショングラフィックスを作って。Dribbble のクリエイティブ作品のように全力で、60 fps',
     },
     ko: {
-      title: '제품 출시 영상',
-      prompt: '어수선한 회의를 결정으로 바꿔 주는 가상의 앱 Driftnote의 20초 출시 영상을 만들어 줘. 따뜻한 종이색 배경, 검은 글자, 주황색 강조색 하나. 큰 키네틱 타이포 "Every meeting ends with a mess."로 시작해. "Notes everywhere. Decisions nowhere." 주변에 메모 조각을 흩뿌린 뒤, Driftnote라고 적힌 큰 주황색 토글을 켜면 조각들이 세 가지 결정이 담긴 요약 카드로 날아가. 담당자가 붙은 할 일 세 개가 차례로 체크되고, "Listens. Sorts. Follows up."을 비트에 맞춰 컷한 뒤, 토글과 워드마크, "Meetings, minus the mess.", "Out today"로 마무리해.',
+      title: '하이 에너지 모션 릴',
+      prompt: '최상급 애니메이션 실력을 뽐내는 강력한 포트폴리오 릴 같은, 하이 에너지 15초 모션 그래픽 작품을 만들어 줘. Dribbble의 크리에이티브 작품처럼 모든 걸 쏟아부어서, 60 fps',
     },
     pl: {
-      title: 'Film premierowy produktu',
-      prompt: 'Stwórz 20-sekundowy film premierowy Driftnote — fikcyjnej aplikacji, która zamienia chaotyczne spotkania w decyzje. Ciepłe papierowe tło, czarny tekst, jeden pomarańczowy akcent. Zacznij od dużej typografii kinetycznej: „Every meeting ends with a mess.” Rozrzuć skrawki notatek wokół „Notes everywhere. Decisions nowhere.”, a potem przełącz duży pomarańczowy przełącznik z napisem Driftnote: skrawki wlatują do jednej karty podsumowania z trzema decyzjami. Pokaż trzy zadania odhaczane wraz z osobami odpowiedzialnymi, wytnij „Listens. Sorts. Follows up.” w rytm i zakończ logo z przełącznikiem oraz hasłami „Meetings, minus the mess.” i „Out today”.',
+      title: 'Energetyczny reel motion',
+      prompt: 'Stwórz energetyczny, 15-sekundowy utwór motion graphics, który pokaże twoje topowe umiejętności animacji jak mocny reel portfolio. Wykorzystaj wszystkie chwyty, jak kreatywne prace na Dribbble, fps 60',
     },
     hu: {
-      title: 'Termékbemutató film',
-      prompt: 'Készíts egy 20 másodperces bemutatófilmet a Driftnote nevű kitalált apphoz, amely a kaotikus értekezletekből döntéseket csinál. Meleg papírszínű háttér, fekete szöveg, egy narancs kiemelőszín. Nyiss nagy kinetikus tipográfiával: „Every meeting ends with a mess.” Szórj jegyzetfoszlányokat a „Notes everywhere. Decisions nowhere.” köré, majd kapcsolj be egy nagy narancs, Driftnote feliratú kapcsolót: a foszlányok egyetlen, három döntést tartalmazó összefoglaló kártyába repülnek. Mutass három teendőt, amelyek felelőssel együtt kipipálódnak, vágd ütemre a „Listens. Sorts. Follows up.” szavakat, és zárj a kapcsoló és a logó párosával, „Meetings, minus the mess.” és „Out today” felirattal.',
+      title: 'Energikus motion reel',
+      prompt: 'Készíts egy energikus, 15 másodperces motion graphics munkát, ami csúcsszintű animációs tudásodat mutatja meg, mint egy ütős portfólió-reel. Vess be mindent, mint a Dribbble kreatív munkái, fps 60',
     },
     fr: {
-      title: 'Film de lancement produit',
-      prompt: 'Crée un film de lancement de 20 secondes pour Driftnote, une app fictive qui transforme les réunions chaotiques en décisions. Fond papier chaleureux, texte noir, un seul accent orange. Ouvre sur une grande typographie cinétique : « Every meeting ends with a mess. » Éparpille des fragments de notes autour de « Notes everywhere. Decisions nowhere. », puis active un grand interrupteur orange marqué Driftnote : les fragments s’envolent dans une carte de résumé avec trois décisions. Montre trois tâches cochées avec leurs responsables, coupe « Listens. Sorts. Follows up. » sur le temps et termine sur l’interrupteur et le logotype avec « Meetings, minus the mess. » et « Out today ».',
+      title: 'Reel motion très énergique',
+      prompt: 'Crée une pièce de motion design de 15 secondes très énergique qui met en valeur tes talents d’animation de haut niveau comme un reel de portfolio percutant. Sors le grand jeu, comme les créations sur Dribbble, fps 60',
     },
     uk: {
-      title: 'Ролик запуску продукту',
-      prompt: 'Створи 20-секундний ролик запуску Driftnote — вигаданого застосунку, що перетворює хаотичні зустрічі на рішення. Теплий паперовий фон, чорний текст, один помаранчевий акцент. Почни з великої кінетичної типографіки: «Every meeting ends with a mess.» Розкидай уривки нотаток навколо «Notes everywhere. Decisions nowhere.», потім увімкни великий помаранчевий перемикач із написом Driftnote: уривки злітаються в одну картку-підсумок із трьома рішеннями. Покажи три завдання, які позначаються з відповідальними, змонтуй «Listens. Sorts. Follows up.» у такт і заверши логотипом із перемикачем та написами «Meetings, minus the mess.» і «Out today».',
+      title: 'Енергійний моушн-рил',
+      prompt: 'Створи енергійну 15-секундну моушн-роботу, яка покаже твій топовий рівень анімації, як сильний рил для портфоліо. Викладись по повній, як креативні роботи на Dribbble, fps 60',
     },
     tr: {
-      title: 'Ürün lansman filmi',
-      prompt: 'Dağınık toplantıları kararlara dönüştüren hayali uygulama Driftnote için 20 saniyelik bir lansman filmi yap. Sıcak kâğıt arka plan, siyah yazı, tek bir turuncu vurgu. Büyük kinetik tipografiyle aç: "Every meeting ends with a mess." "Notes everywhere. Decisions nowhere." çevresine not parçaları saç, sonra üzerinde Driftnote yazan büyük turuncu anahtarı aç: parçalar üç karar içeren tek bir özet kartına uçar. Sorumlularıyla birlikte işaretlenen üç görev göster, "Listens. Sorts. Follows up." kelimelerini ritme göre kes ve anahtar ile marka adıyla, "Meetings, minus the mess." ve "Out today" yazılarıyla bitir.',
+      title: 'Yüksek enerjili motion reel',
+      prompt: 'Üst düzey animasyon becerilerini güçlü bir portfolyo reel’i gibi sergileyen, 15 saniyelik yüksek enerjili bir motion graphics işi yap. Dribbble’daki yaratıcı işler gibi tüm hünerini göster, fps 60',
     },
     th: {
-      title: 'วิดีโอเปิดตัวสินค้า',
-      prompt: 'สร้างวิดีโอเปิดตัว 20 วินาทีให้ Driftnote แอปสมมติที่เปลี่ยนการประชุมยุ่งเหยิงให้เป็นการตัดสินใจ พื้นหลังสีกระดาษอบอุ่น ตัวอักษรสีดำ และสีเน้นสีส้มเพียงสีเดียว เปิดด้วยตัวอักษรเคลื่อนไหวขนาดใหญ่ "Every meeting ends with a mess." กระจายเศษโน้ตรอบคำว่า "Notes everywhere. Decisions nowhere." แล้วเปิดสวิตช์สีส้มขนาดใหญ่ที่เขียนว่า Driftnote เศษโน้ตจะลอยเข้าไปรวมในการ์ดสรุปที่มีสามการตัดสินใจ แสดงรายการงานสามข้อที่ถูกติ๊กพร้อมผู้รับผิดชอบ ตัด "Listens. Sorts. Follows up." ตามจังหวะ และปิดท้ายด้วยสวิตช์คู่กับชื่อแบรนด์ "Meetings, minus the mess." และ "Out today"',
+      title: 'โมชันรีลพลังสูง',
+      prompt: 'สร้างงานโมชันกราฟิกพลังสูงยาว 15 วินาทีที่อวดฝีมือแอนิเมชันระดับท็อปเหมือนพอร์ตโฟลิโอรีลสุดปัง ใส่ให้สุดเหมือนงานครีเอทีฟบน Dribbble, fps 60',
     },
     it: {
-      title: 'Video di lancio prodotto',
-      prompt: 'Crea un video di lancio di 20 secondi per Driftnote, un’app fittizia che trasforma riunioni caotiche in decisioni. Sfondo color carta caldo, testo nero, un solo accento arancione. Apri con una grande tipografia cinetica: «Every meeting ends with a mess.» Sparpaglia frammenti di appunti attorno a «Notes everywhere. Decisions nowhere.», poi attiva un grande interruttore arancione con la scritta Driftnote: i frammenti volano in un’unica card di riepilogo con tre decisioni. Mostra tre attività spuntate con i rispettivi responsabili, taglia «Listens. Sorts. Follows up.» a tempo e chiudi con interruttore e logotipo, «Meetings, minus the mess.» e «Out today».',
+      title: 'Reel motion ad alta energia',
+      prompt: 'Crea un pezzo di motion graphics di 15 secondi ad alta energia che metta in mostra le tue abilità di animazione di alto livello come un reel portfolio da urlo. Dai il massimo, come i lavori creativi su Dribbble, fps 60',
     },
   },
-  'example-motion-3d-scene': {
+  'example-motion-ui-morph': {
     'zh-CN': {
-      title: '3D 程序化海岛',
-      prompt: '用 Three.js 做一段 15 秒的 3D 场景：正午的热带小岛，全部用代码生成，不用任何模型。白沙滩环绕着长满棕榈树和灌木的绿色小山；海水清澈，从深蓝的外海过渡到青绿色潟湖，水面轻轻起伏，浅水里光斑闪动，浪花轻拍沙滩。岸边有一排彩色小屋，一条长长的木栈桥，尽头停着一条小船，一艘帆船绕岛航行，白云和几只海鸥，沙滩上有柔和的阳光投影。整段只用一个连续镜头：从礁盘高空出发，掠过栈桥下降，绕岛一圈后稳住。开场标题 "A little escape."，结尾标题 "Stay a little longer."。明亮的蓝天，地平线处带一层淡淡的雾。',
+      title: '纯代码 UI 动效',
+      prompt: '做一段 14 秒、Dribbble 水准的 UI 动效，120 BPM，7 小节，每一拍都有变化。全程只有一个形状、不切镜：从 Generate 按钮依次变成加载、对勾、灵动岛、带播放/暂停变形的音乐播放器、被拖动的进度条、拖过最大值会被拉长的音量滑块、开关、液态标签指示器、自动绘制并带悬停提示的图表、可以输入的 ⌘K 命令面板、提示条，最后回到按钮。所有变化都由光标真实的点击和拖拽驱动。浅暖灰背景、黑白组件、一款干净的界面字体（Geist）。全程弹簧动画，最多一点点回弹。最后一帧和第一帧相同，可以无缝循环。',
     },
     'zh-TW': {
-      title: '3D 程序化海島',
-      prompt: '用 Three.js 做一段 15 秒的 3D 場景：正午的熱帶小島，全部用程式碼生成，不用任何模型。白沙灘環繞著長滿棕櫚樹和灌木的綠色小山；海水清澈，從深藍的外海過渡到青綠色潟湖，水面輕輕起伏，淺水裡光斑閃動，浪花輕拍沙灘。岸邊有一排彩色小屋，一條長長的木棧橋，盡頭停著一艘小船，一艘帆船繞島航行，白雲和幾隻海鷗，沙灘上有柔和的陽光投影。整段只用一個連續鏡頭：從礁盤高空出發，掠過棧橋下降，繞島一圈後穩住。開場標題 "A little escape."，結尾標題 "Stay a little longer."。明亮的藍天，地平線處帶一層淡淡的霧。',
+      title: '純程式碼 UI 動效',
+      prompt: '做一段 14 秒、Dribbble 水準的 UI 動效，120 BPM，7 小節，每一拍都有變化。全程只有一個形狀、不切鏡：從 Generate 按鈕依序變成載入、勾號、動態島、帶播放/暫停變形的音樂播放器、被拖動的進度條、拖過最大值會被拉長的音量滑桿、開關、液態分頁指示器、自動繪製並帶懸停提示的圖表、可以輸入的 ⌘K 指令面板、提示條，最後回到按鈕。所有變化都由游標真實的點擊和拖曳驅動。淺暖灰背景、黑白元件、一款乾淨的介面字體（Geist）。全程彈簧動畫，最多一點點回彈。最後一格和第一格相同，可以無縫循環。',
     },
     en: {
-      title: 'Procedural 3D Island',
-      prompt: 'Make a 15-second 3D scene in Three.js: a small tropical island at midday, built entirely in code with no models. A white-sand beach rings a green hill with palms and bushes; clear water shades from deep ocean blue to a turquoise lagoon, with gentle ripples, light shimmering in the shallows and foam lapping the shore. A small village of colourful huts, a long wooden pier with a boat moored at the end, a sailboat circling, white clouds and a few gulls, with soft sun shadows on the sand. One continuous camera move: start high above the reef, glide down past the pier, arc around the island and settle. Open with "A little escape." and close with "Stay a little longer." Bright blue sky with a pale haze at the horizon.',
+      title: 'One-Shape UI Motion',
+      prompt: 'Make a 14-second Dribbble-level UI motion piece at 120 BPM, 7 bars, something happening on every beat. One shape, never cut: it morphs from a Generate button into a loader, a check, a dynamic island, a music player with a play/pause morph, a scrubbed progress bar, a volume slider that stretches when dragged past max, a toggle, a liquid tab indicator, a chart that draws itself with a hover tooltip, a ⌘K palette you type into, a toast, and back to the button. A cursor drives every change with real clicks and drags. Light warm-gray canvas, black and white components, one clean UI font (Geist). Springs everywhere, a tiny overshoot at most. The last frame is the first frame, so it loops.',
     },
     id: {
-      title: 'Pulau 3D Prosedural',
-      prompt: 'Buat adegan 3D 15 detik di Three.js: pulau tropis kecil di siang hari, seluruhnya dibuat dengan kode tanpa model. Pantai pasir putih mengelilingi bukit hijau berisi pohon kelapa dan semak; air jernih bergradasi dari biru laut dalam ke laguna toska, dengan riak lembut, kilau cahaya di perairan dangkal, dan buih yang menyapu pantai. Desa kecil berisi pondok warna-warni, dermaga kayu panjang dengan perahu tertambat di ujungnya, perahu layar yang mengitari pulau, awan putih dan beberapa camar, dengan bayangan matahari lembut di pasir. Satu gerakan kamera tanpa putus: mulai tinggi di atas terumbu, meluncur turun melewati dermaga, memutari pulau, lalu berhenti. Buka dengan "A little escape." dan tutup dengan "Stay a little longer." Langit biru cerah dengan kabut tipis di cakrawala.',
+      title: 'Motion UI Satu Bentuk',
+      prompt: 'Buat karya motion UI 14 detik setara Dribbble pada 120 BPM, 7 bar, ada sesuatu di setiap ketukan. Satu bentuk tanpa potongan: berubah dari tombol Generate menjadi loader, centang, dynamic island, pemutar musik dengan morf play/pause, progress bar yang digeser, slider volume yang meregang saat ditarik melewati maksimum, toggle, indikator tab cair, grafik yang menggambar dirinya dengan tooltip saat hover, palet ⌘K yang diketik, toast, lalu kembali ke tombol. Kursor menggerakkan setiap perubahan dengan klik dan seret nyata. Kanvas abu-abu hangat terang, komponen hitam putih, satu font UI bersih (Geist). Spring di mana-mana, overshoot sangat kecil. Frame terakhir sama dengan frame pertama agar berulang mulus.',
     },
     de: {
-      title: 'Prozedurale 3D-Insel',
-      prompt: 'Erstelle eine 15-sekündige 3D-Szene in Three.js: eine kleine tropische Insel zur Mittagszeit, komplett aus Code, ohne Modelle. Ein weißer Sandstrand umgibt einen grünen Hügel mit Palmen und Büschen; klares Wasser verläuft vom tiefen Ozeanblau zu einer türkisen Lagune, mit sanften Wellen, Lichtreflexen im Flachwasser und Schaum, der an den Strand plätschert. Ein kleines Dorf aus bunten Hütten, ein langer Holzsteg mit einem Boot am Ende, ein kreisendes Segelboot, weiße Wolken und ein paar Möwen, dazu weiche Sonnenschatten im Sand. Eine durchgehende Kamerafahrt: hoch über dem Riff beginnen, am Steg vorbei hinabgleiten, die Insel umrunden und zur Ruhe kommen. Beginne mit "A little escape." und ende mit "Stay a little longer." Strahlend blauer Himmel mit leichtem Dunst am Horizont.',
+      title: 'UI-Motion aus einer Form',
+      prompt: 'Erstelle ein 14-sekündiges UI-Motion-Stück auf Dribbble-Niveau bei 120 BPM, 7 Takte, auf jedem Beat passiert etwas. Eine Form, kein Schnitt: Sie morpht vom Generate-Button zu Loader, Häkchen, Dynamic Island, Musikplayer mit Play/Pause-Morph, gescrubbtem Fortschrittsbalken, Lautstärkeregler, der sich über das Maximum hinaus dehnt, Toggle, flüssigem Tab-Indikator, einem sich selbst zeichnenden Chart mit Hover-Tooltip, einer ⌘K-Palette mit Eingabe, einem Toast und zurück zum Button. Ein Cursor steuert jede Änderung mit echten Klicks und Drags. Heller warmgrauer Hintergrund, schwarze und weiße Komponenten, eine klare UI-Schrift (Geist). Überall Federn, höchstens minimales Überschwingen. Das letzte Bild ist das erste, damit es loopt.',
     },
     'pt-BR': {
-      title: 'Ilha 3D procedural',
-      prompt: 'Crie uma cena 3D de 15 segundos em Three.js: uma pequena ilha tropical ao meio-dia, feita inteiramente em código, sem modelos. Uma praia de areia branca envolve um morro verde com coqueiros e arbustos; a água cristalina vai do azul profundo do oceano a uma lagoa turquesa, com ondulações suaves, brilhos de luz no raso e espuma tocando a areia. Uma pequena vila de cabanas coloridas, um longo píer de madeira com um barco atracado na ponta, um veleiro circulando, nuvens brancas e algumas gaivotas, com sombras suaves do sol na areia. Um único movimento de câmera contínuo: comece bem alto sobre o recife, desça passando pelo píer, contorne a ilha e estabilize. Abra com "A little escape." e feche com "Stay a little longer." Céu azul brilhante com uma névoa clara no horizonte.',
+      title: 'Motion de UI em uma forma',
+      prompt: 'Crie uma peça de motion de UI de 14 segundos no nível do Dribbble, a 120 BPM, 7 compassos, algo acontecendo em cada batida. Uma forma, sem cortes: ela vira de um botão Generate para um loader, um check, uma dynamic island, um player de música com morph de play/pause, uma barra de progresso arrastada, um slider de volume que estica ao passar do máximo, um toggle, um indicador de abas líquido, um gráfico que se desenha com tooltip no hover, uma paleta ⌘K em que se digita, um toast e de volta ao botão. Um cursor conduz cada mudança com cliques e arrastes reais. Fundo cinza-quente claro, componentes em preto e branco, uma fonte de UI limpa (Geist). Molas em tudo, no máximo um overshoot mínimo. O último frame é igual ao primeiro, para fazer loop.',
     },
     'es-ES': {
-      title: 'Isla 3D procedural',
-      prompt: 'Crea una escena 3D de 15 segundos en Three.js: una pequeña isla tropical a mediodía, hecha íntegramente con código, sin modelos. Una playa de arena blanca rodea una colina verde con palmeras y arbustos; el agua cristalina pasa del azul profundo del océano a una laguna turquesa, con ondulaciones suaves, destellos de luz en los bajíos y espuma que lame la orilla. Un pequeño pueblo de cabañas de colores, un largo muelle de madera con una barca amarrada al final, un velero dando vueltas, nubes blancas y algunas gaviotas, con sombras suaves del sol en la arena. Un único movimiento de cámara continuo: empieza muy alto sobre el arrecife, desciende pasando junto al muelle, rodea la isla y se asienta. Abre con "A little escape." y cierra con "Stay a little longer." Cielo azul luminoso con una bruma clara en el horizonte.',
+      title: 'Motion de UI con una sola forma',
+      prompt: 'Crea una pieza de motion de UI de 14 segundos al nivel de Dribbble, a 120 BPM, 7 compases, algo en cada tiempo. Una sola forma, sin cortes: pasa de un botón Generate a un loader, un check, una dynamic island, un reproductor con morph de play/pausa, una barra de progreso arrastrada, un slider de volumen que se estira al pasar del máximo, un interruptor, un indicador de pestañas líquido, un gráfico que se dibuja solo con tooltip al pasar el cursor, una paleta ⌘K en la que se escribe, un toast y vuelta al botón. Un cursor provoca cada cambio con clics y arrastres reales. Fondo gris cálido claro, componentes en blanco y negro, una fuente de UI limpia (Geist). Muelles en todo, como mucho un rebote mínimo. El último fotograma es el primero, para que haga bucle.',
     },
     ru: {
-      title: 'Процедурный 3D-остров',
-      prompt: 'Сделай 15-секундную 3D-сцену на Three.js: маленький тропический остров в полдень, полностью созданный кодом, без моделей. Белый песчаный пляж окружает зелёный холм с пальмами и кустами; прозрачная вода переходит от глубокой океанской синевы к бирюзовой лагуне — мягкая рябь, блики света на мелководье и пена у берега. Маленькая деревня из разноцветных хижин, длинный деревянный пирс с лодкой на конце, кружащий парусник, белые облака и несколько чаек, мягкие солнечные тени на песке. Один непрерывный проход камеры: начать высоко над рифом, плавно спуститься мимо пирса, облететь остров и остановиться. Открой фразой "A little escape." и закрой фразой "Stay a little longer." Яркое голубое небо с лёгкой дымкой у горизонта.',
+      title: 'UI-моушн из одной формы',
+      prompt: 'Сделай 14-секундный UI-моушн уровня Dribbble, 120 BPM, 7 тактов, на каждую долю что-то происходит. Одна форма без склеек: она превращается из кнопки Generate в лоадер, галочку, dynamic island, плеер с морфингом play/pause, прокручиваемый прогресс-бар, слайдер громкости, который растягивается при перетягивании за максимум, переключатель, «жидкий» индикатор вкладок, график, рисующий себя с тултипом при наведении, палитру ⌘K с вводом текста, тост — и обратно в кнопку. Каждое изменение запускает курсор настоящими кликами и перетаскиванием. Светлый тёплый серый фон, чёрно-белые компоненты, один чистый UI-шрифт (Geist). Пружины везде, максимум крошечный перелёт. Последний кадр совпадает с первым, чтобы зацикливалось.',
     },
     fa: {
-      title: 'جزیرهٔ سه‌بعدی رویه‌ای',
-      prompt: 'یک صحنهٔ سه‌بعدی ۱۵ ثانیه‌ای با Three.js بساز: جزیره‌ای گرمسیری و کوچک در ظهر، تماماً با کد و بدون هیچ مدلی. ساحل شنی سفید دور تپه‌ای سبز با نخل و بوته حلقه زده؛ آب زلال از آبی عمیق اقیانوس تا تالابی فیروزه‌ای تغییر رنگ می‌دهد، با موج‌های آرام، درخشش نور در آب کم‌عمق و کفی که به ساحل می‌خورد. دهکده‌ای کوچک از کلبه‌های رنگارنگ، اسکلهٔ چوبی بلندی با قایقی بسته‌شده در انتهایش، قایق بادبانی‌ای که دور جزیره می‌چرخد، ابرهای سفید و چند مرغ دریایی، با سایه‌های نرم خورشید روی شن. یک حرکت پیوستهٔ دوربین: از بالای صخره‌های مرجانی شروع کن، از کنار اسکله پایین بیا، دور جزیره بچرخ و آرام بایست. با "A little escape." شروع و با "Stay a little longer." تمام کن. آسمان آبی روشن با مه کم‌رنگی در افق.',
+      title: 'موشن رابط کاربری با یک شکل',
+      prompt: 'یک قطعهٔ موشن رابط کاربری ۱۴ ثانیه‌ای در سطح Dribbble بساز، ۱۲۰ BPM، ۷ میزان، روی هر ضرب اتفاقی بیفتد. فقط یک شکل، بدون برش: از دکمهٔ Generate به لودر، تیک، dynamic island، پخش‌کنندهٔ موسیقی با دگردیسی play/pause، نوار پیشرفتی که کشیده می‌شود، اسلایدر صدایی که وقتی از حداکثر بیشتر کشیده شود کش می‌آید، سوئیچ، نشانگر سیال تب، نموداری که خودش رسم می‌شود با راهنمای هاور، پالت ⌘K که در آن تایپ می‌شود، اعلان و دوباره دکمه تبدیل می‌شود. نشانگر ماوس هر تغییر را با کلیک و کشیدن واقعی انجام می‌دهد. پس‌زمینهٔ خاکستری گرم روشن، اجزای سیاه و سفید، یک فونت رابط کاربری تمیز (Geist). همه‌جا فنری، حداکثر کمی برگشت. فریم آخر همان فریم اول است تا حلقه شود.',
     },
     ar: {
-      title: 'جزيرة ثلاثية الأبعاد إجرائية',
-      prompt: 'اصنع مشهدًا ثلاثي الأبعاد مدته 15 ثانية في Three.js: جزيرة استوائية صغيرة عند الظهيرة، مبنية بالكامل بالكود من دون أي نماذج. شاطئ رملي أبيض يحيط بتلة خضراء عليها نخيل وشجيرات؛ ماء صافٍ يتدرج من أزرق المحيط العميق إلى بحيرة فيروزية، مع تموجات هادئة ولمعان الضوء في المياه الضحلة وزبد يلامس الشاطئ. قرية صغيرة من أكواخ ملونة، ورصيف خشبي طويل في آخره قارب راسٍ، وقارب شراعي يدور حول الجزيرة، وغيوم بيضاء وبضعة نوارس، مع ظلال شمس ناعمة على الرمل. حركة كاميرا واحدة متصلة: ابدأ عاليًا فوق الشعاب، وانزلق نزولًا مرورًا بالرصيف، ودُر حول الجزيرة ثم استقر. افتتح بـ "A little escape." واختم بـ "Stay a little longer." سماء زرقاء صافية مع ضباب خفيف عند الأفق.',
+      title: 'موشن واجهة بشكل واحد',
+      prompt: 'اصنع عمل موشن لواجهة مستخدم مدته 14 ثانية بمستوى Dribbble، على إيقاع 120 BPM، 7 مازورات، وحدث في كل نبضة. شكل واحد دون قطع: يتحول من زر Generate إلى مؤشر تحميل، علامة صح، dynamic island، مشغل موسيقى مع تحول تشغيل/إيقاف، شريط تقدم يُسحب، شريط صوت يتمدد عند سحبه بعد الحد الأقصى، مفتاح تبديل، مؤشر تبويبات سائل، رسم بياني يرسم نفسه مع تلميح عند المرور، لوحة ⌘K يُكتب فيها، إشعار، ثم يعود إلى الزر. يقود مؤشر الفأرة كل تغيير بنقرات وسحب حقيقي. خلفية رمادية دافئة فاتحة، مكونات بالأبيض والأسود، خط واجهة نظيف واحد (Geist). نوابض في كل مكان، وارتداد ضئيل على الأكثر. الإطار الأخير هو الأول ليتكرر بسلاسة.',
     },
     ja: {
-      title: 'プロシージャル 3D アイランド',
-      prompt: 'Three.js で 15 秒の 3D シーンを作って。真昼の小さな南の島を、モデルを使わずすべてコードで生成する。白い砂浜がヤシと茂みの緑の丘を囲み、澄んだ海は深い外洋の青からターコイズのラグーンへ変わる。さざ波、浅瀬にゆれる光、砂浜に寄せる白い波。カラフルな小屋の小さな村、先にボートが係留された長い木の桟橋、島を回るヨット、白い雲と数羽のカモメ、砂浜にやわらかな日差しの影。カメラは途切れないワンカット：リーフの上空から始まり、桟橋をかすめて降り、島をぐるりと回って落ち着く。冒頭は "A little escape."、最後は "Stay a little longer."。明るい青空と、地平線にうっすらかかるもや。',
+      title: 'ワンシェイプ UI モーション',
+      prompt: 'Dribbble レベルの 14 秒の UI モーションを作って。120 BPM、7 小節、毎拍なにかが起きる。ひとつの図形をカットなしで、Generate ボタン → ローダー → チェック → ダイナミックアイランド → 再生/一時停止がモーフする音楽プレーヤー → ドラッグされるプログレスバー → 最大を超えて引っ張ると伸びる音量スライダー → トグル → 液体のようなタブインジケーター → ホバーでツールチップが出る自動描画チャート → 入力できる ⌘K パレット → トースト → ボタンへ戻る。すべての変化はカーソルの実際のクリックとドラッグで起こす。明るいウォームグレーの背景、白黒のコンポーネント、クリーンな UI フォント 1 種（Geist）。全部スプリングで、オーバーシュートはごくわずか。最後のフレームを最初のフレームと同じにしてループさせる。',
     },
     ko: {
-      title: '절차적 3D 섬',
-      prompt: 'Three.js로 15초 3D 장면을 만들어 줘: 한낮의 작은 열대 섬을 모델 없이 전부 코드로 생성해. 하얀 모래사장이 야자수와 덤불이 자란 초록 언덕을 둘러싸고, 맑은 바다는 깊은 바다의 짙은 파랑에서 청록빛 라군으로 이어져. 잔잔한 물결, 얕은 물에서 일렁이는 빛, 해변에 밀려드는 하얀 거품. 알록달록한 오두막이 모인 작은 마을, 끝에 배가 묶인 긴 나무 부두, 섬을 도는 요트, 하얀 구름과 갈매기 몇 마리, 모래 위의 부드러운 햇빛 그림자. 카메라는 끊김 없는 한 번의 무빙: 산호초 위 높은 곳에서 시작해 부두를 스치며 내려오고, 섬을 한 바퀴 돌아 멈춰. 시작 문구는 "A little escape.", 마지막 문구는 "Stay a little longer.". 밝고 파란 하늘과 수평선의 옅은 연무.',
+      title: '원 셰이프 UI 모션',
+      prompt: 'Dribbble 수준의 14초 UI 모션을 만들어 줘. 120 BPM, 7마디, 매 박자마다 무언가 일어나야 해. 하나의 도형을 컷 없이: Generate 버튼에서 로더, 체크, 다이내믹 아일랜드, 재생/일시정지가 모핑되는 뮤직 플레이어, 드래그되는 진행 바, 최대치를 넘겨 끌면 늘어나는 볼륨 슬라이더, 토글, 액체 같은 탭 인디케이터, 호버 툴팁이 있는 스스로 그려지는 차트, 입력하는 ⌘K 팔레트, 토스트를 거쳐 다시 버튼으로. 모든 변화는 커서의 실제 클릭과 드래그로 일어나. 밝은 웜 그레이 배경, 흑백 컴포넌트, 깔끔한 UI 폰트 하나(Geist). 전부 스프링, 오버슈트는 아주 살짝만. 마지막 프레임이 첫 프레임과 같아 루프되게.',
     },
     pl: {
-      title: 'Proceduralna wyspa 3D',
-      prompt: 'Stwórz 15-sekundową scenę 3D w Three.js: mała tropikalna wyspa w południe, zbudowana w całości kodem, bez modeli. Biała plaża otacza zielone wzgórze z palmami i krzewami; przejrzysta woda przechodzi od głębokiego błękitu oceanu w turkusową lagunę, z łagodną falą, migotaniem światła na płyciźnie i pianą obmywającą brzeg. Mała wioska kolorowych chat, długi drewniany pomost z łodzią przycumowaną na końcu, krążąca żaglówka, białe chmury i kilka mew, miękkie cienie słońca na piasku. Jeden ciągły ruch kamery: start wysoko nad rafą, łagodny zjazd obok pomostu, okrążenie wyspy i zatrzymanie. Otwórz napisem "A little escape." i zamknij napisem "Stay a little longer." Jasne błękitne niebo z lekką mgiełką na horyzoncie.',
+      title: 'UI motion z jednego kształtu',
+      prompt: 'Stwórz 14-sekundowy UI motion na poziomie Dribbble, 120 BPM, 7 taktów, coś dzieje się na każdym uderzeniu. Jeden kształt, bez cięć: zmienia się z przycisku Generate w loader, ptaszek, dynamic island, odtwarzacz muzyki z morfem play/pause, przewijany pasek postępu, suwak głośności rozciągający się po przeciągnięciu za maksimum, przełącznik, płynny wskaźnik zakładek, wykres rysujący się sam z tooltipem po najechaniu, paletę ⌘K z wpisywaniem, toast i z powrotem w przycisk. Kursor wywołuje każdą zmianę prawdziwymi kliknięciami i przeciągnięciami. Jasne, ciepłoszare tło, czarno-białe komponenty, jedna czysta czcionka UI (Geist). Wszędzie sprężyny, najwyżej minimalne przestrzelenie. Ostatnia klatka jest pierwszą, żeby się zapętlało.',
     },
     hu: {
-      title: 'Procedurális 3D-sziget',
-      prompt: 'Készíts egy 15 másodperces 3D-jelenetet Three.js-ben: egy kis trópusi sziget délidőben, teljesen kódból, modellek nélkül. Fehér homokos part öleli körül a pálmákkal és bokrokkal benőtt zöld dombot; a kristálytiszta víz a mély óceánkéktől a türkiz lagúnáig színeződik, lágy fodrozódással, a sekély vízben csillogó fényekkel és a partot nyaldosó tajtékkal. Színes kunyhókból álló kis falu, hosszú fa stég a végén kikötött csónakkal, köröző vitorlás, fehér felhők és néhány sirály, lágy napárnyékok a homokon. Egyetlen folyamatos kameramozgás: magasan a zátony felett indul, a stég mellett lesiklik, megkerüli a szigetet, majd megáll. Nyiss ezzel: "A little escape.", zárj ezzel: "Stay a little longer." Ragyogó kék ég, a horizonton halvány párával.',
+      title: 'Egyformás UI motion',
+      prompt: 'Készíts egy 14 másodperces, Dribbble-szintű UI motiont, 120 BPM, 7 ütem, minden ütemre történik valami. Egyetlen forma vágás nélkül: Generate gombból töltésjelző, pipa, dynamic island, lejátszás/szünet morfos zenelejátszó, húzott folyamatjelző, maximumon túlhúzva megnyúló hangerőcsúszka, kapcsoló, folyékony fülindikátor, önmagát kirajzoló diagram hover-tooltippel, gépelhető ⌘K paletta, értesítés, majd vissza a gombba. Minden változást a kurzor valódi kattintásai és húzásai indítanak. Világos meleg szürke háttér, fekete-fehér komponensek, egy tiszta UI-betűtípus (Geist). Mindenhol rugó, legfeljebb minimális túllendülés. Az utolsó képkocka megegyezik az elsővel, hogy ismétlődjön.',
     },
     fr: {
-      title: 'Île 3D procédurale',
-      prompt: 'Crée une scène 3D de 15 secondes en Three.js : une petite île tropicale à midi, entièrement codée, sans modèles. Une plage de sable blanc entoure une colline verte plantée de palmiers et de buissons ; l’eau limpide passe du bleu profond de l’océan à un lagon turquoise, avec de douces ondulations, des reflets de lumière dans les hauts-fonds et de l’écume qui lèche le rivage. Un petit village de cases colorées, un long ponton en bois avec un bateau amarré au bout, un voilier qui tourne autour, des nuages blancs et quelques mouettes, avec de douces ombres de soleil sur le sable. Un seul mouvement de caméra continu : partir très haut au-dessus du récif, descendre en glissant le long du ponton, faire le tour de l’île puis se poser. Ouvre sur "A little escape." et termine sur "Stay a little longer." Ciel bleu lumineux avec une légère brume à l’horizon.',
+      title: 'Motion d’UI en une seule forme',
+      prompt: 'Crée une pièce de motion d’UI de 14 secondes au niveau Dribbble, à 120 BPM, 7 mesures, il se passe quelque chose à chaque temps. Une seule forme, sans coupe : elle passe d’un bouton Generate à un loader, une coche, une dynamic island, un lecteur audio avec morph lecture/pause, une barre de progression qu’on fait défiler, un curseur de volume qui s’étire au-delà du maximum, un interrupteur, un indicateur d’onglets liquide, un graphique qui se dessine avec une info-bulle au survol, une palette ⌘K où l’on tape, un toast, puis retour au bouton. Un curseur déclenche chaque changement par de vrais clics et glisser-déposer. Fond gris chaud clair, composants noir et blanc, une seule police d’UI nette (Geist). Des ressorts partout, au plus un minuscule dépassement. La dernière image est la première, pour que ça boucle.',
     },
     uk: {
-      title: 'Процедурний 3D-острів',
-      prompt: 'Створи 15-секундну 3D-сцену на Three.js: маленький тропічний острів опівдні, повністю створений кодом, без моделей. Білий піщаний пляж оточує зелений пагорб із пальмами й кущами; прозора вода переходить від глибокої океанської сині до бірюзової лагуни — м’які брижі, відблиски світла на мілині й піна біля берега. Маленьке село з різнокольорових хатинок, довгий дерев’яний причал із човном на кінці, вітрильник, що кружляє довкола, білі хмари й кілька чайок, м’які сонячні тіні на піску. Один безперервний проліт камери: почати високо над рифом, плавно спуститися повз причал, облетіти острів і зупинитися. Відкрий фразою "A little escape." і закрий фразою "Stay a little longer." Яскраве блакитне небо з легким серпанком на обрії.',
+      title: 'UI-моушн з однієї форми',
+      prompt: 'Зроби 14-секундний UI-моушн рівня Dribbble, 120 BPM, 7 тактів, на кожну долю щось відбувається. Одна форма без склейок: вона перетворюється з кнопки Generate на лоадер, галочку, dynamic island, плеєр із морфінгом play/pause, прогрес-бар, який перемотують, повзунок гучності, що розтягується при перетягуванні за максимум, перемикач, «рідкий» індикатор вкладок, графік, що малює себе з підказкою при наведенні, палітру ⌘K з введенням тексту, тост — і назад у кнопку. Кожну зміну запускає курсор справжніми кліками й перетягуванням. Світлий теплий сірий фон, чорно-білі компоненти, один чистий UI-шрифт (Geist). Пружини всюди, максимум крихітний переліт. Останній кадр збігається з першим, щоб зациклювалося.',
     },
     tr: {
-      title: 'Prosedürel 3D ada',
-      prompt: 'Three.js ile 15 saniyelik bir 3D sahne yap: öğle vakti küçük bir tropik ada, tamamen kodla, hiçbir model kullanmadan. Beyaz kumlu bir plaj palmiyeler ve çalılarla kaplı yeşil bir tepeyi çevreler; berrak su derin okyanus mavisinden turkuaz bir lagüne geçer, hafif dalgalar, sığ suda parıldayan ışık ve kıyıyı yalayan köpükler. Renkli kulübelerden küçük bir köy, ucunda bağlı bir tekne olan uzun ahşap bir iskele, adanın etrafında dönen bir yelkenli, beyaz bulutlar ve birkaç martı; kumda yumuşak güneş gölgeleri. Tek ve kesintisiz bir kamera hareketi: resifin çok üstünden başla, iskelenin yanından süzülerek alçal, adanın etrafında dön ve dur. "A little escape." ile aç, "Stay a little longer." ile kapat. Parlak mavi gökyüzü, ufukta hafif bir pus.',
+      title: 'Tek şekilli UI motion',
+      prompt: 'Dribbble seviyesinde, 120 BPM’de, 7 ölçü, her vuruşta bir şey olan 14 saniyelik bir UI motion yap. Tek bir şekil, kesme yok: Generate butonundan yükleyiciye, onay işaretine, dynamic island’a, play/pause dönüşümlü müzik çalara, kaydırılan ilerleme çubuğuna, maksimumun ötesine çekilince uzayan ses kaydırıcısına, anahtara, sıvı sekme göstergesine, hover’da ipucu gösteren kendini çizen grafiğe, içine yazılan ⌘K paletine, bildirime ve tekrar butona dönüşür. Her değişimi imleç gerçek tıklama ve sürüklemelerle yönetir. Açık sıcak gri zemin, siyah beyaz bileşenler, tek bir temiz UI fontu (Geist). Her yerde yay hareketi, en fazla minicik bir aşma. Son kare ilk kareyle aynı, döngü olsun.',
     },
     th: {
-      title: 'เกาะ 3D แบบโพรซีเดอรัล',
-      prompt: 'สร้างฉาก 3D ยาว 15 วินาทีด้วย Three.js: เกาะเขตร้อนเล็ก ๆ ยามเที่ยง สร้างด้วยโค้ดทั้งหมดโดยไม่ใช้โมเดล หาดทรายขาวล้อมเนินเขียวที่มีต้นมะพร้าวและพุ่มไม้ น้ำใสไล่จากสีน้ำเงินเข้มของทะเลลึกไปเป็นลากูนสีเทอร์ควอยซ์ คลื่นเบา ๆ แสงระยิบในน้ำตื้น และฟองคลื่นซัดชายหาด หมู่บ้านเล็ก ๆ ของกระท่อมหลากสี สะพานท่าเรือไม้ยาวที่มีเรือผูกอยู่ปลายสะพาน เรือใบที่แล่นวนรอบเกาะ เมฆขาวและนกนางนวลไม่กี่ตัว เงาแดดนุ่ม ๆ บนผืนทราย กล้องเคลื่อนต่อเนื่องช็อตเดียว: เริ่มสูงเหนือแนวปะการัง ร่อนลงผ่านสะพานท่าเรือ วนรอบเกาะแล้วนิ่ง เปิดด้วย "A little escape." และปิดด้วย "Stay a little longer." ท้องฟ้าสีฟ้าสดใสพร้อมหมอกจาง ๆ ที่ขอบฟ้า',
+      title: 'UI โมชันจากรูปทรงเดียว',
+      prompt: 'สร้าง UI โมชันระดับ Dribbble ยาว 14 วินาที 120 BPM 7 ห้อง มีอะไรเกิดขึ้นทุกจังหวะ ใช้รูปทรงเดียวไม่มีการตัด: เปลี่ยนจากปุ่ม Generate เป็นตัวโหลด เครื่องหมายถูก dynamic island เครื่องเล่นเพลงที่มอร์ฟปุ่มเล่น/หยุด แถบความคืบหน้าที่ถูกลาก สไลเดอร์เสียงที่ยืดออกเมื่อลากเกินสุด สวิตช์ ตัวบอกแท็บแบบของเหลว กราฟที่วาดตัวเองพร้อมทูลทิปเมื่อชี้ พาเลตต์ ⌘K ที่พิมพ์ได้ toast แล้วกลับมาเป็นปุ่ม เคอร์เซอร์เป็นตัวสั่งทุกการเปลี่ยนแปลงด้วยการคลิกและลากจริง พื้นหลังเทาอุ่นอ่อน คอมโพเนนต์ขาวดำ ฟอนต์ UI สะอาดหนึ่งแบบ (Geist) ใช้สปริงทั้งหมด เด้งเกินได้นิดเดียว เฟรมสุดท้ายเหมือนเฟรมแรกเพื่อให้วนลูป',
     },
     it: {
-      title: 'Isola 3D procedurale',
-      prompt: 'Crea una scena 3D di 15 secondi in Three.js: una piccola isola tropicale a mezzogiorno, interamente in codice, senza modelli. Una spiaggia di sabbia bianca circonda una collina verde con palme e cespugli; l’acqua limpida sfuma dal blu profondo dell’oceano a una laguna turchese, con increspature leggere, riflessi di luce nelle secche e schiuma che lambisce la riva. Un piccolo villaggio di capanne colorate, un lungo pontile di legno con una barca ormeggiata in fondo, una barca a vela che gira intorno, nuvole bianche e qualche gabbiano, con morbide ombre di sole sulla sabbia. Un unico movimento di camera continuo: parti molto in alto sopra la barriera, scendi scivolando lungo il pontile, gira attorno all’isola e fermati. Apri con "A little escape." e chiudi con "Stay a little longer." Cielo azzurro brillante con una leggera foschia all’orizzonte.',
+      title: 'UI motion da una sola forma',
+      prompt: 'Crea un pezzo di UI motion di 14 secondi da Dribbble, a 120 BPM, 7 battute, succede qualcosa a ogni battito. Una sola forma, senza tagli: passa da un pulsante Generate a un loader, una spunta, una dynamic island, un player musicale con morph play/pausa, una barra di avanzamento trascinata, uno slider del volume che si allunga oltre il massimo, un interruttore, un indicatore di tab liquido, un grafico che si disegna da solo con tooltip al passaggio, una palette ⌘K in cui si scrive, un toast e di nuovo il pulsante. Un cursore guida ogni cambiamento con clic e trascinamenti reali. Sfondo grigio caldo chiaro, componenti in bianco e nero, un solo font UI pulito (Geist). Molle ovunque, al massimo un minimo overshoot. L’ultimo fotogramma è il primo, così va in loop.',
     },
   },
-  'example-motion-kinetic-type': {
+  'example-motion-pixel-wizard': {
     'zh-CN': {
-      title: '动态文字',
-      prompt: '做一段 15 秒、120 BPM 的动态文字片，画面里只有文字。先抛出问题 "WHAT DAY IS IT?"，三个词跟着节拍从遮罩里升起。接着星期几像老虎机一样带着动态模糊飞速滚动，最后停在 FRIDAY；黄色铺满画面，字母依次弹跳。然后每拍硬切一个词、占满全屏、每次换一种颜色：ALMOST / THE / WEEK— / END.。翻牌计数器从 08:00:00 倒数到零并闪红，结尾 FRIDAY 先描边、再填色，最后落下一个蓝色句号。瑞士海报配色：暖白纸色、黑、蓝、黄、红；粗体无衬线大字，细等宽字体的画框和走动的时间码。',
+      title: '像素巫师施法',
+      prompt: '做一个正在施法的像素风巫师动画：固定 128x96 的逻辑分辨率，放大后像素清晰、对齐网格，使用约 24 色的固定调色板：夜空用深蓝和深紫，长袍用暖色调，再加三四种明亮的魔法色。巫师戴着尖顶弯折的帽子、留长胡子、穿双色长袍，拿着顶端镶宝石的法杖，站在石头地面上，背景是有月亮和几颗闪烁星星的夜空。循环：待机（两帧上下浮动、胡子摆动）→ 蓄力（举杖、宝石闪烁、火花螺旋汇入）→ 施法（明亮爆发、火花向前飞散、画面 1-2 像素震动）→ 收势，宝石给巫师打一圈淡淡的轮廓光，整体是 8-12 fps 的像素动画手感。要像精致的 16 位像素精灵动画。',
     },
     'zh-TW': {
-      title: '動態文字',
-      prompt: '做一段 15 秒、120 BPM 的動態文字片，畫面裡只有文字。先拋出問題 "WHAT DAY IS IT?"，三個詞跟著節拍從遮罩裡升起。接著星期幾像拉霸機一樣帶著動態模糊飛速滾動，最後停在 FRIDAY；黃色鋪滿畫面，字母依序彈跳。然後每拍硬切一個詞、佔滿全螢幕、每次換一種顏色：ALMOST / THE / WEEK— / END.。翻牌計數器從 08:00:00 倒數到零並閃紅，結尾 FRIDAY 先描邊、再填色，最後落下一個藍色句號。瑞士海報配色：暖白紙色、黑、藍、黃、紅；粗體無襯線大字，細等寬字體的畫框和走動的時間碼。',
+      title: '像素巫師施法',
+      prompt: '做一個正在施法的像素風巫師動畫：固定 128x96 的邏輯解析度，放大後像素清晰、對齊網格，使用約 24 色的固定調色盤：夜空用深藍和深紫，長袍用暖色調，再加三四種明亮的魔法色。巫師戴著尖頂彎折的帽子、留長鬍子、穿雙色長袍，拿著頂端鑲寶石的法杖，站在石頭地面上，背景是有月亮和幾顆閃爍星星的夜空。循環：待機（兩格上下浮動、鬍子擺動）→ 蓄力（舉杖、寶石閃爍、火花螺旋匯入）→ 施法（明亮爆發、火花向前飛散、畫面 1-2 像素震動）→ 收勢，寶石給巫師打一圈淡淡的輪廓光，整體是 8-12 fps 的像素動畫手感。要像精緻的 16 位元像素精靈動畫。',
     },
     en: {
-      title: 'Kinetic Typography',
-      prompt: 'Make a 15-second kinetic typography film at 120 BPM where type is the only visual. Ask "WHAT DAY IS IT?": the three words rise out of masks on the beat. A slot-machine reel spins through the weekdays with motion blur and settles on FRIDAY; a yellow flood fills the frame as its letters bounce in turn. Then cut one word per beat, full frame, a new colour each time: ALMOST / THE / WEEK— / END. An odometer counts 08:00:00 down to zero and flashes red, and the film signs off with FRIDAY drawn in outline, filled, and closed by a blue full stop. Swiss poster palette of warm paper, black ink, blue, yellow and red; bold grotesk display type and a thin monospace frame with a running timecode.',
+      title: 'Pixel Art Wizard',
+      prompt: 'Create an animated pixel art wizard casting a spell, drawn at a fixed 128x96 logical resolution and scaled up with crisp, integer-snapped pixels from a fixed palette of about 24 colors: deep blues and purples for the night sky, warm robe tones, and three or four bright magic colors. A wizard with a bent pointed hat, a long beard, a two-shade robe and a staff with a gem stands on a stone floor under a dark sky with a moon and a few twinkling stars. Loop IDLE (two-frame bob, beard sway) → CHARGE (staff raises, the gem flickers, sparks spiral inward) → CAST (bright burst, sparks thrown forward, a 1-2 pixel screen shake) → RECOVER, with a subtle rim light from the gem, at an 8-12 fps pixel-animation feel. It should look like a polished 16-bit sprite animation.',
     },
     id: {
-      title: 'Tipografi Kinetik',
-      prompt: 'Buat film tipografi kinetik 15 detik pada 120 BPM dengan teks sebagai satu-satunya visual. Ajukan "WHAT DAY IS IT?": tiga kata itu muncul dari masker mengikuti ketukan. Gulungan ala mesin slot memutar nama-nama hari dengan motion blur dan berhenti di FRIDAY; warna kuning membanjiri layar sementara hurufnya memantul bergantian. Lalu potong satu kata per ketukan, memenuhi layar, dengan warna baru setiap kali: ALMOST / THE / WEEK— / END. Odometer menghitung mundur 08:00:00 ke nol lalu berkedip merah, dan film ditutup dengan FRIDAY digambar sebagai garis luar, diisi, lalu diakhiri titik biru. Palet poster Swiss: kertas hangat, tinta hitam, biru, kuning, dan merah; huruf grotesk tebal dan bingkai monospace tipis dengan timecode berjalan.',
+      title: 'Penyihir Pixel Art',
+      prompt: 'Buat animasi penyihir pixel art yang sedang merapal mantra, digambar pada resolusi logis tetap 128x96 lalu diperbesar dengan piksel tajam yang menempel ke grid, memakai palet tetap sekitar 24 warna: biru dan ungu tua untuk langit malam, warna jubah yang hangat, serta tiga atau empat warna sihir yang terang. Penyihir bertopi runcing yang tertekuk, berjanggut panjang, berjubah dua warna, dan memegang tongkat bermata permata berdiri di lantai batu di bawah langit gelap dengan bulan dan beberapa bintang berkelip. Loop IDLE (bob dua frame, janggut bergoyang) → CHARGE (tongkat terangkat, permata berkedip, percikan berputar ke dalam) → CAST (ledakan terang, percikan terlempar ke depan, guncangan layar 1-2 piksel) → RECOVER, dengan rim light halus dari permata, terasa seperti animasi piksel 8-12 fps. Harus terlihat seperti animasi sprite 16-bit yang rapi.',
     },
     de: {
-      title: 'Kinetische Typografie',
-      prompt: 'Erstelle einen 15-sekündigen Film in kinetischer Typografie bei 120 BPM, in dem Schrift das einzige Bild ist. Stelle die Frage "WHAT DAY IS IT?": Die drei Wörter steigen im Takt aus Masken auf. Eine Slotmaschinen-Walze dreht die Wochentage mit Bewegungsunschärfe durch und bleibt bei FRIDAY stehen; Gelb flutet das Bild, während die Buchstaben nacheinander hüpfen. Dann pro Beat ein Wort, bildfüllend, jedes Mal in neuer Farbe: ALMOST / THE / WEEK— / END. Ein Zählwerk läuft von 08:00:00 auf null und blitzt rot, und der Film endet mit FRIDAY, erst als Kontur gezeichnet, dann gefüllt und mit einem blauen Punkt abgeschlossen. Schweizer Plakatpalette aus warmem Papier, schwarzer Tinte, Blau, Gelb und Rot; fette Grotesk und ein dünner Monospace-Rahmen mit laufendem Timecode.',
+      title: 'Pixel-Art-Zauberer',
+      prompt: 'Erstelle einen animierten Pixel-Art-Zauberer, der einen Zauber wirkt, gezeichnet in fester logischer Auflösung 128x96 und mit scharfen, ganzzahlig ausgerichteten Pixeln hochskaliert, aus einer festen Palette von etwa 24 Farben: tiefe Blau- und Violetttöne für den Nachthimmel, warme Robenfarben und drei oder vier leuchtende Magiefarben. Ein Zauberer mit geknicktem Spitzhut, langem Bart, zweifarbiger Robe und einem Stab mit Edelstein steht auf Steinboden unter dunklem Himmel mit Mond und ein paar funkelnden Sternen. Loop IDLE (zwei Frames Wippen, Bart schwingt) → CHARGE (Stab hebt sich, der Edelstein flackert, Funken spiralen nach innen) → CAST (heller Ausbruch, Funken fliegen nach vorn, 1-2 Pixel Bildschirmwackeln) → RECOVER, mit dezentem Randlicht vom Edelstein und dem Gefühl einer 8-12-fps-Pixelanimation. Es soll wie eine polierte 16-Bit-Sprite-Animation aussehen.',
     },
     'pt-BR': {
-      title: 'Tipografia cinética',
-      prompt: 'Crie um filme de tipografia cinética de 15 segundos a 120 BPM em que o texto é o único elemento visual. Pergunte "WHAT DAY IS IT?": as três palavras surgem de máscaras no ritmo. Um rolo de caça-níquel gira pelos dias da semana com motion blur e para em FRIDAY; o amarelo inunda o quadro enquanto as letras pulam uma a uma. Depois corte uma palavra por batida, em tela cheia, com uma cor nova a cada vez: ALMOST / THE / WEEK— / END. Um contador vai de 08:00:00 a zero e pisca em vermelho, e o filme termina com FRIDAY desenhado em contorno, preenchido e fechado por um ponto final azul. Paleta de pôster suíço com papel quente, tinta preta, azul, amarelo e vermelho; grotesca em negrito e uma moldura monoespaçada fina com timecode correndo.',
+      title: 'Mago em pixel art',
+      prompt: 'Crie uma animação em pixel art de um mago lançando um feitiço, desenhada em resolução lógica fixa de 128x96 e ampliada com pixels nítidos e alinhados à grade, usando uma paleta fixa de cerca de 24 cores: azuis e roxos profundos para o céu noturno, tons quentes para o manto e três ou quatro cores mágicas brilhantes. Um mago de chapéu pontudo dobrado, barba longa, manto em dois tons e um cajado com uma gema fica sobre um chão de pedra sob um céu escuro com lua e algumas estrelas piscando. Loop IDLE (balanço de dois frames, barba oscilando) → CHARGE (cajado se ergue, a gema pisca, faíscas espiralam para dentro) → CAST (explosão brilhante, faíscas lançadas para frente, tremida de tela de 1-2 pixels) → RECOVER, com uma leve luz de contorno vinda da gema e sensação de animação em pixel a 8-12 fps. Deve parecer uma animação de sprite 16-bit bem polida.',
     },
     'es-ES': {
-      title: 'Tipografía cinética',
-      prompt: 'Crea una pieza de tipografía cinética de 15 segundos a 120 BPM en la que el texto es lo único que se ve. Pregunta "WHAT DAY IS IT?": las tres palabras surgen de máscaras al ritmo. Un rodillo de tragaperras recorre los días de la semana con desenfoque de movimiento y se detiene en FRIDAY; el amarillo inunda el encuadre mientras sus letras rebotan una tras otra. Después corta una palabra por tiempo, a pantalla completa y con un color nuevo cada vez: ALMOST / THE / WEEK— / END. Un contador baja de 08:00:00 a cero y parpadea en rojo, y la pieza cierra con FRIDAY dibujado en contorno, rellenado y rematado con un punto azul. Paleta de cartel suizo con papel cálido, tinta negra, azul, amarillo y rojo; grotesca en negrita y un marco monoespaciado fino con código de tiempo en marcha.',
+      title: 'Mago en pixel art',
+      prompt: 'Crea una animación en pixel art de un mago lanzando un hechizo, dibujada a una resolución lógica fija de 128x96 y ampliada con píxeles nítidos y alineados a la cuadrícula, con una paleta fija de unos 24 colores: azules y morados profundos para el cielo nocturno, tonos cálidos para la túnica y tres o cuatro colores mágicos brillantes. Un mago con sombrero puntiagudo doblado, barba larga, túnica de dos tonos y un bastón con una gema está sobre un suelo de piedra bajo un cielo oscuro con luna y algunas estrellas que titilan. Bucle IDLE (balanceo de dos fotogramas, barba que se mece) → CHARGE (el bastón se alza, la gema parpadea, chispas en espiral hacia dentro) → CAST (estallido brillante, chispas lanzadas hacia delante, temblor de pantalla de 1-2 píxeles) → RECOVER, con una sutil luz de contorno de la gema y sensación de animación pixelada a 8-12 fps. Debe parecer una animación de sprite de 16 bits bien pulida.',
     },
     ru: {
-      title: 'Кинетическая типографика',
-      prompt: 'Сделай 15-секундный ролик кинетической типографики в темпе 120 BPM, где текст — единственный визуальный элемент. Задай вопрос "WHAT DAY IS IT?": три слова поднимаются из масок в такт. Барабан, как в игровом автомате, прокручивает дни недели с размытием в движении и останавливается на FRIDAY; кадр заливает жёлтым, а буквы по очереди подпрыгивают. Затем по одному слову на долю, во весь кадр и каждый раз новым цветом: ALMOST / THE / WEEK— / END. Счётчик отсчитывает от 08:00:00 до нуля и вспыхивает красным, а финал — FRIDAY, сначала контуром, затем заливкой, с синей точкой в конце. Палитра швейцарского плаката: тёплая бумага, чёрный, синий, жёлтый и красный; жирный гротеск и тонкая моноширинная рамка с бегущим таймкодом.',
+      title: 'Пиксельный волшебник',
+      prompt: 'Создай пиксельную анимацию волшебника, творящего заклинание: фиксированное логическое разрешение 128x96, увеличение с чёткими, привязанными к сетке пикселями и фиксированная палитра примерно из 24 цветов — глубокие синие и фиолетовые для ночного неба, тёплые тона мантии и три-четыре ярких магических цвета. Волшебник в загнутом остроконечном колпаке, с длинной бородой, в двухцветной мантии и с посохом с самоцветом стоит на каменном полу под тёмным небом с луной и несколькими мерцающими звёздами. Цикл IDLE (покачивание в два кадра, борода колышется) → CHARGE (посох поднимается, самоцвет мерцает, искры закручиваются внутрь) → CAST (яркая вспышка, искры летят вперёд, тряска экрана на 1-2 пикселя) → RECOVER, с лёгкой контурной подсветкой от самоцвета и ощущением пиксельной анимации на 8-12 fps. Должно выглядеть как отполированная 16-битная спрайтовая анимация.',
     },
     fa: {
-      title: 'تایپوگرافی متحرک',
-      prompt: 'یک فیلم تایپوگرافی متحرک ۱۵ ثانیه‌ای با ضرب ۱۲۰ BPM بساز که تنها تصویرش متن باشد. بپرس "WHAT DAY IS IT?": سه کلمه روی ضرب از دل ماسک‌ها بالا می‌آیند. چرخه‌ای مثل دستگاه اسلات روزهای هفته را با تاری حرکت می‌چرخاند و روی FRIDAY می‌ایستد؛ زرد کل قاب را پر می‌کند و حروف یکی‌یکی بالا و پایین می‌پرند. بعد روی هر ضرب یک کلمه، تمام‌قاب و هر بار با رنگی تازه: ALMOST / THE / WEEK— / END. یک شمارنده از 08:00:00 تا صفر پایین می‌آید و قرمز چشمک می‌زند، و فیلم با FRIDAY تمام می‌شود که اول خط‌دور کشیده، بعد پر و با یک نقطهٔ آبی بسته می‌شود. پالت پوستر سوئیسی: کاغذ گرم، جوهر سیاه، آبی، زرد و قرمز؛ حروف گروتسک ضخیم و قابی نازک با فونت تک‌فاصله و تایم‌کد در حال حرکت.',
+      title: 'جادوگر پیکسلی',
+      prompt: 'انیمیشن پیکسل‌آرت جادوگری بساز که در حال طلسم کردن است؛ با وضوح منطقی ثابت ۱۲۸x۹۶ کشیده شود و با پیکسل‌های تیز و هم‌تراز با شبکه بزرگ شود، با پالت ثابتی حدود ۲۴ رنگ: آبی و بنفش تیره برای آسمان شب، رنگ‌های گرم برای ردا و سه یا چهار رنگ درخشان جادویی. جادوگری با کلاه نوک‌تیز خمیده، ریش بلند، ردای دورنگ و عصایی با گوهر روی کف سنگی زیر آسمانی تاریک با ماه و چند ستارهٔ چشمک‌زن ایستاده است. حلقه: IDLE (تکان دوفریمی، تاب خوردن ریش) → CHARGE (عصا بالا می‌رود، گوهر سوسو می‌زند، جرقه‌ها مارپیچ به داخل می‌روند) → CAST (انفجار درخشان، پرتاب جرقه‌ها به جلو، لرزش ۱ تا ۲ پیکسلی صفحه) → RECOVER، با نور لبهٔ ملایمی از گوهر و حس انیمیشن پیکسلی ۸ تا ۱۲ فریم بر ثانیه. باید مثل یک انیمیشن اسپرایت ۱۶ بیتی صیقل‌خورده باشد.',
     },
     ar: {
-      title: 'طباعة حركية',
-      prompt: 'اصنع فيلم طباعة حركية مدته 15 ثانية على إيقاع 120 BPM يكون فيه النص هو العنصر المرئي الوحيد. اطرح السؤال "WHAT DAY IS IT?": ترتفع الكلمات الثلاث من الأقنعة على الإيقاع. تدور بكرة كآلة القمار عبر أيام الأسبوع مع ضبابية الحركة وتستقر على FRIDAY؛ يغمر الأصفر الإطار بينما تقفز الحروف واحدًا تلو الآخر. ثم كلمة واحدة لكل نبضة، بملء الإطار وبلون جديد كل مرة: ALMOST / THE / WEEK— / END. يعدّ عدّاد تنازليًا من 08:00:00 إلى الصفر ويومض بالأحمر، ويختتم الفيلم بكلمة FRIDAY مرسومة كخط خارجي ثم مملوءة ومختومة بنقطة زرقاء. لوحة ألوان الملصق السويسري: ورق دافئ وحبر أسود وأزرق وأصفر وأحمر؛ خط غروتسك عريض وإطار رفيع بخط أحادي المسافة مع رمز زمني متحرك.',
+      title: 'ساحر بفن البكسل',
+      prompt: 'اصنع رسمًا متحركًا بفن البكسل لساحر يلقي تعويذة، مرسومًا بدقة منطقية ثابتة 128x96 ومكبّرًا ببكسلات حادة ومحاذية للشبكة، بلوحة ثابتة من نحو 24 لونًا: أزرق وبنفسجي داكن لسماء الليل، ودرجات دافئة للرداء، وثلاثة أو أربعة ألوان سحرية زاهية. ساحر بقبعة مدببة منثنية ولحية طويلة ورداء بلونين وعصا برأسها جوهرة يقف على أرضية حجرية تحت سماء مظلمة فيها قمر وبضع نجوم متلألئة. حلقة IDLE (اهتزاز بإطارين وتمايل اللحية) ← CHARGE (ترتفع العصا وتومض الجوهرة وتلتف الشرارات نحو الداخل) ← CAST (انفجار ساطع وشرارات تندفع للأمام واهتزاز للشاشة بمقدار 1-2 بكسل) ← RECOVER، مع إضاءة حافة خفيفة من الجوهرة وإحساس رسوم بكسل بمعدل 8-12 إطارًا في الثانية. يجب أن يبدو كرسوم سبرايت 16 بت مصقولة.',
     },
     ja: {
-      title: 'キネティック・タイポグラフィ',
-      prompt: '文字だけで見せる、120 BPM・15 秒のキネティック・タイポグラフィを作って。"WHAT DAY IS IT?" と問いかけ、3 つの単語がビートに合わせてマスクから立ち上がる。スロットのようなリールがモーションブラーをかけて曜日を回し、FRIDAY で止まる。画面が黄色に染まり、文字が順番に弾む。続いて 1 拍ごとに 1 単語、画面いっぱいに、毎回色を変えて切り替える：ALMOST / THE / WEEK— / END.。カウンターが 08:00:00 からゼロまで数えて赤く光り、最後は FRIDAY をアウトラインで描いてから塗り、青いピリオドで締める。温かい紙色・黒・青・黄・赤のスイスポスター配色、太いグロテスク体、細い等幅フォントのフレームと進むタイムコード。',
+      title: 'ピクセルアートの魔法使い',
+      prompt: '呪文を唱えるピクセルアートの魔法使いのアニメーションを作って。論理解像度は 128x96 固定、整数倍でくっきり拡大し、ピクセルはグリッドにスナップ。約 24 色の固定パレット：夜空は深い青と紫、ローブは暖色、魔法には明るい色を 3〜4 色。折れ曲がったとんがり帽子、長いひげ、2 色のローブ、宝石のついた杖を持つ魔法使いが、月と瞬く星のある暗い夜空の下、石の床に立つ。ループは IDLE（2 コマの上下、ひげの揺れ）→ CHARGE（杖を掲げ、宝石が明滅し、火花が渦を巻いて集まる）→ CAST（まばゆい爆発、火花が前方へ飛ぶ、1〜2 px の画面揺れ）→ RECOVER。宝石からのほのかなリムライト、8〜12 fps のピクセルアニメの手触りで。磨き込まれた 16 ビットのスプライトアニメのように。',
     },
     ko: {
-      title: '키네틱 타이포그래피',
-      prompt: '글자만으로 보여 주는 120 BPM, 15초 키네틱 타이포그래피를 만들어 줘. "WHAT DAY IS IT?"라고 묻고, 세 단어가 비트에 맞춰 마스크에서 솟아올라. 슬롯머신 같은 릴이 모션 블러와 함께 요일을 돌리다가 FRIDAY에서 멈추고, 노란색이 화면을 채우며 글자가 하나씩 튀어 올라. 이어서 한 박에 한 단어씩, 화면 가득, 매번 새로운 색으로 컷해: ALMOST / THE / WEEK— / END.. 카운터가 08:00:00에서 0까지 세고 빨갛게 번쩍인 뒤, FRIDAY를 윤곽선으로 그리고 채운 다음 파란 마침표로 마무리해. 따뜻한 종이색, 검정, 파랑, 노랑, 빨강의 스위스 포스터 팔레트, 굵은 그로테스크 서체, 가는 고정폭 글꼴 프레임과 흐르는 타임코드.',
+      title: '픽셀 아트 마법사',
+      prompt: '주문을 외우는 픽셀 아트 마법사 애니메이션을 만들어 줘. 고정 논리 해상도 128x96으로 그리고, 그리드에 맞춘 선명한 픽셀로 정수배 확대해. 약 24색 고정 팔레트: 밤하늘은 짙은 파랑과 보라, 로브는 따뜻한 톤, 마법은 밝은 색 3~4가지. 꺾인 뾰족 모자, 긴 수염, 두 톤의 로브, 보석 달린 지팡이를 든 마법사가 달과 반짝이는 별 몇 개가 뜬 어두운 하늘 아래 돌바닥에 서 있어. 루프는 IDLE(2프레임 흔들림, 수염 살랑임) → CHARGE(지팡이를 들고, 보석이 깜빡이고, 불꽃이 나선형으로 모여듦) → CAST(밝은 폭발, 불꽃이 앞으로 튐, 화면 1~2픽셀 흔들림) → RECOVER. 보석에서 나오는 은은한 림 라이트, 8~12fps 픽셀 애니메이션 느낌으로. 잘 다듬어진 16비트 스프라이트 애니메이션처럼 보여야 해.',
     },
     pl: {
-      title: 'Typografia kinetyczna',
-      prompt: 'Stwórz 15-sekundowy film w typografii kinetycznej w tempie 120 BPM, w którym jedynym obrazem jest tekst. Zadaj pytanie "WHAT DAY IS IT?": trzy słowa wyłaniają się z masek w rytm. Bęben jak w automacie przewija dni tygodnia z rozmyciem ruchu i zatrzymuje się na FRIDAY; żółć zalewa kadr, a litery po kolei podskakują. Potem jedno słowo na takt, na cały kadr, za każdym razem w nowym kolorze: ALMOST / THE / WEEK— / END. Licznik odlicza od 08:00:00 do zera i błyska na czerwono, a film kończy się słowem FRIDAY narysowanym konturem, wypełnionym i zamkniętym niebieską kropką. Paleta szwajcarskiego plakatu: ciepły papier, czarny tusz, niebieski, żółty i czerwony; pogrubiony grotesk i cienka ramka w kroju monospace z biegnącym kodem czasowym.',
+      title: 'Pikselowy czarodziej',
+      prompt: 'Stwórz animację pixel art czarodzieja rzucającego zaklęcie, rysowaną w stałej rozdzielczości logicznej 128x96 i powiększoną ostrymi, przyciągniętymi do siatki pikselami, ze stałą paletą około 24 kolorów: głębokie błękity i fiolety nocnego nieba, ciepłe tony szaty i trzy lub cztery jasne kolory magii. Czarodziej w zgiętym spiczastym kapeluszu, z długą brodą, w dwutonowej szacie i z laską zakończoną klejnotem stoi na kamiennej posadzce pod ciemnym niebem z księżycem i kilkoma migoczącymi gwiazdami. Pętla IDLE (dwuklatkowe kołysanie, falująca broda) → CHARGE (laska unosi się, klejnot migocze, iskry spiralnie zbiegają się do środka) → CAST (jasny wybuch, iskry wyrzucone do przodu, drganie ekranu o 1-2 piksele) → RECOVER, z subtelnym światłem konturowym od klejnotu i wrażeniem animacji pikselowej 8-12 fps. Ma wyglądać jak dopracowana 16-bitowa animacja sprite’ów.',
     },
     hu: {
-      title: 'Kinetikus tipográfia',
-      prompt: 'Készíts egy 15 másodperces, 120 BPM-es kinetikus tipográfiai filmet, amelyben a szöveg az egyetlen kép. Tedd fel a kérdést: "WHAT DAY IS IT?" – a három szó ütemre emelkedik ki a maszkokból. Egy nyerőgép-tárcsa mozgási elmosódással pörgeti végig a hét napjait, és megáll a FRIDAY-nél; sárga árasztja el a képet, a betűk sorban ugranak. Ezután ütemenként egy szó, teljes képen, mindig új színnel: ALMOST / THE / WEEK— / END. Egy számláló 08:00:00-tól nulláig pörög le, és pirosan villan, a film pedig a FRIDAY szóval zárul: előbb körvonal, aztán kitöltés, végül egy kék pont. Svájci plakátpaletta: meleg papír, fekete tinta, kék, sárga és piros; vastag groteszk betű és vékony monospace keret futó időkóddal.',
+      title: 'Pixel art varázsló',
+      prompt: 'Készíts animált pixel art varázslót, aki varázsigét mond, rögzített 128x96-os logikai felbontásban rajzolva és éles, rácshoz igazított pixelekkel felnagyítva, kb. 24 színű rögzített palettával: mély kékek és lilák az éjszakai éghez, meleg tónusok a köpenyhez és három-négy élénk varázsszín. Egy megtört csúcsú süveget, hosszú szakállt, kéttónusú köpenyt viselő, drágaköves botot tartó varázsló áll kőpadlón, sötét ég alatt holddal és néhány pislákoló csillaggal. Hurok: IDLE (kétkockás billegés, lengő szakáll) → CHARGE (a bot felemelkedik, a drágakő villódzik, szikrák spirálban gyűlnek befelé) → CAST (fényes robbanás, előre szóródó szikrák, 1-2 pixeles képrázkódás) → RECOVER, a drágakő halvány peremfényével és 8-12 fps-es pixelanimációs érzettel. Úgy nézzen ki, mint egy kidolgozott 16 bites sprite-animáció.',
     },
     fr: {
-      title: 'Typographie cinétique',
-      prompt: 'Crée un film de typographie cinétique de 15 secondes à 120 BPM où le texte est la seule image. Pose la question "WHAT DAY IS IT?" : les trois mots surgissent de masques sur le temps. Un rouleau de machine à sous fait défiler les jours de la semaine avec un flou de mouvement et s’arrête sur FRIDAY ; le jaune envahit le cadre pendant que ses lettres rebondissent tour à tour. Coupe ensuite un mot par temps, plein cadre, avec une nouvelle couleur à chaque fois : ALMOST / THE / WEEK— / END. Un compteur descend de 08:00:00 à zéro et clignote en rouge, et le film se termine sur FRIDAY tracé en contour, rempli, puis clos par un point bleu. Palette d’affiche suisse : papier chaud, encre noire, bleu, jaune et rouge ; linéale grasse et fin cadre en chasse fixe avec un timecode qui défile.',
+      title: 'Magicien en pixel art',
+      prompt: 'Crée une animation en pixel art d’un magicien qui lance un sort, dessinée à une résolution logique fixe de 128x96 et agrandie avec des pixels nets alignés sur la grille, dans une palette fixe d’environ 24 couleurs : bleus et violets profonds pour le ciel nocturne, tons chauds pour la robe et trois ou quatre couleurs magiques vives. Un magicien au chapeau pointu plié, à la longue barbe, en robe bicolore et tenant un bâton surmonté d’une gemme se tient sur un sol de pierre sous un ciel sombre avec une lune et quelques étoiles scintillantes. Boucle IDLE (balancement sur deux images, barbe qui ondule) → CHARGE (le bâton se lève, la gemme scintille, des étincelles convergent en spirale) → CAST (éclat lumineux, étincelles projetées vers l’avant, tremblement d’écran de 1-2 pixels) → RECOVER, avec un léger contre-jour venu de la gemme et un rendu d’animation pixel à 8-12 fps. Ça doit ressembler à une animation de sprite 16 bits soignée.',
     },
     uk: {
-      title: 'Кінетична типографіка',
-      prompt: 'Створи 15-секундний ролик кінетичної типографіки в темпі 120 BPM, де текст — єдиний візуальний елемент. Постав запитання "WHAT DAY IS IT?": три слова підіймаються з масок у такт. Барабан, як в ігровому автоматі, прокручує дні тижня з розмиттям у русі й зупиняється на FRIDAY; кадр заливає жовтим, а літери по черзі підстрибують. Далі по одному слову на долю, на весь кадр і щоразу новим кольором: ALMOST / THE / WEEK— / END. Лічильник рахує від 08:00:00 до нуля й спалахує червоним, а фінал — FRIDAY, спершу контуром, потім заливкою, із синьою крапкою в кінці. Палітра швейцарського плаката: тепла бумага, чорний, синій, жовтий і червоний; жирний гротеск і тонка моноширинна рамка з біжучим таймкодом.',
+      title: 'Піксельний чарівник',
+      prompt: 'Створи піксельну анімацію чарівника, що творить закляття: фіксована логічна роздільність 128x96, збільшення з чіткими, прив’язаними до сітки пікселями та фіксована палітра приблизно з 24 кольорів — глибокі сині й фіолетові для нічного неба, теплі тони мантії та три-чотири яскраві магічні кольори. Чарівник у загнутому гостроверхому капелюсі, з довгою бородою, у двоколірній мантії та з посохом із самоцвітом стоїть на кам’яній підлозі під темним небом із місяцем і кількома мерехтливими зірками. Цикл IDLE (погойдування у два кадри, борода коливається) → CHARGE (посох підіймається, самоцвіт мерехтить, іскри закручуються всередину) → CAST (яскравий спалах, іскри летять уперед, трусіння екрана на 1-2 пікселі) → RECOVER, із легким контурним світлом від самоцвіту й відчуттям піксельної анімації на 8-12 fps. Має виглядати як відшліфована 16-бітна спрайтова анімація.',
     },
     tr: {
-      title: 'Kinetik tipografi',
-      prompt: 'Görsel olarak yalnızca yazının olduğu, 120 BPM’de 15 saniyelik bir kinetik tipografi filmi yap. "WHAT DAY IS IT?" diye sor: üç kelime ritimle maskelerin içinden yükselsin. Slot makinesi gibi bir makara haftanın günlerini hareket bulanıklığıyla döndürüp FRIDAY’de dursun; sarı kareyi doldururken harfler sırayla zıplasın. Ardından her vuruşta bir kelime, tam ekran ve her seferinde yeni bir renkle: ALMOST / THE / WEEK— / END. Bir sayaç 08:00:00’dan sıfıra insin ve kırmızı yanıp sönsün; film, önce kontur olarak çizilen, sonra doldurulan ve mavi bir noktayla kapanan FRIDAY ile bitsin. Sıcak kâğıt, siyah mürekkep, mavi, sarı ve kırmızıdan oluşan İsviçre afişi paleti; kalın grotesk yazı ve akan zaman koduyla ince bir monospace çerçeve.',
+      title: 'Piksel sanat büyücü',
+      prompt: 'Büyü yapan, piksel sanat tarzında animasyonlu bir büyücü oluştur: sabit 128x96 mantıksal çözünürlükte çizilsin, ızgaraya oturan net piksellerle büyütülsün ve yaklaşık 24 renkli sabit bir palet kullanılsın: gece göğü için koyu maviler ve morlar, cübbe için sıcak tonlar ve üç-dört parlak büyü rengi. Bükük sivri şapkalı, uzun sakallı, iki tonlu cübbeli ve ucunda mücevher olan asa tutan bir büyücü, ay ve birkaç parlayan yıldızın olduğu karanlık gökyüzü altında taş zeminde durur. Döngü IDLE (iki karelik sallanma, sakal salınımı) → CHARGE (asa kalkar, mücevher titreşir, kıvılcımlar içe doğru sarmal çizer) → CAST (parlak patlama, ileri savrulan kıvılcımlar, 1-2 piksellik ekran sarsıntısı) → RECOVER; mücevherden gelen hafif kenar ışığıyla, 8-12 fps piksel animasyon hissinde. Cilalı bir 16-bit sprite animasyonu gibi görünmeli.',
     },
     th: {
-      title: 'คิเนติกไทโปกราฟี',
-      prompt: 'สร้างหนังคิเนติกไทโปกราฟียาว 15 วินาทีที่ 120 BPM โดยมีแต่ตัวอักษรบนจอ เริ่มด้วยคำถาม "WHAT DAY IS IT?" ให้สามคำโผล่ขึ้นจากมาสก์ตามจังหวะ วงล้อแบบสล็อตแมชชีนหมุนผ่านวันในสัปดาห์พร้อมโมชันเบลอแล้วหยุดที่ FRIDAY สีเหลืองท่วมเต็มเฟรมขณะที่ตัวอักษรเด้งทีละตัว จากนั้นตัดหนึ่งคำต่อหนึ่งจังหวะ เต็มจอ เปลี่ยนสีทุกครั้ง: ALMOST / THE / WEEK— / END. ตัวนับนับถอยหลังจาก 08:00:00 ถึงศูนย์แล้วกะพริบสีแดง และปิดท้ายด้วย FRIDAY ที่วาดเป็นเส้นขอบ เติมสี แล้วปิดด้วยจุดสีน้ำเงิน ใช้พาเลตต์โปสเตอร์สวิส กระดาษโทนอุ่น หมึกดำ น้ำเงิน เหลือง และแดง ตัวอักษรกรอเทสก์หนา และกรอบบางด้วยฟอนต์โมโนสเปซพร้อมไทม์โค้ดที่เดินอยู่',
+      title: 'พ่อมดพิกเซลอาร์ต',
+      prompt: 'สร้างแอนิเมชันพิกเซลอาร์ตพ่อมดกำลังร่ายเวท วาดที่ความละเอียดลอจิคัลคงที่ 128x96 แล้วขยายด้วยพิกเซลคมชัดที่ยึดตามกริด ใช้พาเลตต์คงที่ราว 24 สี: น้ำเงินและม่วงเข้มสำหรับท้องฟ้ายามค่ำ โทนอุ่นสำหรับเสื้อคลุม และสีเวทมนตร์สว่างสามสี่สี พ่อมดสวมหมวกแหลมที่พับงอ ไว้เคราขาว สวมเสื้อคลุมสองโทน ถือไม้เท้าที่มีอัญมณีที่ปลาย ยืนบนพื้นหินใต้ท้องฟ้ามืดที่มีดวงจันทร์และดาวระยิบระยับไม่กี่ดวง วนลูป IDLE (ขยับขึ้นลงสองเฟรม เคราไหว) → CHARGE (ยกไม้เท้า อัญมณีกะพริบ ประกายไฟหมุนวนเข้าหาศูนย์กลาง) → CAST (ระเบิดแสงจ้า ประกายไฟพุ่งไปข้างหน้า จอสั่น 1-2 พิกเซล) → RECOVER พร้อมแสงขอบจางๆ จากอัญมณี ให้ความรู้สึกแอนิเมชันพิกเซล 8-12 fps ต้องดูเหมือนแอนิเมชันสไปรต์ 16 บิตที่ขัดเกลามาอย่างดี',
     },
     it: {
-      title: 'Tipografia cinetica',
-      prompt: 'Crea un film di tipografia cinetica di 15 secondi a 120 BPM in cui il testo è l’unica immagine. Fai la domanda "WHAT DAY IS IT?": le tre parole emergono da maschere a tempo. Un rullo da slot machine fa scorrere i giorni della settimana con motion blur e si ferma su FRIDAY; il giallo invade l’inquadratura mentre le lettere rimbalzano una dopo l’altra. Poi taglia una parola per battuta, a tutto schermo, con un colore nuovo ogni volta: ALMOST / THE / WEEK— / END. Un contatore scende da 08:00:00 a zero e lampeggia di rosso, e il film si chiude con FRIDAY disegnato in contorno, riempito e chiuso da un punto blu. Palette da manifesto svizzero con carta calda, inchiostro nero, blu, giallo e rosso; grottesco in neretto e una sottile cornice monospazio con timecode che scorre.',
+      title: 'Mago in pixel art',
+      prompt: 'Crea un’animazione in pixel art di un mago che lancia un incantesimo, disegnata a una risoluzione logica fissa di 128x96 e ingrandita con pixel nitidi allineati alla griglia, con una palette fissa di circa 24 colori: blu e viola profondi per il cielo notturno, toni caldi per la tunica e tre o quattro colori magici brillanti. Un mago con cappello a punta piegato, barba lunga, tunica bicolore e un bastone con una gemma sta su un pavimento di pietra sotto un cielo scuro con la luna e qualche stella che brilla. Loop IDLE (oscillazione a due fotogrammi, barba che ondeggia) → CHARGE (il bastone si alza, la gemma tremola, scintille a spirale verso l’interno) → CAST (esplosione luminosa, scintille scagliate in avanti, scossa dello schermo di 1-2 pixel) → RECOVER, con una leggera luce di contorno dalla gemma e la sensazione di un’animazione pixel a 8-12 fps. Deve sembrare un’animazione di sprite a 16 bit ben rifinita.',
+    },
+  },
+  'example-motion-future': {
+    'zh-CN': {
+      title: '未来已来',
+      prompt: '做一支 20 秒的高能科技短片，主题是「未来已来」（The future is already here），120 BPM 卡点，配色为电光蓝、黑、白和镀铬。开场是 3D 方块从 1 个裂变到 64 个，接着是 SIGNAL、扫描中的视网膜和 97.2%、写着 WAKE UP 的文字隧道、液态金属质感的 THE FUTURE。然后出现 FUTURE.EXE 桌面窗口、LOADING 99% 进度条和 3-2-1 倒计时，再是标着 PRISM、BOLT、PLANET、MIND 的四个玻璃质感物体、环形漩涡和棋盘格网格。最后落在巨大的镀铬 3D 字 FUTURE 和 IS ALREADY HERE.，以故障效果切到 END OF TRANSMISSION 收尾。粗重的展示字体（Unbounded Black），细等宽字体的 HUD 带时间码和画面标签，全程按节拍硬切。',
+    },
+    'zh-TW': {
+      title: '未來已來',
+      prompt: '做一支 20 秒的高能科技短片，主題是「未來已來」（The future is already here），120 BPM 卡點，配色為電光藍、黑、白和鍍鉻。開場是 3D 方塊從 1 個裂變到 64 個，接著是 SIGNAL、掃描中的視網膜和 97.2%、寫著 WAKE UP 的文字隧道、液態金屬質感的 THE FUTURE。然後出現 FUTURE.EXE 桌面視窗、LOADING 99% 進度條和 3-2-1 倒數，再是標著 PRISM、BOLT、PLANET、MIND 的四個玻璃質感物件、環形漩渦和棋盤格網格。最後落在巨大的鍍鉻 3D 字 FUTURE 和 IS ALREADY HERE.，以故障效果切到 END OF TRANSMISSION 收尾。粗重的展示字體（Unbounded Black），細等寬字體的 HUD 帶時間碼和畫面標籤，全程按節拍硬切。',
+    },
+    en: {
+      title: 'The Future Is Already Here',
+      prompt: 'Make a 20-second high-energy tech reel titled "The future is already here", cut to 120 BPM in electric blue, black, white and chrome. Open with 3D cubes multiplying from 1 to 64, then SIGNAL, a scanning retina with 97.2%, a word tunnel that reads WAKE UP, and THE FUTURE in liquid chrome. Show a FUTURE.EXE desktop window, a LOADING 99% bar and a 3-2-1 countdown, then four glass objects labelled PRISM, BOLT, PLANET and MIND, a ring vortex and a checker grid. Land on a big chrome 3D FUTURE with IS ALREADY HERE. and end on a glitch into END OF TRANSMISSION. Heavy display type (Unbounded Black), a thin monospace HUD with timecode and frame labels, hard cuts on the beat.',
+    },
+    id: {
+      title: 'Masa Depan Sudah Tiba',
+      prompt: 'Buat reel teknologi penuh energi 20 detik berjudul "The future is already here", dipotong pada 120 BPM dengan warna biru elektrik, hitam, putih, dan krom. Buka dengan kubus 3D yang berlipat dari 1 menjadi 64, lalu SIGNAL, retina yang dipindai dengan 97.2%, terowongan kata bertuliskan WAKE UP, dan THE FUTURE dalam krom cair. Tampilkan jendela desktop FUTURE.EXE, bilah LOADING 99%, dan hitung mundur 3-2-1, lalu empat objek kaca berlabel PRISM, BOLT, PLANET, dan MIND, pusaran cincin, dan grid papan catur. Akhiri pada FUTURE krom 3D besar dengan IS ALREADY HERE. lalu glitch menjadi END OF TRANSMISSION. Tipografi display tebal (Unbounded Black), HUD monospace tipis dengan timecode dan label frame, potongan tajam mengikuti ketukan.',
+    },
+    de: {
+      title: 'Die Zukunft ist schon da',
+      prompt: 'Erstelle ein energiegeladenes 20-Sekunden-Tech-Reel mit dem Titel „The future is already here“, geschnitten auf 120 BPM in Elektroblau, Schwarz, Weiß und Chrom. Starte mit 3D-Würfeln, die sich von 1 auf 64 vervielfachen, dann SIGNAL, eine gescannte Netzhaut mit 97.2 %, ein Worttunnel mit WAKE UP und THE FUTURE in flüssigem Chrom. Zeig ein FUTURE.EXE-Desktopfenster, einen LOADING-99-%-Balken und einen 3-2-1-Countdown, dann vier Glasobjekte mit den Labels PRISM, BOLT, PLANET und MIND, einen Ringwirbel und ein Schachbrettraster. Lande auf einem großen Chrom-3D-FUTURE mit IS ALREADY HERE. und ende mit einem Glitch zu END OF TRANSMISSION. Schwere Display-Schrift (Unbounded Black), ein dünnes Monospace-HUD mit Timecode und Frame-Labels, harte Schnitte auf dem Beat.',
+    },
+    'pt-BR': {
+      title: 'O futuro já chegou',
+      prompt: 'Crie um reel tech de 20 segundos cheio de energia chamado "The future is already here", cortado a 120 BPM em azul elétrico, preto, branco e cromo. Abra com cubos 3D se multiplicando de 1 para 64, depois SIGNAL, uma retina sendo escaneada com 97.2%, um túnel de palavras com WAKE UP e THE FUTURE em cromo líquido. Mostre uma janela de desktop FUTURE.EXE, uma barra LOADING 99% e uma contagem 3-2-1, depois quatro objetos de vidro rotulados PRISM, BOLT, PLANET e MIND, um vórtice de anéis e uma grade quadriculada. Termine num grande FUTURE cromado em 3D com IS ALREADY HERE. e feche com um glitch para END OF TRANSMISSION. Tipografia display pesada (Unbounded Black), um HUD monoespaçado fino com timecode e rótulos de quadro, cortes secos no ritmo.',
+    },
+    'es-ES': {
+      title: 'El futuro ya está aquí',
+      prompt: 'Crea un reel tecnológico de 20 segundos lleno de energía titulado "The future is already here", montado a 120 BPM en azul eléctrico, negro, blanco y cromo. Empieza con cubos 3D que se multiplican de 1 a 64, después SIGNAL, una retina escaneada con 97.2 %, un túnel de palabras que dice WAKE UP y THE FUTURE en cromo líquido. Muestra una ventana de escritorio FUTURE.EXE, una barra LOADING 99 % y una cuenta atrás 3-2-1, luego cuatro objetos de cristal con las etiquetas PRISM, BOLT, PLANET y MIND, un vórtice de anillos y una cuadrícula de ajedrez. Termina en un gran FUTURE cromado en 3D con IS ALREADY HERE. y cierra con un glitch hacia END OF TRANSMISSION. Tipografía display pesada (Unbounded Black), un HUD monoespaciado fino con código de tiempo y etiquetas de plano, cortes secos al ritmo.',
+    },
+    ru: {
+      title: 'Будущее уже здесь',
+      prompt: 'Сделай 20-секундный энергичный технологичный рил под названием «The future is already here», смонтированный под 120 BPM, в электрик-синем, чёрном, белом и хроме. Начни с 3D-кубов, которые размножаются от 1 до 64, затем SIGNAL, сканируемая сетчатка с 97.2%, туннель из слов WAKE UP и THE FUTURE из жидкого хрома. Покажи окно рабочего стола FUTURE.EXE, полосу LOADING 99% и отсчёт 3-2-1, затем четыре стеклянных объекта с подписями PRISM, BOLT, PLANET и MIND, кольцевой вихрь и шахматную сетку. Заверши большим хромированным 3D-словом FUTURE с IS ALREADY HERE. и глитчем в END OF TRANSMISSION. Тяжёлый акцидентный шрифт (Unbounded Black), тонкий моноширинный HUD с таймкодом и подписями кадров, жёсткие склейки в такт.',
+    },
+    fa: {
+      title: 'آینده همین حالاست',
+      prompt: 'یک ریل فناوری پرانرژی ۲۰ ثانیه‌ای با عنوان «The future is already here» بساز، با تدوین ۱۲۰ BPM و رنگ‌های آبی الکتریک، مشکی، سفید و کروم. با مکعب‌های سه‌بعدی که از ۱ به ۶۴ تکثیر می‌شوند شروع کن، سپس SIGNAL، شبکیه‌ای در حال اسکن با 97.2%، تونل کلماتی با WAKE UP و THE FUTURE از کروم مایع. پنجرهٔ دسکتاپ FUTURE.EXE، نوار LOADING 99% و شمارش معکوس ۳-۲-۱ را نشان بده، بعد چهار شیء شیشه‌ای با برچسب‌های PRISM، BOLT، PLANET و MIND، گردابی از حلقه‌ها و شبکهٔ شطرنجی. روی FUTURE کرومی سه‌بعدی بزرگ با IS ALREADY HERE. فرود بیا و با گلیچ به END OF TRANSMISSION تمام کن. فونت نمایشی سنگین (Unbounded Black)، HUD نازک تک‌فاصله با تایم‌کد و برچسب فریم، برش‌های تند روی ضرب.',
+    },
+    ar: {
+      title: 'المستقبل هنا بالفعل',
+      prompt: 'اصنع ريلًا تقنيًا عالي الطاقة مدته 20 ثانية بعنوان "The future is already here"، بمونتاج على 120 BPM وبألوان الأزرق الكهربائي والأسود والأبيض والكروم. ابدأ بمكعبات ثلاثية الأبعاد تتضاعف من 1 إلى 64، ثم SIGNAL، وشبكية عين تُمسح مع 97.2%، ونفق كلمات يقول WAKE UP، وTHE FUTURE بالكروم السائل. اعرض نافذة سطح مكتب FUTURE.EXE وشريط LOADING 99% وعدًا تنازليًا 3-2-1، ثم أربعة أجسام زجاجية بعناوين PRISM وBOLT وPLANET وMIND، ودوامة حلقات وشبكة شطرنجية. انتهِ بكلمة FUTURE كروم ثلاثية الأبعاد ضخمة مع IS ALREADY HERE. ثم خلل بصري إلى END OF TRANSMISSION. خط عرض ثقيل (Unbounded Black)، وواجهة HUD رفيعة بخط أحادي المسافة مع رمز زمني وعناوين إطارات، وقطعات حادة على الإيقاع.',
+    },
+    ja: {
+      title: '未来はもう来ている',
+      prompt: '「The future is already here」をテーマに、120 BPM でカットするエレクトリックブルー・黒・白・クロームの 20 秒ハイエナジーなテックリールを作って。3D キューブが 1 から 64 に増える開幕、SIGNAL、97.2% と表示されるスキャン中の網膜、WAKE UP と書かれたワードトンネル、液体クロームの THE FUTURE。FUTURE.EXE のデスクトップウィンドウ、LOADING 99% のバー、3-2-1 のカウントダウン、PRISM・BOLT・PLANET・MIND とラベルのついた 4 つのガラスのオブジェクト、リングの渦、チェッカーグリッド。最後は巨大なクローム 3D の FUTURE と IS ALREADY HERE. に着地し、グリッチで END OF TRANSMISSION へ。重いディスプレイ書体（Unbounded Black）、タイムコードとフレームラベル付きの細い等幅 HUD、ビートに合わせたハードカット。',
+    },
+    ko: {
+      title: '미래는 이미 와 있다',
+      prompt: '"The future is already here"를 주제로 한 20초 하이 에너지 테크 릴을 만들어 줘. 120 BPM 컷, 일렉트릭 블루·검정·흰색·크롬. 3D 큐브가 1개에서 64개로 늘어나며 시작하고, SIGNAL, 97.2%가 뜨는 스캔 중인 망막, WAKE UP이 적힌 단어 터널, 리퀴드 크롬 THE FUTURE. FUTURE.EXE 데스크톱 창, LOADING 99% 바, 3-2-1 카운트다운, PRISM·BOLT·PLANET·MIND 라벨이 붙은 유리 오브젝트 4개, 링 소용돌이, 체커 그리드. 마지막은 거대한 크롬 3D FUTURE와 IS ALREADY HERE.로 착지하고 글리치로 END OF TRANSMISSION에서 끝내. 굵은 디스플레이 서체(Unbounded Black), 타임코드와 프레임 라벨이 있는 얇은 고정폭 HUD, 비트에 맞춘 하드 컷.',
+    },
+    pl: {
+      title: 'Przyszłość już tu jest',
+      prompt: 'Stwórz 20-sekundowy, energetyczny reel technologiczny zatytułowany „The future is already here”, cięty w 120 BPM, w elektrycznym błękicie, czerni, bieli i chromie. Zacznij od sześcianów 3D mnożących się z 1 do 64, potem SIGNAL, skanowana siatkówka z 97.2%, tunel słów z napisem WAKE UP i THE FUTURE z płynnego chromu. Pokaż okno pulpitu FUTURE.EXE, pasek LOADING 99% i odliczanie 3-2-1, następnie cztery szklane obiekty podpisane PRISM, BOLT, PLANET i MIND, wir pierścieni i szachownicę. Zakończ wielkim chromowanym 3D FUTURE z IS ALREADY HERE. i glitchem w END OF TRANSMISSION. Ciężki krój display (Unbounded Black), cienki monospace HUD z kodem czasowym i etykietami klatek, ostre cięcia w rytm.',
+    },
+    hu: {
+      title: 'A jövő már itt van',
+      prompt: 'Készíts egy 20 másodperces, energikus tech reelt „The future is already here” címmel, 120 BPM-re vágva, elektromos kék, fekete, fehér és króm színekben. Kezdd 3D kockákkal, amelyek 1-ről 64-re sokszorozódnak, aztán SIGNAL, egy szkennelt retina 97.2%-kal, egy WAKE UP feliratú szóalagút és folyékony krómból THE FUTURE. Mutass egy FUTURE.EXE asztali ablakot, egy LOADING 99% sávot és egy 3-2-1 visszaszámlálást, majd négy PRISM, BOLT, PLANET és MIND feliratú üvegtárgyat, egy gyűrűörvényt és egy sakktáblarácsot. Érkezz meg egy nagy króm 3D FUTURE-re az IS ALREADY HERE. sorral, és zárd egy glitch-csel END OF TRANSMISSION-be. Nehéz display betű (Unbounded Black), vékony monospace HUD időkóddal és képkockacímkékkel, kemény vágások ütemre.',
+    },
+    fr: {
+      title: 'Le futur est déjà là',
+      prompt: 'Crée un reel tech de 20 secondes très énergique intitulé « The future is already here », monté à 120 BPM en bleu électrique, noir, blanc et chrome. Ouvre sur des cubes 3D qui se multiplient de 1 à 64, puis SIGNAL, une rétine scannée avec 97.2 %, un tunnel de mots qui dit WAKE UP et THE FUTURE en chrome liquide. Montre une fenêtre de bureau FUTURE.EXE, une barre LOADING 99 % et un compte à rebours 3-2-1, puis quatre objets en verre étiquetés PRISM, BOLT, PLANET et MIND, un vortex d’anneaux et une grille en damier. Termine sur un grand FUTURE chromé en 3D avec IS ALREADY HERE. et finis par un glitch vers END OF TRANSMISSION. Typo d’affichage lourde (Unbounded Black), un HUD fin en chasse fixe avec timecode et libellés de plans, coupes franches sur le temps.',
+    },
+    uk: {
+      title: 'Майбутнє вже тут',
+      prompt: 'Зроби 20-секундний енергійний технологічний рил під назвою «The future is already here», змонтований під 120 BPM, в електрик-синьому, чорному, білому й хромі. Почни з 3D-кубів, що розмножуються від 1 до 64, далі SIGNAL, сітківка, яку сканують, із 97.2%, тунель зі слів WAKE UP і THE FUTURE з рідкого хрому. Покажи вікно робочого столу FUTURE.EXE, смугу LOADING 99% і відлік 3-2-1, потім чотири скляні об’єкти з підписами PRISM, BOLT, PLANET і MIND, кільцевий вихор і шахову сітку. Заверши великим хромованим 3D-словом FUTURE з IS ALREADY HERE. і глітчем у END OF TRANSMISSION. Важкий акцидентний шрифт (Unbounded Black), тонкий моноширинний HUD з таймкодом і підписами кадрів, жорсткі склейки в такт.',
+    },
+    tr: {
+      title: 'Gelecek çoktan geldi',
+      prompt: '"The future is already here" başlıklı, 120 BPM’e göre kesilmiş, elektrik mavisi, siyah, beyaz ve krom renklerde 20 saniyelik yüksek enerjili bir teknoloji reel’i yap. 1’den 64’e çoğalan 3D küplerle aç, ardından SIGNAL, 97.2% gösteren taranan bir retina, WAKE UP yazan bir kelime tüneli ve sıvı kromdan THE FUTURE. Bir FUTURE.EXE masaüstü penceresi, LOADING 99% çubuğu ve 3-2-1 geri sayımı göster; sonra PRISM, BOLT, PLANET ve MIND etiketli dört cam nesne, halka girdabı ve dama ızgarası. Büyük krom 3D FUTURE ve IS ALREADY HERE. ile bitir, bir glitch ile END OF TRANSMISSION’a geç. Kalın display yazı (Unbounded Black), zaman kodlu ve kare etiketli ince monospace HUD, vuruşta sert kesmeler.',
+    },
+    th: {
+      title: 'อนาคตมาถึงแล้ว',
+      prompt: 'สร้างเทครีลพลังสูงยาว 20 วินาทีชื่อ "The future is already here" ตัดตามจังหวะ 120 BPM ในโทนน้ำเงินไฟฟ้า ดำ ขาว และโครม เปิดด้วยลูกบาศก์ 3D ที่ทวีคูณจาก 1 เป็น 64 ตามด้วย SIGNAL เรตินาที่กำลังถูกสแกนพร้อม 97.2% อุโมงค์คำที่เขียนว่า WAKE UP และ THE FUTURE แบบโครมเหลว แสดงหน้าต่างเดสก์ท็อป FUTURE.EXE แถบ LOADING 99% และนับถอยหลัง 3-2-1 แล้วตามด้วยวัตถุแก้วสี่ชิ้นที่ติดป้าย PRISM, BOLT, PLANET และ MIND วังวนวงแหวน และกริดลายตาราง จบที่ตัวอักษรโครม 3D ขนาดใหญ่ FUTURE พร้อม IS ALREADY HERE. แล้วกลิตช์ไปสู่ END OF TRANSMISSION ใช้ฟอนต์ดิสเพลย์หนา (Unbounded Black) HUD ฟอนต์โมโนสเปซบางพร้อมไทม์โค้ดและป้ายเฟรม และตัดฉับตามจังหวะ',
+    },
+    it: {
+      title: 'Il futuro è già qui',
+      prompt: 'Crea un reel tech di 20 secondi ad alta energia intitolato "The future is already here", montato a 120 BPM in blu elettrico, nero, bianco e cromo. Apri con cubi 3D che si moltiplicano da 1 a 64, poi SIGNAL, una retina scansionata con 97.2%, un tunnel di parole che dice WAKE UP e THE FUTURE in cromo liquido. Mostra una finestra desktop FUTURE.EXE, una barra LOADING 99% e un conto alla rovescia 3-2-1, poi quattro oggetti in vetro etichettati PRISM, BOLT, PLANET e MIND, un vortice di anelli e una griglia a scacchi. Chiudi su un grande FUTURE cromato in 3D con IS ALREADY HERE. e finisci con un glitch verso END OF TRANSMISSION. Tipografia display pesante (Unbounded Black), un sottile HUD monospazio con timecode ed etichette di fotogramma, tagli netti a tempo.',
     },
   },
 };

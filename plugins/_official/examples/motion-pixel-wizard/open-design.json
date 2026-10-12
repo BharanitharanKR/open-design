@@ -1,0 +1,123 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-pixel-wizard",
+  "title": "Pixel Art Wizard",
+  "title_i18n": {
+    "en": "Pixel Art Wizard",
+    "id": "Penyihir Pixel Art",
+    "de": "Pixel-Art-Zauberer",
+    "zh-CN": "像素巫师施法",
+    "zh-TW": "像素巫師施法",
+    "pt-BR": "Mago em pixel art",
+    "es-ES": "Mago en pixel art",
+    "ru": "Пиксельный волшебник",
+    "fa": "جادوگر پیکسلی",
+    "ar": "ساحر بفن البكسل",
+    "ja": "ピクセルアートの魔法使い",
+    "ko": "픽셀 아트 마법사",
+    "pl": "Pikselowy czarodziej",
+    "hu": "Pixel art varázsló",
+    "fr": "Magicien en pixel art",
+    "uk": "Піксельний чарівник",
+    "tr": "Piksel sanat büyücü",
+    "th": "พ่อมดพิกเซลอาร์ต",
+    "it": "Mago in pixel art"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "An 11-second pixel art loop, rebuilt from the viral original: a wizard on a moonlit stone wall charges his staff, casts a burst of magic and settles back, at a crisp 128×96 resolution.",
+  "description_i18n": {
+    "en": "An 11-second pixel art loop, rebuilt from the viral original: a wizard on a moonlit stone wall charges his staff, casts a burst of magic and settles back, at a crisp 128×96 resolution.",
+    "id": "Loop pixel art 11 detik, dibuat ulang dari versi viral aslinya: penyihir di atas tembok batu bermandikan cahaya bulan mengisi tongkatnya, melepaskan ledakan sihir, lalu kembali tenang, dalam resolusi tajam 128×96.",
+    "de": "Ein 11-sekündiger Pixel-Art-Loop, nachgebaut nach dem viralen Original: Ein Zauberer auf einer mondbeschienenen Steinmauer lädt seinen Stab auf, entfesselt einen Magiestoß und kommt zur Ruhe, gestochen scharf in 128×96.",
+    "zh-CN": "按爆款原片复刻的 11 秒像素动画循环：月夜石墙上的巫师举杖蓄力、释放一道魔法爆发再收势，128×96 清晰像素。",
+    "zh-TW": "按爆款原片復刻的 11 秒像素動畫循環：月夜石牆上的巫師舉杖蓄力、釋放一道魔法爆發再收勢，128×96 清晰像素。",
+    "pt-BR": "Um loop de pixel art de 11 segundos, recriado a partir do original viral: um mago sobre um muro de pedra ao luar carrega o cajado, solta uma explosão de magia e volta à pose, em nítidos 128×96.",
+    "es-ES": "Un bucle de pixel art de 11 segundos, recreado a partir del original viral: un mago sobre un muro de piedra a la luz de la luna carga su bastón, lanza un estallido de magia y vuelve a la calma, en un nítido 128×96.",
+    "ru": "11-секундный пиксельный цикл, воссозданный по вирусному оригиналу: волшебник на каменной стене в лунном свете заряжает посох, выпускает вспышку магии и возвращается в покой, в чётком разрешении 128×96.",
+    "fa": "حلقهٔ پیکسل‌آرت ۱۱ ثانیه‌ای که از روی نسخهٔ اصلی پربازدید بازسازی شده: جادوگری روی دیوار سنگی در مهتاب عصایش را شارژ می‌کند، انفجاری از جادو رها می‌کند و آرام می‌گیرد، با وضوح شفاف ۱۲۸×۹۶.",
+    "ar": "حلقة فن بكسل مدتها 11 ثانية، أُعيد بناؤها من الأصل الفيروسي: ساحر على سور حجري تحت ضوء القمر يشحن عصاه ويطلق دفقة سحر ثم يعود إلى وضعه، بدقة واضحة 128×96.",
+    "ja": "バズった原作を再現した 11 秒のピクセルアートループ。月夜の石垣に立つ魔法使いが杖に力をためて魔法を放ち、元の構えに戻る。くっきりした 128×96。",
+    "ko": "바이럴 원본을 재현한 11초 픽셀 아트 루프: 달빛 비치는 돌담 위의 마법사가 지팡이에 힘을 모아 마법을 터뜨리고 다시 자세를 잡는다. 선명한 128×96 해상도.",
+    "pl": "11-sekundowa pętla pixel art odtworzona z wiralowego oryginału: czarodziej na kamiennym murze w świetle księżyca ładuje laskę, uwalnia wybuch magii i wraca do spoczynku, w ostrej rozdzielczości 128×96.",
+    "hu": "11 másodperces pixel art hurok a virális eredeti alapján újraépítve: egy holdfényes kőfalon álló varázsló feltölti a botját, varázserő-robbanást szabadít fel, majd visszaáll, éles 128×96-os felbontásban.",
+    "fr": "Une boucle de pixel art de 11 secondes, reconstruite d’après l’original viral : un magicien sur un mur de pierre au clair de lune charge son bâton, libère une salve de magie et se repose, en 128×96 bien net.",
+    "uk": "11-секундний піксельний цикл, відтворений за вірусним оригіналом: чарівник на кам’яному мурі в місячному світлі заряджає посох, випускає спалах магії й повертається до спокою, у чіткій роздільності 128×96.",
+    "tr": "Viral orijinalden yeniden kurulan 11 saniyelik piksel sanat döngüsü: ay ışığındaki taş duvarda duran büyücü asasını şarj eder, bir büyü patlaması savurur ve yerine döner, net 128×96 çözünürlükte.",
+    "th": "ลูปพิกเซลอาร์ตยาว 11 วินาที สร้างใหม่ตามต้นฉบับไวรัล: พ่อมดบนกำแพงหินใต้แสงจันทร์ชาร์จพลังไม้เท้า ปล่อยเวทมนตร์ระเบิดออก แล้วกลับสู่ท่าเดิม ที่ความละเอียดคมชัด 128×96",
+    "it": "Un loop in pixel art di 11 secondi, ricostruito dall’originale virale: un mago su un muro di pietra al chiaro di luna carica il bastone, scatena un’esplosione di magia e torna in posa, in un nitido 128×96."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "pixel-art",
+    "character",
+    "loop",
+    "viral-remake"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Create an animated pixel art wizard casting a spell, drawn at a fixed 128x96 logical resolution and scaled up with crisp, integer-snapped pixels from a fixed palette of about 24 colors: deep blues and purples for the night sky, warm robe tones, and three or four bright magic colors. A wizard with a bent pointed hat, a long beard, a two-shade robe and a staff with a gem stands on a stone floor under a dark sky with a moon and a few twinkling stars. Loop IDLE (two-frame bob, beard sway) → CHARGE (staff raises, the gem flickers, sparks spiral inward) → CAST (bright burst, sparks thrown forward, a 1-2 pixel screen shake) → RECOVER, with a subtle rim light from the gem, at an 8-12 fps pixel-animation feel. It should look like a polished 16-bit sprite animation.",
+        "id": "Buat animasi penyihir pixel art yang sedang merapal mantra, digambar pada resolusi logis tetap 128x96 lalu diperbesar dengan piksel tajam yang menempel ke grid, memakai palet tetap sekitar 24 warna: biru dan ungu tua untuk langit malam, warna jubah yang hangat, serta tiga atau empat warna sihir yang terang. Penyihir bertopi runcing yang tertekuk, berjanggut panjang, berjubah dua warna, dan memegang tongkat bermata permata berdiri di lantai batu di bawah langit gelap dengan bulan dan beberapa bintang berkelip. Loop IDLE (bob dua frame, janggut bergoyang) → CHARGE (tongkat terangkat, permata berkedip, percikan berputar ke dalam) → CAST (ledakan terang, percikan terlempar ke depan, guncangan layar 1-2 piksel) → RECOVER, dengan rim light halus dari permata, terasa seperti animasi piksel 8-12 fps. Harus terlihat seperti animasi sprite 16-bit yang rapi.",
+        "de": "Erstelle einen animierten Pixel-Art-Zauberer, der einen Zauber wirkt, gezeichnet in fester logischer Auflösung 128x96 und mit scharfen, ganzzahlig ausgerichteten Pixeln hochskaliert, aus einer festen Palette von etwa 24 Farben: tiefe Blau- und Violetttöne für den Nachthimmel, warme Robenfarben und drei oder vier leuchtende Magiefarben. Ein Zauberer mit geknicktem Spitzhut, langem Bart, zweifarbiger Robe und einem Stab mit Edelstein steht auf Steinboden unter dunklem Himmel mit Mond und ein paar funkelnden Sternen. Loop IDLE (zwei Frames Wippen, Bart schwingt) → CHARGE (Stab hebt sich, der Edelstein flackert, Funken spiralen nach innen) → CAST (heller Ausbruch, Funken fliegen nach vorn, 1-2 Pixel Bildschirmwackeln) → RECOVER, mit dezentem Randlicht vom Edelstein und dem Gefühl einer 8-12-fps-Pixelanimation. Es soll wie eine polierte 16-Bit-Sprite-Animation aussehen.",
+        "zh-CN": "做一个正在施法的像素风巫师动画：固定 128x96 的逻辑分辨率，放大后像素清晰、对齐网格，使用约 24 色的固定调色板：夜空用深蓝和深紫，长袍用暖色调，再加三四种明亮的魔法色。巫师戴着尖顶弯折的帽子、留长胡子、穿双色长袍，拿着顶端镶宝石的法杖，站在石头地面上，背景是有月亮和几颗闪烁星星的夜空。循环：待机（两帧上下浮动、胡子摆动）→ 蓄力（举杖、宝石闪烁、火花螺旋汇入）→ 施法（明亮爆发、火花向前飞散、画面 1-2 像素震动）→ 收势，宝石给巫师打一圈淡淡的轮廓光，整体是 8-12 fps 的像素动画手感。要像精致的 16 位像素精灵动画。",
+        "zh-TW": "做一個正在施法的像素風巫師動畫：固定 128x96 的邏輯解析度，放大後像素清晰、對齊網格，使用約 24 色的固定調色盤：夜空用深藍和深紫，長袍用暖色調，再加三四種明亮的魔法色。巫師戴著尖頂彎折的帽子、留長鬍子、穿雙色長袍，拿著頂端鑲寶石的法杖，站在石頭地面上，背景是有月亮和幾顆閃爍星星的夜空。循環：待機（兩格上下浮動、鬍子擺動）→ 蓄力（舉杖、寶石閃爍、火花螺旋匯入）→ 施法（明亮爆發、火花向前飛散、畫面 1-2 像素震動）→ 收勢，寶石給巫師打一圈淡淡的輪廓光，整體是 8-12 fps 的像素動畫手感。要像精緻的 16 位元像素精靈動畫。",
+        "pt-BR": "Crie uma animação em pixel art de um mago lançando um feitiço, desenhada em resolução lógica fixa de 128x96 e ampliada com pixels nítidos e alinhados à grade, usando uma paleta fixa de cerca de 24 cores: azuis e roxos profundos para o céu noturno, tons quentes para o manto e três ou quatro cores mágicas brilhantes. Um mago de chapéu pontudo dobrado, barba longa, manto em dois tons e um cajado com uma gema fica sobre um chão de pedra sob um céu escuro com lua e algumas estrelas piscando. Loop IDLE (balanço de dois frames, barba oscilando) → CHARGE (cajado se ergue, a gema pisca, faíscas espiralam para dentro) → CAST (explosão brilhante, faíscas lançadas para frente, tremida de tela de 1-2 pixels) → RECOVER, com uma leve luz de contorno vinda da gema e sensação de animação em pixel a 8-12 fps. Deve parecer uma animação de sprite 16-bit bem polida.",
+        "es-ES": "Crea una animación en pixel art de un mago lanzando un hechizo, dibujada a una resolución lógica fija de 128x96 y ampliada con píxeles nítidos y alineados a la cuadrícula, con una paleta fija de unos 24 colores: azules y morados profundos para el cielo nocturno, tonos cálidos para la túnica y tres o cuatro colores mágicos brillantes. Un mago con sombrero puntiagudo doblado, barba larga, túnica de dos tonos y un bastón con una gema está sobre un suelo de piedra bajo un cielo oscuro con luna y algunas estrellas que titilan. Bucle IDLE (balanceo de dos fotogramas, barba que se mece) → CHARGE (el bastón se alza, la gema parpadea, chispas en espiral hacia dentro) → CAST (estallido brillante, chispas lanzadas hacia delante, temblor de pantalla de 1-2 píxeles) → RECOVER, con una sutil luz de contorno de la gema y sensación de animación pixelada a 8-12 fps. Debe parecer una animación de sprite de 16 bits bien pulida.",
+        "ru": "Создай пиксельную анимацию волшебника, творящего заклинание: фиксированное логическое разрешение 128x96, увеличение с чёткими, привязанными к сетке пикселями и фиксированная палитра примерно из 24 цветов — глубокие синие и фиолетовые для ночного неба, тёплые тона мантии и три-четыре ярких магических цвета. Волшебник в загнутом остроконечном колпаке, с длинной бородой, в двухцветной мантии и с посохом с самоцветом стоит на каменном полу под тёмным небом с луной и несколькими мерцающими звёздами. Цикл IDLE (покачивание в два кадра, борода колышется) → CHARGE (посох поднимается, самоцвет мерцает, искры закручиваются внутрь) → CAST (яркая вспышка, искры летят вперёд, тряска экрана на 1-2 пикселя) → RECOVER, с лёгкой контурной подсветкой от самоцвета и ощущением пиксельной анимации на 8-12 fps. Должно выглядеть как отполированная 16-битная спрайтовая анимация.",
+        "fa": "انیمیشن پیکسل‌آرت جادوگری بساز که در حال طلسم کردن است؛ با وضوح منطقی ثابت ۱۲۸x۹۶ کشیده شود و با پیکسل‌های تیز و هم‌تراز با شبکه بزرگ شود، با پالت ثابتی حدود ۲۴ رنگ: آبی و بنفش تیره برای آسمان شب، رنگ‌های گرم برای ردا و سه یا چهار رنگ درخشان جادویی. جادوگری با کلاه نوک‌تیز خمیده، ریش بلند، ردای دورنگ و عصایی با گوهر روی کف سنگی زیر آسمانی تاریک با ماه و چند ستارهٔ چشمک‌زن ایستاده است. حلقه: IDLE (تکان دوفریمی، تاب خوردن ریش) → CHARGE (عصا بالا می‌رود، گوهر سوسو می‌زند، جرقه‌ها مارپیچ به داخل می‌روند) → CAST (انفجار درخشان، پرتاب جرقه‌ها به جلو، لرزش ۱ تا ۲ پیکسلی صفحه) → RECOVER، با نور لبهٔ ملایمی از گوهر و حس انیمیشن پیکسلی ۸ تا ۱۲ فریم بر ثانیه. باید مثل یک انیمیشن اسپرایت ۱۶ بیتی صیقل‌خورده باشد.",
+        "ar": "اصنع رسمًا متحركًا بفن البكسل لساحر يلقي تعويذة، مرسومًا بدقة منطقية ثابتة 128x96 ومكبّرًا ببكسلات حادة ومحاذية للشبكة، بلوحة ثابتة من نحو 24 لونًا: أزرق وبنفسجي داكن لسماء الليل، ودرجات دافئة للرداء، وثلاثة أو أربعة ألوان سحرية زاهية. ساحر بقبعة مدببة منثنية ولحية طويلة ورداء بلونين وعصا برأسها جوهرة يقف على أرضية حجرية تحت سماء مظلمة فيها قمر وبضع نجوم متلألئة. حلقة IDLE (اهتزاز بإطارين وتمايل اللحية) ← CHARGE (ترتفع العصا وتومض الجوهرة وتلتف الشرارات نحو الداخل) ← CAST (انفجار ساطع وشرارات تندفع للأمام واهتزاز للشاشة بمقدار 1-2 بكسل) ← RECOVER، مع إضاءة حافة خفيفة من الجوهرة وإحساس رسوم بكسل بمعدل 8-12 إطارًا في الثانية. يجب أن يبدو كرسوم سبرايت 16 بت مصقولة.",
+        "ja": "呪文を唱えるピクセルアートの魔法使いのアニメーションを作って。論理解像度は 128x96 固定、整数倍でくっきり拡大し、ピクセルはグリッドにスナップ。約 24 色の固定パレット：夜空は深い青と紫、ローブは暖色、魔法には明るい色を 3〜4 色。折れ曲がったとんがり帽子、長いひげ、2 色のローブ、宝石のついた杖を持つ魔法使いが、月と瞬く星のある暗い夜空の下、石の床に立つ。ループは IDLE（2 コマの上下、ひげの揺れ）→ CHARGE（杖を掲げ、宝石が明滅し、火花が渦を巻いて集まる）→ CAST（まばゆい爆発、火花が前方へ飛ぶ、1〜2 px の画面揺れ）→ RECOVER。宝石からのほのかなリムライト、8〜12 fps のピクセルアニメの手触りで。磨き込まれた 16 ビットのスプライトアニメのように。",
+        "ko": "주문을 외우는 픽셀 아트 마법사 애니메이션을 만들어 줘. 고정 논리 해상도 128x96으로 그리고, 그리드에 맞춘 선명한 픽셀로 정수배 확대해. 약 24색 고정 팔레트: 밤하늘은 짙은 파랑과 보라, 로브는 따뜻한 톤, 마법은 밝은 색 3~4가지. 꺾인 뾰족 모자, 긴 수염, 두 톤의 로브, 보석 달린 지팡이를 든 마법사가 달과 반짝이는 별 몇 개가 뜬 어두운 하늘 아래 돌바닥에 서 있어. 루프는 IDLE(2프레임 흔들림, 수염 살랑임) → CHARGE(지팡이를 들고, 보석이 깜빡이고, 불꽃이 나선형으로 모여듦) → CAST(밝은 폭발, 불꽃이 앞으로 튐, 화면 1~2픽셀 흔들림) → RECOVER. 보석에서 나오는 은은한 림 라이트, 8~12fps 픽셀 애니메이션 느낌으로. 잘 다듬어진 16비트 스프라이트 애니메이션처럼 보여야 해.",
+        "pl": "Stwórz animację pixel art czarodzieja rzucającego zaklęcie, rysowaną w stałej rozdzielczości logicznej 128x96 i powiększoną ostrymi, przyciągniętymi do siatki pikselami, ze stałą paletą około 24 kolorów: głębokie błękity i fiolety nocnego nieba, ciepłe tony szaty i trzy lub cztery jasne kolory magii. Czarodziej w zgiętym spiczastym kapeluszu, z długą brodą, w dwutonowej szacie i z laską zakończoną klejnotem stoi na kamiennej posadzce pod ciemnym niebem z księżycem i kilkoma migoczącymi gwiazdami. Pętla IDLE (dwuklatkowe kołysanie, falująca broda) → CHARGE (laska unosi się, klejnot migocze, iskry spiralnie zbiegają się do środka) → CAST (jasny wybuch, iskry wyrzucone do przodu, drganie ekranu o 1-2 piksele) → RECOVER, z subtelnym światłem konturowym od klejnotu i wrażeniem animacji pikselowej 8-12 fps. Ma wyglądać jak dopracowana 16-bitowa animacja sprite’ów.",
+        "hu": "Készíts animált pixel art varázslót, aki varázsigét mond, rögzített 128x96-os logikai felbontásban rajzolva és éles, rácshoz igazított pixelekkel felnagyítva, kb. 24 színű rögzített palettával: mély kékek és lilák az éjszakai éghez, meleg tónusok a köpenyhez és három-négy élénk varázsszín. Egy megtört csúcsú süveget, hosszú szakállt, kéttónusú köpenyt viselő, drágaköves botot tartó varázsló áll kőpadlón, sötét ég alatt holddal és néhány pislákoló csillaggal. Hurok: IDLE (kétkockás billegés, lengő szakáll) → CHARGE (a bot felemelkedik, a drágakő villódzik, szikrák spirálban gyűlnek befelé) → CAST (fényes robbanás, előre szóródó szikrák, 1-2 pixeles képrázkódás) → RECOVER, a drágakő halvány peremfényével és 8-12 fps-es pixelanimációs érzettel. Úgy nézzen ki, mint egy kidolgozott 16 bites sprite-animáció.",
+        "fr": "Crée une animation en pixel art d’un magicien qui lance un sort, dessinée à une résolution logique fixe de 128x96 et agrandie avec des pixels nets alignés sur la grille, dans une palette fixe d’environ 24 couleurs : bleus et violets profonds pour le ciel nocturne, tons chauds pour la robe et trois ou quatre couleurs magiques vives. Un magicien au chapeau pointu plié, à la longue barbe, en robe bicolore et tenant un bâton surmonté d’une gemme se tient sur un sol de pierre sous un ciel sombre avec une lune et quelques étoiles scintillantes. Boucle IDLE (balancement sur deux images, barbe qui ondule) → CHARGE (le bâton se lève, la gemme scintille, des étincelles convergent en spirale) → CAST (éclat lumineux, étincelles projetées vers l’avant, tremblement d’écran de 1-2 pixels) → RECOVER, avec un léger contre-jour venu de la gemme et un rendu d’animation pixel à 8-12 fps. Ça doit ressembler à une animation de sprite 16 bits soignée.",
+        "uk": "Створи піксельну анімацію чарівника, що творить закляття: фіксована логічна роздільність 128x96, збільшення з чіткими, прив’язаними до сітки пікселями та фіксована палітра приблизно з 24 кольорів — глибокі сині й фіолетові для нічного неба, теплі тони мантії та три-чотири яскраві магічні кольори. Чарівник у загнутому гостроверхому капелюсі, з довгою бородою, у двоколірній мантії та з посохом із самоцвітом стоїть на кам’яній підлозі під темним небом із місяцем і кількома мерехтливими зірками. Цикл IDLE (погойдування у два кадри, борода коливається) → CHARGE (посох підіймається, самоцвіт мерехтить, іскри закручуються всередину) → CAST (яскравий спалах, іскри летять уперед, трусіння екрана на 1-2 пікселі) → RECOVER, із легким контурним світлом від самоцвіту й відчуттям піксельної анімації на 8-12 fps. Має виглядати як відшліфована 16-бітна спрайтова анімація.",
+        "tr": "Büyü yapan, piksel sanat tarzında animasyonlu bir büyücü oluştur: sabit 128x96 mantıksal çözünürlükte çizilsin, ızgaraya oturan net piksellerle büyütülsün ve yaklaşık 24 renkli sabit bir palet kullanılsın: gece göğü için koyu maviler ve morlar, cübbe için sıcak tonlar ve üç-dört parlak büyü rengi. Bükük sivri şapkalı, uzun sakallı, iki tonlu cübbeli ve ucunda mücevher olan asa tutan bir büyücü, ay ve birkaç parlayan yıldızın olduğu karanlık gökyüzü altında taş zeminde durur. Döngü IDLE (iki karelik sallanma, sakal salınımı) → CHARGE (asa kalkar, mücevher titreşir, kıvılcımlar içe doğru sarmal çizer) → CAST (parlak patlama, ileri savrulan kıvılcımlar, 1-2 piksellik ekran sarsıntısı) → RECOVER; mücevherden gelen hafif kenar ışığıyla, 8-12 fps piksel animasyon hissinde. Cilalı bir 16-bit sprite animasyonu gibi görünmeli.",
+        "th": "สร้างแอนิเมชันพิกเซลอาร์ตพ่อมดกำลังร่ายเวท วาดที่ความละเอียดลอจิคัลคงที่ 128x96 แล้วขยายด้วยพิกเซลคมชัดที่ยึดตามกริด ใช้พาเลตต์คงที่ราว 24 สี: น้ำเงินและม่วงเข้มสำหรับท้องฟ้ายามค่ำ โทนอุ่นสำหรับเสื้อคลุม และสีเวทมนตร์สว่างสามสี่สี พ่อมดสวมหมวกแหลมที่พับงอ ไว้เคราขาว สวมเสื้อคลุมสองโทน ถือไม้เท้าที่มีอัญมณีที่ปลาย ยืนบนพื้นหินใต้ท้องฟ้ามืดที่มีดวงจันทร์และดาวระยิบระยับไม่กี่ดวง วนลูป IDLE (ขยับขึ้นลงสองเฟรม เคราไหว) → CHARGE (ยกไม้เท้า อัญมณีกะพริบ ประกายไฟหมุนวนเข้าหาศูนย์กลาง) → CAST (ระเบิดแสงจ้า ประกายไฟพุ่งไปข้างหน้า จอสั่น 1-2 พิกเซล) → RECOVER พร้อมแสงขอบจางๆ จากอัญมณี ให้ความรู้สึกแอนิเมชันพิกเซล 8-12 fps ต้องดูเหมือนแอนิเมชันสไปรต์ 16 บิตที่ขัดเกลามาอย่างดี",
+        "it": "Crea un’animazione in pixel art di un mago che lancia un incantesimo, disegnata a una risoluzione logica fissa di 128x96 e ingrandita con pixel nitidi allineati alla griglia, con una palette fissa di circa 24 colori: blu e viola profondi per il cielo notturno, toni caldi per la tunica e tre o quattro colori magici brillanti. Un mago con cappello a punta piegato, barba lunga, tunica bicolore e un bastone con una gemma sta su un pavimento di pietra sotto un cielo scuro con la luna e qualche stella che brilla. Loop IDLE (oscillazione a due fotogrammi, barba che ondeggia) → CHARGE (il bastone si alza, la gemma tremola, scintille a spirale verso l’interno) → CAST (esplosione luminosa, scintille scagliate in avanti, scossa dello schermo di 1-2 pixel) → RECOVER, con una leggera luce di contorno dalla gemma e la sensazione di un’animazione pixel a 8-12 fps. Deve sembrare un’animazione di sprite a 16 bit ben rifinita."
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Pixel Art Wizard"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

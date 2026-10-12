@@ -1,7 +1,7 @@
 import { expect, test } from '@/playwright/suite';
 
 test('[P1] motion soundtrack follows preview play, pause and backward seek', async ({ page }) => {
-  await page.goto('/api/plugins/example-motion-product-launch/preview');
+  await page.goto('/api/plugins/example-motion-showreel/preview');
   const sound = page.getByRole('button', { name: 'Enable sound' });
   await sound.focus();
   await sound.click();
@@ -15,7 +15,7 @@ test('[P1] motion soundtrack follows preview play, pause and backward seek', asy
   await expect(sound).toHaveAttribute('aria-pressed', 'false');
 });
 
-for (const name of ['explainer', 'showreel', 'product-launch', '3d-scene', 'kinetic-type']) {
+for (const name of ['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'future']) {
   test(`[P1] motion-${name} gallery capture contains only the composition`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(`/api/plugins/example-motion-${name}/preview`);

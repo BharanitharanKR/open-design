@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en" data-od-preview-ready="false">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Showreel 2026 — High-Energy Motion Reel</title>
+<script src="assets/gsap.min.js"></script>
+<style>
+@font-face{font-family:PlexArB;src:url('assets/ibm-plex-sans-bold.ttf') format('truetype');font-display:block}
+@font-face{font-family:PlexAr;src:url('assets/ibm-plex-sans-regular.ttf') format('truetype');font-display:block}
+@font-face{font-family:JBMono;src:url('assets/jetbrains-mono-medium.ttf') format('truetype');font-display:block}
+:root{--bg:#0C0B0E;--ink:#F4EEE6;--accent:#FF5814}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;overflow:hidden}
+#viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
+#main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:var(--bg);overflow:hidden}
+#main canvas{display:block;width:1920px;height:1080px}
+#controls{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:14px;width:min(900px,92vw);padding:12px 18px;border-radius:14px;background:#101214dd;color:#fff;font:600 13px ui-monospace,Menlo,monospace;opacity:0;transition:opacity .2s}
+#controls:hover,#controls:focus-within{opacity:1}
+#controls button{font:inherit;letter-spacing:.06em;background:var(--accent);color:#0B0B0C;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
+#controls button:focus-visible,#scrub:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#scrub{flex:1;accent-color:var(--accent)}
+#tc{min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
+/* The OD export bridge marks frame capture; keep preview controls out of the film. */
+html.od-export #controls{display:none!important}
+html.od-export #main{left:0!important;top:0!important;transform:none!important}
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="main" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080">
+    <canvas id="stage" width="1920" height="1080"></canvas>
+    <audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="15" data-track-index="2" data-volume="1" preload="auto"></audio>
+  </div>
+</div>
+<div id="controls">
+  <button id="playBtn" type="button" aria-label="Play or pause">PAUSE</button>
+  <input id="scrub" type="range" min="0" max="15" step="0.01" value="0" aria-label="Timeline position">
+  <span id="tc">0.00 / 15.00</span>
+</div>
+
+<script>
+/* ============================================================
+   Showreel 2026 — a frame-faithful rebuild of the viral
+   "high-energy 15-second motion graphics piece" (@crvdesign0),
+   with the copy set in English. Kinetic type, a breathing grid, extruded depth, rhythm
+   stripes, a frame counter and an end card. One canvas, one
+   clock: render(t) draws every frame from timeline time.
+   ============================================================ */
+const CFG = {
+  duration: 15, w: 1920, h: 1080, reducedAt: 14.4,
+  dark: '#0C0B0E', orange: '#FF5814', cream: '#F4EEE6', blue: '#2C4AFF', ink: '#0C0B0E',
+  title: 'Showreel', intro: '15 seconds of pure motion',
+  words: ['Ideas', 'that move', 'with rhythm', 'unforgettable'],
+  breathe: 'The shape breathes', depth: 'Depth', depthNote: 'Type gets a third dimension',
+  stripe: ['Motion', 'Rhythm', 'Story', 'Design'], badge: '04',
+  counterTop: '15 seconds · 60 frames per second', counterBottom: 'frames, every one written in code',
+  brand: 'Claude', role: 'Motion designer', tagline: 'Design, in motion.',
+  hudRight: 'Showreel 2026 · Motion designer'
+};
+const AR = '"PlexAr", "Geeza Pro", "Arial", sans-serif', ARB = '"PlexArB", "Geeza Pro", "Arial", sans-serif', MONO = '"JBMono", ui-monospace, Menlo, monospace';
+const cv = document.getElementById('stage');
+const ctx = cv.getContext('2d');
+const E = n => gsap.parseEase(n);
+const EZ = { o3: E('power3.out'), i3: E('power3.in'), io3: E('power3.inOut'), o4: E('power4.out'), expo: E('expo.out'), expoIO: E('expo.inOut'), back: E('back.out(1.7)'), io2: E('power2.inOut'), o2: E('power2.out') };
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const TAU = Math.PI * 2;
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const AD = n => String(n);
+
+/* ---------- helpers ---------- */
+function circle(x, y, r, fill) { if (r <= 0) return; ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function ar(s, x, y, size, color, opts = {}) {
+  const a = opts.a ?? 1; if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a; ctx.font = `${size}px ${opts.bold === false ? AR : ARB}`; ctx.direction = 'ltr'; ctx.textAlign = opts.align || 'center'; ctx.textBaseline = 'middle';
+  if (opts.fit) { const w = ctx.measureText(s).width; if (w > opts.fit) { const k = opts.fit / w; opts = { ...opts, sx: (opts.sx || 1) * k, sy: (opts.sy || 1) * k }; } }
+  if (opts.sx || opts.sy || opts.r) { ctx.translate(x, y); ctx.rotate(opts.r || 0); ctx.scale(opts.sx || 1, opts.sy || 1); x = 0; y = 0; }
+  if (opts.stroke) { ctx.strokeStyle = color; ctx.lineWidth = opts.stroke; ctx.strokeText(s, x, y); } else { ctx.fillStyle = color; ctx.fillText(s, x, y); }
+  ctx.restore();
+}
+// a word that lands with a vertical smear, like the original's cuts
+function slam(s, size, color, lt, opts = {}) {
+  const e = EZ.expo(seg(lt, 0, 0.18)), smear = (1 - seg(lt, 0, 0.12));
+  for (let k = smear > 0.02 ? 5 : 0; k >= 0; k--) ar(s, 960, 540 + (1 - e) * 140 - k * 26 * smear, size * (1.12 - 0.12 * e), color, { fit: 1640, ...opts, a: (k ? 0.14 : 1) });
+}
+
+// vignette baked once from a smooth field (no dithered gradients: those slow MP4 capture)
+const vignette = (() => {
+  const q = document.createElement('canvas'); q.width = 240; q.height = 135; const g = q.getContext('2d'), img = g.createImageData(240, 135);
+  for (let y = 0; y < 135; y++) for (let x = 0; x < 240; x++) { const dx = (x - 120) / 120, dy = (y - 67.5) / 67.5, d = Math.hypot(dx * 0.9, dy); const o = (y * 240 + x) * 4; img.data[o + 3] = Math.round(clamp((d - 0.55) / 0.75) ** 1.6 * 150); }
+  g.putImageData(img, 0, 0); const c = document.createElement('canvas'); c.width = CFG.w; c.height = CFG.h; const cg = c.getContext('2d'); cg.imageSmoothingQuality = 'high'; cg.drawImage(q, 0, 0, CFG.w, CFG.h); return c;
+})();
+// soft colour blob for the counter scene, rendered small and scaled up
+const blob = (() => {
+  const q = document.createElement('canvas'); q.width = 160; q.height = 90; const g = q.getContext('2d'), img = g.createImageData(160, 90);
+  for (let y = 0; y < 90; y++) for (let x = 0; x < 160; x++) {
+    const o = (y * 160 + x) * 4, a1 = Math.exp(-(((x - 62) / 26) ** 2 + ((y - 55) / 22) ** 2)), a2 = Math.exp(-(((x - 92) / 30) ** 2 + ((y - 38) / 24) ** 2));
+    const r = 255 * a1 + 120 * a2, gg = 88 * a1 + 70 * a2, b = 20 * a1 + 255 * a2, a = clamp(a1 + a2);
+    img.data[o] = clamp(r / Math.max(a, 0.01), 0, 255); img.data[o + 1] = clamp(gg / Math.max(a, 0.01), 0, 255); img.data[o + 2] = clamp(b / Math.max(a, 0.01), 0, 255); img.data[o + 3] = a * 210;
+  }
+  g.putImageData(img, 0, 0); return q;
+})();
+
+/* ---------- scenes ---------- */
+// [start, background, hud ink, chapter]
+const SC = [[0, CFG.dark, CFG.cream, '01 — Intro'], [2.0, CFG.orange, CFG.ink, '02 — Type'], [2.5, CFG.dark, CFG.cream, '02 — Type'], [3.0, CFG.cream, CFG.ink, '02 — Type'], [3.5, CFG.blue, CFG.cream, '02 — Type'],
+  [4.0, CFG.dark, CFG.cream, '03 — Geometry'], [6.5, CFG.cream, CFG.ink, '03 — Depth'], [8.5, CFG.orange, CFG.ink, '04 — Rhythm'], [10.45, CFG.dark, CFG.cream, '05 — Fluids & numbers'], [12.9, CFG.dark, CFG.cream, '']];
+
+function intro(t) {
+  const cx = 960, cy = 540;
+  const pop = EZ.back(seg(t, 0.1, 0.35)), stretch = EZ.expoIO(seg(t, 0.55, 0.85)), split = EZ.expoIO(seg(t, 0.85, 1.15)), retract = EZ.i3(seg(t, 1.45, 1.75));
+  if (stretch <= 0) circle(cx, cy, 17 * pop, CFG.orange);
+  else {
+    const half = lerp(17, 744, stretch) * (1 - retract), gap = lerp(0, 170, split);
+    ctx.fillStyle = CFG.orange;
+    [-1, 1].forEach(s => { if (split > 0 || s < 0) ctx.fillRect(cx - half + (retract * half * s), cy + s * gap - 2, half * 2 * (1 - retract * 0.0), 4); });
+  }
+  const tx = EZ.o3(seg(t, 0.95, 1.25)), out = EZ.i3(seg(t, 1.75, 1.98));
+  ctx.save(); ctx.beginPath(); ctx.rect(0, cy - 168, CFG.w, 336); ctx.clip();
+  ar(CFG.title, cx, cy + 10 + (1 - tx) * 260 - out * 300, 250, CFG.cream, { a: tx });
+  ctx.restore();
+  ar(CFG.intro, cx, 302, 34, 'rgba(244,238,230,.8)', { a: tx * (1 - out), bold: false });
+}
+function wordScene(i) { return t => {
+  const [bgCol] = SC[1 + i]; const col = [CFG.ink, CFG.cream, CFG.blue, CFG.cream][i];
+  if (i === 2) for (let k = -3; k <= 3; k++) if (k) ar(CFG.words[2], 960, 540 + k * 205 + (k > 0 ? 1 : -1) * EZ.o3(seg(t, 0, 0.3)) * 10, 300, 'rgba(44,74,255,.75)', { fit: 1640, stroke: 2, a: EZ.o3(seg(t, 0.03 + Math.abs(k) * 0.03, 0.2 + Math.abs(k) * 0.03)) });
+  slam(CFG.words[i], 300, col, t);
+}; }
+const GX = 12, GY = 7, GS = 150, GOX = 960 - (GX - 1) * GS / 2, GOY = 540 - (GY - 1) * GS / 2;
+function geometry(t) {
+  const morph = EZ.io3(seg(t, 0.95, 1.4)), collapse = EZ.i3(seg(t, 2.0, 2.4));
+  for (let j = 0; j < GY; j++) for (let i = 0; i < GX; i++) {
+    const d = Math.abs(i - (GX - 1) / 2) + Math.abs(j - (GY - 1) / 2), show = EZ.back(seg(t, 0.05 + d * 0.06, 0.3 + d * 0.06));
+    if (show <= 0) continue;
+    let x = GOX + i * GS, y = GOY + j * GS;
+    const breathe = 1 + 0.18 * Math.sin(t * 6 - d * 0.7) * morph;
+    x = lerp(x, 960, collapse); y = lerp(y, 540, collapse);
+    const capOn = EZ.o3(seg(t, 1.45, 1.7)) * (1 - seg(t, 1.95, 2.1)), inCap = Math.abs(x - 960) < 620 && Math.abs(y - 540) < 80;
+    const r = 34 * show * breathe * (1 - collapse * 0.7) * (inCap ? 1 - capOn : 1), h = rnd(i * 13 + j * 7);
+    const col = morph > 0.3 ? (h < 0.22 ? CFG.orange : h < 0.36 ? CFG.blue : h < 0.48 ? '#F7A27F' : CFG.cream) : CFG.cream;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(morph * (h - 0.5) * 0.8 + collapse * 2); ctx.globalAlpha = 1 - collapse * 0.6;
+    const rad = lerp(r, r * 0.25, morph); ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(-r, -r, r * 2, r * 2, rad); ctx.fill(); ctx.restore();
+  }
+  if (collapse > 0) { ctx.save(); ctx.translate(960, 540); ctx.rotate(0.6 + collapse); const s = 70 * EZ.back(seg(t, 2.05, 2.3)); ctx.fillStyle = CFG.cream; ctx.fillRect(-s, -s, s * 2, s * 2); ctx.restore(); }
+  const cap = EZ.o3(seg(t, 1.45, 1.7)) * (1 - seg(t, 1.95, 2.1));
+  if (cap > 0) ar(CFG.breathe, 960, 540, 116, CFG.cream, { a: cap, fit: 1100 });
+}
+function depth(t) {
+  // perspective floor
+  ctx.save(); ctx.strokeStyle = 'rgba(12,11,14,.08)'; ctx.lineWidth = 1.5;
+  for (let i = -14; i <= 14; i++) { ctx.beginPath(); ctx.moveTo(960 + i * 40, 560); ctx.lineTo(960 + i * 260, 1080); ctx.stroke(); }
+  for (let k = 0; k < 9; k++) { const y = 560 + Math.pow(k / 8, 1.8) * 520; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1920, y); ctx.stroke(); }
+  ctx.restore();
+  const enter = EZ.expo(seg(t, 0, 0.35)), out = EZ.i3(seg(t, 1.8, 2.0));
+  const ang = lerp(0.35, 2.7, EZ.io3(seg(t, 0.1, 1.7))), depthLen = 34, scale = lerp(1.25, 1, enter) * (1 - out * 0.4);
+  const cx = 960 + (1 - enter) * 300 - out * 600, cy = 470;
+  for (let k = depthLen; k >= 1; k--) {
+    const p = k / depthLen, c = [Math.round(lerp(255, 70, p)), Math.round(lerp(88, 80, p)), Math.round(lerp(20, 255, p))];
+    ar(CFG.depth, cx + Math.cos(ang) * k * 6 * scale, cy - k * 4.2 * scale - Math.sin(ang) * k * 1.5 * scale, 330 * scale, `rgb(${c})`, { a: 1 - out });
+  }
+  ar(CFG.depth, cx, cy, 330 * scale, CFG.ink, { a: 1 - out });
+  ar(CFG.depthNote, 960, 875, 54, CFG.ink, { a: EZ.o3(seg(t, 0.55, 0.85)) * (1 - out) });
+}
+function rhythm(t) {
+  const enter = EZ.expo(seg(t, 0, 0.3)), out = EZ.i3(seg(t, 1.6, 1.95));
+  ctx.save(); ctx.translate(960, 540 - out * 1400); ctx.rotate(-0.33); ctx.scale(1 + (1 - enter) * 0.4, 1 + (1 - enter) * 0.4);
+  const bandH = 150;
+  for (let b = -6; b <= 6; b++) {
+    const y = b * bandH, black = b % 2 === 0, dir = black ? 1 : -1;
+    ctx.fillStyle = black ? CFG.ink : CFG.orange; ctx.fillRect(-1800, y - bandH / 2, 3600, bandH);
+    const seq = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3].map(k => CFG.stripe[(k + b + 12) % 4]);
+    let x = -1900 + ((t * 420 * dir + b * 170) % 560);
+    ctx.font = `92px ${ARB}`; ctx.direction = 'ltr'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    seq.forEach((w, i) => {
+      const width = ctx.measureText(w).width;
+      if (black) { ctx.fillStyle = CFG.cream; ctx.fillText(w, x + width / 2, y + 6); }
+      else { ctx.strokeStyle = CFG.ink; ctx.lineWidth = 2.2; ctx.strokeText(w, x + width / 2, y + 6); }
+      x += width + 40;
+      ctx.save(); ctx.translate(x - 20, y + 4); ctx.rotate(Math.PI / 4); ctx.fillStyle = black ? CFG.orange : CFG.ink; ctx.fillRect(-9, -9, 18, 18); ctx.restore();
+      x += 30;
+    });
+  }
+  ctx.restore();
+  // centre badge with orbiting words
+  const badge = EZ.back(seg(t, 0.55, 0.85)) * (1 - EZ.i3(seg(t, 1.45, 1.6)));
+  if (badge > 0) {
+    ctx.save(); ctx.translate(960, 540); ctx.scale(badge, badge);
+    circle(0, 0, 215, CFG.cream); ctx.strokeStyle = CFG.orange; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 118, 0, TAU); ctx.stroke();
+    ar(CFG.badge, 0, 8, 150, CFG.orange);
+    const ringText = (CFG.stripe.join(' • ') + ' • ').toUpperCase().repeat(2);
+    ctx.rotate(t * 1.4); ctx.font = `26px ${ARB}`; ctx.fillStyle = CFG.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr';
+        [...ringText].forEach((ch, i) => { ctx.save(); ctx.rotate(i / ringText.length * TAU); ctx.fillText(ch, 0, -166); ctx.restore(); });
+    ctx.restore();
+  }
+}
+function counter(t) {
+  const blobA = EZ.o3(seg(t, 0, 0.4)) * (1 - EZ.i3(seg(t, 1.3, 1.75)));
+  if (blobA > 0) { ctx.save(); ctx.globalAlpha = blobA; const s = 1 + 0.08 * Math.sin(t * 2), dx = Math.sin(t * 1.3) * 60; ctx.drawImage(blob, 160 + dx - (s - 1) * 800, 60 - (s - 1) * 450, 1600 * s, 900 * s); ctx.restore(); }
+  // collapse into the orange point
+  const dot = seg(t, 1.45, 2.0);
+  if (dot > 0) { circle(960, 540, lerp(70, 10, EZ.io3(dot)), CFG.orange); if (dot < 0.6) { ctx.globalAlpha = 0.35 * (1 - dot); circle(960, 540, lerp(140, 30, dot), CFG.orange); ctx.globalAlpha = 1; } }
+  const show = EZ.o3(seg(t, 0.15, 0.35)) * (1 - EZ.i3(seg(t, 1.2, 1.4)));
+  if (show > 0) {
+    const n = Math.round(900 * E('power2.out')(seg(t, 0.15, 1.3)));
+    const digits = AD(n);
+    // rolling: the previous value smears below the current one
+    ar(AD(Math.max(0, n - 7)), 960, 560 + 60, 330, 'rgba(244,238,230,.18)', { a: show * (n < 890 ? 1 : 0) });
+    ar(digits, 960, 560, 330, CFG.cream, { a: show });
+    ar(CFG.counterTop, 960, 330, 36, 'rgba(244,238,230,.85)', { a: show, bold: false });
+    ar(CFG.counterBottom, 960, 800, 52, CFG.cream, { a: show, bold: false });
+  }
+}
+function endCard(t) {
+  const cx = 960, cy = 470;
+  const ring = seg(t, 0, 0.6);
+  if (ring < 1) {
+    const R = lerp(60, 1300, EZ.o3(ring));
+    ctx.save(); ctx.globalAlpha = 1 - ring; ctx.lineWidth = 26; ctx.strokeStyle = 'rgba(70,90,255,.55)'; ctx.beginPath(); ctx.arc(cx, 540, R, 0, TAU); ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = CFG.orange; ctx.beginPath(); ctx.arc(cx, 540, R * 0.78, 0, TAU); ctx.stroke(); ctx.restore();
+    for (let i = 0; i < 40; i++) { const a = rnd(i) * TAU, r0 = R * (0.6 + rnd(i + 3) * 0.6); ctx.globalAlpha = (1 - ring) * 0.7; ctx.strokeStyle = i % 3 ? 'rgba(244,238,230,.6)' : CFG.orange; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, 540 + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * (r0 + 90), 540 + Math.sin(a) * (r0 + 90)); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  const b = EZ.expo(seg(t, 0.05, 0.4)), up = EZ.io3(seg(t, 0.55, 0.85));
+  ar(CFG.brand, cx, lerp(540, cy, up), lerp(330, 270, up), CFG.cream, { a: b, sx: lerp(1.3, 1, b) });
+  const ln = EZ.expo(seg(t, 0.75, 1.05)); ctx.fillStyle = CFG.orange; ctx.fillRect(cx - 320 * ln, 590, 640 * ln, 10);
+  ar(CFG.role, cx, 668, 74, CFG.cream, { a: EZ.o3(seg(t, 0.85, 1.1)), bold: false });
+  ar(CFG.tagline, cx, 742, 40, CFG.orange, { a: EZ.o3(seg(t, 1.2, 1.45)), bold: false });
+}
+const DRAW = [intro, wordScene(0), wordScene(1), wordScene(2), wordScene(3), geometry, depth, rhythm, counter, endCard];
+
+/* ---------- frame chrome ---------- */
+function hud(t, ink, label) {
+  const a = seg(t, 0.4, 0.7) * (1 - seg(t, 12.9, 13.0)), dim = ink === CFG.ink ? 'rgba(12,11,14,.6)' : 'rgba(244,238,230,.6)';
+  if (a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = ink;
+  [[58, 58, 1, 1], [1862, 58, -1, 1], [58, 1022, 1, -1], [1862, 1022, -1, -1]].forEach(([x, y, sx, sy]) => { ctx.fillRect(x, y, 28 * sx, 2 * sy); ctx.fillRect(x, y, 2 * sx, 28 * sy); });
+  ctx.globalAlpha = a * 0.6; ctx.fillRect(84, 1008, 260, 2); ctx.globalAlpha = a; ctx.fillRect(84, 1008, 260 * t / CFG.duration, 2);
+  ctx.restore();
+  ar('0:' + String(Math.floor(t)).padStart(2, '0'), 92, 86, 20, dim, { a, bold: false, align: 'left' });
+  ar(CFG.hudRight, 1832, 86, 22, ink, { a, bold: false, align: 'right' });
+  if (label) ar(label, 1832, 1004, 20, ink, { a, bold: false, align: 'right' });
+}
+
+/* ---------- render ---------- */
+function render(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const k = SC.reduce((n, s, i) => t >= s[0] ? i : n, 0);
+  ctx.fillStyle = SC[k][1]; ctx.fillRect(0, 0, CFG.w, CFG.h);
+  DRAW[k](Math.max(0, t - SC[k][0]));
+  ctx.drawImage(vignette, 0, 0);
+  hud(t, SC[k][2], SC[k][3]);
+  const fade = seg(t, 14.75, 15); if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade * 0.75})`; ctx.fillRect(0, 0, CFG.w, CFG.h); }
+}
+
+/* ---------- master timeline: the only clock ---------- */
+gsap.ticker.lagSmoothing(0);
+const tl = gsap.timeline({ paused: true });
+const clock = { t: 0 };
+tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
+tl.eventCallback('onUpdate', () => render(tl.time()));
+window.__timelines = { main: tl };
+render(0);
+Promise.all(['10px PlexAr', '10px PlexArB', '10px JBMono'].map(f => document.fonts.load(f, 'Claude'))).then(() => render(tl.time()), () => render(tl.time()));
+
+/* ---------- preview shell (outside the composition) ---------- */
+const main = document.getElementById('main');
+const playBtn = document.getElementById('playBtn'), scrub = document.getElementById('scrub'), tcEl = document.getElementById('tc');
+function fit() {
+  const s = Math.min(window.innerWidth / CFG.w, window.innerHeight / CFG.h);
+  main.style.transform = 'translate(-50%,-50%) scale(' + s + ')';
+}
+// Inside an Open Design project the motion source player wraps the stage,
+// fits it and adds its own controls; leave both to it there.
+const hostPlayer = () => window.__odMotionSourcePlayer || main.parentElement.id !== 'viewport';
+const ownFit = fit;
+fit = function () { if (hostPlayer()) { main.style.transform = 'translate(-50%,-50%)'; return; } ownFit(); };
+window.addEventListener('resize', fit); fit();
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+  fit(); if (hostPlayer()) document.getElementById('controls').style.display = 'none';
+}, 0));
+function sync() {
+  const t = tl.time();
+  scrub.value = t; tcEl.textContent = t.toFixed(2) + ' / ' + CFG.duration.toFixed(2);
+  playBtn.textContent = tl.isActive() ? 'PAUSE' : (t >= CFG.duration - 0.01 ? 'REPLAY' : 'PLAY');
+}
+gsap.ticker.add(sync);
+playBtn.addEventListener('click', () => {
+  if (tl.time() >= CFG.duration - 0.01) tl.restart(); else if (tl.paused()) tl.play(); else tl.pause();
+  sync();
+});
+scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); sync(); });
+window.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); playBtn.click(); } });
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) { tl.pause(); tl.time(CFG.reducedAt); }
+else document.fonts.ready.then(() => tl.play(0));
+sync();
+</script>
+<script>
+// Video export seeks with timeline callbacks suppressed, so the onUpdate
+// drawing also runs from a per-frame loop whenever the timeline time moves.
+(function install() {
+  var tls = window.__timelines;
+  var tl = tls && tls[Object.keys(tls)[0]];
+  if (!tl) { setTimeout(install, 50); return; }
+  var draw = tl.eventCallback('onUpdate');
+  if (!draw) return;
+  var drawnAt = null;
+  tl.eventCallback('onUpdate', function () { drawnAt = tl.time(); return draw.apply(this, arguments); });
+  (function loop() {
+    if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) {
+      document.documentElement.classList.add('od-export');
+    }
+    requestAnimationFrame(loop);
+    var t = tl.time();
+    if (t !== drawnAt) { drawnAt = t; draw(); }
+  })();
+})();
+</script>
+<script>
+// Preview bake: mark ready once the timeline reaches the poster frame.
+(function () {
+  var POSTER_AT = 2.2;
+  function check() {
+    var tls = window.__timelines;
+    var tl = tls && tls[Object.keys(tls)[0]];
+    if (tl && tl.time() >= POSTER_AT) {
+      document.documentElement.setAttribute('data-od-preview-ready', 'true');
+      return;
+    }
+    requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+})();
+</script>
+<script>
+// A user gesture enables sound; the master timeline owns play, pause and seek.
+(function() {
+  const audio=document.getElementById('soundtrack');
+  if (!audio || typeof audio.play !== 'function' || window.__odFrameRenderer) return;
+  const controls=document.getElementById('controls');
+  const button=document.createElement('button');button.type='button';button.textContent='Sound on';button.setAttribute('aria-label','Enable sound');button.setAttribute('aria-pressed','false');controls.appendChild(button);
+  let enabled=false,pending=false;
+  function play() { if(pending||!audio.paused)return;pending=true;audio.play().catch(()=>{enabled=false;button.textContent='Sound on';button.setAttribute('aria-pressed','false');}).finally(()=>{pending=false;}); }
+  button.onclick=()=>{enabled=!enabled;button.textContent=enabled?'Sound off':'Sound on';button.setAttribute('aria-pressed',String(enabled));if(enabled){const tl=window.__timelines.main;if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
+  document.getElementById('scrub').addEventListener('input',event=>{if(enabled)audio.currentTime=Number(event.target.value);});
+  function sync() {
+    const tl=window.__timelines.main;
+    if(enabled&&!window.__odFrameRenderer){
+      if(!pending&&!audio.seeking&&audio.readyState>=3&&Math.abs(audio.currentTime-tl.time())>.3)audio.currentTime=tl.time();
+      if(tl.paused()||tl.progress()>=1)audio.pause();else play();
+    }else audio.pause();
+    requestAnimationFrame(sync);
+  }sync();
+})();
+</script>
+</body>
+</html>

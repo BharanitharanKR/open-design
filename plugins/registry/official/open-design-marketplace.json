@@ -12062,7 +12062,7 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A 15-second motion designer showreel on a dark HUD stage: an orange starburst, kinetic type cut on the beat, a morphing shape grid, a 3D point cloud and a signature card.",
+      "description": "A 15-second motion designer showreel at 128 BPM, rebuilt from the viral original: a starburst opener, a stretching wordmark, six easing curves, a morphing shape, a truchet field, a 3D point cloud, kinetic type and an end card.",
       "tags": [
         "example",
         "first-party",
@@ -12071,7 +12071,7 @@
         "showreel",
         "kinetic-typography",
         "shape-morph",
-        "brand"
+        "viral-remake"
       ],
       "homepage": "https://github.com/nexu-io/open-design",
       "license": "Apache-2.0",
@@ -12079,10 +12079,10 @@
       "taskKind": "new-generation"
     },
     {
-      "name": "open-design/example-motion-product-launch",
-      "title": "Product Launch Film",
+      "name": "open-design/example-motion-energy-reel",
+      "title": "High-Energy Motion Reel",
       "version": "0.1.0",
-      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-product-launch",
+      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-energy-reel",
       "publisher": {
         "id": "open-design",
         "url": "https://open-design.ai"
@@ -12090,72 +12090,16 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A 20-second launch film for a fictional meeting-notes app: kinetic type, scattered note fragments, a toggle that turns them into a summary, action items checking off and a logo lockup.",
+      "description": "A 15-second high-energy motion reel, rebuilt from the viral original: kinetic words on hard color cuts, a breathing grid of shapes, extruded 3D type, rhythm stripes, a frame counter and an end card.",
       "tags": [
         "example",
         "first-party",
         "video",
         "motion-design",
-        "product-launch",
-        "promo",
-        "ui",
-        "brand"
-      ],
-      "homepage": "https://github.com/nexu-io/open-design",
-      "license": "Apache-2.0",
-      "mode": "video",
-      "taskKind": "new-generation"
-    },
-    {
-      "name": "open-design/example-motion-explainer",
-      "title": "How-It-Works Explainer",
-      "version": "0.1.0",
-      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-explainer",
-      "publisher": {
-        "id": "open-design",
-        "url": "https://open-design.ai"
-      },
-      "capabilitiesSummary": [
-        "prompt:inject"
-      ],
-      "description": "A 20-second explainer of how a camera focuses: a focus-pull opener, real thin-lens ray tracing, refocusing, aperture and depth of field, and a three-rule recap.",
-      "tags": [
-        "example",
-        "first-party",
-        "video",
-        "motion-design",
-        "explainer",
-        "education",
-        "diagram",
-        "optics"
-      ],
-      "homepage": "https://github.com/nexu-io/open-design",
-      "license": "Apache-2.0",
-      "mode": "video",
-      "taskKind": "new-generation"
-    },
-    {
-      "name": "open-design/example-motion-kinetic-type",
-      "title": "Kinetic Typography",
-      "version": "0.1.0",
-      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-kinetic-type",
-      "publisher": {
-        "id": "open-design",
-        "url": "https://open-design.ai"
-      },
-      "capabilitiesSummary": [
-        "prompt:inject"
-      ],
-      "description": "15 seconds of kinetic typography at 120 BPM: a question, a slot-machine reel of weekdays, the answer on a yellow flood, four beat-cut words and an odometer countdown to the weekend.",
-      "tags": [
-        "example",
-        "first-party",
-        "video",
-        "motion-design",
+        "showreel",
         "kinetic-typography",
-        "typography",
-        "poster",
-        "countdown"
+        "grid",
+        "viral-remake"
       ],
       "homepage": "https://github.com/nexu-io/open-design",
       "license": "Apache-2.0",
@@ -12163,10 +12107,10 @@
       "taskKind": "new-generation"
     },
     {
-      "name": "open-design/example-motion-3d-scene",
-      "title": "Procedural 3D Island",
+      "name": "open-design/example-motion-ui-morph",
+      "title": "One-Shape UI Motion",
       "version": "0.1.0",
-      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-3d-scene",
+      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-ui-morph",
       "publisher": {
         "id": "open-design",
         "url": "https://open-design.ai"
@@ -12174,16 +12118,72 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A 15-second Three.js scene built entirely in code: a tropical island at midday ringed by a turquoise lagoon, with a white-sand beach, palms, a small village and pier, sailboats, clouds and gulls, filmed in one continuous aerial move.",
+      "description": "A 14-second code-only UI motion piece, rebuilt from the viral original: one shape morphs from a button into a loader, player, slider, toggle, tabs, chart, command palette and toast, driven by a cursor at 120 BPM.",
       "tags": [
         "example",
         "first-party",
         "video",
         "motion-design",
+        "ui-animation",
+        "interaction",
+        "product",
+        "viral-remake"
+      ],
+      "homepage": "https://github.com/nexu-io/open-design",
+      "license": "Apache-2.0",
+      "mode": "video",
+      "taskKind": "new-generation"
+    },
+    {
+      "name": "open-design/example-motion-pixel-wizard",
+      "title": "Pixel Art Wizard",
+      "version": "0.1.0",
+      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-pixel-wizard",
+      "publisher": {
+        "id": "open-design",
+        "url": "https://open-design.ai"
+      },
+      "capabilitiesSummary": [
+        "prompt:inject"
+      ],
+      "description": "An 11-second pixel art loop, rebuilt from the viral original: a wizard on a moonlit stone wall charges his staff, casts a burst of magic and settles back, at a crisp 128×96 resolution.",
+      "tags": [
+        "example",
+        "first-party",
+        "video",
+        "motion-design",
+        "pixel-art",
+        "character",
+        "loop",
+        "viral-remake"
+      ],
+      "homepage": "https://github.com/nexu-io/open-design",
+      "license": "Apache-2.0",
+      "mode": "video",
+      "taskKind": "new-generation"
+    },
+    {
+      "name": "open-design/example-motion-future",
+      "title": "The Future Is Already Here",
+      "version": "0.1.0",
+      "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-future",
+      "publisher": {
+        "id": "open-design",
+        "url": "https://open-design.ai"
+      },
+      "capabilitiesSummary": [
+        "prompt:inject"
+      ],
+      "description": "A 20-second electric-blue tech reel, rebuilt from the viral original: 3D cubes, a word tunnel, liquid chrome type, a FUTURE.EXE desktop, a countdown, glass objects and a chrome FUTURE hero, cut to 120 BPM.",
+      "tags": [
+        "example",
+        "first-party",
+        "video",
+        "motion-design",
+        "tech",
         "3d",
-        "procedural",
-        "threejs",
-        "tropical"
+        "kinetic-typography",
+        "viral-remake"
       ],
       "homepage": "https://github.com/nexu-io/open-design",
       "license": "Apache-2.0",
