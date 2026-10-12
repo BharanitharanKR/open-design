@@ -29,6 +29,7 @@ html.od-export #main{left:0!important;top:0!important;transform:none!important}
   <div id="main" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080">
     <canvas id="gl" width="1920" height="1080"></canvas>
     <canvas id="ui" width="1920" height="1080"></canvas>
+    <audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="15" data-track-index="2" data-volume="1" preload="auto"></audio>
   </div>
 </div>
 <div id="controls">
@@ -421,7 +422,6 @@ sync();
   requestAnimationFrame(check);
 })();
 </script>
-<audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="15" data-track-index="2" data-volume="1" preload="auto"></audio>
 <script>
 // A user gesture enables sound; the master timeline owns play, pause and seek.
 (function() {

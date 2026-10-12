@@ -68,7 +68,7 @@ timing attributes.
 ## Sound
 Carry `assets/soundtrack.mp3` with the reference files. It is an original
 procedural soundtrack authored for this example, timed to its beats, not audio
-copied from any source video. Preserve the root `<audio>` element with numeric
+copied from any source video. Keep the `<audio>` element inside the composition root, with numeric
 `data-start`, `data-duration` and `data-volume`; the desktop exporter mixes that
 local file into the MP4. Preview sound is enabled by the Sound on control and
 follows the master timeline, including pause and backward seeks. Keep it silent
