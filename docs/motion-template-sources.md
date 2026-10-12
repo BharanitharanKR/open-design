@@ -100,5 +100,5 @@ Make-same keeps the template's soundtrack by default, because the music is part
 of the look being remade. A brief that asks for no music removes it, and an
 audio file the user supplies replaces it. Any other music request keeps the
 score, because Open Design cannot generate music yet. A film longer than its
-music is silent after the music ends. The final reply states in one line which
-music the film uses and how to change it.
+music is silent after the music ends. When a music request cannot be met, the
+reply says so in one short sentence.

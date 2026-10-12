@@ -79,13 +79,8 @@ when the music's length is unknown); the export fades the music out there.
 Never use `loop`: in a film longer than the music, the music plays once and the
 rest is silent.
 
-End the final reply with one line about the music, in the user's language. For
-this score: "Music: this template's original score (11 s), not the audio of
-the source video. To change it, upload an audio file and say 'use this
-music'; to remove it, say 'no music'." In Chinese: 「配乐：沿用模版的原创配乐（11 秒），不是原视频的音乐。想换音乐，上传音频文件并说『用这段音乐』；不想要音乐，说『不要音乐』。」
-In the same line, say when the music ends before the film, and when a music or
-voiceover request could not be met. After rule 1 or 2, describe the music the
-film actually uses instead.
+Do not add a music note to the final reply. Only when a music or voiceover
+request could not be met, say so in one short sentence.
 
 The `<audio>` element stays inside the composition root; the desktop exporter
 mixes its local file into the MP4. Preview sound starts with the film; when the
