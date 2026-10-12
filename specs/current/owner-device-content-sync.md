@@ -46,6 +46,9 @@ with isolated local fixtures where available, and remaining limits are reported.
 
 ## Delivery validation
 
+QA handoff: [双设备验收指导](../../docs/testing/owner-device-content-update-qa.zh-CN.md)
+contains setup, executable cases, expected outcomes, evidence and release prerequisites.
+
 The production implementation includes a durable scoped cursor/preference and
 content fingerprint, a staged owner receipt, the HTTP/CLI actions, and the web
 confirmation dialog. Older owner mirrors may still have a `local_only` sync
