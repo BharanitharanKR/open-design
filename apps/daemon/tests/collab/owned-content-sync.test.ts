@@ -121,6 +121,21 @@ describe('owner content overwrite authority', () => {
     } finally { f.close(); }
   });
 
+  it('propagates a joined materialization failure even when the first caller swallows it', async () => {
+    const f = setup();
+    try {
+      f.content(false);
+      let rejectApply!: (error: Error) => void;
+      f.apply.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectApply = reject; }));
+      const swallowed = f.controller.request(scope, { action: 'check' });
+      await vi.waitFor(() => expect(f.apply).toHaveBeenCalledOnce());
+      const propagated = f.controller.request(scope, { action: 'check' }, undefined, true);
+      rejectApply(new Error('resource_not_found'));
+      await expect(swallowed).resolves.toMatchObject({ state: 'failed' });
+      await expect(propagated).rejects.toThrow('resource_not_found');
+    } finally { f.close(); }
+  });
+
   it('coalesces approval while allowing a newer event to offer the next head', async () => {
     const f = setup();
     try {

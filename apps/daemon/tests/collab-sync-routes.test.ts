@@ -1460,13 +1460,21 @@ describe('collab sync routes', () => {
     const pullDir = await mkdtemp(path.join(tmpdir(), 'od-owner-ghost-heal-'));
     tempDirs.push(pullDir);
     const unpublish = vi.fn(async () => undefined);
+    const pull = vi.fn(async () => {
+      throw new Error(
+        'Command failed: vela resource pull project project-ghost /dir --ref published --json\n' +
+          'Error: pull resource: API request failed with status 404: resource_not_found\n',
+      );
+    });
     const catalogRemove = vi.fn(async (_projectId: string, _principal?: unknown) => ({}));
     const ownedContentSync = {
-      request: vi.fn(async () => {
-        throw new Error(
-          'Error: pull resource: API request failed with status 404: resource_not_found',
-        );
-      }),
+      request: vi.fn(async () => ({
+        state: 'up_to_date' as const,
+        latestVersion: null,
+        localVersion: null,
+        autoApplyUntil: null,
+        updatedAt: Date.now(),
+      })),
       read: vi.fn(() => ({
         state: 'up_to_date' as const,
         latestVersion: null,
@@ -1503,12 +1511,7 @@ describe('collab sync routes', () => {
           syncLatest: async () => null,
           // The exact transport failure the live repro surfaced: the hub's
           // tombstone gate 404s the published-ref pull.
-          pull: async () => {
-            throw new Error(
-              'Command failed: vela resource pull project project-ghost /dir --ref published --json\n' +
-                'Error: pull resource: API request failed with status 404: resource_not_found\n',
-            );
-          },
+          pull,
           unpublish,
         },
         teamProjectCatalog: { upsert: async () => ({}), remove: catalogRemove },
@@ -1519,6 +1522,7 @@ describe('collab sync routes', () => {
     expect(res.status).toBe(200);
     expect(markSharedProjectPlaceholder).toHaveBeenCalledWith('ghost-shared-p', true);
     expect(ownedContentSync.request).toHaveBeenCalled();
+    await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce());
 
     // The heal finishes the half-landed retraction hub-side …
     await vi.waitFor(() => {

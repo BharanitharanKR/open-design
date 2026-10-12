@@ -1179,13 +1179,13 @@ export function registerCollabSyncRoutes(
       if (!scope) return;
       try {
         if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
-          await deps.ownedContentSync.request(
+          const update = await deps.ownedContentSync.request(
             { projectId, ...scope },
             { action: 'check' },
             undefined,
             true,
           );
-          return;
+          if (update.state !== 'up_to_date' || update.latestVersion != null || update.localVersion != null) return;
         }
         await pullSharedProjectCoalesced(projectId, resourcePrincipal, scope);
       } catch (error) {

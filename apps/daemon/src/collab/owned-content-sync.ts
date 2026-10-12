@@ -104,7 +104,13 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     const key = ownedContentScopeKey(scope);
     const pending = inFlight.get(key);
     if (pending) {
-      await pending;
+      try {
+        await pending;
+      } catch (error) {
+        const update = publishFailure(scope, error);
+        if (propagateError) throw error;
+        return update;
+      }
       if (input.action !== 'check' || (hintedVersion != null && hintedVersion > (deps.store.read(scope).latestVersion ?? -1))) {
         return request(scope, input, hintedVersion, propagateError);
       }
@@ -112,19 +118,24 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     }
     let task!: Promise<OwnedProjectContentUpdate>;
     task = perform(scope, input, hintedVersion)
-      .catch((error: unknown) => {
-        const code = typeof error === 'object' && error != null && 'code' in error ? error.code : null;
-        const update = code === 'PROJECT_BUSY'
-          ? publish(scope, 'busy', 'PROJECT_BUSY')
-          : code === 'PROJECT_DIRECTORY_UNSUPPORTED'
-            ? publish(scope, 'unsupported', 'PROJECT_DIRECTORY_UNSUPPORTED')
-            : publish(scope, 'failed', 'PROJECT_SYNC_FAILED');
-        if (propagateError) throw error;
-        return update;
-      })
       .finally(() => { if (inFlight.get(key) === task) inFlight.delete(key); });
     inFlight.set(key, task);
-    return task;
+    try {
+      return await task;
+    } catch (error) {
+      const update = publishFailure(scope, error);
+      if (propagateError) throw error;
+      return update;
+    }
+  }
+
+  function publishFailure(scope: OwnedContentScope, error: unknown): OwnedProjectContentUpdate {
+    const code = typeof error === 'object' && error != null && 'code' in error ? error.code : null;
+    return code === 'PROJECT_BUSY'
+      ? publish(scope, 'busy', 'PROJECT_BUSY')
+      : code === 'PROJECT_DIRECTORY_UNSUPPORTED'
+        ? publish(scope, 'unsupported', 'PROJECT_DIRECTORY_UNSUPPORTED')
+        : publish(scope, 'failed', 'PROJECT_SYNC_FAILED');
   }
 
   function read(scope: OwnedContentScope): OwnedProjectContentUpdate {
