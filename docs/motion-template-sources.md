@@ -24,8 +24,8 @@ product owner. The library's top-10% view threshold is 255,312.
 | The Future Is Already Here | [Douyin](https://www.douyin.com/video/7690393045783346918) | — | 6,439 | 2,164 | — |
 
 Douyin does not publish play counts; its figures were read on 2026-10-12.
-Home and Community show The Future Is Already Here first, then the others in
-table order.
+Home and Community show The Future Is Already Here, Motion Designer Showreel,
+One-Shape UI Motion, Pixel Art Wizard, then High-Energy Motion Reel.
 
 ## Template content
 

@@ -12,7 +12,10 @@ html,body{height:100%;background:#000;overflow:hidden}
 #main{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;background:#000;overflow:hidden}
 #main canvas{position:absolute;left:0;top:0;display:block;width:1920px;height:1080px}
 #controls{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;display:flex;gap:14px;align-items:center;width:min(900px,92vw);padding:12px 18px;border-radius:14px;background:#101214dd;color:#fff;font:600 13px ui-monospace,Menlo,monospace;opacity:0;transition:opacity .2s}
-#controls:hover{opacity:1}#scrub{flex:1}
+#controls:hover,#controls:focus-within{opacity:1}
+#controls button{font:inherit;letter-spacing:.06em;background:#1A2BFF;color:#fff;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
+#controls button:focus-visible,#scrub:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#scrub{flex:1;accent-color:#1A2BFF}
 html.od-export #controls{display:none!important}
 html.od-export #main{left:0!important;top:0!important;transform:none!important}
 </style>
@@ -22,7 +25,7 @@ html.od-export #main{left:0!important;top:0!important;transform:none!important}
   <canvas id="gl" width="1920" height="1080"></canvas><canvas id="ui" width="1920" height="1080"></canvas>
   <audio id="soundtrack" src="assets/soundtrack.mp3" data-start="0" data-duration="20" data-track-index="2" data-volume="1" preload="auto"></audio>
 </div></div>
-<div id="controls"><button id="playBtn" type="button" aria-label="Play or pause">PLAY</button><input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position"><span id="tc"></span></div>
+<div id="controls"><button id="playBtn" type="button" aria-label="Play or pause">PAUSE</button><input id="scrub" type="range" min="0" max="20" step="0.01" value="0" aria-label="Timeline position"><span id="tc"></span></div>
 <script src="assets/three.min.js"></script>
 <script src="assets/gsap.min.js"></script>
 <script src="assets/lat3d.js"></script>
@@ -42,8 +45,10 @@ function boot() {
   const fit = () => { if (window.__odMotionSourcePlayer || main.parentElement.id !== 'viewport') { main.style.transform = 'translate(-50%,-50%)'; return; } const k = Math.min(innerWidth / 1920, innerHeight / 1080); main.style.transform = 'translate(-50%,-50%) scale(' + k + ')'; };
   addEventListener('resize', fit); fit();
   const scrub = document.getElementById('scrub'), tc = document.getElementById('tc'), btn = document.getElementById('playBtn');
-  gsap.ticker.add(() => { scrub.value = tl.time(); tc.textContent = tl.time().toFixed(2) + ' / ' + D.toFixed(2); });
-  btn.onclick = () => tl.paused() ? tl.play() : tl.pause(); scrub.oninput = () => { tl.pause(); tl.time(+scrub.value); };
+  gsap.ticker.add(() => { const t = tl.time(); scrub.value = t; tc.textContent = t.toFixed(2) + ' / ' + D.toFixed(2); btn.textContent = tl.isActive() ? 'PAUSE' : (t >= D - 0.01 ? 'REPLAY' : 'PLAY'); });
+  btn.onclick = () => { if (tl.isActive()) tl.pause(); else if (tl.time() >= D - 0.01) tl.restart(); else tl.play(); };
+  scrub.oninput = () => { tl.pause(); tl.time(+scrub.value); };
+  addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); btn.click(); } });
   var drawnAt = null; (function loop() { requestAnimationFrame(loop); if (window.__odFrameRenderer && !document.documentElement.classList.contains('od-export')) document.documentElement.classList.add('od-export'); const t = tl.time(); if (t !== drawnAt) { drawnAt = t; window.__render(t); } })();
   tl.eventCallback('onUpdate', () => { drawnAt = tl.time(); window.__render(drawnAt); });
   if (!window.__odFrameRenderer) tl.play(0);
