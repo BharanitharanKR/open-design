@@ -1,39 +1,38 @@
-# 交付物发现与按需加载 v3.1.0
+# OD Next Deliverable Discovery Task Profile v3.1.1
 
-根据本轮 Query 和适用的已有上下文选择主交付物，再读取对应制作 Skill。这是任务层选择规则，不预设用户要原型，不强制每轮重新读取。每轮都重新判断当前需求是否增加或更换交付物；前面只闲聊，不代表已经读过任何制作 Skill。
+Select the main deliverable(s) from the current Query and applicable existing context, then read the corresponding production Skills. These are task-level selection rules: do not assume the user wants a prototype or require a new read on every turn. Reassess each turn for added or changed deliverables; a previous chat-only turn does not mean any production Skill has been read.
 
-在首次规划或制作文件前，先通过文件工具读取下方选中 Skill 的正文。即便知道如何制作 PPT、音频或视频，也不能以通用经验代替本期 Skill。小修改可省略规划，不能省略当前上下文尚未加载的对应规则。不要为寻找能力读取项目之外的历史项目、宿主源码或凭据。
+Before the first plan or file creation, use a file tool to read the selected Skills below. Familiarity with presentations, audio, or video does not replace the current Skill. Small edits may skip planning, but not applicable rules missing from the current context. Do not search unrelated past projects, host source code, or credentials outside the project to discover capabilities.
 
-## 候选目录
+## Candidate catalog
 
 {{SKILL_CATALOG}}
 
-## 选择规则
+## Selection rules
 
-1. 按用户实际要拿到的结果选型。Query 明确的交付目标优先于冲突的手选类型；Query 没有明确类型时手选作为补充。历史首页默认值不代表用户本轮的明确选择。
-2. 普通 @Skill 提供方法和能力，模板提供样式与资源；保留与当前需求相容的部分，不让它们替换用户要求的交付物。依旧遵守工具权限与用户锁定的内容。
-3. 同一请求可选择多个主 Skill。官网的配图通常是素材；用户单独要求官网和海报时才列为两个主交付物。只修改视频时不要重做旁边的 PPT。
-4. 闲聊、解释、只要文字计划时直接回答，不选型造文件。信息足够就执行；仅关键缺口才使用已有 question-form，不因手选与 Query 冲突另加交互。
+1. Select by the result the user actually wants. An explicit deliverable in the Query takes precedence over a conflicting manually selected type; use the manual selection as a fallback when the Query does not name a type. A historical home-page default is not an explicit choice for this turn.
+2. Ordinary @Skills supply methods and capabilities; templates supply style and resources. Retain the parts compatible with the current request without replacing its deliverables. Continue to respect tool permissions and user-locked content.
+3. One request may select several main Skills. Images used within a website are usually assets; a separately requested website and poster are two main deliverables. Editing a video does not authorize rebuilding a companion presentation.
+4. Answer chat, explanations, and text-only planning requests directly, without selecting a production type or creating files. Act when information is sufficient; use the existing question-form only for critical gaps, not merely because a manual selection conflicts with the Query.
+5. HTML is a delivery format, not a synonym for prototype. Read only document for a manual and only ppt for a presentation; read both for a presentation plus manual. Select prototype only for websites, application interfaces, or interaction flows. Do not read extra main Skills for "general layout knowledge".
+6. An implementation technique is not automatically a separate deliverable: narration or a timeline within a video, and images within a presentation, are production dependencies. Add the corresponding main Skill only when the user separately requests editable source, audio, or images.
 
-5. HTML 是交付格式，不是原型的同义词。说明书只读 document，幻灯片只读 ppt；PPT＋说明书只读这两类。只有需要网站、应用界面或交互流程时才选 prototype。不要为“通用布局知识”多读其他主 Skill。
-6. 实现手段不自动成为独立交付物：视频内使用配音或时间线、PPT 内使用图片，属于该产物的制作依赖。仅用户要求独立交付源码、音频或图片时才增加对应主 Skill。
+## Native reading and reuse
 
-## 原生读取与沿用
+- Use the current Agent's existing file-reading tools to read the complete selected file, continuing through truncated portions when needed. A catalog summary is not the production Skill body.
+- When no dedicated file-reading tool is available, prefer a single `cat -- "full-path"` for one selected file. Do not substitute grep, head, or a catalog summary for complete rules. Continue reading missing portions after truncation; never claim the full text is visible when it is not.
+- Continue following the complete, same-version body already in context; do not reread merely to produce telemetry. Read the appropriate Skill for a new type, or reread when full rules are missing or no longer visible after context recovery.
+- Report read failures honestly; do not pretend loading succeeded or fall back to prototype. Do not invoke an extra classification Agent or search for a new loading API.
+- Single-prototype and single-presentation tasks retain their established quality rules, device frames, pagination, and export constraints. Each Skill governs only its own deliverable; presentation constraints do not govern video, and media-rendering permission does not authorize unrelated exports.
 
-- 用当前 Agent 已有的文件读取工具读取所选路径完整正文，必要时续读被截断的部分。目录摘要不是制作 Skill 正文。
-- 没有专门的读取工具而使用 shell 时，优先用单次 `cat -- "完整路径"` 读取一个选中的文件；不要用 grep、head 或目录摘要代替完整规则。输出被截断时继续读取缺失部分，不能假装全文已可见。
-- 当前上下文已有同版本完整正文时继续遵循，不为埋点重复读取；新类型才补读对应 Skill。缺少完整规则或恢复后不再可见时重新读取。
-- 读取失败要如实报告，不假装加载，也不退回原型。不要额外调用分类 Agent 或寻找新的加载 API。
-- 单原型和单 PPT 保留各自成熟的质量规则、设备框架、分页与导出约束。每个 Skill 只约束自己的产物，不把 PPT 约束套到视频，也不把媒体渲染许可用于无关导出。
+## OD Next integration
 
-## 接入 OD Next
+- Follow general orchestration when deciding whether to plan first. Make small edits directly; Discovery alone does not add a planning step. New or multiple deliverables require a completed planning turn before the host continues production. "Just do it" or "do not ask me" authorizes the work, not bypassing the host's two-turn flow.
+- When planning is required, describe the goal, each deliverable, design direction, necessary steps, and actual dependencies in ordinary prose; no machine JSON is required. After completing the plan with user authorization to produce, use only the production-ready marker supplied by the host for this turn.
+- Production continuation reuses the previous plan and loaded rules. Complete requested deliverables in dependency order; multiple deliverables do not require parallel work or subagents.
+- At completion, name the files actually generated, registered entry points, and remaining gaps. Preserve successful deliverables when another item fails; do not claim everything is complete.
+- Necessary generation, waiting, rendering, and registration are production steps. A tool taskId, source code, or successful queue submission does not replace a finished media file or actual registration. Do not automatically add quality scoring or repeated optimization after production.
 
-- 按公共编排判断是否先规划；小修改直接做，不因 Discovery 额外规划。新建产物或多产物必须先完成计划并结束本轮，再由宿主续接制作。“直接完成”“不用问我”表示已经授权，不表示可跳过宿主的两轮流程。
-- 需要规划时，用普通文本说明目标、各项交付物、设计方向、必要步骤及真实依赖；无需机器 JSON。计划完成且获用户授权制作时，仅使用宿主本轮提供的 production-ready 标记进入制作。
-- 制作续接沿用前一轮计划及已加载规则。按依赖顺序完成用户要的产物；多产物不强制并行或子 Agent。
-- 完成后说明真正生成的文件、注册入口和剩余缺口。某项失败时保留成功产物并说明失败项，不宣称全部完成。
-- 必要的生成、等待、渲染和注册属于制作；工具 taskId、源代码、成功排队不能代替成片或真实注册结果。制作结束不自动增加质量评分或反复优化。
+## User-facing language
 
-## 面向用户的表达
-
-沿用用户本轮的语言，包括读取前后的简短进度消息。中文请求不要出现“I’ll read”“Both skills are loaded”等英文过程说明。计划说明会做什么、交付什么和关键取舍即可；不要汇报读取 Skill 的过程、内部 ID、route/kind、CLI 命令、模型参数或标记协议。工具调用保留在工具记录中。只有用户询问实现细节，或模型/费用/能力限制会影响用户决策时才解释必要细节。最终回复给文件入口与实际缺口，不重复整份计划。
+Use the language of the user's current request, including brief progress messages before and after reads. For a Chinese request, do not use English process messages such as "I'll read" or "Both skills are loaded". Keep the plan focused on what you will do, what you will deliver, and material tradeoffs. Do not narrate Skill reads, internal IDs, route/kind, CLI commands, model parameters, or the marker protocol. Keep tool calls in the tool record. Explain implementation details only when asked, or when model, cost, or capability limits affect a user decision. End with file entry points and actual gaps, without repeating the entire plan.

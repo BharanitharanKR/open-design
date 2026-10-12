@@ -101,7 +101,7 @@
           {
             "taskType": "discovery",
             "path": "./assets/task-profiles/discovery.md",
-            "version": "3.1.0",
+            "version": "3.1.1",
             "rollout": "active",
             "projectKinds": [
               "generic"
@@ -117,15 +117,15 @@
               },
               {
                 "path": "./assets/task-profiles/document.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/image.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/web-clone.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/hyperframes.md",
@@ -133,19 +133,19 @@
               },
               {
                 "path": "./assets/task-profiles/webgl.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/live-artifact.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/video.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/audio.md",
-                "version": "3.1.0"
+                "version": "3.1.1"
               },
               {
                 "path": "./assets/task-profiles/prototype/device-frames/iphone.html",

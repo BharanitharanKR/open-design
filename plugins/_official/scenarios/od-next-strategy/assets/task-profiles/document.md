@@ -1,14 +1,14 @@
-# 文档交付 Skill v3.1.0
+# OD Next Document Task Profile v3.1.1
 
-适用报告、说明书、操作手册和排版长文。先确定读者、用途、章节、来源和必须保留的内容。交付独立 HTML 文档，route=document-html、kind=document；PDF/图片使用产品已有导出，不声称已生成 DOCX。
+Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
-以语义化 article、标题层级、段落、列表和必要表格组织正文；阅读宽度约 65–80 字符，长表格允许横向滚动，移动端可读。目录锚点与正文一致。提供 @media print 的分页、页边距和表头重复规则，避免固定高度截断长文。
+Organize the body with semantic article markup, heading levels, paragraphs, lists, and necessary tables. Aim for a reading width of 65–80 characters, allow wide tables to scroll horizontally, and keep mobile reading usable. Table-of-contents anchors must match the body. Provide @media print rules for pagination, margins, and repeating table headers; avoid fixed heights that clip long text.
 
-引用来自用户或已读取的来源，不编造数据、引文或来源。保留用户确认的结构与语气。小修改局限相关章节；交付要求与其他 Skill 互不覆盖。写完约定 HTML 后如实交付，不宣称已做产品外的导出。
+Cite user-provided or actually read sources; do not invent data, quotations, or sources. Preserve the confirmed structure and tone. Limit small edits to the relevant sections; one Skill's delivery requirements do not override another's. Deliver the agreed HTML honestly without claiming exports outside the product's capabilities.
 
-## 制作规则
+## Production rules
 
-- 先安排信息层级：标题说明主题，开头交代用途，章节按读者执行顺序或论证关系展开。说明书覆盖前置条件、具体步骤、成功状态与常见异常；不把正文做成营销落地页。
-- 区分事实、用户数据、假设和示例。数字保留单位、日期和统计口径；表格提供标题、表头和必要注释。不能为了美观删掉用户要求的细节。
-- 使用一个主标题与顺序递进的章节标题；长文提供可用目录，图表配说明与来源。正文和表格在窄屏保持完整阅读，不用固定画布模拟整本文档。
-- 打印样式隐藏导航控件，合理设置 break-before / break-inside，避免标题孤立、表格行截断；不以截图替代可选择的文本。按现有产品导出能力交付，不把打印样式等同已验证 PDF。
+- Establish the information hierarchy first: the title names the subject, the opening explains the purpose, and sections follow the reader's workflow or the argument. Manuals cover prerequisites, concrete steps, success states, and common exceptions. Do not turn the body into a marketing landing page.
+- Distinguish facts, user data, assumptions, and examples. Preserve units, dates, and measurement definitions for numbers. Give tables titles, headers, and necessary notes. Do not remove requested details for visual polish.
+- Use one main heading and a sequential section hierarchy. Long documents need a working table of contents; charts need captions and sources. Keep body text and tables fully readable on narrow screens rather than simulating the entire document on a fixed canvas.
+- Hide navigation controls in print styles. Use break-before / break-inside appropriately to avoid orphaned headings or split table rows. Do not replace selectable text with screenshots. Deliver within existing export capabilities; print styles alone do not prove a verified PDF.

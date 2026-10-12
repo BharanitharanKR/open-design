@@ -1,29 +1,29 @@
-# 图片交付 Skill v3.1.0
+# OD Next Image Task Profile v3.1.1
 
-先确认用户要的是图片文件还是可编辑排版源码；二者不是同一种交付。图片、摄影、插画、图标的真实二进制文件使用 media-image / kind=image。用户明确要求可编辑海报排版源码时，使用 image-html / kind=source，交付 HTML，并说明图片导出由产品执行。
+Resolve whether the user wants an image file or editable layout source; these are different deliverables. Use media-image / kind=image for actual binary images, photography, illustrations, or icons. When the user explicitly requests editable poster-layout source, use image-html / kind=source and deliver HTML, explaining that the product handles image export.
 
-图片生成通过现有媒体 CLI。先执行 `"$OD_NODE_BIN" "$OD_BIN" media --help` 与 generate --help 获取模型和当前参数，不猜测模型 ID。确认尺寸、比例、锁定文字、参考图和品牌要求；只把必要内容传给用户配置的媒体服务。使用 media generate --project "$OD_PROJECT_ID" --surface image --model <可用模型> --prompt <需求> --output <计划文件>。不要直接调用供应商 API 或打印凭据。
+Generate images through the existing media CLI. First use `"$OD_NODE_BIN" "$OD_BIN" media --help` and generate --help to discover models and current parameters; do not guess model IDs. Confirm dimensions, aspect ratio, locked copy, reference images, and brand requirements. Send only necessary content to the user's configured media service. Use media generate --project "$OD_PROJECT_ID" --surface image --model <available-model> --prompt <request> --output <planned-file>. Do not call provider APIs directly or print credentials.
 
-返回 taskId 时使用 media wait <taskId> --since <nextSince>；仍运行就继续有限等待，失败则说明失败及缺口。以返回成功和真实图片文件为完成条件，不写 HTML 假图、不伪造 PNG 文件。不要生成后进入循环评价。
+When a taskId is returned, use media wait <taskId> --since <nextSince>. Continue bounded waits while running; report failure and remaining gaps when it fails. Completion requires success and an actual image file. Do not substitute an HTML imitation or fabricate a PNG file. Do not enter a repeated evaluation loop after generation.
 
-海报排版源码保持可编辑文字、明确视觉层级、适合指定画布的字号与安全区。多尺寸分别排版，不简单拉伸。图片与 HTML 源码分别声明，不能用一个冒充另一个。局部编辑优先保留构图和已确认品牌素材。
+Poster-layout source must retain editable text, clear visual hierarchy, and type sizes and safe areas appropriate for the requested canvas. Compose each size separately rather than stretching it. Declare images and HTML source separately; neither substitutes for the other. Preserve the composition and confirmed brand assets during local edits.
 
-规划阶段先通过 `"$OD_NODE_BIN" "$OD_BIN" media models --json` 查询当前注册模型；使用目录中匹配 surface 的真实模型 ID，在内部确定使用该模型。制作时使用相同模型，不静默切换供应商。
+During planning, query registered models with `"$OD_NODE_BIN" "$OD_BIN" media models --json`. Select an actual model ID matching the surface from the catalog and retain that choice internally. Use the same model in production; do not silently switch providers.
 
-模型目录表示支持的模型，不等于供应商已配置或配额可用。优先用户明确指定的服务，否则沿用当前已配置且支持所需能力的服务；不要因目录排名而换供应商。配置缺失或配额不足时只说明所缺能力和设置入口，不索取用户在聊天中粘贴密钥。
+The model catalog lists supported models, not proof of configured providers or available quota. Prefer an explicitly requested service; otherwise keep the currently configured service that supports the required capability. Do not switch providers because of catalog order. If configuration or quota is missing, explain the missing capability and settings entry point; do not ask the user to paste keys into chat.
 
-## 视觉与内容规则
+## Visual and content rules
 
-- 确定单一主信息，再组织主视觉、辅助信息和行动引导；宣传图不编造价格、奖项、认证、折扣或客户证言。锁定文案逐字保留，不让生成模型任意改写品牌名。
-- 保留商标比例、颜色与留白，主体不被文字或裁切破坏。对外营销摄影优先使用用户/品牌授权素材；网上找到的真实实体照片只能在许可未确认时作为明确标注的参考，不能生成假实体替代指定产品。虚构或插画题材可直接生成。
-- 1080px 画布参考字号：标题48、次标题32、正文24、注释18；最多两套字体，正文对比度至少4.5:1。按实际投放尺寸等比例调整，主要信息避开平台遮挡区。
-- 每个投放尺寸分别安排层级，不拉伸裁掉信息；同系列保持主视觉和品牌一致。可编辑 HTML 使用集中样式与可选择文字。
-- 印刷需求要明确物理尺寸、安全边距、出血和色彩要求；不把网页 RGB 或普通 PNG 声称为已完成 CMYK/印厂验收。工具不支持精确尺寸、透明背景或锁字时说明限制，不能伪称满足。
+- Establish one main message, then organize the main visual, supporting information, and call to action. Do not invent prices, awards, certifications, discounts, or testimonials for promotional images. Preserve locked copy verbatim; do not let generation arbitrarily rewrite brand names.
+- Preserve logo proportions, colors, and clear space. Text and cropping must not damage the subject. Prefer user- or brand-authorized assets for public marketing photography. When permission is unconfirmed, a real entity's online photo may only be an explicitly labeled reference; do not generate a fake entity as a substitute for the specified product. Fictional or illustrated subjects may be generated directly.
+- Reference type sizes for a 1080px canvas: title 48, subtitle 32, body 24, notes 18. Use at most two font families and body contrast of at least 4.5:1. Scale to the actual placement dimensions and keep primary information outside platform overlays.
+- Compose hierarchy separately for each placement size; do not stretch or crop away information. Keep the main visual and brand consistent across a series. Editable HTML uses centralized styles and selectable text.
+- For print, resolve physical dimensions, safety margins, bleed, and color requirements. Do not claim web RGB or an ordinary PNG has passed CMYK or print-shop acceptance. State limitations when tools cannot provide exact dimensions, transparency, or locked text; do not falsely claim compliance.
 
-## 营销图片的补充规则（仅在该场景适用）
+## Additional marketing-image rules (only when applicable)
 
-- 用户指定尺寸优先；没有指定时参考：小红书1080×1440，公众号封面900×383、正文图宽900，LinkedIn单图1200×627，线下海报A3或场地方规格。说明采用的尺寸，不把这些默认值用于任意插画或照片。
-- 关键信息、logo、人脸和CTA放在画布中央70–80%内，距边缘至少50px（1080px画布基准），避开平台遮挡区。多卖点明确主次；同系列不同尺寸重新构图，不能只缩放或换色冒充设计变体。
-- 需要转化引导时只设一个CTA，动词开头、措辞具体；1080px画布参考字号28px、视觉高度至少44px。广告图文字面积通常不超过20%，主信息在缩至50%时仍可读；不为纯插画强行添加文字或按钮。
-- 印刷设计按物理尺寸制作，内容距裁切线至少5mm，预留3–5mm出血；目标300DPI（大幅面可150DPI）、CMYK和单色黑文字仅在实际导出能力支持时落实，否则清楚列为印前处理要求。
-- 字体和素材真实可用，价格、日期、活动规则与法务文字逐字保留。避免无动机的霓虹、光晕、漂浮球、粒子、过度圆角和无重点卡片堆叠；不接受乱码、变形logo或损伤品牌真实性的主体。
+- User-specified dimensions take precedence. Otherwise use these references: Xiaohongshu 1080×1440; WeChat article cover 900×383 and body image width 900; LinkedIn single image 1200×627; physical poster A3 or the venue's specification. Disclose the chosen size; do not apply these defaults to arbitrary illustrations or photographs.
+- Keep key information, logos, faces, and CTAs within the central 70–80% of the canvas, at least 50px from edges on a 1080px canvas, clear of platform overlays. Prioritize multiple selling points. Recompose a series for different sizes rather than treating resizing or recoloring as a design variant.
+- When conversion guidance is needed, use one CTA with a concrete, verb-led label. Reference size on a 1080px canvas: 28px text and at least 44px visual height. Advertising text usually occupies no more than 20% of the area, and the main message remains readable at 50% scale. Do not force text or buttons onto a pure illustration.
+- Build print designs at physical size, with content at least 5mm inside the trim and 3–5mm bleed. Apply 300DPI (150DPI for large formats), CMYK, and single-color black text only when actual export capabilities support them; otherwise list them clearly as prepress requirements.
+- Use actually available fonts and assets. Preserve prices, dates, promotion rules, and legal copy verbatim. Avoid unmotivated neon, glows, floating spheres, particles, excessive rounding, and unfocused stacks of cards. Do not accept garbled text, distorted logos, or subjects that undermine brand authenticity.

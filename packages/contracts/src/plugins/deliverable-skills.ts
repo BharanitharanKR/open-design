@@ -1,4 +1,4 @@
-export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.0';
+export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.1';
 
 /** Main deliverable catalog. Describes outputs; never a machine-plan admission gate. */
 export const DELIVERABLE_SKILL_IDS = [
@@ -21,20 +21,20 @@ export interface DeliverableSkillDefinition {
   routes: readonly { id: DeliverableProductionRoute; kind: string; extensions: readonly string[] }[];
 }
 export const DELIVERABLE_SKILLS: readonly DeliverableSkillDefinition[] = [
-  { id: 'prototype', title: '原型', description: '网站、应用界面与交互流程；不含说明书、幻灯片或仅因 HTML 格式的其他产物。', routes: [{ id: 'prototype-html', kind: 'prototype', extensions: ['html'] }] },
-  { id: 'ppt', title: '幻灯片', description: '汇报与演示；交付 HTML 幻灯片，产品提供 PDF/PPTX 导出。', routes: [{ id: 'ppt-html', kind: 'presentation', extensions: ['html'] }] },
-  { id: 'document', title: '文档', description: '报告、说明书、长文；交付排版 HTML 文档，不承诺 DOCX。', routes: [{ id: 'document-html', kind: 'document', extensions: ['html'] }] },
-  { id: 'image', title: '图片', description: '图片文件使用媒体生成；明确要求可编辑排版源码时使用 HTML。', routes: [{ id: 'media-image', kind: 'image', extensions: ['png', 'jpg', 'jpeg', 'webp'] }, { id: 'image-html', kind: 'source', extensions: ['html'] }] },
-  { id: 'web-clone', title: '网站复刻', description: '参考指定网址或截图重建网页，保留来源与授权边界。', routes: [{ id: 'web-clone-html', kind: 'prototype', extensions: ['html'] }] },
-  { id: 'hyperframes', title: 'HyperFrames', description: '可编辑时间线动画 HTML 源码；需要实际 MP4 时另声明 video 交付物。', routes: [{ id: 'hyperframes-html', kind: 'source', extensions: ['html'] }] },
-  { id: 'webgl', title: 'WebGL', description: 'GPU、着色器、交互 3D；交付可实时运行的 HTML。', routes: [{ id: 'webgl-html', kind: 'interactive', extensions: ['html'] }] },
-  { id: 'live-artifact', title: '实时产物', description: '可刷新数据看板；调用现有注册接口生成预览，保留真实来源。', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
-  { id: 'video', title: '视频', description: '可播放的视频文件；媒体生成或声明的动画渲染完成后交付 MP4。', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
-  { id: 'audio', title: '音频', description: '配音、音乐、音效；通过媒体接口交付真实音频文件。', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
-].map((skill) => ({ ...skill, version: '3.1.0' })) as readonly DeliverableSkillDefinition[];
+  { id: 'prototype', title: 'Prototype', description: 'Websites, application interfaces, and interaction flows; excludes manuals, presentations, and other outputs selected only because they use HTML.', version: '3.1.0', routes: [{ id: 'prototype-html', kind: 'prototype', extensions: ['html'] }] },
+  { id: 'ppt', title: 'Presentation', description: 'Reports and presentations delivered as HTML slides; the product provides PDF/PPTX export.', version: '3.1.0', routes: [{ id: 'ppt-html', kind: 'presentation', extensions: ['html'] }] },
+  { id: 'document', title: 'Document', description: 'Reports, manuals, and long-form content delivered as formatted HTML documents; do not promise DOCX.', version: '3.1.1', routes: [{ id: 'document-html', kind: 'document', extensions: ['html'] }] },
+  { id: 'image', title: 'Image', description: 'Use media generation for image files; use HTML only when editable layout source is explicitly requested.', version: '3.1.1', routes: [{ id: 'media-image', kind: 'image', extensions: ['png', 'jpg', 'jpeg', 'webp'] }, { id: 'image-html', kind: 'source', extensions: ['html'] }] },
+  { id: 'web-clone', title: 'Web Clone', description: 'Rebuild pages from a specified URL or screenshot while preserving source attribution and authorization boundaries.', version: '3.1.1', routes: [{ id: 'web-clone-html', kind: 'prototype', extensions: ['html'] }] },
+  { id: 'hyperframes', title: 'HyperFrames', description: 'Editable timeline-animation HTML source; declare a separate video deliverable when an actual MP4 is needed.', version: '3.1.0', routes: [{ id: 'hyperframes-html', kind: 'source', extensions: ['html'] }] },
+  { id: 'webgl', title: 'WebGL', description: 'GPU, shaders, and interactive 3D delivered as real-time HTML.', version: '3.1.1', routes: [{ id: 'webgl-html', kind: 'interactive', extensions: ['html'] }] },
+  { id: 'live-artifact', title: 'Live Artifact', description: 'Refreshable data dashboards; use existing registration interfaces to generate previews and preserve actual sources.', version: '3.1.1', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
+  { id: 'video', title: 'Video', description: 'Playable video files; deliver MP4 after media generation or declared animation rendering completes.', version: '3.1.1', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
+  { id: 'audio', title: 'Audio', description: 'Narration, music, and sound effects delivered as actual audio files through media interfaces.', version: '3.1.1', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
+];
 
 export function renderDeliverableSkillCatalog(skillRoot: string): string {
   return DELIVERABLE_SKILLS.map((skill) =>
-    `- ${skill.id} (${skill.title}, v${skill.version}): ${skill.description} 读取 ${skillRoot}/${skill.id}.md；制作方式：${skill.routes.map((route) => `${route.id} / kind=${route.kind} / ${route.extensions.join(',')}`).join('；')}`,
+    `- ${skill.id} (${skill.title}, v${skill.version}): ${skill.description} Read ${skillRoot}/${skill.id}.md; production routes: ${skill.routes.map((route) => `${route.id} / kind=${route.kind} / ${route.extensions.join(',')}`).join('; ')}`,
   ).join('\n');
 }

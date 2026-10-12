@@ -1,18 +1,18 @@
-# 音频交付 Skill v3.1.0
+# OD Next Audio Task Profile v3.1.1
 
-交付真实可播放音频，route=media-audio、kind=audio；脚本或文字不是音频。先确认配音/音乐/音效、语言、时长、角色或声音要求与输出格式。
+Deliver actual playable audio with route=media-audio and kind=audio; a script or prose is not audio. Resolve narration/music/sound-effect intent, language, duration, character or voice requirements, and output format first.
 
-使用 `"$OD_NODE_BIN" "$OD_BIN" media --help` 与 generate --help 确认当前可用模型、audio-kind 和参数；不猜测模型或 voice ID。通过 media generate --project "$OD_PROJECT_ID" --surface audio --model <可用模型> --prompt <用户需求> --output <计划文件> 执行；按工具帮助提供必要参数。已有媒体权限、配置和配额照常生效，不绕过服务、不索要或打印凭据。
+Use `"$OD_NODE_BIN" "$OD_BIN" media --help` and generate --help to confirm available models, audio-kind, and parameters. Do not guess model or voice IDs. Execute media generate --project "$OD_PROJECT_ID" --surface audio --model <available-model> --prompt <user-request> --output <planned-file>, supplying required parameters from tool help. Existing media permissions, configuration, and quotas still apply. Do not bypass services, request credentials, or print credentials.
 
-若返回 taskId，继续使用 media wait <taskId> --since <nextSince> 等待真实完成。失败说明失败及缺口 并保留其他已成功交付物；不以静音文件代替要求的配音或音乐。只在工具成功且音频文件存在后报告完成，不虚构播放检测或质量评分。修改指定音频时不重新制作其他交付物。
+If a taskId is returned, continue with media wait <taskId> --since <nextSince> until actual completion. Report failures and gaps while preserving other successful deliverables; silence is not a substitute for requested narration or music. Report completion only after tool success and the audio file exists. Do not invent playback checks or quality scores. Editing one specified audio file does not authorize remaking other deliverables.
 
-规划阶段先通过 `"$OD_NODE_BIN" "$OD_BIN" media models --json` 查询当前注册模型；使用目录中匹配 surface 的真实模型 ID，在内部确定使用该模型。制作时使用相同模型，不静默切换供应商。
+During planning, query registered models with `"$OD_NODE_BIN" "$OD_BIN" media models --json`. Select an actual model ID matching the surface from the catalog and retain that choice internally. Use the same model in production; do not silently switch providers.
 
-模型目录表示支持的模型，不等于供应商已配置或配额可用。优先用户明确指定的服务，否则沿用当前已配置且支持所需能力的服务；不要因目录排名而换供应商。配置缺失或配额不足时只说明所缺能力和设置入口，不索取用户在聊天中粘贴密钥。
+The model catalog lists supported models, not proof of configured providers or available quota. Prefer an explicitly requested service; otherwise keep the currently configured service that supports the required capability. Do not switch providers because of catalog order. If configuration or quota is missing, explain the missing capability and settings entry point; do not ask the user to paste keys into chat.
 
-## 声音与脚本规则
+## Voice and script rules
 
-- 配音以用户确认文案为准，不增加开场白或总结；指定语言、专有名词、数字和停顿须保留。音乐与音效不能用 TTS 模型代替，先确认模型能力匹配 speech/music/sound-effect。
-- 音色、角色、语速和情绪在整段及多段之间保持一致；只使用接口实际支持的 voice/语言参数。没有克隆声音能力或授权时，不声称复刻真实人物声音。
-- 语音长度取决于文案和语速，不能承诺精确秒数。严格时长请求若与锁定文案冲突，说明限制；不擅自截断话语。多段输出按顺序命名，格式扩展名必须与工具实际编码一致。
-- 如需背景音乐，确保对白清晰，处理淡入淡出和衔接，不制造音量突变；仅在已有工具支持且用户要求时混音，不附加用户未要的音乐。
+- Use the user-approved narration verbatim without adding an introduction or summary. Preserve the specified language, proper names, numbers, and pauses. TTS is not a substitute for music or sound effects; confirm speech/music/sound-effect capability matches first.
+- Keep voice, character, speed, and emotion consistent within and across segments. Use only voice/language parameters supported by the interface. Do not claim to reproduce a real person's voice without voice-cloning capability and authorization.
+- Speech length depends on the script and speaking speed; do not promise an exact duration. Explain conflicts between strict duration and locked copy rather than cutting speech without permission. Name multiple outputs in sequence, and match file extensions to the actual encoding returned by the tool.
+- When background music is requested, keep dialogue clear and handle fades and joins without abrupt volume changes. Mix only when existing tools support it and the user requests it; do not add unrequested music.
