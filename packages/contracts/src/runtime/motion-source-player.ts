@@ -41,7 +41,7 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
     var play = shadow.getElementById('play'), replay = shadow.getElementById('replay');
     var slider = shadow.querySelector('input'), status = shadow.querySelector('output');
     var sound = shadow.getElementById('sound');
-    var tracks = Array.prototype.map.call(root.querySelectorAll('audio[src]'), function (audio) {
+    var tracks = Array.prototype.map.call(document.querySelectorAll('audio[src]'), function (audio) {
       audio.pause(); audio.autoplay = false;
       return { audio: audio, start: Number(audio.dataset.start || 0), duration: Number(audio.dataset.duration), volume: Number(audio.dataset.volume || 1), pending: false };
     });
