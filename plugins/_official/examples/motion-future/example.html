@@ -83,6 +83,7 @@ function boot() {
   button.onclick=()=>{chosen=true;enabled=!enabled;label();const tl=timeline();if(enabled&&tl){if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
   document.getElementById('scrub').addEventListener('input',event=>{if(enabled)audio.currentTime=Number(event.target.value);});
   function sync() {
+    if (window.__odMotionSourcePlayer) return;
     const tl=timeline();
     if(tl&&enabled&&!window.__odFrameRenderer){
       if(!pending&&!audio.seeking&&audio.readyState>=3&&Math.abs(audio.currentTime-tl.time())>.3)audio.currentTime=tl.time();

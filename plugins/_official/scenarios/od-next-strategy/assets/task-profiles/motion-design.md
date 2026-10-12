@@ -19,8 +19,7 @@ od:
 # Motion Design
 
 Use this functional helper to refine the user's brief or work in progress with
-one clear idea expressed through composition, transformation, rhythm, and sound
-when requested. Apply the relevant craft guidance within the current task; this
+one clear idea expressed through composition, transformation, rhythm, and appropriate sound unless the user requires silence. Apply the relevant craft guidance within the current task; this
 skill is not a rendering template and does not create a project or choose an
 output format. The Motion Design creation route owns those decisions. Quality
 means viewers understand and remember the idea while wanting to watch it move.
@@ -242,8 +241,10 @@ the MP4 exporter seeks with them suppressed.
 Audio-reactive motion needs a precomputed envelope or known beat map when exact
 replay matters. Never imply that an arbitrary pulse is analysis of the music.
 
-Open Design scaffolds and embeds a shared source player with play/pause, scrub
-and replay. Preserve its `script[data-od-motion-source-player]`. Do not create
+Open Design scaffolds and embeds shared source playback: open the HTML to
+automatically loop the film, with no separate player bar. Click the picture to
+pause/resume or unlock audio blocked by browser autoplay. The internal
+`window.__odMotionPlayer` interface retains play/pause, seek and replay. Preserve its `script[data-od-motion-source-player]`. Do not create
 competing controls or start a second playback clock. The renderer sets
 `window.__odMotionRender` before author scripts to disable preview chrome and
 scaling during capture. The scaffold includes pinned GSAP 3.14.2 at
@@ -256,6 +257,40 @@ uniformly to fit; do not reflow scene layout when the viewport changes. Controls
 must not appear in the exported frames. Keep a useful poster when reduced motion
 is requested and let the user explicitly start playback.
 
+## Plan and produce sound for video
+
+For a video motion brief, decide voice, music and effects separately in the
+existing Design Spec and beat map. If the film benefits from music or sound
+accents and the user has not requested silence, add suitable sound proactively.
+“No voiceover” disables speech only; it does not mean no music or effects.
+An explicit silent/muted/no-sound request wins. Choose silence when justified
+by the destination (for example a silent ambient loop), and state that choice.
+This policy belongs to video motion; do not add sound to ordinary prototypes,
+documents, slides or interactive motion unless their brief calls for it.
+
+Freeze `motionDelivery.audio` as `required` for an audible film or `silent` for
+intentional silence. Old contracts without this field retain their behavior.
+For `required`, author real local audio assets inside the composition directory:
+use supplied/licensed media, the host audio-generation tool when available, or
+an original synthesized instrumental/effect WAV. Do not invent an asset URL,
+install an unrelated audio environment, or substitute a pulsing visual for sound.
+If required audio production fails, report the blocker instead of delivering
+silence as complete.
+
+Declare every track with the renderer's supported timing, for example:
+`<audio src="assets/music.wav" data-start="0" data-duration="15" data-volume="0.3" preload="auto"></audio>`.
+Effects use the same contract with their own start and duration. Keep sources
+local and relative, pre-trim tracks, and avoid loop, playback-rate and media-start
+attributes. Keep music below speech and align accents to the actual beat map.
+Preserve the shared source player: it automatically loops picture and sound, and synchronizes audio to play,
+pause, seek and replay. Do not start a second audio clock or use Web Audio alone, which is
+not an exportable track. The renderer mixes these tracks into the MP4.
+
+In the existing bounded video check, verify source audio follows those controls,
+that downloaded MP4 contains an audible audio track, and that key sounds occur
+at the authored times. A file extension or an audio tag alone does not prove
+sound. Silent films remain valid; never require audio for other task types.
+
 ## Video production and dual delivery
 
 For video briefs, use Open Design's existing local HyperFrames renderer during
@@ -265,7 +300,7 @@ production route, editable source as canonical, and MP4 as a required derived
 output. For interactive briefs use `html` and source only.
 
 In the accepted Plan Contract, set `taskProfile.taskSpecific.motionDelivery` to
-`{"mode":"video","sourcePath":"motion-source/film/index.html","videoPath":"film.mp4"}`
+`{"mode":"video","sourcePath":"motion-source/film/index.html","videoPath":"film.mp4","audio":"required"}`
 for a film, or `{"mode":"interactive","sourcePath":"index.html"}` for interactive
 motion. Use the actual planned paths. The host freezes and enforces this contract;
 HTML metadata is descriptive and cannot change the required output. Include a

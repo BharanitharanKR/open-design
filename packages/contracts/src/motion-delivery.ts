@@ -7,7 +7,7 @@ const projectPath = z.string().min(1).refine((value) =>
 
 export const MotionDeliveryContractSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('interactive'), sourcePath: projectPath.refine((v) => /\.html?$/i.test(v)) }).strict(),
-  z.object({ mode: z.literal('video'), sourcePath: projectPath.refine((v) => /\.html?$/i.test(v)), videoPath: projectPath.refine((v) => /\.mp4$/i.test(v)) }).strict(),
+  z.object({ mode: z.literal('video'), sourcePath: projectPath.refine((v) => /\.html?$/i.test(v)), videoPath: projectPath.refine((v) => /\.mp4$/i.test(v)), audio: z.enum(['required', 'silent']).optional() }).strict(),
 ]);
 export type MotionDeliveryContract = z.infer<typeof MotionDeliveryContractSchema>;
 
