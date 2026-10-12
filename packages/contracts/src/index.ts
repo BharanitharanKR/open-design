@@ -63,6 +63,14 @@ export * from './examples.js';
 export * from './execution-profile.js';
 export * from './artifacts/od-card.js';
 export * from './artifacts/chat-protocol-context.js';
+export * from './artifacts/artifact-transcript.js';
+export * from './artifacts/history-question-form.js';
+export {
+  computeSkipRanges,
+  rangeContains,
+  isRealArtifactOpenAt,
+  INLINE_CODE_RE,
+} from './artifacts/artifact-markdown-context.js';
 export * from './runtime/deck-stage-fallback.js';
 export * from './runtime/html-injection-points.js';
 export * from './runtime/deck-protocol.js';

@@ -35,6 +35,23 @@ it('freezes original context and complete plan while retiring only the request g
 });
 
 describe('cold production input boundary', () => {
+  it('keeps requirements at the end of historical context and a complete plan beyond 12000 characters', () => {
+    const bundle = parseOdNextPromptBundleV2(TEST_PROMPT_BUNDLE);
+    const history = `user: Original requirements.\n${'Historical context. '.repeat(800)}\nuser: LATE_REQUIREMENT — never use external CDN assets.`;
+    const plan = `Plan: build the requested page.\n${'Complete plan detail. '.repeat(800)}\nFINAL_PLAN_CONSTRAINT — retain keyboard navigation.`;
+    bundle.context.priorTranscript = history;
+    bundle.userFirstPrompt = 'Build the accessible page and preserve the late requirements.';
+    expect(history.length).toBeGreaterThan(12000);
+    expect(plan.length).toBeGreaterThan(12000);
+    const cold = parseOdNextPromptBundleV2(composeColdProductionBundle({
+      frozenBundleText: serializeOdNextPromptBundleV2(bundle), planningReply: plan,
+      productionTurn: composeOdNextMarkerProductionTurn({ taskExecutionId: 'task-long-history', taskRunIndex: 1 }),
+    }));
+    expect(cold.context.priorTranscript).toContain(history);
+    expect(cold.context.priorTranscript).toContain(plan);
+    expect(cold.context.priorTranscript).toContain(bundle.userFirstPrompt);
+  });
+
   it('does not remove a user-owned marker example that resembles a host instruction', () => {
     const bundle = parseOdNextPromptBundleV2(TEST_PROMPT_BUNDLE);
     bundle.context.clientSystemPrompt = 'User reference: <od-production-ready key="abc123" />';

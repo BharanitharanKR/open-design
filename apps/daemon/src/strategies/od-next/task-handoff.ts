@@ -1,4 +1,10 @@
-import { parseOdNextPromptBundleV1, parseOdNextPromptBundleV2 } from '@open-design/contracts';
+import {
+  parseOdNextPromptBundleV1,
+  parseOdNextPromptBundleV2,
+  persistedArtifactFilesOf,
+  summarizeArtifactsForTranscript,
+  summarizeHistoricalQuestionForms,
+} from '@open-design/contracts';
 import type Database from 'better-sqlite3';
 import { listMessages } from '../../db.js';
 import { getStrategyTaskExecution, getStrategyTaskExecutionByRunId, type StrategyTaskExecutionRecord } from '../task-store.js';
@@ -109,7 +115,15 @@ export function strategyHandoffTranscript(db: Database.Database, task: StrategyT
   const cutoff = history.map(message => message.role === 'assistant' ? message.runId : undefined).lastIndexOf(task.latestRunId);
   const messages = (cutoff >= 0 ? history.slice(0, cutoff + 1) : history)
     .filter(message => message.role === 'user' || message.role === 'assistant')
-    .map(message => `${message.role}: ${visible(message.content ?? '')}`);
+    .map(message => {
+      const content = visible(message.content ?? '');
+      const historical = message.role === 'assistant'
+        ? summarizeHistoricalQuestionForms(
+            summarizeArtifactsForTranscript(content, persistedArtifactFilesOf(message)),
+          )
+        : content;
+      return `${message.role}: ${historical}`;
+    });
   return [
     'Historical task context. Use current instructions, not the retired machine protocol. '
       + 'The latest user message determines whether to continue, revise, or start different work. '
