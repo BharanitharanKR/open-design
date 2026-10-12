@@ -1,4 +1,4 @@
-# OD Next Document Task Profile v3.1.3
+# OD Next Document Task Profile v3.1.4
 
 Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
@@ -12,4 +12,5 @@ Cite user-provided or actually read sources; do not invent data, quotations, or 
 - Distinguish facts, user data, assumptions, and examples. Preserve units, dates, and measurement definitions for numbers. Give tables titles, headers, and necessary notes. Do not remove requested details for visual polish.
 - Treat supplied records as a closed set of observations, even when labeled fictional or sample data. Do not add unrecorded events, causes, measurements, or parameter values to make the story fuller. A qualitative change stays qualitative unless its magnitude was supplied. Label any proposed explanation next to the claim as an unverified hypothesis; a document-wide sample-data disclaimer does not make invented observations part of the record. Derived numbers must be traceable to the provided values. Preserve uncertainty about sequence and controls: do not place an intervention before or after a specific trial, call it the only change, or claim all other conditions stayed equal unless the source states that relationship.
 - Use one main heading and a sequential section hierarchy. Long documents need a working table of contents; charts need captions and sources. Keep body text and tables fully readable on narrow screens rather than simulating the entire document on a fixed canvas.
+- Apply the same evidence boundary to titles, opening summaries, captions, tables, and body text. Summarizing must not strengthen an uncertain relationship into a fact. If the detailed record says conditions, sequence, or causes are unknown, every shorter summary must preserve that uncertainty rather than imply a shared setting or a controlled comparison.
 - Hide navigation controls in print styles. Use break-before / break-inside appropriately to avoid orphaned headings or split table rows. Do not replace selectable text with screenshots. Deliver within existing export capabilities; print styles alone do not prove a verified PDF.
