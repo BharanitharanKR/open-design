@@ -1,14 +1,14 @@
 import type { Dict } from '../types';
 
 export const en: Dict = {
-  "collab.contentUpdate.available": "Cloud update available",
-  "collab.contentUpdate.updating": "Updating…",
-  "collab.contentUpdate.askAgain": "Ask before updates",
-  "collab.contentUpdate.title": "Cloud update available",
-  "collab.contentUpdate.description": "Replace this project on this device with the latest cloud version? Pages can be restored from version history afterward; images and other files may not be recoverable.",
-  "collab.contentUpdate.dontPrompt": "Do not ask again for this project for 24 hours",
+  "collab.contentUpdate.available": "Updates on another device",
+  "collab.contentUpdate.updating": "Syncing…",
+  "collab.contentUpdate.askAgain": "Turn off automatic sync",
+  "collab.contentUpdate.title": "Updates on another device",
+  "collab.contentUpdate.description": "Sync the latest content from another device to this device? Syncing will overwrite this device's project content.",
+  "collab.contentUpdate.dontPrompt": "Automatically sync this project for 24 hours",
   "collab.contentUpdate.later": "Not now",
-  "collab.contentUpdate.replace": "Replace with cloud version",
+  "collab.contentUpdate.replace": "Sync and overwrite",
   "collab.contentUpdate.failed": "Update failed. Please try again.",
   "collab.contentUpdate.busy": "Generation or upload is in progress. Try again afterward.",
   "collab.contentUpdate.unsupported": "Cloud replacement is not supported for imported folders.",

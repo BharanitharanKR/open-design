@@ -54,13 +54,13 @@ test('[P1] owner device offers page-entry and SSE updates with scoped 24h consen
     await expect(b.getByRole('alertdialog')).toHaveCount(0);
     await expect.poll(() => hub.eventSubscriberCount(owner.memberId), { timeout: 20_000 }).toBeGreaterThanOrEqual(2);
     await writeAndPublish('SSE version');
-    const dialog = b.getByRole('alertdialog', { name: 'Cloud update available' });
+    const dialog = b.getByRole('alertdialog', { name: 'Updates on another device' });
     await expect(dialog).toBeVisible({ timeout: 30_000 });
     await b.screenshot({ path: testInfo.outputPath('owner-update-entrypoint.png'), animations: 'disabled' });
     await testInfo.attach('Owner update entrypoint', { path: testInfo.outputPath('owner-update-entrypoint.png'), contentType: 'image/png' });
     await dialog.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(dialog).toHaveCount(0);
-    const badge = controls.getByRole('button', { name: 'Cloud update available' });
+    const badge = controls.getByRole('button', { name: 'Updates on another device' });
     await expect(badge).toBeVisible();
     await b.screenshot({ path: testInfo.outputPath('owner-update-badge.png'), animations: 'disabled' });
     await testInfo.attach('Dismissed version badge', { path: testInfo.outputPath('owner-update-badge.png'), contentType: 'image/png' });
@@ -70,14 +70,14 @@ test('[P1] owner device offers page-entry and SSE updates with scoped 24h consen
     await badge.click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole('checkbox').check();
-    await dialog.getByRole('button', { name: 'Replace with cloud version' }).click();
+    await dialog.getByRole('button', { name: 'Sync and overwrite' }).click();
     await expect(dialog).toHaveCount(0, { timeout: 30_000 });
-    await expect(controls.getByRole('button', { name: 'Ask before updates' })).toBeVisible();
+    await expect(controls.getByRole('button', { name: 'Turn off automatic sync' })).toBeVisible();
     await writeAndPublish('Automatic version');
     await expect.poll(async () => (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text(), { timeout: 30_000 }).toContain('Automatic version');
     await expect(dialog).toHaveCount(0);
-    await controls.getByRole('button', { name: 'Ask before updates' }).click();
-    await expect(controls.getByRole('button', { name: 'Ask before updates' })).toHaveCount(0);
+    await controls.getByRole('button', { name: 'Turn off automatic sync' }).click();
+    await expect(controls.getByRole('button', { name: 'Turn off automatic sync' })).toHaveCount(0);
   } catch (error) { failed = true; throw error; }
   finally { await cluster?.close({ preserve: failed }); await hub.close(); }
 });

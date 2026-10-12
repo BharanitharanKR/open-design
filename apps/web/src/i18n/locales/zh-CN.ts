@@ -1,14 +1,14 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
-  "collab.contentUpdate.available": "云端有新版本",
-  "collab.contentUpdate.updating": "正在更新…",
-  "collab.contentUpdate.askAgain": "恢复更新提示",
-  "collab.contentUpdate.title": "云端有新内容",
-  "collab.contentUpdate.description": "用云端最新内容覆盖本机的这个项目？覆盖后，页面可以在历史版本里找回，图片等其他文件可能无法恢复。",
-  "collab.contentUpdate.dontPrompt": "24 小时内本项目不再提示",
-  "collab.contentUpdate.later": "暂不更新",
-  "collab.contentUpdate.replace": "使用云端内容覆盖",
+  "collab.contentUpdate.available": "其他设备有更新",
+  "collab.contentUpdate.updating": "正在同步…",
+  "collab.contentUpdate.askAgain": "关闭自动同步",
+  "collab.contentUpdate.title": "其他设备有更新",
+  "collab.contentUpdate.description": "是否同步其他设备的最新内容到本机？同步后将覆盖本机项目内容。",
+  "collab.contentUpdate.dontPrompt": "24 小时内自动同步此项目",
+  "collab.contentUpdate.later": "暂不同步",
+  "collab.contentUpdate.replace": "同步并覆盖",
   "collab.contentUpdate.failed": "更新失败，请重试。",
   "collab.contentUpdate.busy": "项目正在生成或上传，请完成后再更新。",
   "collab.contentUpdate.unsupported": "导入文件夹暂不支持云端覆盖。",
