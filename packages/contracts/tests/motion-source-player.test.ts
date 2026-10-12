@@ -18,6 +18,20 @@ describe('motion source player boundaries', () => {
   });
 });
 
+describe('autoplay mode boundary', () => {
+  it('preserves legacy controls and leaves explicit interactive compositions untouched', () => {
+    const root = '<div data-composition-id="main"></div>';
+    const legacy = injectMotionSourcePlayer(root);
+    expect(legacy).toContain('id="play"');
+    expect(legacy).not.toContain('window.__odMotionPlayer =');
+    const interactive = '<meta name="od-motion-output" content="interactive">' + root;
+    expect(injectMotionSourcePlayer(interactive)).toBe(interactive);
+    const video = injectMotionSourcePlayer('<meta content="video" name="od-motion-output">' + root);
+    expect(video).toContain('window.__odMotionPlayer =');
+    expect(video).not.toContain('id="play"');
+  });
+});
+
 describe('motion audio contract isolation', () => {
   it('accepts optional video audio decisions but rejects audio on interactive motion', () => {
     for (const audio of ['required', 'silent']) {
@@ -26,7 +40,7 @@ describe('motion audio contract isolation', () => {
     }
   });
   it('upgrades an existing host player without duplicating it', () => {
-    const source = '<div data-composition-id="main"></div><script data-od-motion-source-player>oldPlayer();</script>';
+    const source = '<meta name="od-motion-output" content="video"><div data-composition-id="main"></div><script data-od-motion-source-player>oldPlayer();</script>';
     const result = injectMotionSourcePlayer(source);
     expect(result).not.toContain('oldPlayer');
     expect(result).toContain('data-od-motion-source-player="4"');

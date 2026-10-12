@@ -32,6 +32,7 @@ export async function validateMotionDelivery(input: {
     const $ = load(await fs.readFile(source, 'utf8'));
     if (input.sourceFile !== input.contract.sourcePath) return false;
     if (input.contract.mode === 'interactive') return true;
+    if (input.contract.audio !== undefined && $('meta[name="od-motion-output"]').attr('content') !== 'video') return false;
     const href = $('link[rel="alternate"][type="video/mp4"]').attr('href');
     if (!href || /[?#\\]/.test(href) || /^[a-z]+:/i.test(href) || path.isAbsolute(href)) return false;
     const target = path.resolve(path.dirname(source), href);
