@@ -44,6 +44,23 @@ describe('owner content materialization', () => {
     } finally { await f.close(); }
   });
 
+  it('falls back to the legacy unscoped resource id when the scoped resource is missing', async () => {
+    const f = await fixture();
+    const resourceIds: string[] = [];
+    try {
+      const result = await applyOwnedProjectContent({ ...f.options, run: async args => {
+        resourceIds.push(args[2]!);
+        if (resourceIds.length === 1) throw new Error('resource_not_found');
+        return f.options.run(args);
+      } });
+      expect(resourceIds).toHaveLength(2);
+      expect(resourceIds[0]).not.toBe(`project-${scope.projectId}`);
+      expect(resourceIds[1]).toBe(`project-${scope.projectId}`);
+      expect(result.version).toBe(2);
+      expect(await readFile(path.join(f.live, 'index.html'), 'utf8')).toBe('<h1>remote</h1>');
+    } finally { await f.close(); }
+  });
+
   it.each(['stale', 'revoked', 'busy', 'commit', 'history', 'symlink', 'private-conflict'])('fails %s without replacing local content', async failure => {
     const f = await fixture();
     try {

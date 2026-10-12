@@ -1461,6 +1461,20 @@ describe('collab sync routes', () => {
     tempDirs.push(pullDir);
     const unpublish = vi.fn(async () => undefined);
     const catalogRemove = vi.fn(async (_projectId: string, _principal?: unknown) => ({}));
+    const ownedContentSync = {
+      request: vi.fn(async () => {
+        throw new Error(
+          'Error: pull resource: API request failed with status 404: resource_not_found',
+        );
+      }),
+      read: vi.fn(() => ({
+        state: 'up_to_date' as const,
+        latestVersion: null,
+        localVersion: null,
+        autoApplyUntil: null,
+        updatedAt: Date.now(),
+      })),
+    } as unknown as NonNullable<RegisterCollabSyncRoutesDeps['ownedContentSync']>;
     const api = await startSyncServer(
       fixedShareContextProvider(true),
       {
@@ -1468,6 +1482,7 @@ describe('collab sync routes', () => {
         markSharedProjectPlaceholder,
         retireUnmaterializedSharedPlaceholder,
         invalidateTeamProjectCatalog,
+        ownedContentSync,
         resolvePullDir: () => pullDir,
         // The CALLER (wm-1) is the hub-registered owner: the dangling catalog
         // row still names them, which is exactly why the ghost renders.
@@ -1503,6 +1518,7 @@ describe('collab sync routes', () => {
     const res = await api.json('/api/projects/ghost-shared-p/collab/status');
     expect(res.status).toBe(200);
     expect(markSharedProjectPlaceholder).toHaveBeenCalledWith('ghost-shared-p', true);
+    expect(ownedContentSync.request).toHaveBeenCalled();
 
     // The heal finishes the half-landed retraction hub-side …
     await vi.waitFor(() => {

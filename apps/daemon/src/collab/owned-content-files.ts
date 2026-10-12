@@ -5,7 +5,13 @@ import path from 'node:path';
 import { ensureCurrentProjectFileVersion } from '../project-file-versions.js';
 import { isSafeId } from '../projects.js';
 import { projectResourceIdFor } from '../integrations/vela-team-projects.js';
-import { isExcludedProjectContentEntry, runVelaResourceCommand, type RunVelaResource } from './vela-cli-resource-adapter.js';
+import {
+  isExcludedProjectContentEntry,
+  isMissingResourceError,
+  projectResourceIdsFor,
+  runVelaResourceCommand,
+  type RunVelaResource,
+} from './vela-cli-resource-adapter.js';
 import type { OwnedContentScope } from './owned-content-store.js';
 
 async function contentFiles(directory: string): Promise<string[]> {
@@ -115,12 +121,24 @@ export async function applyOwnedProjectContent(options: ApplyOwnedContentOptions
   let promoted = false;
   let committed = false;
   try {
-    const resourceId = projectResourceIdFor(scope.projectId, {
+    const principal = {
       teamId: scope.resourceTeamId, memberId: scope.ownerMemberId,
-      role: 'member', lifecycleState: 'active', workspaceType: 'team',
-    });
-    const stdout = await (options.run ?? runVelaResourceCommand)(
-      ['pull', 'project', resourceId, stage, '--ref', 'published', '--json'], scope.workspaceId);
+      role: 'member' as const, lifecycleState: 'active' as const, workspaceType: 'team' as const,
+    };
+    const resourceIds = projectResourceIdsFor(scope.projectId, principal, projectResourceIdFor);
+    let stdout: string | undefined;
+    let lastError: unknown;
+    for (const [index, resourceId] of resourceIds.entries()) {
+      try {
+        stdout = await (options.run ?? runVelaResourceCommand)(
+          ['pull', 'project', resourceId, stage, '--ref', 'published', '--json'], scope.workspaceId);
+        break;
+      } catch (error) {
+        lastError = error;
+        if (index === resourceIds.length - 1 || !isMissingResourceError(error)) throw error;
+      }
+    }
+    if (stdout === undefined) throw lastError;
     const received = JSON.parse(stdout.trim()) as { version?: unknown };
     if (received.version !== expectedVersion) throw new Error('published version changed; check again');
     const remote = await lstat(stage);

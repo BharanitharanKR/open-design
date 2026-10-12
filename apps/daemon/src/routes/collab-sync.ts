@@ -1177,11 +1177,16 @@ export function registerCollabSyncRoutes(
         viewer.ownerMemberId,
       );
       if (!scope) return;
-      if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
-        await deps.ownedContentSync.request({ projectId, ...scope }, { action: 'check' });
-        return;
-      }
       try {
+        if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
+          await deps.ownedContentSync.request(
+            { projectId, ...scope },
+            { action: 'check' },
+            undefined,
+            true,
+          );
+          return;
+        }
         await pullSharedProjectCoalesced(projectId, resourcePrincipal, scope);
       } catch (error) {
         // Retracted-share heal (飞书 recvqA6qhV7St1): the catalog names this

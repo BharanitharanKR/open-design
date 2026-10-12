@@ -210,10 +210,7 @@ export function createVelaCliResourceAdapter(
   }
 
   function resourceIdsFor(projectId: string, principal?: ResourceHubPrincipal | null): string[] {
-    const primary = resourceIdFor(projectId, principal);
-    if (!principal) return [primary];
-    const legacy = resourceIdFor(projectId, null);
-    return legacy === primary ? [primary] : [primary, legacy];
+    return projectResourceIdsFor(projectId, principal, resourceIdFor);
   }
 
   return {
@@ -310,7 +307,18 @@ export function createVelaCliResourceAdapter(
   };
 }
 
-function isMissingResourceError(error: unknown): boolean {
+export function projectResourceIdsFor(
+  projectId: string,
+  principal?: ResourceHubPrincipal | null,
+  resourceIdFor: typeof projectResourceIdFor = projectResourceIdFor,
+): string[] {
+  const primary = resourceIdFor(projectId, principal);
+  if (!principal) return [primary];
+  const legacy = resourceIdFor(projectId, null);
+  return legacy === primary ? [primary] : [primary, legacy];
+}
+
+export function isMissingResourceError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /resource_not_found|status\s+404|ref_not_found/u.test(message);
 }

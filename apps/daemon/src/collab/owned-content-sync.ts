@@ -95,13 +95,18 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     } finally { applying.delete(scope.projectId); }
   }
 
-  async function request(scope: OwnedContentScope, input: OwnedProjectContentUpdateRequest, hintedVersion?: number): Promise<OwnedProjectContentUpdate> {
+  async function request(
+    scope: OwnedContentScope,
+    input: OwnedProjectContentUpdateRequest,
+    hintedVersion?: number,
+    propagateError = false,
+  ): Promise<OwnedProjectContentUpdate> {
     const key = ownedContentScopeKey(scope);
     const pending = inFlight.get(key);
     if (pending) {
       await pending;
       if (input.action !== 'check' || (hintedVersion != null && hintedVersion > (deps.store.read(scope).latestVersion ?? -1))) {
-        return request(scope, input, hintedVersion);
+        return request(scope, input, hintedVersion, propagateError);
       }
       return read(scope);
     }
@@ -109,9 +114,13 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     task = perform(scope, input, hintedVersion)
       .catch((error: unknown) => {
         const code = typeof error === 'object' && error != null && 'code' in error ? error.code : null;
-        if (code === 'PROJECT_BUSY') return publish(scope, 'busy', 'PROJECT_BUSY');
-        if (code === 'PROJECT_DIRECTORY_UNSUPPORTED') return publish(scope, 'unsupported', 'PROJECT_DIRECTORY_UNSUPPORTED');
-        return publish(scope, 'failed', 'PROJECT_SYNC_FAILED');
+        const update = code === 'PROJECT_BUSY'
+          ? publish(scope, 'busy', 'PROJECT_BUSY')
+          : code === 'PROJECT_DIRECTORY_UNSUPPORTED'
+            ? publish(scope, 'unsupported', 'PROJECT_DIRECTORY_UNSUPPORTED')
+            : publish(scope, 'failed', 'PROJECT_SYNC_FAILED');
+        if (propagateError) throw error;
+        return update;
       })
       .finally(() => { if (inFlight.get(key) === task) inFlight.delete(key); });
     inFlight.set(key, task);

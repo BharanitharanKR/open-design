@@ -106,6 +106,21 @@ describe('owner content overwrite authority', () => {
     } finally { f.close(); }
   });
 
+  it('can propagate a materialization failure after recording the failed state', async () => {
+    const f = setup();
+    try {
+      f.content(false);
+      f.apply.mockRejectedValueOnce(new Error('resource_not_found'));
+      await expect(
+        f.controller.request(scope, { action: 'check' }, undefined, true),
+      ).rejects.toThrow('resource_not_found');
+      expect(f.controller.read(scope)).toMatchObject({
+        state: 'failed',
+        errorCode: 'PROJECT_SYNC_FAILED',
+      });
+    } finally { f.close(); }
+  });
+
   it('coalesces approval while allowing a newer event to offer the next head', async () => {
     const f = setup();
     try {
