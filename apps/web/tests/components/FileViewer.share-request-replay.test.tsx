@@ -126,6 +126,49 @@ function mountActionAnchor(anchorId: string): void {
   document.body.appendChild(anchor);
 }
 
+describe('OPEND-3784 card Share scroll dismissal', () => {
+  it('closes only on its conversation scroll and reopens for a fresh request', async () => {
+    stubFetch();
+    const anchorId = 'publish:index.html';
+    mountActionAnchor(anchorId);
+    const owner = document.createElement('div');
+    owner.className = 'chat-log';
+    owner.setAttribute('data-action-request-test-anchor', 'true');
+    document.body.appendChild(owner);
+    owner.appendChild(document.querySelector(`[data-artifact-anchor="${anchorId}"]`)!);
+    const view = render(viewerWithActionRequest({ shareRequest: { nonce: 1, anchorId } }));
+    await waitFor(() => expect(menu()).not.toBeNull());
+    fireEvent.scroll(screen.getByRole('menu'));
+    fireEvent.scroll(view.container);
+    expect(menu()).not.toBeNull();
+    fireEvent.scroll(owner);
+    expect(menu()).toBeNull();
+    view.rerender(viewerWithActionRequest({ shareRequest: { nonce: 2, anchorId } }));
+    await waitFor(() => expect(menu()).not.toBeNull());
+    fireEvent.scroll(owner);
+    expect(menu()).toBeNull();
+  });
+
+  it('does not add scroll dismissal to card Export or toolbar Share', async () => {
+    stubFetch();
+    const anchorId = 'export:index.html';
+    mountActionAnchor(anchorId);
+    const owner = document.createElement('div');
+    owner.className = 'chat-log';
+    owner.setAttribute('data-action-request-test-anchor', 'true');
+    document.body.appendChild(owner);
+    owner.appendChild(document.querySelector(`[data-artifact-anchor="${anchorId}"]`)!);
+    const view = render(viewerWithActionRequest({ downloadRequest: { nonce: 1, anchorId } }));
+    await waitFor(() => expect(exportMenu()).not.toBeNull());
+    fireEvent.scroll(owner);
+    expect(exportMenu()).not.toBeNull();
+    view.rerender(viewerWithActionRequest({ shareRequest: { nonce: 2 } }));
+    await waitFor(() => expect(menu()).not.toBeNull());
+    fireEvent.scroll(owner);
+    expect(menu()).not.toBeNull();
+  });
+});
+
 describe('产物卡 Share / Export 请求是可反复开关的入口', () => {
   it('passes the real card anchor through the existing request to one Share panel after generation', async () => {
     stubFetch();

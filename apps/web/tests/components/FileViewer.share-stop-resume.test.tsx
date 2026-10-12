@@ -6,6 +6,7 @@ import type { ComponentProps } from 'react';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { FileViewer } from '../../src/components/FileViewer';
 import { CollabProvider, type CollabContextValue } from '../../src/collab/collab-context';
+import { resetConsumedActionRequestsForTests } from '../../src/runtime/action-request';
 
 const publication = { url: 'https://example.invalid/artifact/proj/stable', slug: 'stable', fileName: 'index.html' };
 const receipt = { filePath: 'index.html', slug: publication.slug, publishedAt: 1, version: 1, versionId: 'v1' };
@@ -105,6 +106,44 @@ async function openStoppedSharePanel() {
   await waitFor(() => expect(linkAccess).toBeEnabled());
   return linkAccess;
 }
+
+it('OPEND-3784 scroll dismissal leaves an in-flight publication running exactly once', async () => {
+  resetConsumedActionRequestsForTests();
+  const route = shareRoute({ status: 'stopped' });
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const request = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes('publish-public') && init?.method === 'POST') await pending;
+    return route.fetch(input, init);
+  });
+  vi.stubGlobal('fetch', request);
+  function viewer(nonce: number) {
+    return <CollabProvider value={collab}>
+      <div className="chat-log" data-testid="publication-conversation">
+        <button data-artifact-anchor="publish:pending">Card Share</button>
+      </div>
+      <FileViewer {...props} shareRequest={{ nonce, anchorId: 'publish:pending' }} />
+    </CollabProvider>;
+  }
+  const view = render(viewer(1));
+  const linkAccess = await screen.findByRole('switch', { name: /link access/i });
+  await screen.findByText(stoppedNotice);
+  await waitFor(() => expect(linkAccess).toBeEnabled());
+  fireEvent.click(linkAccess);
+  await waitFor(() => expect(writes(request, 'POST')).toHaveLength(1));
+  fireEvent.scroll(screen.getByTestId('publication-conversation'));
+  expect(screen.queryByRole('heading', { name: 'Share', level: 2 })).toBeNull();
+  view.rerender(viewer(2));
+  const reopened = await screen.findByRole('switch', { name: /link access/i });
+  expect(reopened).toBeDisabled();
+  fireEvent.click(reopened);
+  expect(writes(request, 'POST')).toHaveLength(1);
+  await act(async () => release());
+  expect(await screen.findByText(publication.url)).toBeVisible();
+  await waitFor(() => expect(reopened).toBeEnabled());
+  expect(writes(request, 'POST')).toHaveLength(1);
+  expect(writes(request, 'DELETE')).toHaveLength(0);
+});
 
 it.each([true, false])('shows a busy switch while stopping, then restores the confirmed state (success=%s)', async (success) => {
   const route = shareRoute({ status: 'active' });

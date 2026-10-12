@@ -17471,6 +17471,11 @@ function HtmlViewer({
                      * `ModelSelectSearchable` 都是锚点离开边界即 `setOpen(false)`)。
                      */
                     onAnchorHidden={closeDeployMenu}
+                    onConversationScroll={
+                      menuOrigin === 'artifact-card' && unifiedActionTab === 'share'
+                        ? closeDeployMenu
+                        : undefined
+                    }
                   >
                     {unifiedActionTab === 'share' && rawCanShare ? (
                       <>
