@@ -660,6 +660,11 @@ describe('delivery receipt fence recovery', () => {
 
 
 describe('bounded revocation eviction with real request ordering', () => {
+  // Keep 257 scopes to cross the 256-entry eviction boundary. These cases use
+  // real file/directory fsync for replay authority; fake clocks cannot shorten
+  // that I/O. macOS QA exceeded the default 20s budget, so scope extra headroom
+  // to this stress matrix rather than relaxing the whole daemon suite.
+  const durableScopeEvictionTimeoutMs = 60_000;
   const receiptFor = (grant: ReturnType<typeof full>) => ({ error: 'production_runtime_revoked', receipt: {
     activityId: grant.activityId, deploymentId: grant.deploymentId,
     contentVersionId: grant.content.id, touchpointDecisionId: grant.touchpointDecisionId,
@@ -686,7 +691,7 @@ describe('bounded revocation eviction with real request ordering', () => {
     cache.held(alias);
     cache.remember(alias, full({ serverTime: 1_000, endsAt: HOUR }), cache.ticket(alias));
     expect(cache.replayOffline(alias, 'upstream_unavailable')).not.toBeNull();
-  });
+  }, durableScopeEvictionTimeoutMs);
   it('does not adopt a late trimmed grant after receipt eviction', () => {
     const cache = createTouchpointContentCache(dataDir);
     const alias = { ...key, locale: 'zh-TW' };
