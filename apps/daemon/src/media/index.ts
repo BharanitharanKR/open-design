@@ -1,4 +1,4 @@
-import { injectMotionSourcePlayer, markMotionFrameRender, MOTION_TIMELINE_CHECK_SCRIPT } from '@open-design/contracts/runtime/motion-source-player';
+import { injectMotionSourcePlayer, isMotionVideoComposition, markMotionFrameRender, MOTION_TIMELINE_CHECK_SCRIPT } from '@open-design/contracts/runtime/motion-source-player';
 // Media-generation dispatcher. The unifying contract is:
 //
 //   skills + metadata + system-prompt
@@ -3988,7 +3988,11 @@ async function renderHyperFramesWithDesktop(
   if (sourceHtml !== original) await writeFile(sourcePath, sourceHtml, 'utf8');
   const { fps, height, width } = hyperFramesCompositionMetrics(sourceHtml);
   const browserRuntime = await readFile(resolveHyperFramesBrowserRuntimePath(), 'utf8');
-  const audio = await prepareHyperFramesAudio(sourceHtml, compAbs);
+  // The strict local-track contract belongs to motion films. Legacy
+  // HyperFrames keeps its authored media syntax and original capture path.
+  const audio = isMotionVideoComposition(sourceHtml)
+    ? await prepareHyperFramesAudio(sourceHtml, compAbs)
+    : { html: sourceHtml, tracks: [] };
   const html = injectHyperFramesFrameBridge(audio.html, browserRuntime);
   const framesDir = path.join(tmpRoot, 'frames');
 
@@ -4035,7 +4039,7 @@ export function hyperFramesCompositionMetrics(html: string): {
 }
 
 export function injectHyperFramesFrameBridge(sourceHtml: string, runtimeScript: string): string {
-  const motionVideo = loadHtml(sourceHtml)('meta[name="od-motion-output"]').attr('content') === 'video';
+  const motionVideo = isMotionVideoComposition(sourceHtml);
   const safeRuntime = runtimeScript.replace(/<\/script/gi, '<\\/script');
   const guardedRuntime = motionVideo ? `
 ${MOTION_TIMELINE_CHECK_SCRIPT}
