@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium } from '@playwright/test';
 import { expect, test } from 'vitest';
-import { injectMotionSourcePlayer } from '../../packages/contracts/src/runtime/motion-source-player.js';
+import { injectMotionSourcePlayer } from '@open-design/contracts/runtime/motion-source-player';
 import { T } from '../lib/timeouts.js';
 const require = createRequire(import.meta.url);
 
