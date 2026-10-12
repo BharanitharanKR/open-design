@@ -1450,11 +1450,10 @@ export function EntryShell({
     // after this line may rely on this instance's state or DOM. App owns the
     // hand-off and the way back.
     const handoff = onBeginProjectCreation(createInput);
-    // OpenDesign Cloud pre-run balance gate: hard blocks (empty wallet or
-    // signed out) fire BEFORE the project is created — the dialog now sits over
-    // the pending frame, and a dismiss rolls the hand-off back to Home with the
-    // composer draft intact. In-project sends are gated separately in
-    // ProjectView.handleSend.
+    // Confirm sign-in behind the pending frame. Workspace billing is not a
+    // send prerequisite: Link admits funding when the run starts, and
+    // ProjectView presents any live funding rejection without waiting on a
+    // display-wallet read. Dismissing a sign-in block restores the Home draft.
     let amrGatePrecheckWitness: AmrBalanceGateScope | undefined;
     let amrGatePrecheckPassed = false;
     if (isAmrSend) {

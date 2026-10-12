@@ -227,40 +227,23 @@ export async function fetchAmrBalanceCardWalletSnapshot(
   };
 }
 
-async function checkWorkspaceBalanceGate(
-  scope: AmrBalanceGateScope,
-): Promise<AmrBalanceGateResult> {
-  const [accountSnapshot, workspaceSnapshot] = await Promise.all([
-    fetchAmrWalletSnapshot().catch(() => null),
-    fetchWorkspaceWalletSnapshot(scope, null).catch(() => null),
-  ]);
-  if (accountSnapshot?.status === 'signed_out') {
-    const fresh = await fetchAmrWalletSnapshot({ refresh: true }).catch(() => null);
-    if (fresh?.status === 'signed_out')
-      return { kind: 'hard', reason: 'signed_out', snapshot: fresh };
-  }
-  // Preserve exact-member authority. Older CLI responses have no preflight;
-  // lack of quota evidence must never become a wallet-only hard block.
-  if (!workspaceSnapshot) return { kind: 'unavailable' };
-  return { kind: 'allow' };
-}
-
+/** Only sign-in can be checked here. Workspace funding is admitted by Link
+ * as the run starts; a display-billing outage must not delay or reject a send.
+ * Exact-member authoritative reads remain required for card amounts/recovery. */
 export async function checkAmrBalanceGate(
-  scope?: AmrBalanceGateScope,
+  _scope?: AmrBalanceGateScope,
   _modelId?: string | null,
 ): Promise<AmrBalanceGateResult> {
   try {
-    if (scope) return await checkWorkspaceBalanceGate(scope);
     const cached = await fetchAmrWalletSnapshot().catch(() => null);
     if (cached?.status === 'signed_out') {
       const fresh = await fetchAmrWalletSnapshot({ refresh: true }).catch(() => null);
       if (fresh?.status === 'signed_out')
         return { kind: 'hard', reason: 'signed_out', snapshot: fresh };
     }
-    // An unscoped legacy account cannot prove which pool will fund the run.
     return { kind: 'allow' };
   } catch {
-    return scope ? { kind: 'unavailable' } : { kind: 'allow' };
+    return { kind: 'allow' };
   }
 }
 

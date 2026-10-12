@@ -136,7 +136,7 @@ test.beforeAll(async () => {
  * 这里不再搭一遍同样的浏览器现场(e2e/AGENTS.md「Keep browser witnesses at
  * cross-layer boundaries」)。
  */
-test('[P0] @critical AMR insufficient-balance failures hand the turn to the upgrade card, and a fresh send recovers', async ({ page }) => {
+test('[P0] @critical AMR insufficient-balance failures open a dialog and preserve the upgrade card, and a fresh send recovers', async ({ page }, testInfo) => {
   await stubCatalogsEmpty(page);
   await stubRuntimeAgents(page);
   const profile = 'local';
@@ -174,12 +174,23 @@ test('[P0] @critical AMR insufficient-balance failures hand the turn to the upgr
   await gotoProject(page, amr.projectId);
   await sendPrompt(page, 'AMR insufficient balance recovery smoke');
 
+  const fundingDialog = page.getByTestId('amr-balance-dialog');
+  await expect(fundingDialog).toBeVisible({ timeout: T.long });
+  await testInfo.attach('funding-rejection-dialog', {
+    body: await page.screenshot(), contentType: 'image/png',
+  });
+  await fundingDialog.getByRole('button', { name: /Not now|暂不需要|稍后|Later/i }).click();
+  await expect(fundingDialog).toBeHidden();
+
   // 接手方在场:升级卡挂在死掉的那一轮下面,念的是那一刻的**工作区**钱包读数
   // (夹具 `accountBalanceUsd: '20.00'` 走 `/api/workspace/billing?scope=workspace`,
   // 不是账号钱包 —— OPEND-2597)。
   const upgradeCard = page.getByTestId('chat-upgrade-card');
   await expect(upgradeCard).toBeVisible({ timeout: T.long });
   await expect(upgradeCard).toContainText('$20.00');
+  await testInfo.attach('funding-rejection-in-project', {
+    body: await page.screenshot(), contentType: 'image/png',
+  });
 
   // 让位的那一半:白卡和它那颗〔充值〕一个都不在。用精确定位 + `toHaveCount(0)`,
   // 不用否定式文本匹配 —— 后者在选择器写错时会永远为真。

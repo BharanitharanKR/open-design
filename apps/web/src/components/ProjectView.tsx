@@ -307,7 +307,7 @@ import {
   currentUserDirectoryEntry,
   useTeamMembers,
 } from '../collab/useTeamMembers';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
+import { currentWorkspaceAccountGeneration, workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import {
   useWorkspaceBillingResponse,
   useWorkspaceContext,
@@ -2909,8 +2909,8 @@ export function ProjectView({
   const autoOpenedBrandDesignSystemRef = useRef<string | null>(null);
   const brandEmptyTranscriptRetriesRef = useRef<Map<string, number>>(new Map());
   const [chatSeed, setChatSeed] = useState<{ id: string; value: string } | null>(null);
-  // Hard block from the pre-run balance gate (empty wallet or signed out);
-  // non-null renders the AmrBalanceDialog. `conversationId` remembers whose
+  // Sign-in blocks and live gateway funding rejections share these dialogs.
+  // `conversationId` remembers whose
   // queue to resume when the dialog resolves (sign-in done / recharge landed).
   const [amrBalanceGateBlock, setAmrBalanceGateBlock] = useState<
     {
@@ -2932,8 +2932,11 @@ export function ProjectView({
        * 工作区,按钮突然指向另一个工作区的账单页。
        */
       upgradeIntent: 'pricing' | 'auto_recharge';
-      snapshot: AmrWalletSnapshot;
+      snapshot: AmrWalletSnapshot | null;
       conversationId: string;
+      /** Live gateway rejections do not wait for a wallet display read. */
+      failureAuthorityKey?: string;
+      workspaceContext?: WorkspaceCollabContext | null;
     } | null
   >(null);
   /**
@@ -3554,6 +3557,54 @@ export function ProjectView({
   }, [project.id]);
   const projectRunAuthorityKeyRef = useRef(projectRunAuthorityKey);
   projectRunAuthorityKeyRef.current = projectRunAuthorityKey;
+  const shownFundingFailuresRef = useRef(new Set<string>());
+  const fundingDialogContext = {
+    branch: amrBalanceBranch,
+    scope: amrBalanceCardScope,
+    workspaceContext: projectRunBillingAuthorityContext,
+    modelId: effectiveAgentModelId(agents.find((agent) => agent.id === 'amr'), config.agentModels?.amr),
+  };
+  const fundingDialogContextRef = useRef(fundingDialogContext);
+  fundingDialogContextRef.current = fundingDialogContext;
+  // A live rejection owns one dialog in its original conversation/account.
+  // Display-wallet reads and historical replays cannot open or reopen it.
+  const showAmrFundingFailure = useCallback((input: {
+    code: string | undefined;
+    runKey: string;
+    conversationId: string;
+    authorityKey: string;
+    accountGeneration: number;
+  }) => {
+    if (
+      input.code !== AMR_INSUFFICIENT_BALANCE_CODE
+      || input.conversationId !== messagesConversationIdRef.current
+      || input.authorityKey !== projectRunAuthorityKeyRef.current
+      || input.accountGeneration !== currentWorkspaceAccountGeneration()
+    ) return;
+    const key = `${input.accountGeneration}:${input.conversationId}:${input.runKey}`;
+    if (shownFundingFailuresRef.current.has(key)) return;
+    shownFundingFailuresRef.current.add(key);
+    const { branch, scope, workspaceContext, modelId } = fundingDialogContextRef.current;
+    amrGatePausedQueueConversationsRef.current.add(input.conversationId);
+    setAmrBalanceGateBlock({
+      reason: 'insufficient',
+      dialog: amrBalanceBlockedDialog(branch),
+      upgradeIntent: amrBalanceDialogUpgradeIntent(branch),
+      snapshot: null,
+      modelId,
+      fundingScope: scope,
+      workspaceContext,
+      conversationId: input.conversationId,
+      failureAuthorityKey: input.authorityKey,
+    });
+  }, []);
+  useEffect(() => {
+    if (amrBalanceGateBlock?.failureAuthorityKey === undefined) return;
+    if (amrBalanceGateBlock.conversationId !== activeConversationId
+      || amrBalanceGateBlock.failureAuthorityKey !== projectRunAuthorityKey) {
+      setAmrBalanceGateBlock(null);
+    }
+  }, [activeConversationId, projectRunAuthorityKey, amrBalanceGateBlock]);
   const conversationsLoadedProjectIdRef = useRef<string | null>(null);
   // Live mirror of the full project prop, for async handlers whose useCallback
   // deps only track `project.id` (e.g. the project-events handler below):
@@ -6535,6 +6586,7 @@ export function ProjectView({
     if (config.mode !== 'daemon' || !daemonLive || !activeConversationId || streaming) return;
     let cancelled = false;
     const reattachConversationId = activeConversationId;
+    const reattachAccountGeneration = currentWorkspaceAccountGeneration();
 
     const attachRecoverableRuns = async () => {
       const missingRunIdMessages = messages.filter((m) => {
@@ -7629,6 +7681,13 @@ export function ProjectView({
               const runMayFinalize =
                 !supersededRunsRef.current.has(controller);
               keepManualFileWritesForRecovery = genericDisconnect && runMayFinalize;
+              if (runMayFinalize && isActiveRunStatus(status.status)) {
+                showAmrFundingFailure({
+                  code: errorCode, runKey: activeReattachRunId, conversationId: reattachConversationId,
+                  authorityKey: projectRunAuthorityKey,
+                  accountGeneration: reattachAccountGeneration,
+                });
+              }
               if (keepManualFileWritesForRecovery) manualFileWriteRegistration.release(true);
               textBuffer.flush();
               textBuffer.cancel();
@@ -8090,6 +8149,7 @@ export function ProjectView({
     scheduleProjectTimeout,
     scheduleConversationMessageRefresh,
     recoveryTick,
+    showAmrFundingFailure,
   ]);
 
   useEffect(() => {
@@ -8492,6 +8552,7 @@ export function ProjectView({
       if (!activeConversationId) return false;
       if (messagesConversationIdRef.current !== activeConversationId) return false;
       const clientRequestId = meta?.clientRequestId ?? randomUUID();
+      const sendAccountGeneration = currentWorkspaceAccountGeneration();
       meta = {
         ...(meta ?? {}),
         clientRequestId,
@@ -8809,11 +8870,9 @@ export function ProjectView({
         if (messagesConversationIdRef.current !== runConversationId) return;
         setMessages(restore);
       };
-      // OpenDesign Cloud pre-run balance gate: a definitively insufficient
-      // wallet blocks the run BEFORE any message is persisted or a daemon run
-      // spawned, surfacing the subscription dialog instead of a mid-run
-      // AMR_INSUFFICIENT_BALANCE failure. Sends the home submit already gated
-      // (amrGatePrechecked) pass straight through — the user answered there.
+      // The send check confirms sign-in only; funding is decided by Link as
+      // the run starts. Home sends that already checked the same identity skip
+      // the duplicate sign-in read here.
       if (amrGateApplies) {
         const gateConversationId = runConversationId;
         amrGateInFlightConversationsRef.current.add(gateConversationId);
@@ -9966,6 +10025,13 @@ export function ProjectView({
           // tagged superseded. See the onDone above for the ownership rationale.
           const runMayFinalize =
             !supersededRunsRef.current.has(controller);
+          if (runMayFinalize) {
+            showAmrFundingFailure({
+              code: errorCode, runKey: currentRunId ?? assistantId,
+              conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+              accountGeneration: sendAccountGeneration,
+            });
+          }
           if (currentRunId && runMayFinalize && isGenericDaemonDisconnect(err)) {
             manualFileWriteRegistration.release(true);
           }
@@ -10783,6 +10849,7 @@ export function ProjectView({
       projectRunHasBillableAmrPrincipal,
       projectMutationReadOnly,
       projectWorkspaceScopeState.scope,
+      showAmrFundingFailure,
     ],
   );
 
@@ -14284,28 +14351,24 @@ export function ProjectView({
           reason={amrBalanceGateBlock.reason}
           modelId={amrBalanceGateBlock.modelId}
           fundingScope={amrBalanceGateBlock.fundingScope}
-          balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
-          profile={amrBalanceGateBlock.snapshot.profile}
+          balanceUsd={amrBalanceGateBlock.snapshot?.balanceUsd ?? null}
+          profile={amrBalanceGateBlock.snapshot?.profile ?? null}
           entrySource="chat_balance_gate_upgrade"
           upgradeIntent={amrBalanceGateBlock.upgradeIntent}
           // 弹窗和卡上那颗必须从**同一份**上下文算落点。默认那条(环境里选中
           // 的工作区)对首页是对的,对项目页不是:这一笔钱是项目那个工作区出的,
           // 环境里未必就是它。两处不同源正是产品文档说的「卡和弹窗跳去不同的
           // 地方是缺陷而不是特性」。
-          workspaceContext={projectRunBillingAuthorityContext}
+          workspaceContext={amrBalanceGateBlock.workspaceContext === undefined
+            ? projectRunBillingAuthorityContext : amrBalanceGateBlock.workspaceContext}
           metricsConsent={config.telemetry?.metrics === true}
           installationId={config.installationId}
           onClose={() => setAmrBalanceGateBlock(null)}
           onResolved={() => {
-            // Sign-in completed or the recharge landed: lift the balance
-            // pause and kick the drain so anything parked starts on its own
-            // (it still re-gates, so a half-measure recharge surfaces the
-            // soft reminder rather than silently failing mid-run).
-            //
-            // ⚠️ Since OPEND-2719 the exhausted-wallet block no longer parks
-            // its own send — that draft went back to the composer. What this
-            // still drains is whatever the OTHER blocked states (signed out,
-            // unreadable billing) parked earlier in this conversation.
+            // Resume pending sends after sign-in or funding recovery. A run
+            // that already failed remains in history for an explicit retry;
+            // this only releases other sends waiting in the queue. Link still
+            // makes the final funding decision for each new run.
             const conversationId = amrBalanceGateBlock.conversationId;
             setAmrBalanceGateBlock(null);
             amrGatePausedQueueConversationsRef.current.delete(conversationId);

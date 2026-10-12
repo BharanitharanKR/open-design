@@ -12,6 +12,7 @@ import {
   retryUnavailableAmrBalanceGate,
   amrBalanceGateFromMemory,
   hasAmrFundingRecovered,
+  fetchAmrBalanceCardWalletSnapshot,
 } from '../../src/runtime/amr-balance-gate';
 import {
   fetchAmrWalletSnapshot,
@@ -160,6 +161,16 @@ describe('AMR balance gate workspace witness', () => {
 });
 
 describe('checkAmrBalanceGate', () => {
+  it('does not put workspace billing on the send critical path', async () => {
+    mockedFetch.mockResolvedValue(snapshot());
+    const billing = vi.fn(() => new Promise<Response>(() => undefined));
+    vi.stubGlobal('fetch', billing);
+    const result = checkAmrBalanceGate({
+      workspaceType: 'team', workspaceId: 'ws', workspaceMemberId: 'member',
+    }, 'model');
+    expect(billing).not.toHaveBeenCalled();
+    await expect(result).resolves.toEqual({ kind: 'allow' });
+  });
   it.each(['0', '-1', '0.001', '1.2', '42'])('leaves funding to Link for wallet %s', async (balanceUsd) => {
     mockedFetch.mockResolvedValue(snapshot({ balanceUsd }));
     await expect(checkAmrBalanceGate(undefined, 'model')).resolves.toEqual({ kind: 'allow' });
@@ -189,11 +200,13 @@ describe('checkAmrBalanceGate', () => {
     const fetcher = vi.fn(async (_url: string) => new Response(JSON.stringify({ ...body, ...(funding ? { preflight: { funding } } : {}) })));
     vi.stubGlobal('fetch', fetcher);
     await expect(checkAmrBalanceGate({ workspaceType: 'team', workspaceId: 'ws', workspaceMemberId: 'member' }, 'model/a+b')).resolves.toEqual({ kind: 'allow' });
-    expect(String(fetcher.mock.calls[0]?.[0])).not.toContain('includePreflight=1');
-    expect(String(fetcher.mock.calls[0]?.[0])).not.toContain('modelId=');
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it('does not authorize a positive balance from a daemon that cannot prove an authoritative read', async () => {
+});
+
+describe('post-failure wallet display authority', () => {
+  it('does not display a positive balance from a daemon that cannot prove an authoritative read', async () => {
     mockedFetch.mockResolvedValue(snapshot({ balanceUsd: '247.50' }));
     vi.stubGlobal(
       'fetch',
@@ -226,14 +239,14 @@ describe('checkAmrBalanceGate', () => {
       })),
     );
 
-    await expect(checkAmrBalanceGate({
+    await expect(fetchAmrBalanceCardWalletSnapshot({
       workspaceType: 'team',
       workspaceId: 'ws-team-a',
       workspaceMemberId: 'wm-a',
-    })).resolves.toEqual({ kind: 'unavailable' });
+    })).resolves.toBeNull();
   });
 
-  it('fails closed for an unavailable team workspace balance without using account zero', async () => {
+  it('does not substitute account zero for an unavailable team wallet', async () => {
     const emptyAccount = snapshot({ balanceUsd: '0' });
     mockedFetch.mockResolvedValueOnce(emptyAccount).mockResolvedValueOnce(emptyAccount);
     vi.stubGlobal(
@@ -242,12 +255,12 @@ describe('checkAmrBalanceGate', () => {
     );
 
     await expect(
-      checkAmrBalanceGate({
+      fetchAmrBalanceCardWalletSnapshot({
         workspaceType: 'team',
         workspaceId: 'ws-team-a',
         workspaceMemberId: 'wm-a',
       }),
-    ).resolves.toEqual({ kind: 'unavailable' });
+    ).resolves.toBeNull();
   });
 
   it('does not use a last-good balance when the authoritative runtime is in error', async () => {
@@ -283,11 +296,11 @@ describe('checkAmrBalanceGate', () => {
       )),
     );
 
-    await expect(checkAmrBalanceGate({
+    await expect(fetchAmrBalanceCardWalletSnapshot({
       workspaceType: 'team',
       workspaceId: 'ws-team-a',
       workspaceMemberId: 'wm-a',
-    })).resolves.toEqual({ kind: 'unavailable' });
+    })).resolves.toBeNull();
   });
 
   it('rejects a response from an older workspace-member epoch', async () => {
@@ -310,11 +323,11 @@ describe('checkAmrBalanceGate', () => {
       )),
     );
 
-    await expect(checkAmrBalanceGate({
+    await expect(fetchAmrBalanceCardWalletSnapshot({
       workspaceType: 'team',
       workspaceId: 'ws-team-a',
       workspaceMemberId: 'wm-new',
-    })).resolves.toEqual({ kind: 'unavailable' });
+    })).resolves.toBeNull();
   });
 
   it('keeps concurrent team A/B checks keyed by explicit workspace id', async () => {
@@ -343,18 +356,18 @@ describe('checkAmrBalanceGate', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const teamA = checkAmrBalanceGate({
+    const teamA = fetchAmrBalanceCardWalletSnapshot({
       workspaceType: 'team',
       workspaceId: 'ws-team-a',
       workspaceMemberId: 'wm-a',
     });
-    const teamB = checkAmrBalanceGate({
+    const teamB = fetchAmrBalanceCardWalletSnapshot({
       workspaceType: 'team',
       workspaceId: 'ws-team-b',
       workspaceMemberId: 'wm-b',
     });
 
-    await expect(teamB).resolves.toEqual({ kind: 'allow' });
+    await expect(teamB).resolves.toMatchObject({ balanceUsd: '50' });
     expect(resolveA).toBeTypeOf('function');
     resolveA(
       new Response(
@@ -366,7 +379,7 @@ describe('checkAmrBalanceGate', () => {
         { status: 200, headers: { 'content-type': 'application/json' } },
       ),
     );
-    await expect(teamA).resolves.toEqual({ kind: 'allow' });
+    await expect(teamA).resolves.toMatchObject({ balanceUsd: '1.50' });
   });
 });
 
