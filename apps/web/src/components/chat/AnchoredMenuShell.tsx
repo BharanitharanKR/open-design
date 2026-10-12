@@ -114,6 +114,7 @@ export function AnchoredMenuShell({
   testId,
   portalRef,
   onAnchorHidden,
+  onConversationScroll,
   children,
 }: {
   /** 锚点 ID = body portal；null = 原地渲染，供未锚定的其他调用方使用。 */
@@ -130,6 +131,8 @@ export function AnchoredMenuShell({
    * 这里是给调用方的信号 —— **要不要真的关掉是调用方的决定**,不是这层的。
    */
   onAnchorHidden?: () => void;
+  /** Opt-in dismissal for card sharing; other menus keep their existing behavior. */
+  onConversationScroll?: () => void;
   children: ReactNode;
 }) {
   /*
@@ -147,6 +150,17 @@ export function AnchoredMenuShell({
    * 「Maximum update depth exceeded」撞出来(写这段时踩过一次)。
    */
   const anchorRef = useRef<HTMLElement | null>(anchor);
+  useEffect(() => {
+    if (!onConversationScroll) return;
+    const conversation = anchor?.closest<HTMLElement>('.chat-log');
+    if (!conversation) return;
+    // Listen only to this list, not global capture scrolls or portal content.
+    const dismiss = (event: Event) => {
+      if (event.target === conversation) onConversationScroll();
+    };
+    conversation.addEventListener('scroll', dismiss, { passive: true });
+    return () => conversation.removeEventListener('scroll', dismiss);
+  }, [anchor, onConversationScroll]);
   // 菜单本体的引用:横向修正要量它**真实的盒子**,因为它的横向位置来自既有 CSS
   // (`.chrome-share-menu .share-menu-popover { right: 0 }`),不是这里算出来的。
   const menuRef = useRef<HTMLDivElement | null>(null);
