@@ -182,29 +182,28 @@ export function AnchoredMenuShell({
   }, [portalRef]);
   /*
    * 「浮层身上现在有多少修正」—— 现读,不记账。两条路放的地方不一样:
-   *  · 搬走那份:包裹盒的 `left` 被写成 `锚点 left + 修正`,所以拿它现在的
-   *    **内联 left** 减去锚点现在的 left,就是它身上真实生效的修正。
+   *  · Portal menus use right:0. Subtract the measured anchor's right edge from
+   *    the wrapper's inline left + width to remove applied shift and stale geometry.
+   *    Use the hook's snapshot here rather than measuring the anchor again.
    *    读内联样式而不是 `getBoundingClientRect()`:前者是「盒子现在被摆在哪儿」
    *    的真值,而且同一帧里连量两次也不会变 —— 没有重排,它就还没动。
    *    (后者在 jsdom 里恒为 0,量不出来。)
    *  · 原地那份:菜单自己的 `transform: translateX()`,从计算样式里读回来。
    * 每次渲染重新赋值即可 —— 它进的是 ref,不参与任何 effect 的依赖。
    */
-  const readAppliedShift = useRef<() => number>(() => 0);
-  readAppliedShift.current = () => {
+  const readAppliedShift = useRef<(rect: DOMRect) => number>(() => 0);
+  readAppliedShift.current = (rect) => {
     if (!anchorId) return readTranslateX(menuRef.current);
     const wrap = wrapperRef.current;
-    const anchorEl = anchorRef.current;
-    if (!wrap || !anchorEl) return 0;
+    if (!wrap) return 0;
     const placed = Number.parseFloat(wrap.style.left);
-    if (!Number.isFinite(placed)) return 0;
-    return placed - anchorEl.getBoundingClientRect().left;
+    const width = Number.parseFloat(wrap.style.width);
+    if (!Number.isFinite(placed) || !Number.isFinite(width)) return 0;
+    return placed + width - rect.right;
   };
   if (anchorId) anchorRef.current = anchor;
-  // 包裹盒盖在按钮上,所以它的尺寸就是按钮的尺寸;菜单相对它排。
-  const rect = anchor?.getBoundingClientRect?.();
   const open = anchorId ? Boolean(anchor) : true;
-  const { placement, inlineShift, maxInlineSize, maxBlockSize, anchorHidden } = useAnchoredPopover(
+  const { anchorRect: rect, placement, inlineShift, maxInlineSize, maxBlockSize, anchorHidden } = useAnchoredPopover(
     open,
     anchorRef,
     menuRef,
@@ -218,6 +217,7 @@ export function AnchoredMenuShell({
        * 它连 `data-placement` 都不写 —— 给它算 `above` 只会让竖向预算配错方向。
        */
       flipEnabled: Boolean(anchorId),
+      anchorElement: anchorId ? anchor : undefined,
     },
   );
 
@@ -302,7 +302,7 @@ export function AnchoredMenuShell({
    * 游离节点的 rect 是它离开前的旧坐标,照着画就是一块悬在半空、跟谁都对不上的
    * 菜单 —— 正是截图里那个样子。
    */
-  if (!anchor || !rect) return null;
+  if (!anchor) return null;
   if (anchor.isConnected === false) return null;
 
   return createPortal(
@@ -311,15 +311,17 @@ export function AnchoredMenuShell({
       className={`${wrapperClassName} ${styles.anchored}`}
       style={{
         position: 'fixed',
-        top: rect.top,
+        // Mount for measurement, but don't paint until the layout-effect snapshot exists.
+        visibility: rect ? undefined : 'hidden',
+        top: rect?.top ?? 0,
         /*
          * 横向修正加在**包裹盒**上,不加在菜单上:包裹盒不可见也不吃事件,挪动它
          * 等于整体平移,而菜单自己的 `right: 0` 一个字不用改 —— 既有 CSS 继续
          * 干它本来的活。加在菜单上则要动 `transform`,会跟它自己的动画打架。
          */
-        left: rect.left + inlineShift,
-        width: rect.width,
-        height: rect.height,
+        left: (rect?.left ?? 0) + inlineShift,
+        width: rect?.width ?? 0,
+        height: rect?.height ?? 0,
       }}
       data-anchored-menu={anchorId}
     >
