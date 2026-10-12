@@ -299,6 +299,38 @@ const nextCampaign = (): typeof FULL_RESPONSE => {
 const CONTENT_OF: Record<string, string> = { 'activity-1': 'version-1', 'activity-2': 'version-2' };
 
 describe('daemon touchpoint content assembly', () => {
+  it('persists native chunked full grants and shortened trimmed renewals for offline replay', async () => {
+    // Real Node HTTP transport: no mocked ClientRequest close/end ordering.
+    const now = Date.now();
+    let served = {
+      ...FULL_RESPONSE,
+      serverTime: new Date(now).toISOString(),
+      startsAt: new Date(now - 60_000).toISOString(),
+      endsAt: new Date(now + 3_600_000).toISOString(),
+      authorizationExpiresAt: new Date(now + 60_000).toISOString(),
+    };
+    upstreamHandler = (_req, res, held) => {
+      res.setHeader('content-type', 'application/json');
+      if (status !== 200) { res.statusCode = status; res.end('{}'); return; }
+      const payload = decisionPayload(served, held);
+      res.write(payload.slice(0, 20));
+      setImmediate(() => res.end(payload.slice(20)));
+    };
+    expect((await rawDecide()).status).toBe(200);
+    expect(recordedContentId()).toBe('version-1');
+    const shortenedEnd = new Date(now + 300_000).toISOString();
+    served = { ...served, endsAt: shortenedEnd };
+    const renewed = await rawDecide();
+    expect(calls[1]?.heldContentId).toBe('version-1');
+    expect(JSON.parse(renewed.body.toString()).endsAt).toBe(shortenedEnd);
+    expect(calls).toHaveLength(2); // A trimmed renewal must not need a full retry.
+    status = 503;
+    const offline = await rawDecide();
+    expect(offline.status).toBe(200);
+    expect(offline.headers['x-od-touchpoint-offline']).toBe('1');
+    expect(JSON.parse(offline.body.toString()).endsAt).toBe(shortenedEnd);
+  });
+
   // Property 1. If this ever fails, every already-published client stops seeing
   // campaigns, because their guard is `if (!next.content?.id) return clear`.
   it('REGRESSION: a cold daemon sends today\'s request and returns today\'s response byte for byte', async () => {
