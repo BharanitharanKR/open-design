@@ -94,4 +94,8 @@ Every template carries an original procedural soundtrack in
 used and no audio-generation model was involved. HTML preview sound starts with
 the film; when the browser blocks autoplay, the first click or key press turns
 it on, and Sound off mutes it. Sound follows the master timeline. The desktop
-export path mixes the timed local audio into the MP4 with FFmpeg.
+export path mixes the timed local audio into the MP4 with FFmpeg and fades each
+track out where it stops, so a remake made shorter than its music ends cleanly.
+Make-same keeps the template's soundtrack by default, because the music is part
+of the look being remade; a brief that asks for no music or different music
+takes precedence.
