@@ -59,7 +59,12 @@ frame expensive and slow the MP4 export.
 ## Sound
 Carry `assets/soundtrack.mp3` with the reference files. It is an original
 procedural soundtrack authored for this example and timed to its beats; no
-audio from the source video is used. Keep the `<audio>` element inside the
+audio from the source video is used. The soundtrack is part of the look the
+user is remaking: keep it by default, and follow the brief when it asks for no
+music or different music. The music lands on this film's beats, so keep the
+film close to this length; when the brief changes the length, keep
+`data-duration` within the film, and the export fades the track out where it
+stops. Keep the `<audio>` element inside the
 composition root, with numeric `data-start`, `data-duration` and `data-volume`;
 the desktop exporter mixes that local file into the MP4. Preview sound
 starts with the film; when the browser blocks autoplay, the first click or key

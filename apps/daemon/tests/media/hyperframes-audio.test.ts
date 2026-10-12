@@ -2,7 +2,7 @@ import { mkdtemp, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, it } from 'vitest';
-import { prepareHyperFramesAudio } from '../../src/media/hyperframes-audio.js';
+import { hyperFramesAudioEncodingArgs, prepareHyperFramesAudio } from '../../src/media/hyperframes-audio.js';
 
 let root: string;
 beforeEach(async () => {
@@ -33,3 +33,17 @@ it.each(['data-start="intro + 2"', 'data-volume="2"', 'loop', 'data-media-start=
     await expect(prepareHyperFramesAudio(`<audio src="music.mp3" data-duration="3" ${attribute}></audio>`, root)).rejects.toThrow();
   },
 );
+
+it('fades each track out where it stops sounding, including a cut at the film end', () => {
+  const track = { file: 'music.mp3', format: 'mp3', volume: 1 };
+  const graph = (tracks: Parameters<typeof hyperFramesAudioEncodingArgs>[0], duration: number) =>
+    hyperFramesAudioEncodingArgs(tracks, duration)[1];
+  // Music authored for 15 s in a film cut to 10 s fades over the film's last 0.6 s.
+  expect(graph([{ ...track, start: 0, duration: 15 }], 10)).toContain('afade=t=out:st=9.4:d=0.6');
+  // A track that ends inside the film fades at its own end, offset by its start.
+  expect(graph([{ ...track, start: 2, duration: 4 }], 10)).toContain('afade=t=out:st=3.4:d=0.6');
+  // Short tracks keep most of their sound: the fade is at most a quarter of what plays.
+  expect(graph([{ ...track, start: 0, duration: 1 }], 10)).toContain('afade=t=out:st=0.75:d=0.25');
+  // A track that starts after the film ends contributes no fade.
+  expect(graph([{ ...track, start: 12, duration: 3 }], 10)).not.toContain('afade');
+});

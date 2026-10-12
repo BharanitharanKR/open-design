@@ -58,10 +58,17 @@ export function hyperFramesAudioEncodingArgs(tracks: HyperFramesAudioTrack[], du
   // Filters stay within FFmpeg 4.1 (the bundled Linux build): every track is
   // made stereo so one per-channel delay covers it (no `adelay all=1`), and
   // amix's input averaging is undone with a gain (no `amix normalize=0`).
+  // Each track fades out where it stops sounding: its own authored end or the
+  // film's end, whichever comes first. A track that already ends quietly is
+  // unchanged; one cut short (a remake made shorter than its music) no longer
+  // stops on a click.
   const filters = tracks.map((track, index) => {
     const delayMs = Math.round(track.start * 1000);
+    const audible = Math.min(track.duration, duration - track.start);
+    const fade = audible > 0 ? Math.min(0.6, audible / 4) : 0;
+    const fadeOut = fade > 0 ? `afade=t=out:st=${round(audible - fade)}:d=${round(fade)},` : '';
     return `[${index + 1}:a]atrim=duration=${track.duration},asetpts=PTS-STARTPTS,`
-      + `aformat=channel_layouts=stereo,volume=${track.volume},adelay=${delayMs}|${delayMs}[a${index}]`;
+      + `aformat=channel_layouts=stereo,${fadeOut}volume=${track.volume},adelay=${delayMs}|${delayMs}[a${index}]`;
   });
   const mixed = tracks.length === 1
     ? '[a0]'
@@ -69,4 +76,8 @@ export function hyperFramesAudioEncodingArgs(tracks: HyperFramesAudioTrack[], du
       + `amix=inputs=${tracks.length}:duration=longest:dropout_transition=0,volume=${tracks.length},`;
   filters.push(`${mixed}apad,atrim=duration=${duration}[audio]`);
   return ['-filter_complex', filters.join(';'), '-map', '0:v', '-map', '[audio]', '-c:a', 'aac', '-b:a', '192k'];
+}
+
+function round(seconds: number): number {
+  return Math.round(seconds * 1000) / 1000;
 }
