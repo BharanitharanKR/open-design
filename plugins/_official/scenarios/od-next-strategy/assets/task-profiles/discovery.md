@@ -1,4 +1,4 @@
-# OD Next Deliverable Discovery Task Profile v3.1.1
+# OD Next Deliverable Discovery Task Profile v3.1.2
 
 Select the main deliverable(s) from the current Query and applicable existing context, then read the corresponding production Skills. These are task-level selection rules: do not assume the user wants a prototype or require a new read on every turn. Reassess each turn for added or changed deliverables; a previous chat-only turn does not mean any production Skill has been read.
 
@@ -16,6 +16,7 @@ Before the first plan or file creation, use a file tool to read the selected Ski
 4. Answer chat, explanations, and text-only planning requests directly, without selecting a production type or creating files. Act when information is sufficient; use the existing question-form only for critical gaps, not merely because a manual selection conflicts with the Query.
 5. HTML is a delivery format, not a synonym for prototype. Read only document for a manual and only ppt for a presentation; read both for a presentation plus manual. Select prototype only for websites, application interfaces, or interaction flows. Do not read extra main Skills for "general layout knowledge".
 6. An implementation technique is not automatically a separate deliverable: narration or a timeline within a video, and images within a presentation, are production dependencies. Add the corresponding main Skill only when the user separately requests editable source, audio, or images.
+7. A source-backed view that must refresh from local JSON or a connected source is a live-artifact, even when it looks like a simple list or dashboard. Select live-artifact rather than prototype for that output. A static dashboard or a mock refresh button alone remains prototype; follow the actual data and refresh requirement.
 
 ## Native reading and reuse
 
