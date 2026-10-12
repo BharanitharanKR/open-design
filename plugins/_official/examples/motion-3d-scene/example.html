@@ -274,6 +274,10 @@ function render(t) {
 }
 
 /* ---------- master timeline: the only clock ---------- */
+// Play on the wall clock even when frames are slow (software GL, a busy CI
+// baker): lag smoothing would otherwise slow the timeline down and the
+// preview-ready frame would never arrive.
+gsap.ticker.lagSmoothing(0);
 const tl = gsap.timeline({ paused: true });
 const clock = { t: 0 };
 tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
@@ -298,7 +302,7 @@ playBtn.addEventListener('click', () => { if (tl.time() >= CFG.duration - 0.01) 
 scrub.addEventListener('input', () => { tl.pause(); tl.time(parseFloat(scrub.value)); sync(); });
 window.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); playBtn.click(); } });
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-if (reduce) { tl.pause(); tl.time(8); }
+if (reduce) { tl.pause(); tl.time(6); }
 else document.fonts.ready.then(() => tl.play(0));
 sync();
 </script>
@@ -326,7 +330,7 @@ sync();
 <script>
 // Preview bake: mark ready once the timeline reaches the poster frame.
 (function () {
-  var POSTER_AT = 8.0;
+  var POSTER_AT = 6.0;
   function check() {
     var tls = window.__timelines;
     var tl = tls && tls[Object.keys(tls)[0]];

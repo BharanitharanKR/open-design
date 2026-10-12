@@ -351,6 +351,10 @@ function render(t) {
 }
 
 /* ---------- master timeline: the only clock ---------- */
+// Play on the wall clock even when frames are slow (software GL, a busy CI
+// baker): lag smoothing would otherwise slow the timeline down and the
+// preview-ready frame would never arrive.
+gsap.ticker.lagSmoothing(0);
 const tl = gsap.timeline({ paused: true });
 const clock = { t: 0 };
 tl.to(clock, { t: CFG.duration, duration: CFG.duration, ease: 'none' }, 0);
