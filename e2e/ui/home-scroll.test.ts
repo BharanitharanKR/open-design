@@ -81,6 +81,35 @@ for (const mode of ['daemon', 'api'] as const) {
         await page.mouse.wheel(0, -3000);
         await expect.poll(async () => (await geometry()).scrollTop).toBe(0);
         expect((await geometry()).top).toBeGreaterThanOrEqual(0);
+
+        if (size.width === 1200 && size.height === 480) {
+          const presets = page.locator('.home-hero__plugin-presets');
+          await expect(presets).toBeVisible();
+          const presetOverflow = await presets.evaluate(
+            (element) => element.scrollHeight - element.clientHeight,
+          );
+          expect(presetOverflow).toBeGreaterThan(0);
+
+          // At the nested list's bottom boundary, downward wheel input must
+          // continue to the outer Home scroller.
+          await presets.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+          expect(await presets.evaluate((element) => element.scrollTop)).toBe(presetOverflow);
+          const downBox = await presets.boundingBox();
+          if (!downBox) throw new Error('Home examples list is missing');
+          await page.mouse.move(downBox.x + downBox.width / 2, downBox.y + 20);
+          await page.mouse.wheel(0, 3000);
+          await expect.poll(async () => (await geometry()).scrollTop).toBeGreaterThan(0);
+
+          // At the nested list's top boundary, upward wheel input must likewise
+          // return Home all the way to its reachable top.
+          await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+          await presets.evaluate((element) => { element.scrollTop = 0; });
+          const upBox = await presets.boundingBox();
+          if (!upBox) throw new Error('Home examples list is missing');
+          await page.mouse.move(upBox.x + upBox.width / 2, upBox.y + 20);
+          await page.mouse.wheel(0, -3000);
+          await expect.poll(async () => (await geometry()).scrollTop).toBe(0);
+        }
       } else {
         expect((await geometry()).bottom).toBeLessThanOrEqual(0);
         expect(Math.abs((await geometry()).centerOffset)).toBeLessThanOrEqual(1);
