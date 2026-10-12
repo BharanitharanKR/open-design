@@ -1,4 +1,4 @@
-# OD Next Live Artifact Task Profile v3.1.2
+# OD Next Live Artifact Task Profile v3.1.3
 
 Use for refreshable dashboards and synchronized reports with route=live-artifact and kind=live. Resolve the real data source and refresh method first, using user-authorized local data or existing connectors. Do not describe static examples as live synchronization.
 
@@ -27,6 +27,7 @@ Report registration failures honestly and retain source files. Rendering source 
 
 ## Data and refresh rules
 
+- Manual source refresh is provided by the registered artifact’s host controls or the documented refresh CLI. Do not add a refresh button inside the template unless a supported source-refresh interface is actually wired to it. A link to the preview or a page reload does not reread the registered data source and must not be labeled as doing so.
 - The word "dashboard" alone does not justify registering an ordinary static dashboard as a live artifact. When refresh is needed, prefer the user's specified local file or connected source. Use connected, read-only, refresh-capable tools; never bind external writes to a refresh button.
 - Use the existing tools connectors execute entry point for connector calls. Record only safe connectorId, toolName, accountLabel, necessary input, and outputMapping. Map source fields to preview fields; refresh must not rebuild the template.
 - When the user names a connected source, first locate content by topic using a read-only search tool actually present in the catalog. Do not ask again for a known source. For example, search Notion first and fetch a database only after its ID is supplied or confirmed by search. Clarify the specific page/topic only when several candidates remain or the topic is insufficient.
