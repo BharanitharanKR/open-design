@@ -1,6 +1,18 @@
 import type { Dict } from '../types';
 
 export const de: Dict = {
+  "collab.contentUpdate.check": "Cloud-Updates prüfen",
+  "collab.contentUpdate.updating": "Wird aktualisiert…",
+  "collab.contentUpdate.askAgain": "Vor Updates fragen",
+  "collab.contentUpdate.title": "Cloud-Update verfügbar",
+  "collab.contentUpdate.description": "Dieses Projekt durch den neuesten Cloud-Inhalt ersetzen? HTML lässt sich aus dem lokalen Verlauf wiederherstellen; andere überschriebene Dateien können verloren gehen.",
+  "collab.contentUpdate.dontPrompt": "Für dieses Projekt 24 Stunden nicht mehr fragen",
+  "collab.contentUpdate.later": "Nicht jetzt",
+  "collab.contentUpdate.replace": "Durch Cloud-Version ersetzen",
+  "collab.contentUpdate.failed": "Update fehlgeschlagen. Bitte erneut versuchen.",
+  "collab.contentUpdate.busy": "Generierung oder Upload läuft. Danach erneut versuchen.",
+  "collab.contentUpdate.unsupported": "Cloud-Ersetzung wird für importierte Ordner nicht unterstützt.",
+  "fileViewer.versions.sourceSync": "Synchronisiert",
   'billing.wallet': 'Wallet-Guthaben',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count} Stunden',

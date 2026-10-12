@@ -1,6 +1,18 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  "collab.contentUpdate.check": "檢查雲端更新",
+  "collab.contentUpdate.updating": "正在更新…",
+  "collab.contentUpdate.askAgain": "恢復更新提示",
+  "collab.contentUpdate.title": "雲端有新內容",
+  "collab.contentUpdate.description": "是否用雲端最新內容完整覆蓋本機專案？HTML 可從本機歷史還原，其他被覆蓋的檔案可能無法找回。",
+  "collab.contentUpdate.dontPrompt": "24 小時內此專案不再提示",
+  "collab.contentUpdate.later": "暫不更新",
+  "collab.contentUpdate.replace": "使用雲端內容覆蓋",
+  "collab.contentUpdate.failed": "更新失敗，請重試。",
+  "collab.contentUpdate.busy": "專案正在生成或上傳，請完成後再更新。",
+  "collab.contentUpdate.unsupported": "匯入資料夾暫不支援雲端覆蓋。",
+  "fileViewer.versions.sourceSync": "雲端同步",
   'billing.wallet': '錢包餘額',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count} 小時',

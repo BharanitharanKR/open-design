@@ -1,6 +1,18 @@
 import type { Dict } from '../types';
 
 export const th: Dict = {
+  "collab.contentUpdate.check": "ตรวจสอบการอัปเดตคลาวด์",
+  "collab.contentUpdate.updating": "กำลังอัปเดต…",
+  "collab.contentUpdate.askAgain": "ถามก่อนอัปเดต",
+  "collab.contentUpdate.title": "มีการอัปเดตบนคลาวด์",
+  "collab.contentUpdate.description": "แทนที่โปรเจกต์นี้ด้วยเนื้อหาล่าสุดบนคลาวด์หรือไม่? HTML กู้คืนจากประวัติในเครื่องได้ แต่ไฟล์อื่นที่ถูกเขียนทับอาจสูญหาย",
+  "collab.contentUpdate.dontPrompt": "ไม่ถามอีกสำหรับโปรเจกต์นี้เป็นเวลา 24 ชั่วโมง",
+  "collab.contentUpdate.later": "ยังไม่อัปเดต",
+  "collab.contentUpdate.replace": "แทนที่ด้วยเวอร์ชันคลาวด์",
+  "collab.contentUpdate.failed": "อัปเดตไม่สำเร็จ โปรดลองอีกครั้ง",
+  "collab.contentUpdate.busy": "กำลังสร้างหรืออัปโหลด โปรดลองหลังจากเสร็จสิ้น",
+  "collab.contentUpdate.unsupported": "การแทนที่จากคลาวด์ไม่รองรับโฟลเดอร์ที่นำเข้า",
+  "fileViewer.versions.sourceSync": "ซิงค์แล้ว",
   'billing.wallet': 'ยอดเงินในกระเป๋าเงิน',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count} ชั่วโมง',

@@ -1,6 +1,18 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  "collab.contentUpdate.check": "클라우드 업데이트 확인",
+  "collab.contentUpdate.updating": "업데이트 중…",
+  "collab.contentUpdate.askAgain": "업데이트 전에 확인",
+  "collab.contentUpdate.title": "클라우드 업데이트가 있습니다",
+  "collab.contentUpdate.description": "이 프로젝트를 최신 클라우드 내용으로 덮어쓸까요? HTML은 로컬 기록에서 복구할 수 있지만 다른 덮어쓴 파일은 복구하지 못할 수 있습니다.",
+  "collab.contentUpdate.dontPrompt": "이 프로젝트는 24시간 동안 다시 묻지 않기",
+  "collab.contentUpdate.later": "나중에",
+  "collab.contentUpdate.replace": "클라우드 버전으로 덮어쓰기",
+  "collab.contentUpdate.failed": "업데이트에 실패했습니다. 다시 시도하세요.",
+  "collab.contentUpdate.busy": "생성 또는 업로드 중입니다. 완료 후 다시 시도하세요.",
+  "collab.contentUpdate.unsupported": "가져온 폴더는 클라우드 덮어쓰기를 지원하지 않습니다.",
+  "fileViewer.versions.sourceSync": "동기화",
   'billing.wallet': '지갑 잔액',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count}시간',

@@ -1,6 +1,18 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  "collab.contentUpdate.check": "بررسی به‌روزرسانی ابری",
+  "collab.contentUpdate.updating": "در حال به‌روزرسانی…",
+  "collab.contentUpdate.askAgain": "پرسش پیش از به‌روزرسانی",
+  "collab.contentUpdate.title": "به‌روزرسانی ابری موجود است",
+  "collab.contentUpdate.description": "این پروژه با آخرین محتوای ابری جایگزین شود؟ HTML از تاریخچه محلی قابل بازیابی است؛ فایل‌های دیگر ممکن است پس از بازنویسی از دست بروند.",
+  "collab.contentUpdate.dontPrompt": "برای این پروژه تا ۲۴ ساعت دوباره نپرس",
+  "collab.contentUpdate.later": "فعلاً نه",
+  "collab.contentUpdate.replace": "جایگزینی با نسخه ابری",
+  "collab.contentUpdate.failed": "به‌روزرسانی ناموفق بود. دوباره تلاش کنید.",
+  "collab.contentUpdate.busy": "تولید یا بارگذاری در حال انجام است. پس از پایان دوباره تلاش کنید.",
+  "collab.contentUpdate.unsupported": "جایگزینی ابری برای پوشه‌های واردشده پشتیبانی نمی‌شود.",
+  "fileViewer.versions.sourceSync": "همگام‌شده",
   'billing.wallet': 'موجودی کیف پول',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count} ساعت',

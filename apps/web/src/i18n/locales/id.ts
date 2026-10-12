@@ -1,6 +1,18 @@
 import type { Dict } from '../types';
 
 export const id: Dict = {
+  "collab.contentUpdate.check": "Periksa pembaruan cloud",
+  "collab.contentUpdate.updating": "Memperbarui…",
+  "collab.contentUpdate.askAgain": "Tanya sebelum memperbarui",
+  "collab.contentUpdate.title": "Pembaruan cloud tersedia",
+  "collab.contentUpdate.description": "Ganti proyek ini dengan konten cloud terbaru? HTML dapat dipulihkan dari riwayat lokal; file lain yang ditimpa mungkin hilang.",
+  "collab.contentUpdate.dontPrompt": "Jangan tanya lagi untuk proyek ini selama 24 jam",
+  "collab.contentUpdate.later": "Tidak sekarang",
+  "collab.contentUpdate.replace": "Ganti dengan versi cloud",
+  "collab.contentUpdate.failed": "Pembaruan gagal. Coba lagi.",
+  "collab.contentUpdate.busy": "Pembuatan atau pengunggahan sedang berlangsung. Coba setelah selesai.",
+  "collab.contentUpdate.unsupported": "Penggantian cloud tidak mendukung folder yang diimpor.",
+  "fileViewer.versions.sourceSync": "Disinkronkan",
   'billing.wallet': 'Saldo dompet',
   'billing.codingPlanDesignPlan': 'Design Plan',
   'billing.codingPlanPeriodHours': '{count} jam',
