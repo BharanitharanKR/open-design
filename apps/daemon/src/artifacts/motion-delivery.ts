@@ -55,7 +55,7 @@ export async function validateMotionDelivery(input: {
         if (!tracks.some((track) => track.volume > 0)) return false;
         return await hasAudibleTrack(realTarget);
       }
-      return input.contract.audio !== 'silent' || $('audio').length === 0;
+      return input.contract.audio !== 'silent' || ($('audio').length === 0 && !await hasAudibleTrack(realTarget));
     } finally {
       await handle.close();
     }

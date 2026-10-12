@@ -25,6 +25,9 @@ describe('audible motion delivery', () => {
       expect(await check({ ...base, audio: 'required' })).toBe(false);
       await exec(ffmpegInstaller.path, ['-y', '-f', 'lavfi', '-i', 'color=c=blue:s=64x64:d=1', '-i', path.join(root, 'music.wav'), '-c:v', 'libx264', '-c:a', 'aac', '-shortest', path.join(root, 'film.mp4')]);
       expect(await check({ ...base, audio: 'required' })).toBe(true);
+      await writeFile(path.join(root, 'index.html'), source);
+      expect(await check({ ...base, audio: 'silent' })).toBe(false);
+      await writeFile(path.join(root, 'index.html'), source + '<audio src="music.wav" data-duration="1"></audio>');
       expect(await check({ ...base, audio: 'silent' })).toBe(false);
       await exec(ffmpegInstaller.path, ['-y', '-f', 'lavfi', '-i', 'color=c=blue:s=64x64:d=1', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', '1', '-c:v', 'libx264', '-c:a', 'aac', path.join(root, 'film.mp4')]);
       expect(await check({ ...base, audio: 'required' })).toBe(false);
