@@ -12174,7 +12174,7 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A 15-second Three.js scene built entirely in code: a low-poly island at golden hour with waves and foam, swaying palms, a hut and dock, a sailboat and birds, filmed in one continuous aerial move.",
+      "description": "A 15-second Three.js scene built entirely in code: a tropical island at midday ringed by a turquoise lagoon, with a white-sand beach, palms, a small village and pier, sailboats, clouds and gulls, filmed in one continuous aerial move.",
       "tags": [
         "example",
         "first-party",
@@ -12183,7 +12183,7 @@
         "3d",
         "procedural",
         "threejs",
-        "generative-art"
+        "tropical"
       ],
       "homepage": "https://github.com/nexu-io/open-design",
       "license": "Apache-2.0",

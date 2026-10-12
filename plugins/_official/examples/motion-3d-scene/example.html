@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tiny Worlds — Island at golden hour</title>
+<title>Tiny Worlds — Lagoon island</title>
 <script src="assets/three.min.js"></script>
 <script src="assets/gsap.min.js"></script>
 <style>
 @font-face{font-family:Space;src:url('assets/space-grotesk.ttf') format('truetype');font-weight:300 700;font-display:block}
-:root{--bg:#20183A;--accent:#FFB45E}
+:root{--bg:#2F86DA;--accent:#3FD6CF}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#000;overflow:hidden}
 #viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
@@ -16,7 +16,7 @@ html,body{height:100%;background:#000;overflow:hidden}
 #main canvas{position:absolute;left:0;top:0;display:block;width:1920px;height:1080px}
 #controls{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:14px;width:min(900px,92vw);padding:12px 18px;border-radius:14px;background:#101214dd;color:#fff;font:600 13px ui-monospace,Menlo,monospace;opacity:0;transition:opacity .2s}
 #controls:hover,#controls:focus-within{opacity:1}
-#controls button{font:inherit;letter-spacing:.06em;background:var(--accent);color:#20183A;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
+#controls button{font:inherit;letter-spacing:.06em;background:var(--accent);color:#06324F;border:0;border-radius:999px;padding:9px 16px;cursor:pointer;min-width:88px}
 #controls button:focus-visible,#scrub:focus-visible{outline:3px solid #fff;outline-offset:2px}
 #scrub{flex:1;accent-color:var(--accent)}
 #tc{min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
@@ -39,16 +39,18 @@ html.od-export #main{left:0!important;top:0!important;transform:none!important}
 
 <script>
 /* ============================================================
-   Tiny Worlds 01 — a procedural island at golden hour.
-   Everything (terrain, waves, foam, palms, boat, birds, camera)
-   is computed from timeline time t inside render(t), so every
-   frame is reproducible for scrubbing and MP4 export.
+   Tiny Worlds 01 — a procedural tropical island at midday.
+   Terrain, lagoon water, foam, palms, village, boats, clouds,
+   birds and the camera are all computed from timeline time t
+   inside render(t), so every frame is reproducible for
+   scrubbing and MP4 export.
    ============================================================ */
 const CFG = {
   duration: 15, w: 1920, h: 1080,
-  deep: '#1A7590', shallow: '#52DCC8', foam: '#F4FFF8', sand: '#F1D49B', grass: '#6CBF5B', grassDark: '#3F8F47',
-  skyTop: '#2A2458', skyHorizon: '#FF9A5C', sunColor: '#FFE3A3',
-  kicker: 'TINY WORLDS  ·  01 — GOLDEN HOUR', open: 'A little escape.', close: 'Stay a little longer.'
+  deep: '#0A5A8C', mid: '#1497BE', shallow: '#3FD6CF', lagoon: '#A6F2E2', foam: '#FFFFFF',
+  sand: '#FBF0D6', wetSand: '#E6D3A8', grass: '#5DB85A', grassDark: '#3B8F45', rock: '#9A958B',
+  skyTop: '#2F86DA', skyHorizon: '#D4ECF8', sunColor: '#FFF4D6',
+  kicker: 'TINY WORLDS  ·  01 — LAGOON', open: 'A little escape.', close: 'Stay a little longer.'
 };
 const DISPLAY = 'Space, "Avenir Next", "Helvetica Neue", Arial, sans-serif';
 const MONO = 'ui-monospace, Menlo, Consolas, monospace';
@@ -57,212 +59,280 @@ const EZ = { o3: E('power3.out'), io2: E('power2.inOut'), io3: E('power3.inOut')
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 const seg = (t, a, b) => clamp((t - a) / (b - a));
 const lerp = (a, b, p) => a + (b - a) * p;
+const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
 const TAU = Math.PI * 2;
 const col = c => new THREE.Color(c);
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 
 /* ---------- renderer & scene ---------- */
 const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gl'), antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1); renderer.setSize(CFG.w, CFG.h, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(col('#E98A6A'), 140, 360);
-const camera = new THREE.PerspectiveCamera(38, CFG.w / CFG.h, 0.5, 900);
-const SUN_DIR = new THREE.Vector3(-0.75, 0.2, -0.62).normalize();
+scene.fog = new THREE.Fog(col(CFG.skyHorizon), 160, 520);
+const camera = new THREE.PerspectiveCamera(40, CFG.w / CFG.h, 0.5, 1200);
+const SUN_DIR = new THREE.Vector3(-0.45, 0.72, -0.53).normalize();
 
-// sky dome with sun glow
-const sky = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), new THREE.ShaderMaterial({
+// sky dome: deep blue overhead, pale haze at the horizon, a soft sun
+const sky = new THREE.Mesh(new THREE.SphereGeometry(800, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
   uniforms: { top: { value: col(CFG.skyTop) }, horizon: { value: col(CFG.skyHorizon) }, sunCol: { value: col(CFG.sunColor) }, sunDir: { value: SUN_DIR } },
   vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
   fragmentShader: `uniform vec3 top; uniform vec3 horizon; uniform vec3 sunCol; uniform vec3 sunDir; varying vec3 vDir;
     void main(){ float h = clamp(vDir.y, 0.0, 1.0);
-      vec3 c = mix(horizon, top, pow(h, 0.55));
-      c = mix(c, vec3(1.0,0.78,0.62), smoothstep(0.12, 0.0, h) * 0.55);
+      vec3 c = mix(horizon, top, pow(h, 0.45));
       float s = max(dot(normalize(vDir), normalize(sunDir)), 0.0);
-      c += sunCol * (pow(s, 900.0) * 3.0 + pow(s, 12.0) * 0.45);
+      c += sunCol * (pow(s, 1200.0) * 2.0 + pow(s, 24.0) * 0.25);
       gl_FragColor = vec4(c, 1.0); }`
 }));
 scene.add(sky);
-scene.add(new THREE.HemisphereLight(col('#FFD7B0'), col('#3B4A7A'), 0.9));
-const sun = new THREE.DirectionalLight(col('#FFC58A'), 2.4);
-sun.position.copy(SUN_DIR).multiplyScalar(100); scene.add(sun);
-const fill = new THREE.DirectionalLight(col('#8FA8FF'), 0.45); fill.position.set(40, 30, 60); scene.add(fill);
+scene.add(new THREE.HemisphereLight(col('#CFE8FF'), col('#E9D9B5'), 1.15));
+const sun = new THREE.DirectionalLight(col('#FFF2DC'), 3.0);
+sun.position.copy(SUN_DIR).multiplyScalar(120); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
+Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, near: 20, far: 260 });
+scene.add(sun);
 
-/* ---------- terrain ---------- */
+/* ---------- terrain: a wide beach shelf, a green hill and a rocky knoll ---------- */
 function islandHeight(x, z) {
-  const r = Math.hypot(x, z), a = Math.atan2(z, x);
-  const rr = r * (1 + 0.1 * Math.sin(3 * a + 0.4) + 0.06 * Math.sin(5 * a + 2.1));
-  return 9.5 * Math.exp(-Math.pow(rr / 13.5, 2)) - 3.2 + 0.45 * Math.sin(x * 0.55) * Math.cos(z * 0.6) * Math.exp(-rr / 20);
+  const a = Math.atan2(z, x), r = Math.hypot(x, z);
+  const rr = r * (1 + 0.12 * Math.sin(3 * a + 0.4) + 0.07 * Math.sin(5 * a + 2.1) + 0.04 * Math.sin(9 * a));
+  const shelf = 2.6 * smooth(36, 22, rr) + 1.8 * smooth(24, 15, rr);
+  const hill = 7.5 * Math.exp(-Math.pow(rr / 9.5, 2));
+  const knoll = 4.2 * Math.exp(-((x - 7) * (x - 7) + (z + 5) * (z + 5)) / 26);
+  const bumps = 0.35 * Math.sin(x * 0.7) * Math.cos(z * 0.55) * smooth(17, 10, rr);
+  return -3.2 + shelf + hill + knoll + bumps;
 }
+const SPAN = 120, DEPTH_RES = 256;
 {
-  const g = new THREE.PlaneGeometry(70, 70, 110, 110).toNonIndexed(); g.rotateX(-Math.PI / 2);
+  const g = new THREE.PlaneGeometry(80, 80, 170, 170); g.rotateX(-Math.PI / 2);
   const p = g.attributes.position, colors = [];
-  for (let i = 0; i < p.count; i++) p.setY(i, islandHeight(p.getX(i), p.getZ(i)));
-  const c = new THREE.Color();
-  for (let i = 0; i < p.count; i += 3) { // colour per facet by average height
-    const h = (p.getY(i) + p.getY(i + 1) + p.getY(i + 2)) / 3;
-    c.set(h < -0.4 ? '#C8AE76' : h < 1.3 ? CFG.sand : h < 3.6 ? CFG.grass : CFG.grassDark);
-    if (h >= 1.3 && h < 1.7) c.lerp(col(CFG.sand), 0.5);
-    for (let k = 0; k < 3; k++) colors.push(c.r, c.g, c.b);
+  const c = new THREE.Color(), sand = col(CFG.sand), wet = col(CFG.wetSand), grass = col(CFG.grass), dark = col(CFG.grassDark), rock = col(CFG.rock);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), h = islandHeight(x, z); p.setY(i, h);
+    const n = rnd(i * 0.37) * 0.08;
+    if (h < 0.35) c.copy(wet).lerp(sand, smooth(-0.6, 0.35, h));
+    else if (h < 1.35) c.copy(sand);
+    else c.copy(sand).lerp(grass, smooth(1.35, 1.9, h)).lerp(dark, smooth(3.5, 6.5, h) * 0.8);
+    if (Math.exp(-((x - 7) * (x - 7) + (z + 5) * (z + 5)) / 10) > 0.55) c.lerp(rock, 0.7);
+    c.offsetHSL(0, 0, n - 0.04);
+    colors.push(c.r, c.g, c.b);
   }
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 })));
+  const land = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  land.receiveShadow = true; land.castShadow = true; scene.add(land);
 }
 
-/* ---------- ocean: waves + animated shoreline foam ---------- */
-const ocean = (() => {
-  const g = new THREE.PlaneGeometry(520, 520, 150, 150); g.rotateX(-Math.PI / 2);
-  const p = g.attributes.position, n = p.count;
-  const base = new Float32Array(n * 3), depth = new Float32Array(n), colors = new Float32Array(n * 3);
-  const deep = col(CFG.deep), shallow = col(CFG.shallow);
-  for (let i = 0; i < n; i++) {
-    base[i * 3] = p.getX(i); base[i * 3 + 2] = p.getZ(i);
-    const h = islandHeight(p.getX(i), p.getZ(i));
-    depth[i] = h; // > -3.2 near the island
-    const k = clamp((h + 3.2) / 3.0);
-    const c = deep.clone().lerp(shallow, Math.pow(k, 0.7));
-    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+/* ---------- lagoon water: shader waves, depth colour, foam ---------- */
+const depthTex = (() => {
+  const data = new Uint8Array(DEPTH_RES * DEPTH_RES * 4);
+  for (let j = 0; j < DEPTH_RES; j++) for (let i = 0; i < DEPTH_RES; i++) {
+    const x = (i / (DEPTH_RES - 1) - 0.5) * SPAN, z = (j / (DEPTH_RES - 1) - 0.5) * SPAN;
+    const v = clamp((islandHeight(x, z) + 3.2) / 4.2); // 0 open sea → 1 at the waterline
+    const o = (j * DEPTH_RES + i) * 4; data[o] = v * 255; data[o + 3] = 255;
   }
-  g.setAttribute('color', new THREE.BufferAttribute(colors.slice(), 3));
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.42, metalness: 0.0, transparent: true, opacity: 0.94 });
-  const mesh = new THREE.Mesh(g, mat); scene.add(mesh);
-  const foamCol = col(CFG.foam);
-  return {
-    update(t) {
-      const cAttr = g.attributes.color;
-      for (let i = 0; i < n; i++) {
-        const x = base[i * 3], z = base[i * 3 + 2];
-        const y = 0.32 * Math.sin(x * 0.18 + t * 1.3) + 0.24 * Math.sin(z * 0.23 - t * 1.1) + 0.12 * Math.sin((x + z) * 0.5 + t * 2.1);
-        p.setY(i, y);
-        const h = depth[i];
-        if (h > -1.6 && h < 0.4) { // foam band that breathes with the waves
-          const band = 1 - Math.abs(h + 0.55) / 1.05;
-          const pulse = 0.55 + 0.45 * Math.sin(t * 2.2 - Math.hypot(x, z) * 0.9);
-          const f = clamp(band * pulse * 1.3);
-          cAttr.setXYZ(i, lerp(colors[i * 3], foamCol.r, f), lerp(colors[i * 3 + 1], foamCol.g, f), lerp(colors[i * 3 + 2], foamCol.b, f));
-        }
-      }
-      p.needsUpdate = true; cAttr.needsUpdate = true; g.computeVertexNormals();
-    }
-  };
+  const tx = new THREE.DataTexture(data, DEPTH_RES, DEPTH_RES); tx.magFilter = tx.minFilter = THREE.LinearFilter; tx.needsUpdate = true; return tx;
 })();
+const waterU = {
+  time: { value: 0 }, depthMap: { value: depthTex }, span: { value: SPAN },
+  deep: { value: col(CFG.deep) }, mid: { value: col(CFG.mid) }, shallow: { value: col(CFG.shallow) }, lagoon: { value: col(CFG.lagoon) },
+  skyTop: { value: col(CFG.skyTop) }, skyHorizon: { value: col(CFG.skyHorizon) }, sunDir: { value: SUN_DIR }, sunCol: { value: col(CFG.sunColor) },
+  fogCol: { value: col(CFG.skyHorizon) }, fogNear: { value: 160 }, fogFar: { value: 520 }
+};
+const water = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400, 1, 1).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({
+  uniforms: waterU, fog: false,
+  vertexShader: `varying vec3 vWorld; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vWorld = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+  fragmentShader: `
+    uniform float time, span, fogNear, fogFar; uniform sampler2D depthMap;
+    uniform vec3 deep, mid, shallow, lagoon, skyTop, skyHorizon, sunDir, sunCol, fogCol;
+    varying vec3 vWorld;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+      return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+    // analytic ripple normal from a few travelling waves plus small noise
+    vec3 waveNormal(vec2 p){
+      float t = time; vec2 d = vec2(0.0);
+      d += 0.035 * vec2(0.83, 0.56) * cos(dot(p, vec2(0.83, 0.56)) * 0.31 + t * 1.1);
+      d += 0.028 * vec2(-0.42, 0.91) * cos(dot(p, vec2(-0.42, 0.91)) * 0.47 + t * 1.4);
+      // broken, non-repeating chop from two octaves of moving noise
+      vec2 q = p * 0.45 + vec2(t * 0.25, -t * 0.18);
+      d += 0.16 * vec2(noise(q) - 0.5, noise(q + 17.3) - 0.5);
+      d += 0.08 * vec2(noise(q * 2.3 + 5.1) - 0.5, noise(q * 2.3 - 9.7) - 0.5);
+      return normalize(vec3(-d.x, 1.0, -d.y));
+    }
+    void main(){
+      vec2 uv = vWorld.xz / span + 0.5;
+      float k = (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) ? 0.0 : texture2D(depthMap, uv).r;
+      vec3 n = waveNormal(vWorld.xz);
+      vec3 V = normalize(cameraPosition - vWorld);
+      // body colour by depth: deep ocean → reef blue → turquoise → clear lagoon over sand
+      vec3 c = mix(deep, mid, smoothstep(0.0, 0.25, k));
+      c = mix(c, shallow, smoothstep(0.25, 0.62, k));
+      c = mix(c, lagoon, smoothstep(0.62, 0.9, k));
+      // light ripples through shallow water
+      float caustic = pow(noise(vWorld.xz * 0.9 + vec2(time * 0.5, -time * 0.3)) * noise(vWorld.zx * 1.3 - time * 0.4), 1.5);
+      c += vec3(0.9, 1.0, 0.95) * caustic * 0.35 * smoothstep(0.45, 0.85, k);
+      // sky reflection with fresnel, and the sun's glitter
+      float fres = pow(1.0 - max(dot(n, V), 0.0), 4.0);
+      vec3 R = reflect(-V, n);
+      vec3 skyC = mix(skyHorizon, skyTop, pow(clamp(R.y, 0.0, 1.0), 0.45));
+      c = mix(c, skyC, clamp(fres * 0.85, 0.0, 0.7));
+      float spec = pow(max(dot(R, normalize(sunDir)), 0.0), 900.0);
+      c += sunCol * spec * 0.6 * smoothstep(0.7, 0.35, V.y); // glitter toward the horizon, not under the lens
+      // foam that laps the beach on a slow beat
+      float shore = smoothstep(0.86, 0.97, k);
+      float lap = 0.5 + 0.5 * sin(time * 1.6 - k * 22.0 + noise(vWorld.xz * 0.3) * 4.0);
+      float foam = shore * smoothstep(0.35, 0.9, lap + noise(vWorld.xz * 1.6 + time * 0.3) * 0.5);
+      c = mix(c, vec3(1.0), clamp(foam, 0.0, 1.0) * 0.85);
+      float dist = length(cameraPosition - vWorld);
+      c = mix(c, fogCol, smoothstep(fogNear, fogFar, dist));
+      gl_FragColor = vec4(c, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }`
+}));
+water.position.y = 0.0; scene.add(water);
 
-/* ---------- palms ---------- */
-const leafMat = new THREE.MeshStandardMaterial({ color: col('#3E9B52'), flatShading: true, side: THREE.DoubleSide, roughness: 0.8 });
-const trunkMat = new THREE.MeshStandardMaterial({ color: col('#8A5A3B'), flatShading: true, roughness: 1 });
+/* ---------- vegetation: palms around the beach, bushes on the hill ---------- */
+const leafMat = new THREE.MeshStandardMaterial({ color: col('#3F9E4E'), side: THREE.DoubleSide, roughness: 0.75 });
+const trunkMat = new THREE.MeshStandardMaterial({ color: col('#8C6444'), roughness: 1 });
 function leafGeometry() {
-  const g = new THREE.PlaneGeometry(4.6, 1.1, 8, 1); g.translate(2.3, 0, 0);
+  const g = new THREE.PlaneGeometry(4.8, 1.2, 10, 2); g.translate(2.4, 0, 0);
   const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const x = p.getX(i), k = x / 4.6; p.setY(i, p.getY(i) * (1 - k * 0.85)); p.setZ(i, -0.16 * x * x); }
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), k = x / 4.8; p.setY(i, p.getY(i) * (1 - k * 0.85)); p.setZ(i, -0.18 * x * x + 0.15 * Math.abs(p.getY(i))); }
   g.rotateX(-Math.PI / 2); g.computeVertexNormals(); return g;
 }
 const LEAF = leafGeometry();
-const palms = [[-2.5, 1.5, 7.5, 0.3], [2.6, -2.8, 8.4, -0.4], [4.4, 2.6, 6.8, 0.9], [-5.6, -3.6, 6.4, 2.2], [0.4, 4.8, 6.0, 1.4]].map(([x, z, height, lean], i) => {
-  const y0 = islandHeight(x, z) - 0.2;
+const palmSpots = [];
+for (let i = 0; palmSpots.length < 22 && i < 400; i++) {
+  const a = rnd(i * 3.3) * TAU, r = 9 + rnd(i * 5.1) * 9, x = Math.cos(a) * r, z = Math.sin(a) * r, h = islandHeight(x, z);
+  if (h > 1.0 && h < 4.5 && !palmSpots.some(s => Math.hypot(s[0] - x, s[1] - z) < 3.2) && !(a > 0.35 && a < 1.25 && r > 12)) palmSpots.push([x, z, h]);
+}
+const palms = palmSpots.map(([x, z, y], i) => {
+  const height = 6 + rnd(i * 7.7) * 3, lean = Math.atan2(z, x) + (rnd(i) - 0.5);
   const dir = new THREE.Vector3(Math.cos(lean), 0, Math.sin(lean));
-  const curve = new THREE.CatmullRomCurve3([0, 0.33, 0.66, 1].map(k => new THREE.Vector3(x + dir.x * k * k * 2.2, y0 + k * height, z + dir.z * k * k * 2.2)));
-  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 10, 0.34, 6), trunkMat));
+  const curve = new THREE.CatmullRomCurve3([0, 0.33, 0.66, 1].map(k => new THREE.Vector3(x + dir.x * k * k * 2.4, y - 0.2 + k * height, z + dir.z * k * k * 2.4)));
+  const trunk = new THREE.Mesh(new THREE.TubeGeometry(curve, 8, 0.3, 6), trunkMat); trunk.castShadow = true; scene.add(trunk);
   const crown = new THREE.Group(); crown.position.copy(curve.getPoint(1)); scene.add(crown);
-  for (let k = 0; k < 8; k++) {
-    const leaf = new THREE.Mesh(LEAF, leafMat); leaf.rotation.y = k / 8 * TAU + i; leaf.rotation.z = 0.25 + (k % 2) * 0.2; crown.add(leaf);
+  for (let k = 0; k < 9; k++) {
+    const leaf = new THREE.Mesh(LEAF, leafMat); leaf.rotation.y = k / 9 * TAU + i; leaf.rotation.z = 0.2 + (k % 3) * 0.16; leaf.castShadow = true; crown.add(leaf);
   }
-  const coco = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), new THREE.MeshStandardMaterial({ color: col('#5B3A22'), flatShading: true }));
-  coco.position.set(0.3, -0.35, 0.2); crown.add(coco);
   return { crown, phase: i * 1.7 };
 });
-
-/* ---------- hut + dock ---------- */
-const hutAng = 0.75, hutR = 8.6;
-const hutPos = new THREE.Vector3(Math.cos(hutAng) * hutR, 0, Math.sin(hutAng) * hutR); hutPos.y = islandHeight(hutPos.x, hutPos.z);
 {
-  const hut = new THREE.Group(); hut.position.copy(hutPos); hut.rotation.y = -hutAng + Math.PI / 2;
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 2.8), new THREE.MeshStandardMaterial({ color: col('#F6E7CF'), flatShading: true }));
-  wall.position.y = 1.1; hut.add(wall);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.9, 4), new THREE.MeshStandardMaterial({ color: col('#E2674C'), flatShading: true }));
-  roof.position.y = 3.1; roof.rotation.y = Math.PI / 4; hut.add(roof);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.3, 0.1), new THREE.MeshStandardMaterial({ color: col('#4A2E2A') }));
-  door.position.set(0, 0.65, 1.42); hut.add(door);
-  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: col('#FFE6A0') }));
-  lamp.position.set(1.0, 1.7, 1.5); hut.add(lamp);
-  scene.add(hut);
-  const plank = new THREE.MeshStandardMaterial({ color: col('#B9875A'), flatShading: true });
-  const dock = new THREE.Group(); dock.rotation.y = -hutAng; scene.add(dock);
-  for (let k = 0; k < 9; k++) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.18, 2.4), plank); b.position.set(10.5 + k * 0.9, 0.85, 0); dock.add(b);
-    if (k % 3 === 0) [-1, 1].forEach(s => { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.4, 5), plank); post.position.set(10.5 + k * 0.9, -0.2, s * 1.1); dock.add(post); });
+  const bushGeo = new THREE.IcosahedronGeometry(1, 1), spots = [];
+  for (let i = 0; spots.length < 120 && i < 3000; i++) {
+    const x = (rnd(i * 1.9) - 0.5) * 34, z = (rnd(i * 4.3) - 0.5) * 34, h = islandHeight(x, z);
+    if (h > 2.0 && Math.exp(-((x - 7) * (x - 7) + (z + 5) * (z + 5)) / 10) < 0.5) spots.push([x, z, h, i]);
   }
+  const bushes = new THREE.InstancedMesh(bushGeo, new THREE.MeshStandardMaterial({ roughness: 0.9 }), spots.length);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), c = new THREE.Color();
+  spots.forEach(([x, z, h, i], k) => {
+    const r = 0.9 + rnd(i * 2.2) * 1.4; s.set(r, r * 0.8, r);
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd(i) * TAU);
+    m.compose(new THREE.Vector3(x, h + r * 0.35, z), q, s); bushes.setMatrixAt(k, m);
+    bushes.setColorAt(k, c.set(['#3E9448', '#4FAE52', '#2F7D3E', '#6CBF5B'][i % 4]));
+  });
+  bushes.castShadow = true; bushes.receiveShadow = true; scene.add(bushes);
+  const rockMat = new THREE.MeshStandardMaterial({ color: col(CFG.rock), flatShading: true, roughness: 1 });
+  [[6, -4, 1.5], [8.5, -6, 1.2], [5, -7, 0.9], [-17, 9, 1.4], [16, 12, 1.1], [-12, -15, 1.3]].forEach(([x, z, r], i) => {
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), rockMat);
+    rock.position.set(x, islandHeight(x, z) + r * 0.3, z); rock.rotation.set(rnd(i), rnd(i + 1) * TAU, 0); rock.castShadow = true; scene.add(rock);
+  });
 }
 
-/* ---------- sailboat ---------- */
-const boat = (() => {
-  const g = new THREE.Group();
-  const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.5, 4.2, 6, 1), new THREE.MeshStandardMaterial({ color: col('#F4EEE4'), flatShading: true }));
-  hull.rotation.z = Math.PI / 2; hull.scale.set(1, 1, 0.55); g.add(hull);
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 5, 5), trunkMat); mast.position.y = 2.6; g.add(mast);
-  const sailG = new THREE.BufferGeometry(); sailG.setAttribute('position', new THREE.Float32BufferAttribute([0.1, 0.6, 0, 0.1, 4.9, 0, 2.4, 0.7, 0], 3)); sailG.computeVertexNormals();
-  g.add(new THREE.Mesh(sailG, new THREE.MeshStandardMaterial({ color: col('#FFF8EE'), side: THREE.DoubleSide, flatShading: true })));
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), new THREE.MeshStandardMaterial({ color: col('#E2674C'), side: THREE.DoubleSide }));
-  flag.position.set(0.4, 5.0, 0); g.add(flag);
-  scene.add(g); return g;
-})();
-
-/* ---------- clouds & birds ---------- */
-const cloudMat = new THREE.MeshStandardMaterial({ color: col('#FFE2D0'), flatShading: true, roughness: 1, emissive: col('#5A2E4A'), emissiveIntensity: 0.25 });
-const clouds = [0.4, 1.3, 2.2, 3.4, 4.3, 5.4].map((a, i) => {
-  const g = new THREE.Group();
-  for (let k = 0; k < 5; k++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(4 + (k % 3) * 1.6, 1), cloudMat); s.position.set(k * 4.2 - 8, (k % 2) * 1.6, (k % 3) * 1.4); s.scale.y = 0.6; g.add(s); }
-  g.userData = { a, r: 190 + (i % 3) * 30, y: 34 + (i % 2) * 12 }; scene.add(g); return g;
+/* ---------- village and pier ---------- */
+const hutMat = new THREE.MeshStandardMaterial({ color: col('#FBF2E2'), roughness: 0.9 });
+const roofs = ['#E2674C', '#F2A541', '#3FA7A0', '#E2674C', '#D9894E'];
+const PIER_ANG = 0.8;
+[0.42, 0.62, 0.98, 1.16, 0.8].forEach((a, i) => {
+  const r = i === 4 ? 11.5 : 14.2 + (i % 2) * 0.8, x = Math.cos(a) * r, z = Math.sin(a) * r;
+  const hut = new THREE.Group(); hut.position.set(x, islandHeight(x, z) - 0.1, z); hut.rotation.y = -a + Math.PI / 2;
+  const w = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.9, 2.3), hutMat); w.position.y = 0.95; w.castShadow = w.receiveShadow = true; hut.add(w);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.6, 4), new THREE.MeshStandardMaterial({ color: col(roofs[i]), roughness: 0.8, flatShading: true }));
+  roof.position.y = 2.7; roof.rotation.y = Math.PI / 4; roof.castShadow = true; hut.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.08), new THREE.MeshStandardMaterial({ color: col('#5A3B2C') })); door.position.set(0, 0.55, 1.17); hut.add(door);
+  scene.add(hut);
 });
-const birdMat = new THREE.MeshBasicMaterial({ color: col('#2A1E3A'), side: THREE.DoubleSide });
+{
+  const plank = new THREE.MeshStandardMaterial({ color: col('#B98C61'), roughness: 0.95 });
+  const pier = new THREE.Group(); pier.rotation.y = -PIER_ANG; scene.add(pier);
+  for (let k = 0; k < 22; k++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 2.2), plank); b.position.set(16 + k * 0.92, 0.95, 0); b.castShadow = b.receiveShadow = true; pier.add(b);
+    if (k % 3 === 0) [-1, 1].forEach(s => { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 6), plank); post.position.set(16 + k * 0.92, -0.2, s * 1.0); pier.add(post); });
+  }
+}
+function makeBoat(sail, hullColor) {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.45, 4.6, 8, 1), new THREE.MeshStandardMaterial({ color: col(hullColor), roughness: 0.6 }));
+  hull.rotation.z = Math.PI / 2; hull.scale.set(1, 1, 0.55); hull.castShadow = true; g.add(hull);
+  if (sail) {
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 5.4, 6), trunkMat); mast.position.y = 2.8; g.add(mast);
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute([0.1, 0.7, 0, 0.1, 5.3, 0, 2.6, 0.8, 0], 3)); sg.computeVertexNormals();
+    const s = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: col('#FFFFFF'), side: THREE.DoubleSide, roughness: 0.7 })); s.castShadow = true; g.add(s);
+  }
+  scene.add(g); return g;
+}
+const sailboat = makeBoat(true, '#F4EEE4');
+const moored = makeBoat(false, '#E2674C');
+{ const a = PIER_ANG - 0.05, r = 30; moored.position.set(Math.cos(a) * r, 0.35, Math.sin(a) * r); moored.rotation.y = -PIER_ANG; }
+
+/* ---------- clouds & gulls ---------- */
+const cloudMat = new THREE.MeshStandardMaterial({ color: col('#FFFFFF'), roughness: 1, emissive: col('#C9DFF2'), emissiveIntensity: 0.35 });
+const clouds = [0.2, 1.0, 1.9, 2.6, 3.4, 4.2, 5.0, 5.8].map((a, i) => {
+  const g = new THREE.Group();
+  for (let k = 0; k < 6; k++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(5 + (k % 3) * 2.2, 2), cloudMat); s.position.set(k * 5 - 12, (k % 2) * 2.4 + (k === 2 ? 2 : 0), (k % 3) * 2); s.scale.y = 0.62; g.add(s); }
+  g.userData = { a, r: 300 + (i % 3) * 50, y: 120 + (i % 3) * 22 }; scene.add(g); return g;
+});
+const birdMat = new THREE.MeshBasicMaterial({ color: col('#5E6B78'), side: THREE.DoubleSide });
 const birds = [0, 1, 2, 3, 4].map(i => {
   const g = new THREE.Group();
-  [-1, 1].forEach(s => { const w = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), birdMat); w.geometry.translate(0.7, 0, 0); w.scale.x = s; w.name = 'w'; g.add(w); });
+  [-1, 1].forEach(s => { const w = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), birdMat); w.geometry.translate(0.7, 0, 0); w.scale.x = s; g.add(w); });
   scene.add(g); return g;
 });
 
-/* ---------- camera path ---------- */
+/* ---------- camera path: from high above the reef down to the beach and around ---------- */
 const CAM = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(-6, 52, 74), new THREE.Vector3(30, 22, 48), new THREE.Vector3(46, 12, 8),
-  new THREE.Vector3(30, 9, -34), new THREE.Vector3(4, 10, -50), new THREE.Vector3(-14, 13, -54)
+  new THREE.Vector3(-22, 58, 82), new THREE.Vector3(20, 32, 64), new THREE.Vector3(52, 16, 44),
+  new THREE.Vector3(56, 9, 6), new THREE.Vector3(40, 10, -36), new THREE.Vector3(10, 14, -60)
 ]);
-const LOOK = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, 4, 0), new THREE.Vector3(-4, 4, 0), new THREE.Vector3(-8, 5, 2)]);
+const LOOK = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(4, 2, 6), new THREE.Vector3(8, 3, 6), new THREE.Vector3(2, 4, 0), new THREE.Vector3(-2, 4, 0)]);
 
 /* ---------- 2D overlay: titles ---------- */
 const ui = document.getElementById('ui').getContext('2d');
 function overlay(t) {
   ui.clearRect(0, 0, CFG.w, CFG.h);
-  // gentle vignette
-  const v = ui.createRadialGradient(960, 540, 400, 960, 540, 1150); v.addColorStop(0, 'rgba(20,10,40,0)'); v.addColorStop(1, 'rgba(20,10,40,.45)');
-  ui.fillStyle = v; ui.fillRect(0, 0, CFG.w, CFG.h);
-  const k = EZ.o3(seg(t, 0.5, 1.2)) * (1 - seg(t, 13.9, 14.4) * 0);
-  ui.save(); ui.globalAlpha = k; ui.fillStyle = 'rgba(255,244,230,.9)'; ui.font = `600 24px ${MONO}`; ui.letterSpacing = '6px';
-  ui.fillText(CFG.kicker, 96, 92); ui.restore();
+  const k = EZ.o3(seg(t, 0.5, 1.2));
+  ui.save(); ui.globalAlpha = k; ui.fillStyle = 'rgba(255,255,255,.92)'; ui.font = `600 24px ${MONO}`; ui.letterSpacing = '6px';
+  ui.shadowColor = 'rgba(10,40,70,.35)'; ui.shadowBlur = 12; ui.fillText(CFG.kicker, 96, 92); ui.restore();
   const o = EZ.o3(seg(t, 0.8, 1.6)) * (1 - seg(t, 3.6, 4.2));
   if (o > 0) {
-    ui.save(); ui.globalAlpha = o; ui.fillStyle = '#FFF6EA'; ui.font = `700 132px ${DISPLAY}`; ui.letterSpacing = '-4px';
-    ui.shadowColor = 'rgba(40,10,40,.45)'; ui.shadowBlur = 40; ui.fillText(CFG.open, 96, 980 + (1 - o) * 30); ui.restore();
+    ui.save(); ui.globalAlpha = o; ui.fillStyle = '#FFFFFF'; ui.font = `700 132px ${DISPLAY}`; ui.letterSpacing = '-4px';
+    ui.shadowColor = 'rgba(8,40,70,.45)'; ui.shadowBlur = 40; ui.fillText(CFG.open, 96, 980 + (1 - o) * 30); ui.restore();
   }
   const c = EZ.o3(seg(t, 12.2, 13.1));
   if (c > 0) {
-    ui.save(); ui.globalAlpha = c; ui.fillStyle = '#FFF6EA'; ui.font = `700 120px ${DISPLAY}`; ui.letterSpacing = '-4px'; ui.textAlign = 'center';
-    ui.shadowColor = 'rgba(40,10,40,.5)'; ui.shadowBlur = 50; ui.fillText(CFG.close, 960, 220 + (1 - c) * 24);
-    ui.font = `600 22px ${MONO}`; ui.letterSpacing = '6px'; ui.shadowBlur = 0; ui.globalAlpha = EZ.o3(seg(t, 12.8, 13.5)) * 0.85;
+    ui.save(); ui.globalAlpha = c; ui.fillStyle = '#FFFFFF'; ui.font = `700 120px ${DISPLAY}`; ui.letterSpacing = '-4px'; ui.textAlign = 'center';
+    ui.shadowColor = 'rgba(8,40,70,.5)'; ui.shadowBlur = 50; ui.fillText(CFG.close, 960, 220 + (1 - c) * 24);
+    ui.font = `600 22px ${MONO}`; ui.letterSpacing = '6px'; ui.shadowBlur = 12; ui.globalAlpha = EZ.o3(seg(t, 12.8, 13.5)) * 0.9;
     ui.fillText('BUILT FROM CODE  ·  NO 3D MODELS', 960, 280); ui.restore();
   }
 }
 
 /* ---------- the frame ---------- */
 function render(t) {
-  ocean.update(t);
-  palms.forEach(({ crown, phase }) => { crown.rotation.z = 0.07 * Math.sin(t * 1.4 + phase); crown.rotation.x = 0.05 * Math.sin(t * 1.1 + phase * 2); });
-  const ba = 2.1 - t * 0.075, br = 25;
-  boat.position.set(Math.cos(ba) * br, 0.35 + 0.18 * Math.sin(t * 2.0), Math.sin(ba) * br);
-  boat.rotation.set(0.05 * Math.sin(t * 1.7), -ba + Math.PI, 0.06 * Math.sin(t * 2.3));
-  clouds.forEach(g => { const a = g.userData.a + t * 0.012; g.position.set(Math.cos(a) * g.userData.r, g.userData.y, Math.sin(a) * g.userData.r); g.lookAt(0, g.userData.y, 0); });
+  waterU.time.value = t;
+  palms.forEach(({ crown, phase }) => { crown.rotation.z = 0.06 * Math.sin(t * 1.4 + phase); crown.rotation.x = 0.05 * Math.sin(t * 1.1 + phase * 2); });
+  const ba = 2.3 - t * 0.07, br = 36;
+  sailboat.position.set(Math.cos(ba) * br, 0.4 + 0.15 * Math.sin(t * 2.0), Math.sin(ba) * br);
+  sailboat.rotation.set(0.05 * Math.sin(t * 1.7), -ba + Math.PI, 0.06 * Math.sin(t * 2.3));
+  moored.position.y = 0.35 + 0.08 * Math.sin(t * 1.8);
+  clouds.forEach(g => { const a = g.userData.a + t * 0.01; g.position.set(Math.cos(a) * g.userData.r, g.userData.y, Math.sin(a) * g.userData.r); g.lookAt(0, g.userData.y, 0); });
   birds.forEach((g, i) => {
-    const p = (t * 0.06 + i * 0.018) % 1, a = -0.6 + p * 2.6;
-    g.position.set(Math.cos(a) * (34 + i * 1.5), 18 + i * 0.8 + Math.sin(t * 1.3 + i) * 0.6, Math.sin(a) * (34 + i * 1.5) + i * 1.2);
+    const p = (t * 0.06 + i * 0.018) % 1, a = -0.4 + p * 2.6;
+    g.position.set(Math.cos(a) * (48 + i * 1.5), 24 + i * 0.8 + Math.sin(t * 1.3 + i) * 0.6, Math.sin(a) * (40 + i * 1.5) + i * 1.2);
     g.rotation.y = -a; const flap = 0.6 * Math.sin(t * 9 + i);
     g.children[0].rotation.x = flap; g.children[1].rotation.x = flap;
   });

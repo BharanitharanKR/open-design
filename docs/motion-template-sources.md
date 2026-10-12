@@ -47,7 +47,7 @@ and checked frame by frame.
 | Explainer | How a camera focuses; rays follow the thin-lens equation `1/f = 1/u + 1/v` |
 | Showreel | Fictional Studio Kinetik; five techniques cut to 128 BPM |
 | Product launch | Fictional Driftnote meeting app; toggle turns fragments into a summary |
-| 3D island | Procedural low-poly island in Three.js; one continuous camera move |
+| 3D island | Procedural tropical island in a turquoise lagoon, built in Three.js; one continuous camera move |
 | Kinetic typography | "What day is it?": a weekday reel, the answer, four beat cuts and a countdown, at 120 BPM |
 
 The explainer computes blur on the sensor as `2A·|v − d| / v`, so focusing and
