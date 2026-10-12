@@ -1764,9 +1764,8 @@ describe('EntryShell onboarding OpenDesign AMR runtime', () => {
     await act(async () => {});
     await vi.advanceTimersByTimeAsync(2100);
 
-    expect(screen.getByText('Couldn’t open the sign-in page')).toBeTruthy();
     expect(
-      screen.getByText('Your browser didn’t open automatically. Please try signing in again.'),
+      screen.getByText('Couldn’t open your browser automatically. Open the sign-in page below to continue.'),
     ).toBeTruthy();
     expect(screen.getByRole('link', { name: /Open sign-in page/i }).getAttribute('href')).toBe(
       'https://amr.example/activate',

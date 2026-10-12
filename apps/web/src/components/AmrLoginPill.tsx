@@ -40,7 +40,6 @@ import {
 import { Icon, type IconName } from './Icon';
 import { SignOutConfirmDialog } from './SignOutConfirmDialog';
 import { amrConsoleUrlForProfile, amrProfileBadgeLabel } from '../runtime/amr-guidance';
-import { AmrActivationHintText } from './AmrActivationHintText';
 
 interface AmrLoginPillProps {
   className?: string;
@@ -259,7 +258,9 @@ export function AmrAccountControl({
       {isSigningIn && activationUrl ? (
         <div className="amr-login-activation" role="group">
           <span className="amr-login-activation__hint">
-            <AmrActivationHintText browserOpenFailed={Boolean(browserOpenFailed)} />
+            {browserOpenFailed
+              ? t('settings.amrActivationBrowserFailed')
+              : t('settings.amrActivationHint')}
           </span>
           <div className="amr-login-activation__actions">
             <a

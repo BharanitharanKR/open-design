@@ -245,7 +245,6 @@ import {
 } from './entryRailBridge';
 import { resolveByokModelPreference } from './byok/validation';
 import onboardingWelcomeStyles from './OnboardingWelcome.module.css';
-import { AmrActivationHintText } from './AmrActivationHintText';
 
 // How long a cloud sign-in waits for the browser before offering to reopen it.
 const ACTIVATION_HINT_DELAY_MS = 5000;
@@ -3729,7 +3728,7 @@ function OnboardingView({
                     <p className="onboarding-cloud__activation" role="status">
                       <span>
                         {amrStatus.browserOpenFailed
-                          ? <AmrActivationHintText browserOpenFailed />
+                          ? t('settings.amrActivationBrowserFailed')
                           : t('settings.onboardingActivationPrompt')}
                       </span>
                       <a

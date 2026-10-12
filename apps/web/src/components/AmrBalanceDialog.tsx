@@ -17,6 +17,7 @@ import {
   hasAmrFundingRecovered,
   type AmrBalanceGateScope,
 } from '../runtime/amr-balance-gate';
+import { formatVelaBalanceUsd } from '../providers/daemon';
 import { AmrLoginPill } from './AmrLoginPill';
 import { Icon } from './Icon';
 import styles from './AmrBalanceDialog.module.css';
@@ -32,11 +33,7 @@ interface Props {
   reason: 'insufficient' | 'signed_out';
   modelId?: string | null;
   fundingScope?: AmrBalanceGateScope;
-  /**
-   * Raw wallet balance string from the blocking snapshot. Not rendered: the
-   * finalized S06 copy (OPEND-2849) carries no amount. Kept so callers keep
-   * passing the snapshot they gated on.
-   */
+  /** Raw wallet balance string from the blocking snapshot; null hides the badge. */
   balanceUsd: string | null;
   /** OpenDesign Cloud profile from the blocking snapshot; picks the console origin. */
   profile: string | null;
@@ -129,6 +126,7 @@ export function AmrBalanceDialog({
   reason,
   modelId,
   fundingScope,
+  balanceUsd,
   profile,
   entrySource,
   upgradeIntent = 'pricing',
@@ -140,6 +138,7 @@ export function AmrBalanceDialog({
 }: Props) {
   const t = useT();
   const analytics = useAnalytics();
+  const formattedBalance = formatVelaBalanceUsd(balanceUsd);
   const signedOut = reason === 'signed_out';
   const signInEntrySource =
     entrySource === 'home_balance_gate_upgrade'
@@ -284,11 +283,12 @@ export function AmrBalanceDialog({
         {signedOut ? t('chat.amrBalanceGate.signedOutTitle') : t('chat.amrBalanceGate.title')}
       </h2>
       <p className={styles.message}>
-        {/* Product copy S04 / S06 (OPEND-2849): the insufficient variant no
-            longer quotes the balance — the finalized sentence has no amount. */}
         {signedOut
           ? t('chat.amrBalanceGate.signedOutMessage')
-          : t('chat.amrBalanceGate.message')}
+          : // The insufficient variant always carries a definitive balance
+            // (that's what made the gate fire); the fallback is belt and
+            // suspenders for a malformed snapshot.
+            t('chat.amrBalanceGate.message', { balance: formattedBalance ?? '$0.00' })}
       </p>
       <div className={styles.benefitsCard}>
         <span className={styles.benefitsTitle}>
