@@ -42,7 +42,9 @@ function boot() {
   tl.eventCallback('onUpdate', () => window.__render(tl.time()));
   window.__timelines = { main: tl }; window.__render(0);
   const main = document.getElementById('main');
-  const fit = () => { if (window.__odMotionSourcePlayer || main.parentElement.id !== 'viewport') { main.style.transform = 'translate(-50%,-50%)'; return; } const k = Math.min(innerWidth / 1920, innerHeight / 1080); main.style.transform = 'translate(-50%,-50%) scale(' + k + ')'; };
+  // Inside an Open Design project the motion source player wraps the stage,
+  // fits it and adds its own controls; leave both to it there.
+  const fit = () => { if (window.__odMotionSourcePlayer || main.parentElement.id !== 'viewport') { main.style.transform = 'translate(-50%,-50%)'; document.getElementById('controls').style.display = 'none'; return; } const k = Math.min(innerWidth / 1920, innerHeight / 1080); main.style.transform = 'translate(-50%,-50%) scale(' + k + ')'; };
   addEventListener('resize', fit); fit();
   const scrub = document.getElementById('scrub'), tc = document.getElementById('tc'), btn = document.getElementById('playBtn');
   gsap.ticker.add(() => { const t = tl.time(); scrub.value = t; tc.textContent = t.toFixed(2) + ' / ' + D.toFixed(2); btn.textContent = tl.isActive() ? 'PAUSE' : (t >= D - 0.01 ? 'REPLAY' : 'PLAY'); });

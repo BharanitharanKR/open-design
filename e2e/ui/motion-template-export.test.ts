@@ -15,6 +15,16 @@ for (const name of ['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'futu
       .toEqual({ x: 0, y: 144.5, width: 1440, height: 810 });
   });
 
+  test(`[P1] motion-${name} leaves playback controls to the project player`, async ({ page }) => {
+    // Inside a project the motion source player owns playback; the film's own bar must not double it.
+    await page.addInitScript(() => {
+      Object.assign(window, { __odMotionSourcePlayer: true });
+    });
+    await page.goto(`/api/plugins/example-motion-${name}/preview`);
+    await page.waitForFunction(() => Boolean((window as unknown as { __timelines?: unknown }).__timelines));
+    await expect(page.locator('#controls')).toBeHidden();
+  });
+
   test(`[P1] motion-${name} exports the full composition without preview controls`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     // This is the marker installed by the daemon's existing frame bridge.
