@@ -51,20 +51,33 @@ function boot() {
 }
 </script>
 <script>
-// A user gesture enables sound; the master timeline owns play, pause and seek.
+// Sound starts with the film. If the browser blocks unmuted autoplay, the first
+// gesture on the page turns it on; the master timeline owns play, pause and seek.
 (function() {
   const audio=document.getElementById('soundtrack');
   if (!audio || typeof audio.play !== 'function' || window.__odFrameRenderer) return;
   const controls=document.getElementById('controls');
-  const button=document.createElement('button');button.type='button';button.textContent='Sound on';button.setAttribute('aria-label','Enable sound');button.setAttribute('aria-pressed','false');controls.appendChild(button);
-  let enabled=false,pending=false;
-  function play() { if(pending||!audio.paused)return;pending=true;audio.play().catch(()=>{enabled=false;button.textContent='Sound on';button.setAttribute('aria-pressed','false');}).finally(()=>{pending=false;}); }
-  button.onclick=()=>{enabled=!enabled;button.textContent=enabled?'Sound off':'Sound on';button.setAttribute('aria-pressed',String(enabled));if(enabled){const tl=window.__timelines.main;if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
+  const button=document.createElement('button');button.type='button';controls.appendChild(button);
+  // Gallery thumbnails load the page in an opaque sandbox; those stay silent until asked.
+  let enabled=window.origin!=='null',pending=false,chosen=false;
+  const timeline=()=>window.__timelines&&window.__timelines.main;
+  function label() { button.textContent=enabled?'Sound off':'Sound on';button.setAttribute('aria-label',enabled?'Mute sound':'Enable sound');button.setAttribute('aria-pressed',String(enabled)); }
+  function play() { if(pending||!audio.paused)return;pending=true;audio.play().catch(()=>{enabled=false;label();if(!chosen)waitForGesture();}).finally(()=>{pending=false;}); }
+  function waitForGesture() {
+    const start=event=>{
+      if(event.target===button)return;
+      document.removeEventListener('pointerdown',start,true);document.removeEventListener('keydown',start,true);
+      if(chosen||enabled)return;
+      const tl=timeline();enabled=true;label();if(tl)audio.currentTime=tl.time();play();
+    };
+    document.addEventListener('pointerdown',start,true);document.addEventListener('keydown',start,true);
+  }
+  label();
+  button.onclick=()=>{chosen=true;enabled=!enabled;label();const tl=timeline();if(enabled&&tl){if(tl.progress()>=1)tl.restart();else tl.play();audio.currentTime=tl.time();play();}else audio.pause();};
   document.getElementById('scrub').addEventListener('input',event=>{if(enabled)audio.currentTime=Number(event.target.value);});
   function sync() {
-    const tl=window.__timelines&&window.__timelines.main;
-    if(!tl){requestAnimationFrame(sync);return;}
-    if(enabled&&!window.__odFrameRenderer){
+    const tl=timeline();
+    if(tl&&enabled&&!window.__odFrameRenderer){
       if(!pending&&!audio.seeking&&audio.readyState>=3&&Math.abs(audio.currentTime-tl.time())>.3)audio.currentTime=tl.time();
       if(tl.paused()||tl.progress()>=1)audio.pause();else play();
     }else audio.pause();

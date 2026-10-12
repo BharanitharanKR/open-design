@@ -61,6 +61,8 @@ Carry `assets/soundtrack.mp3` with the reference files. It is an original
 procedural soundtrack authored for this example and timed to its beats; no
 audio from the source video is used. Keep the `<audio>` element inside the
 composition root, with numeric `data-start`, `data-duration` and `data-volume`;
-the desktop exporter mixes that local file into the MP4. Preview sound is
-enabled by the Sound on control and follows the master timeline, including
-pause and backward seeks. Keep it silent during frame capture.
+the desktop exporter mixes that local file into the MP4. Preview sound
+starts with the film; when the browser blocks autoplay, the first click or key
+press turns it on. The Sound off control mutes it. Sound follows the master
+timeline, including pause and backward seeks. Keep it silent during frame
+capture and in sandboxed gallery thumbnails.

@@ -125,14 +125,14 @@ const CURATED_HYPERFRAMES_PLUGIN_IDS = [
   'video-template-hyperframes-flight-map-route',
 ] as const;
 
-// Motion design: five remakes of viral motion posts, in the Home display order
-// ranked by the reach of each original post.
+// Motion design: five remakes of viral motion posts in the Home display order:
+// the featured tech reel first, then the rest by the reach of each original.
 export const CURATED_MOTION_DESIGN_PLUGIN_IDS = [
+  'example-motion-future',
   'example-motion-showreel',
   'example-motion-energy-reel',
   'example-motion-ui-morph',
   'example-motion-pixel-wizard',
-  'example-motion-future',
 ] as const;
 
 export const CURATED_PLUGIN_IDS_BY_CHIP = {

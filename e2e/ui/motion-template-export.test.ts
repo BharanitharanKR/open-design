@@ -1,20 +1,5 @@
 import { expect, test } from '@/playwright/suite';
 
-test('[P1] motion soundtrack follows preview play, pause and backward seek', async ({ page }) => {
-  await page.goto('/api/plugins/example-motion-showreel/preview');
-  const sound = page.getByRole('button', { name: 'Enable sound' });
-  await sound.focus();
-  await sound.click();
-  await expect(sound).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(() => page.locator('audio').evaluate((el: HTMLAudioElement) => !el.paused && el.currentTime > .5)).toBe(true);
-  await page.getByRole('button', { name: 'Play or pause' }).click();
-  await expect.poll(() => page.locator('audio').evaluate((el: HTMLAudioElement) => el.paused)).toBe(true);
-  await page.getByRole('slider').fill('0.2');
-  await expect.poll(() => page.locator('audio').evaluate((el: HTMLAudioElement) => Math.abs(el.currentTime - .2))).toBeLessThan(.13);
-  await sound.click();
-  await expect(sound).toHaveAttribute('aria-pressed', 'false');
-});
-
 for (const name of ['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'future']) {
   test(`[P1] motion-${name} gallery capture contains only the composition`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });

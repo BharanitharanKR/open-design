@@ -24,7 +24,8 @@ product owner. The library's top-10% view threshold is 255,312.
 | The Future Is Already Here | [Douyin](https://www.douyin.com/video/7690393045783346918) | — | 6,439 | 2,164 | — |
 
 Douyin does not publish play counts; its figures were read on 2026-10-12.
-Home order follows the table.
+Home and Community show The Future Is Already Here first, then the others in
+table order.
 
 ## Template content
 
@@ -32,6 +33,7 @@ Each `example.html` is rebuilt frame by frame against its original: layout,
 palette, type, motion and timing. On-screen copy is English. Brand names in the
 originals are kept only where they are the work's own subject (the showreel
 signs as the model that made it); the soundtrack of every template is original.
+The wizard's original is silent; its remake adds an 8-bit score.
 
 | Template | Length | Differences from the original |
 | --- | --- | --- |
@@ -89,6 +91,7 @@ output at each timestamp, including hidden layers.
 
 Every template carries an original procedural soundtrack in
 `assets/soundtrack.mp3`, timed to its beats. No audio from the original posts is
-used and no audio-generation model was involved. HTML preview sound is enabled
-by the Sound on control and follows the master timeline. The desktop export
-path mixes the timed local audio into the MP4 with FFmpeg.
+used and no audio-generation model was involved. HTML preview sound starts with
+the film; when the browser blocks autoplay, the first click or key press turns
+it on, and Sound off mutes it. Sound follows the master timeline. The desktop
+export path mixes the timed local audio into the MP4 with FFmpeg.

@@ -27,6 +27,7 @@ import {
   extractCategories,
   extractSubcategories,
 } from './plugins-home/facets';
+import { curatedPluginPriority } from './plugins-home/curatedPriority';
 import { localizePluginTitle } from './plugins-home/localization';
 import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
 import { inferPluginPreview, type MediaPreviewSpec } from './plugins-home/preview';
@@ -186,8 +187,9 @@ export function buildCommunityTemplates(
   });
 
   // Group the grid the way the pills read: category order, then the sub-facet
-  // display order, then catalogue order. The subtype pill row is derived from
-  // this array, so sorting here is what puts the pills in taxonomy order.
+  // display order, then the curated Home picks in their Home order, then
+  // catalogue order. The subtype pill row is derived from this array, so
+  // sorting here is what puts the pills in taxonomy order.
   entries.sort((a, b) => {
     const byCategory = categoryOrder.indexOf(a.categorySlug) - categoryOrder.indexOf(b.categorySlug);
     if (byCategory !== 0) return byCategory;
@@ -198,6 +200,9 @@ export function buildCommunityTemplates(
     );
     const bySub = rank(a.categorySlug, a.subSlug) - rank(b.categorySlug, b.subSlug);
     if (bySub !== 0) return bySub;
+    const curated = (record: InstalledPluginRecord) => curatedPluginPriority(record) ?? Number.MAX_SAFE_INTEGER;
+    const byCurated = curated(a.record) - curated(b.record);
+    if (byCurated !== 0) return byCurated;
     return a.index - b.index;
   });
 
