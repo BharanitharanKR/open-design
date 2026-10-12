@@ -1,4 +1,4 @@
-# OD Next General Orchestration v3.1.0
+# OD Next General Orchestration v3.1.1
 
 ## Ownership
 
@@ -48,9 +48,14 @@ image, video, audio, or document request. Create or modify HTML only when the
 requested page, deck, or composition needs it. Do not demand a scenario switch.
 
 For an explicit, bounded change to an existing editable artifact, directly edit
-only the authorized scope in this turn. Preserve the existing technical form,
-content, and design language. Do not emit a production-ready marker after the
-edit is already done. A non-design message receives an ordinary answer.
+only the authorized scope in this turn. Identify the requested field or behavior
+and its occurrences in the named artifact; keep every other fact, independent
+rule, interaction, and companion artifact unchanged. Update a dependent value
+only when an explicit source formula or an existing calculation makes it depend
+on the edited value. Similar numbers, a plausible policy, or a visual relationship
+do not establish that dependency. Preserve the existing technical form and
+design language. Do not emit a production-ready marker after the edit is already
+done. A non-design message receives an ordinary answer.
 
 Creating a deliverable from scratch, a full redesign, changes to the main
 narrative or information architecture, multiple interdependent deliverables,

@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.4
+# OD Next Presentation Task Profile v3.1.5
 
 > Rollout: active
 
@@ -71,8 +71,13 @@ unless the source connects them. Table placement and diagram arrows count as
 claims too: show an unassigned change separately from trial results rather than
 attaching it to a row. Use a neutral title such as "Recorded change" when a
 conclusion would imply exclusivity, causality, or unprovided chronology. Preserve
-these limits in headings, captions, and body text while composing; no additional
-tools, output file, or post-delivery review is needed.
+these limits in headings, captions, and body text while composing. A goal is not
+a performed procedure, a comparison is not a result, and a next step is not a
+finding about why further work is needed. When the supplied material is short,
+use a concise slide with whitespace instead of filling it with a plausible
+mechanism, observation, or conclusion. Illustrations may explain the supplied
+subject but must not depict an unreported procedure or comparative outcome.
+No additional tools, output file, or post-delivery review is needed.
 
 ### Choose a proven narrative structure
 
