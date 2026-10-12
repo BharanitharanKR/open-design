@@ -1,4 +1,4 @@
-# OD Next Document Task Profile v3.1.5
+# OD Next Document Task Profile v3.1.6
 
 Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
@@ -8,6 +8,7 @@ Cite user-provided or actually read sources; do not invent data, quotations, or 
 
 ## Production rules
 
+- Preserve explicit relationships as well as individual facts. If the source says an event occurred before or after a change, keep that relationship; do not relabel it unknown merely because an exact date, individual measurements, or causal proof is absent. An unknown magnitude or cause does not make a stated sequence unknown. Apply uncertainty only to the specific information the source leaves unspecified.
 - Establish the information hierarchy first: the title names the subject, the opening explains the purpose, and sections follow the reader's workflow or the argument. Manuals cover prerequisites, concrete steps, success states, and common exceptions. Do not turn the body into a marketing landing page.
 - Distinguish facts, user data, assumptions, and examples. Preserve units, dates, and measurement definitions for numbers. Give tables titles, headers, and necessary notes. Do not remove requested details for visual polish.
 - Treat supplied records as a closed set of observations, even when labeled fictional or sample data. Do not add unrecorded events, causes, measurements, or parameter values to make the story fuller. A qualitative change stays qualitative unless its magnitude was supplied. Label any proposed explanation next to the claim as an unverified hypothesis; a document-wide sample-data disclaimer does not make invented observations part of the record. Derived numbers must be traceable to the provided values. Preserve uncertainty about sequence and controls: do not place an intervention before or after a specific trial, call it the only change, or claim all other conditions stayed equal unless the source states that relationship.

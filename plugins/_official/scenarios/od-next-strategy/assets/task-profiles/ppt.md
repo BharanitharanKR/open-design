@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.3
+# OD Next Presentation Task Profile v3.1.4
 
 > Rollout: active
 
@@ -54,6 +54,12 @@ and existing templates; user references apply only within their designated
 scope; this profile's defaults fill only what remains unspecified.
 
 ### Preserve the source before choosing a narrative
+
+Preserve explicit relationships as well as individual facts. If the source says
+an event occurred before or after a change, keep that relationship; do not relabel
+it unknown merely because an exact date, individual measurements, or causal proof
+is absent. An unknown magnitude or cause does not make a stated sequence unknown.
+Apply uncertainty only to the specific information the source leaves unspecified.
 
 For supplied records, factual organization takes precedence over the persuasive
 structures, conclusion-title defaults, and copy formulas below. During the

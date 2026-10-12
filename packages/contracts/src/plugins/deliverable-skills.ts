@@ -1,4 +1,4 @@
-export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.8';
+export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.9';
 
 /** Main deliverable catalog. Describes outputs; never a machine-plan admission gate. */
 export const DELIVERABLE_SKILL_IDS = [
@@ -22,8 +22,8 @@ export interface DeliverableSkillDefinition {
 }
 export const DELIVERABLE_SKILLS: readonly DeliverableSkillDefinition[] = [
   { id: 'prototype', title: 'Prototype', description: 'Websites, application interfaces, and interaction flows; excludes source-backed refreshable views, manuals, presentations, and other outputs selected only because they use HTML.', version: '3.1.2', routes: [{ id: 'prototype-html', kind: 'prototype', extensions: ['html'] }] },
-  { id: 'ppt', title: 'Presentation', description: 'Reports and presentations delivered as HTML slides; the product provides PDF/PPTX export.', version: '3.1.3', routes: [{ id: 'ppt-html', kind: 'presentation', extensions: ['html'] }] },
-  { id: 'document', title: 'Document', description: 'Reports, manuals, and long-form content delivered as formatted HTML documents; do not promise DOCX.', version: '3.1.5', routes: [{ id: 'document-html', kind: 'document', extensions: ['html'] }] },
+  { id: 'ppt', title: 'Presentation', description: 'Reports and presentations delivered as HTML slides; the product provides PDF/PPTX export.', version: '3.1.4', routes: [{ id: 'ppt-html', kind: 'presentation', extensions: ['html'] }] },
+  { id: 'document', title: 'Document', description: 'Reports, manuals, and long-form content delivered as formatted HTML documents; do not promise DOCX.', version: '3.1.6', routes: [{ id: 'document-html', kind: 'document', extensions: ['html'] }] },
   { id: 'image', title: 'Image', description: 'Use media generation for image files; use HTML only when editable layout source is explicitly requested.', version: '3.1.1', routes: [{ id: 'media-image', kind: 'image', extensions: ['png', 'jpg', 'jpeg', 'webp'] }, { id: 'image-html', kind: 'source', extensions: ['html'] }] },
   { id: 'web-clone', title: 'Web Clone', description: 'Rebuild pages from a specified URL or screenshot while preserving source attribution and authorization boundaries.', version: '3.1.1', routes: [{ id: 'web-clone-html', kind: 'prototype', extensions: ['html'] }] },
   { id: 'hyperframes', title: 'HyperFrames', description: 'Editable timeline-animation HTML source; declare a separate video deliverable when an actual MP4 is needed.', version: '3.1.1', routes: [{ id: 'hyperframes-html', kind: 'source', extensions: ['html'] }] },
