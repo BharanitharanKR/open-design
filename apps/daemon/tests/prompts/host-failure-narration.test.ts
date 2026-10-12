@@ -177,6 +177,14 @@ interface Entry {
 }
 
 const REGISTRY: readonly Entry[] = [
+  {
+    file: 'skills/motion-design/SKILL.md',
+    match: 'If required audio production fails, report the blocker instead of delivering',
+    chars: [76],
+    verdict: 'self-report',
+    why: 'Reports an incomplete audible film delivery, not host infrastructure '
+      + 'state or diagnostic text. Required sound cannot be presented as completed silence.',
+  },
   // ---- The two prior fixes. These lines FORBID narration. ----
   {
     file: 'apps/daemon/src/prompts/official-system.ts',

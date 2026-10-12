@@ -37,12 +37,12 @@ describe('motion video authored clock', () => {
     const render = new JSDOM(injectHyperFramesFrameBridge(html, runtime), {runScripts:'dangerously',pretendToBeVisual:true});
     try {
       await new Promise<void>(resolve => preview.window.addEventListener('load', () => resolve()));
-      const controls=preview.window.document.querySelector('[data-od-motion-controls]').shadowRoot;
-      expect(controls.querySelector('input').max).toBe('20');
+      const player = preview.window.__odMotionPlayer;
+      expect(player.state().duration).toBe(20);
+      expect(preview.window.document.querySelector('[data-od-motion-controls]')).toBeNull();
       expect(await render.window.__odFrameRenderer.ready()).toEqual({duration:20,fps:30});
       for (const time of [0,5,10,18.9,20,8]) {
-        controls.querySelector('input').value=String(time);
-        controls.querySelector('input').dispatchEvent(new preview.window.Event('input'));
+        player.seek(time);
         await render.window.__odFrameRenderer.seek(time);
         expect(preview.window.clock.t).toBeCloseTo(time);
         expect(render.window.clock.t).toBeCloseTo(preview.window.clock.t);
@@ -53,9 +53,9 @@ describe('motion video authored clock', () => {
     const dom = new JSDOM(injectMotionSourcePlayer(source('tl.to({}, {duration:18.9})')), {runScripts:'dangerously',pretendToBeVisual:true});
     try {
       await new Promise<void>(resolve => dom.window.addEventListener('load', () => resolve()));
-      const controls = dom.window.document.querySelector('[data-od-motion-controls]').shadowRoot;
-      expect(controls.querySelector('output').textContent).toContain('timeline duration must equal');
-      expect(controls.querySelector('button').disabled).toBe(true);
+      expect(dom.window.document.querySelector('[data-od-motion-status]').textContent).toContain('timeline duration must equal');
+      expect(dom.window.__odMotionPlayer).toBeUndefined();
+      expect(dom.window.__timelines.main.paused()).toBe(true);
     } finally { dom.window.close(); }
   });
 });
