@@ -29,7 +29,7 @@ describe('motion audio contract isolation', () => {
     const source = '<div data-composition-id="main"></div><script data-od-motion-source-player>oldPlayer();</script>';
     const result = injectMotionSourcePlayer(source);
     expect(result).not.toContain('oldPlayer');
-    expect(result).toContain('data-od-motion-source-player="2"');
+    expect(result).toContain('data-od-motion-source-player="4"');
     expect(injectMotionSourcePlayer(result)).toBe(result);
   });
 });

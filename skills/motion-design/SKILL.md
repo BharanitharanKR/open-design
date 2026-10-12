@@ -241,8 +241,10 @@ the MP4 exporter seeks with them suppressed.
 Audio-reactive motion needs a precomputed envelope or known beat map when exact
 replay matters. Never imply that an arbitrary pulse is analysis of the music.
 
-Open Design scaffolds and embeds a shared source player with play/pause, scrub
-and replay. Preserve its `script[data-od-motion-source-player]`. Do not create
+Open Design scaffolds and embeds shared source playback: open the HTML to
+automatically loop the film, with no separate player bar. Click the picture to
+pause/resume or unlock audio blocked by browser autoplay. The internal
+`window.__odMotionPlayer` interface retains play/pause, seek and replay. Preserve its `script[data-od-motion-source-player]`. Do not create
 competing controls or start a second playback clock. The renderer sets
 `window.__odMotionRender` before author scripts to disable preview chrome and
 scaling during capture. The scaffold includes pinned GSAP 3.14.2 at
@@ -280,8 +282,8 @@ Declare every track with the renderer's supported timing, for example:
 Effects use the same contract with their own start and duration. Keep sources
 local and relative, pre-trim tracks, and avoid loop, playback-rate and media-start
 attributes. Keep music below speech and align accents to the actual beat map.
-Preserve the shared source player: it synchronizes audio to play, pause, seek
-and replay. Do not start a second audio clock or use Web Audio alone, which is
+Preserve the shared source player: it automatically loops picture and sound, and synchronizes audio to play,
+pause, seek and replay. Do not start a second audio clock or use Web Audio alone, which is
 not an exportable track. The renderer mixes these tracks into the MP4.
 
 In the existing bounded video check, verify source audio follows those controls,
