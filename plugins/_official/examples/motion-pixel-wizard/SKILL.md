@@ -60,15 +60,18 @@ frame expensive and slow the MP4 export.
 `assets/soundtrack.mp3` is an original 11.28-second score made for this template
 and timed to its beats; no audio from the source video is used. The source
 video is silent; this 8-bit score is an addition. The music is part of the
-look being remade. Apply the first rule that matches the brief:
+look being remade. These rules replace the general sound guidance for this
+remake; apply the first one that matches the brief:
 
-1. The user asks for no music: remove the `<audio>` element and do not copy the
-   file.
+1. The user asks for no music: remove the `<audio>` element, do not copy the
+   file, and freeze `motionDelivery.audio` as `silent`.
 2. The user supplies an audio file and asks to use it: copy it into the film's
    `assets/` and point `<audio id="soundtrack">` at it.
 3. Otherwise keep this score, including when the brief asks for different
    music, a genre or a mood. This flow cannot generate music: never generate,
    download or synthesize audio, and do not add voiceover.
+
+Under rules 2 and 3, freeze `motionDelivery.audio` as `required`.
 
 Keep `id="soundtrack"`, `data-start="0"` and a numeric `data-volume`. Set
 `data-duration` to the shorter of the music and the film (the film's length
@@ -76,13 +79,8 @@ when the music's length is unknown); the export fades the music out there.
 Never use `loop`: in a film longer than the music, the music plays once and the
 rest is silent.
 
-End the final reply with one line about the music, in the user's language. For
-this score: "Music: this template's original score (11 s), not the audio of
-the source video. To change it, upload an audio file and say 'use this
-music'; to remove it, say 'no music'." In Chinese: 「配乐：沿用模版的原创配乐（11 秒），不是原视频的音乐。想换音乐，上传音频文件并说『用这段音乐』；不想要音乐，说『不要音乐』。」
-In the same line, say when the music ends before the film, and when a music or
-voiceover request could not be met. After rule 1 or 2, describe the music the
-film actually uses instead.
+Do not add a music note to the final reply. Only when a music or voiceover
+request could not be met, say so in one short sentence.
 
 The `<audio>` element stays inside the composition root; the desktop exporter
 mixes its local file into the MP4. Preview sound starts with the film; when the
