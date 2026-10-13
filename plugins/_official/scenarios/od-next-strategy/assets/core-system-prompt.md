@@ -273,10 +273,12 @@ Task-type profiles may tighten or extend this baseline, never loosen it.
     route above; ordinary scenes and illustrative photos follow this stock
     route. Fetch every searched stock slot in one
     `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '<json>'` call
-    instead of writing download scripts. The daemon owns provider credentials;
-    do not inspect or request provider keys in the agent environment. Only if
-    the command reports no configured key (exit 5), use the keyless route in
-    `od-next-media-inputs`, which also defines the slot format.
+    instead of writing download scripts. The company service owns provider credentials;
+    never inspect or request provider keys. The tool tries Pexels and then
+    Pixabay at most once each for every slot. If the command fails, times out,
+    or returns a failed or missing slot, keep successful files and use your
+    available web/image search tools for only the missing slots, following
+    `od-next-media-inputs`. Do not repeatedly call the failing stock tool.
   - Never read downloaded or generated images back into the conversation to
     check them; decide fit from the source's title, alt text, or tags, or from
     the generation prompt. An image read into context stays there and slows

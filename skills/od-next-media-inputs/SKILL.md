@@ -46,27 +46,26 @@ the Core imagery-by-type rule; it is the only source of those rules.
 ## Search stock photos
 
 - Fetch every stock slot through the authenticated daemon wrapper in one
-  call; provider credentials stay in the daemon, not the agent environment:
+  call, using the company service and your existing Vela login:
   `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '[{"id":"hero","query":"black eyeglasses frame","width":1200,"orientation":"landscape"}]'`.
-  Write each query in English with the subject first. The command searches,
-  re-ranks by alt text, downloads at `width` into `assets/stock/`, records
-  credits in `assets/stock/credits.json`, and prints each slot's `path`,
-  `alt`, and `status`. Use a slot's `alt` to judge fit; for `not_found`,
-  retry that slot once with a broader query. Exit code 5 means no key: use
-  the keyless path below.
-- If the wrapper reports no configured key (exit 5), the sites' search pages
-  block scripts (HTTP 403). Open the
-  search results page with the web fetch tool instead, for example
-  `https://www.pexels.com/search/<query>/` or
-  `https://pixabay.com/images/search/<query>/`, and read each result's photo
-  ID or image URL together with its alt text.
-  - Pexels file:
-    `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?auto=compress&cs=tinysrgb&w=<display width>`
-  - Pixabay file: the `cdn.pixabay.com/photo/...` URL listed in the results.
-- Choose candidates from their alt text and titles. Download every slot in
-  one batched command: concurrent requests, a 10–15 s timeout per request,
-  and about 3 minutes in total. Do not poll with sleep or retry one slot in a
-  loop; on HTTP 403 or 429, switch to another candidate or library.
+  Write queries in English with the subject first. The service tries Pexels
+  once and then Pixabay once for each slot, ranks by alt text, and returns
+  each result. The wrapper downloads images into `assets/stock/` and records
+  credits in `assets/stock/credits.json`. Provider keys stay on the server;
+  never ask the user to configure a stock-provider key.
+- If the command fails or times out, or a slot returns `error`, `not_found`,
+  or `budget_exceeded`, keep successful local files and use your available
+  web/image search tools for only the missing slots. This includes unavailable
+  service/login, API errors, rate limits and failed image downloads. Do not
+  call the stock tool again for those failed slots.
+- Search the stock libraries' public pages or the correct official source
+  for a named real subject. Read each result's title/alt text, source and
+  license before selecting its actual image URL; never invent a URL or ID.
+- Batch independent downloads, bound each request to 10–15 seconds, and
+  stop when the existing acquisition budget expires. On HTTP 403/429, switch
+  source instead of looping; at most one alternative web search per missing
+  slot. Keep successful images and disclose a designed placeholder when no
+  usable image is found.
 - Download at display size (long edge 1600 px or less) and keep each JPEG or
   WebP under about 400 KB.
 - Record each photo's page URL, author when shown, and license (Pexels

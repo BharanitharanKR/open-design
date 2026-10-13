@@ -1,80 +1,23 @@
-// `od media stock-search`: licensed stock photos for image slots in one call.
-//
-// Runs in the daemon with its configured provider keys: PEXELS_API_KEY first,
-// PIXABAY_API_KEY as fallback. All
-// slots are searched and downloaded concurrently under a per-request timeout
-// and one overall budget, so a slow provider cannot stall the turn. Each file is
-// requested at display width from the provider CDN, measured from its header,
-// and recorded with its source and license in <outDir>/credits.json. Providers
-// only match keywords, so each slot re-ranks a 20-photo pool by its alt text.
-
+// Company-managed stock search through Vela; download only into the authorized project.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { redactSecrets } from '../redact.js';
-
-import type { StockProvider, StockSearchAttempt, StockSlot, StockSlotResult, StockSearchReport, StockSearchRequest } from '@open-design/contracts';
+import type { StockProvider, StockSearchAttempt, StockSlotResult, StockSearchReport, StockSearchRequest } from '@open-design/contracts';
+import { searchVelaStockPhotos, type VelaStockSearchInput, type StockSearchServiceReport } from './vela-stock-search.js';
 export type { StockProvider, StockOrientation, StockRateLimit, StockSearchAttempt, StockSlot, StockSlotResult, StockSearchReport } from '@open-design/contracts';
 
 export type StockSearchOptions = StockSearchRequest & {
   cwd?: string;
-  env?: NodeJS.ProcessEnv;
   fetch?: typeof fetch;
   now?: () => number;
-  /** Privileged callers confine every read/write to the authorized project. */
+  workspaceId?: string;
+  search?: (input: VelaStockSearchInput) => Promise<StockSearchServiceReport>;
   resolveOutputPath?: (relativePath: string) => Promise<string>;
-  /** Allowlisted response metadata and scrubbed errors for execution logs. */
   onAttempt?: (event: StockSearchAttempt & { slotId: string; slotIndex: number }) => void;
 };
-
-export class StockSearchConfigError extends Error {}
+export class StockSearchServiceError extends Error {}
 export class StockSearchInputError extends Error {}
-
-const LICENSES: Record<StockProvider, string> = {
-  pexels: 'Pexels License (https://www.pexels.com/license/)',
-  pixabay: 'Pixabay Content License (https://pixabay.com/service/license-summary/)',
-};
-
-type Candidate = {
-  provider: StockProvider;
-  downloadUrl: string;
-  alt: string;
-  author: string | undefined;
-  authorUrl: string | undefined;
-  sourceUrl: string;
-};
-
-// Providers rank by keyword relevance only; a photo whose alt merely mentions
-// the subject ("an elderly woman reading, wearing glasses") can outrank one of
-// the subject itself. Alt text usually names its main subject first, so rank
-// candidates by how many query words the alt contains, then by how early the
-// first one appears.
-const CJK = /[\u3400-\u9fff]/;
-
-/**
- * Higher is a more direct match; 0 rejects the candidate. A query with no
- * English words cannot be compared with English alt text, so every candidate
- * scores 1 and provider order stands.
- */
-export function subjectScore(query: string, alt: string): number {
-  const terms = query.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
-  if (terms.length === 0) return 1;
-  const words = alt.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const hits = terms.filter((t) => words.some((w) => w.includes(t))).length;
-  if (hits === 0) return 0;
-  const first = words.findIndex((w) => terms.some((t) => w.includes(t)));
-  return hits * 10 + (10 - Math.min(first, 10));
-}
-
-function pickBest(query: string, candidates: Candidate[]): Candidate | null {
-  let best: Candidate | null = null;
-  let bestScore = 0;
-  for (const candidate of candidates) {
-    const score = subjectScore(query, candidate.alt);
-    if (score > bestScore) { best = candidate; bestScore = score; }
-  }
-  return best;
-}
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function slotFileName(id: string): string {
   const safe = id.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
@@ -102,73 +45,6 @@ function validateExecutionInputs(options: StockSearchOptions): void {
   }
 }
 
-type ResponseInfo = Pick<StockSearchAttempt, 'httpStatus' | 'rateLimit' | 'retryAfter'>;
-
-function nonNegativeInteger(value: string | null): number | null {
-  if (value === null || !/^\d+$/.test(value.trim())) return null;
-  const number = Number(value);
-  return Number.isSafeInteger(number) && number >= 0 ? number : null;
-}
-
-function responseInfo(response: Response, pexelsSearch = false): ResponseInfo {
-  const rawRetryAfter = response.headers.get('retry-after');
-  const seconds = nonNegativeInteger(rawRetryAfter);
-  const date = rawRetryAfter !== null && /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(rawRetryAfter)
-    ? Date.parse(rawRetryAfter) : NaN;
-  const retryAfter = seconds !== null ? String(seconds)
-    : Number.isFinite(date) ? new Date(date).toUTCString() : undefined;
-  return {
-    httpStatus: response.status,
-    ...(pexelsSearch ? { rateLimit: {
-      period: 'month' as const,
-      limit: nonNegativeInteger(response.headers.get('x-ratelimit-limit')),
-      remaining: nonNegativeInteger(response.headers.get('x-ratelimit-remaining')),
-      resetUnix: nonNegativeInteger(response.headers.get('x-ratelimit-reset')),
-    } } : {}),
-    ...(retryAfter !== undefined ? { retryAfter } : {}),
-  };
-}
-
-async function getJson(fetchImpl: typeof fetch, url: string, headers: Record<string, string>, timeoutMs: number, onResponse: (response: Response) => void): Promise<any> {
-  const res = await fetchImpl(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
-  // Observe headers before throwing or decoding: 429/invalid JSON must retain them.
-  onResponse(res);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-async function searchPexels(fetchImpl: typeof fetch, key: string, slot: StockSlot, width: number, timeoutMs: number, onResponse: (response: Response) => void): Promise<Candidate[]> {
-  const params = new URLSearchParams({ query: slot.query, per_page: '20' });
-  if (slot.orientation) params.set('orientation', slot.orientation);
-  if (CJK.test(slot.query)) params.set('locale', 'zh-CN');
-  const body = await getJson(fetchImpl, `https://api.pexels.com/v1/search?${params}`, { authorization: key }, timeoutMs, onResponse);
-  const photos = Array.isArray(body?.photos) ? body.photos.filter((p: any) => typeof p?.src?.original === 'string') : [];
-  return photos.map((photo: any): Candidate => ({
-    provider: 'pexels',
-    downloadUrl: `${photo.src.original}?auto=compress&cs=tinysrgb&w=${width}`,
-    alt: String(photo.alt ?? ''),
-    author: photo.photographer ? String(photo.photographer) : undefined,
-    authorUrl: photo.photographer_url ? String(photo.photographer_url) : undefined,
-    sourceUrl: String(photo.url ?? ''),
-  }));
-}
-
-async function searchPixabay(fetchImpl: typeof fetch, key: string, slot: StockSlot, width: number, timeoutMs: number, onResponse: (response: Response) => void): Promise<Candidate[]> {
-  const orientation = slot.orientation === 'landscape' ? 'horizontal' : slot.orientation === 'portrait' ? 'vertical' : 'all';
-  const params = new URLSearchParams({ key, q: slot.query, image_type: 'photo', per_page: '20', safesearch: 'true', orientation });
-  if (CJK.test(slot.query)) params.set('lang', 'zh');
-  const body = await getJson(fetchImpl, `https://pixabay.com/api/?${params}`, {}, timeoutMs, onResponse);
-  const hits = Array.isArray(body?.hits) ? body.hits.filter((h: any) => typeof h?.webformatURL === 'string') : [];
-  return hits.map((hit: any): Candidate => ({
-    provider: 'pixabay',
-    downloadUrl: width > 640 && typeof hit.largeImageURL === 'string' ? hit.largeImageURL : hit.webformatURL,
-    alt: String(hit.tags ?? ''),
-    author: hit.user ? String(hit.user) : undefined,
-    authorUrl: hit.user && hit.user_id ? `https://pixabay.com/users/${hit.user}-${hit.user_id}/` : undefined,
-    sourceUrl: String(hit.pageURL ?? ''),
-  }));
-}
-
 /** Intrinsic size from a JPEG SOF or PNG IHDR header; null when unknown. */
 export function imageSize(buf: Buffer): { width: number; height: number } | null {
   if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) {
@@ -183,6 +59,7 @@ export function imageSize(buf: Buffer): { width: number; height: number } | null
     if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
       return { width: buf.readUInt16BE(offset + 7), height: buf.readUInt16BE(offset + 5) };
     }
+    if (length < 2) return null;
     offset += 2 + length;
   }
   return null;
@@ -201,101 +78,96 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: nu
   return out;
 }
 
+/** Download only the known public provider CDN; never forward Vela authorization. */
+function stockDownloadUrl(value: string, provider: StockProvider): string {
+  const url = new URL(value);
+  const host = provider === 'pexels' ? 'images.pexels.com' : 'cdn.pixabay.com';
+  if (url.protocol !== 'https:' || url.hostname !== host || url.username || url.password || url.port) {
+    throw new Error('invalid stock image URL');
+  }
+  return url.toString();
+}
+
+async function boundedImageBody(response: Response): Promise<Buffer> {
+  const length = Number(response.headers.get('content-length'));
+  if (length > MAX_IMAGE_BYTES) throw new Error('stock image exceeds size limit');
+  if (!response.body) throw new Error('invalid stock image body');
+  const chunks: Buffer[] = [];
+  let total = 0;
+  const reader = response.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_IMAGE_BYTES) throw new Error('stock image exceeds size limit');
+      chunks.push(Buffer.from(value));
+    }
+  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+  return Buffer.concat(chunks);
+}
+
 export async function stockSearch(options: StockSearchOptions): Promise<StockSearchReport> {
   validateExecutionInputs(options);
-  const env = options.env ?? process.env;
-  const keys: Partial<Record<StockProvider, string>> = {
-    ...(env.PEXELS_API_KEY?.trim() ? { pexels: env.PEXELS_API_KEY.trim() } : {}),
-    ...(env.PIXABAY_API_KEY?.trim() ? { pixabay: env.PIXABAY_API_KEY.trim() } : {}),
-  };
-  const providers = (['pexels', 'pixabay'] as const).filter((p) => keys[p]);
-  if (providers.length === 0) {
-    throw new StockSearchConfigError('no stock photo API key: set PEXELS_API_KEY or PIXABAY_API_KEY');
-  }
-  const secrets = Object.values(keys).filter((key): key is string => Boolean(key)).sort((a, b) => b.length - a.length);
-  const safeError = (error: unknown): string => {
-    let message = error instanceof Error ? error.message : String(error);
-    for (const secret of secrets) {
-      message = message.split(secret).join('[REDACTED]');
-      message = message.split(encodeURIComponent(secret)).join('[REDACTED]');
-    }
-    return redactSecrets(message).replace(/\s+/g, ' ').trim().slice(0, 1_000);
-  };
-  const fetchImpl = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
-  const timeoutMs = options.requestTimeoutMs ?? 12_000;
-  const deadline = now() + (options.budgetMs ?? 180_000);
-  const cwd = options.cwd ?? process.cwd();
+  const requestTimeoutMs = Math.min(options.requestTimeoutMs ?? 12_000, 12_000);
+  const budgetMs = Math.min(options.budgetMs ?? 180_000, 180_000);
+  const concurrency = Math.min(options.concurrency ?? 6, 6);
+  const deadline = now() + budgetMs;
+  let report: StockSearchServiceReport;
+  try {
+    report = await (options.search ?? searchVelaStockPhotos)({ slots: options.slots, requestTimeoutMs, budgetMs,
+      concurrency, ...(options.workspaceId ? { workspaceId: options.workspaceId } : {}) });
+  } catch {
+    throw new StockSearchServiceError('stock search service unavailable; use web search for missing slots');
+  }
   const outDir = options.outDir ?? 'assets/stock';
+  const cwd = options.cwd ?? process.cwd();
   const resolveOutputPath = options.resolveOutputPath ?? (async (rel: string) => path.resolve(cwd, rel));
   await mkdir(await resolveOutputPath(outDir), { recursive: true });
-
-  const results = await mapLimit(options.slots, options.concurrency ?? 6, async (slot, slotIndex): Promise<StockSlotResult> => {
-    const attempts: StockSearchAttempt[] = [];
+  const results = await mapLimit(report.slots, concurrency, async (candidate, slotIndex): Promise<StockSlotResult> => {
+    const slot = options.slots[slotIndex]!;
+    const attempts = [...candidate.attempts];
+    const emit = (attempt: StockSearchAttempt) => {
+      try { options.onAttempt?.({ ...attempt, slotId: slot.id, slotIndex }); } catch { /* logging must not change acquisition */ }
+    };
+    attempts.forEach(emit);
     const base = { id: slot.id, query: slot.query, attempts };
-    const width = Math.min(Math.max(Math.round(slot.width ?? 1200), 200), 2400);
-    let lastError: string | undefined;
-    for (const provider of providers) {
-      const remaining = deadline - now();
-      if (remaining <= 0) return { ...base, status: 'budget_exceeded' };
-      const budget = Math.min(timeoutMs, remaining);
-      let stage: StockSearchAttempt['stage'] = 'search';
-      let stageStartedAt = performance.now();
-      let response: ResponseInfo = { httpStatus: null };
-      const recordAttempt = (status: StockSearchAttempt['status'], error?: unknown) => {
-        const attempt: StockSearchAttempt = {
-          provider, stage, status, timestamp: new Date().toISOString(), ...response,
-          durationMs: Math.max(0, performance.now() - stageStartedAt),
-          rateLimited: response.httpStatus === 429,
-          ...(error !== undefined ? { error: safeError(error) } : {}),
-        };
-        attempts.push(attempt);
-        try {
-          options.onAttempt?.({ slotId: slot.id, slotIndex, ...attempt });
-        } catch {
-          // Optional execution-log sinks must not change image acquisition.
-        }
-      };
-      try {
-        const search = provider === 'pexels' ? searchPexels : searchPixabay;
-        const candidate = pickBest(slot.query, await search(fetchImpl, keys[provider]!, slot, width, budget,
-          (res) => { response = responseInfo(res, provider === 'pexels'); }));
-        recordAttempt(candidate ? 'ok' : 'not_found');
-        if (!candidate) continue;
-        stage = 'download';
-        stageStartedAt = performance.now();
-        response = { httpStatus: null };
-        const res = await fetchImpl(candidate.downloadUrl, { signal: AbortSignal.timeout(Math.min(timeoutMs, Math.max(deadline - now(), 1))) });
-        response = responseInfo(res);
-        if (!res.ok) throw new Error(`download HTTP ${res.status}`);
-        const buf = Buffer.from(await res.arrayBuffer());
-        const size = imageSize(buf);
-        const rel = path.posix.join(outDir.split(path.sep).join('/'), slotFileName(slot.id));
-        await writeFile(await resolveOutputPath(rel), buf);
-        recordAttempt('ok');
-        return {
-          ...base,
-          status: 'ok',
-          provider,
-          path: rel,
-          ...(size ?? {}),
-          bytes: buf.length,
-          alt: candidate.alt,
-          ...(candidate.author ? { author: candidate.author } : {}),
-          ...(candidate.authorUrl ? { authorUrl: candidate.authorUrl } : {}),
-          sourceUrl: candidate.sourceUrl,
-          license: LICENSES[provider],
-        };
-      } catch (error) {
-        recordAttempt('error', error);
-        lastError = `${provider}: ${attempts.at(-1)!.error}`;
-      }
+    if (candidate.status !== 'ok') return { ...base, status: candidate.status, ...(candidate.error ? { error: candidate.error } : {}) };
+    if (now() >= deadline) return { ...base, status: 'budget_exceeded' };
+    const provider = candidate.provider!;
+    const started = performance.now();
+    let httpStatus: number | null = null;
+    const record = (status: 'ok' | 'error', error?: string) => {
+      const attempt: StockSearchAttempt = { provider, stage: 'download', status, timestamp: new Date().toISOString(),
+        durationMs: performance.now() - started, httpStatus, rateLimited: httpStatus === 429, ...(error ? { error } : {}) };
+      attempts.push(attempt); emit(attempt);
+    };
+    try {
+      const url = stockDownloadUrl(candidate.downloadUrl!, provider);
+      const response = await (options.fetch ?? fetch)(url, { redirect: 'error',
+        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, Math.max(1, deadline - now()))) });
+      httpStatus = response.status;
+      if (!response.ok) throw new Error(`download HTTP ${httpStatus}`);
+      const buf = await boundedImageBody(response);
+      const size = imageSize(buf);
+      if (!size || size.width < 1 || size.height < 1) throw new Error('invalid stock image content');
+      const rel = path.posix.join(outDir.split(path.sep).join('/'), slotFileName(slot.id));
+      await writeFile(await resolveOutputPath(rel), buf);
+      record('ok');
+      return { ...base, status: 'ok', provider, path: rel, ...size, bytes: buf.length,
+        alt: candidate.alt ?? '', ...(candidate.author ? { author: candidate.author } : {}), ...(candidate.authorUrl ? { authorUrl: candidate.authorUrl } : {}), sourceUrl: candidate.sourceUrl ?? '', license: candidate.license ?? '' };
+    } catch (error) {
+      // Fixed diagnostics keep arbitrary upstream/body/filesystem text out of tool output.
+      const timeout = error instanceof Error && /timeout|abort/i.test(error.name);
+      const message = timeout ? 'stock image download timed out' : httpStatus !== null && httpStatus >= 400
+        ? `download HTTP ${httpStatus}` : 'invalid or unavailable stock image';
+      record('error', message);
+      return { ...base, status: now() >= deadline ? 'budget_exceeded' : 'error', error: message };
     }
-    return lastError ? { ...base, status: 'error', error: lastError } : { ...base, status: 'not_found' };
   });
-
-  await writeCredits(path.posix.join(outDir, 'credits.json'), results.filter((r) => r.status === 'ok'), resolveOutputPath);
-  return { providers, slots: results };
+  await writeCredits(path.posix.join(outDir, 'credits.json'), results.filter(r => r.status === 'ok'), resolveOutputPath);
+  return { providers: report.providers, slots: results };
 }
 
 async function writeCredits(file: string, fresh: StockSlotResult[], resolveOutputPath: (relativePath: string) => Promise<string>): Promise<void> {

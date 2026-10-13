@@ -1,3 +1,4 @@
+import { runVelaCommand } from '../src/integrations/vela-command.js';
 import type { StockSearchResponse } from '@open-design/contracts';
 import { spawn } from 'node:child_process';
 import type { Server } from 'node:http';
@@ -12,6 +13,8 @@ import { startServer } from '../src/server.js';
 import { stockTelemetryDir } from '../src/media/stock-telemetry.js';
 import { toolTokenRegistry } from '../src/tool-tokens.js';
 import { codexOpenDesignShellEnvironmentArgs } from '../src/runtimes/defs/codex.js';
+
+vi.mock('../src/integrations/vela-command.js', async (original) => ({ ...await original<typeof import('../src/integrations/vela-command.js')>(), runVelaCommand: vi.fn() }));
 
 const endpoint = '/api/tools/media/stock-search';
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x03, 0x20, 0x04, 0xb0, 0x03, 0x01, 0x22, 0x00]);
@@ -38,6 +41,16 @@ describe('stock search daemon credential boundary', () => {
     vi.stubEnv('PIXABAY_API_KEY', '');
     providerRequests = [];
     providerKeys = [];
+    vi.mocked(runVelaCommand).mockImplementation(async (args, options) => {
+      if (args[0] !== 'media' || args[1] !== 'stock-search') throw new Error('unsupported test command');
+      providerRequests.push('company-stock-service');
+      const request = JSON.parse(String(options?.input));
+      expect(request).not.toHaveProperty('env');
+      return JSON.stringify({ providers: ['pexels'], slots: request.slots.map((slot: { id: string }) => ({
+        id: slot.id, status: 'ok', provider: 'pexels', attempts: [], alt: 'forest camping tent',
+        download_url: 'https://images.pexels.com/1.jpeg', source_url: 'https://www.pexels.com/photo/1/', license: 'Pexels License',
+      })) });
+    });
     const nativeFetch = globalThis.fetch;
     vi.stubGlobal('fetch', async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const address = String(input);
@@ -73,7 +86,7 @@ describe('stock search daemon credential boundary', () => {
     });
   }
 
-  it('real CLI uses daemon credentials through the Codex shell allowlist and writes into the granted project', async () => {
+  it('real CLI uses company service through the Codex shell allowlist and writes into the granted project', async () => {
     const grant = mint(projectId, runId);
     const policy = codexOpenDesignShellEnvironmentArgs().find((arg) => arg.startsWith('shell_environment_policy.include_only='))!;
     const allowed: string[] = JSON.parse(policy.split('=')[1]!);
@@ -94,7 +107,8 @@ describe('stock search daemon credential boundary', () => {
     const report = JSON.parse(result.stdout);
     expect(report.slots[0]).toMatchObject({ status: 'ok', path: 'assets/stock/hero.jpg', width: 1200, height: 800 });
     expect(await readFile(path.join(projectDir, report.slots[0].path))).toEqual(JPEG);
-    expect(providerKeys).toEqual(['daemon-only-stock-key']);
+    expect(providerKeys).toEqual([]);
+    expect(providerRequests).toContain('company-stock-service');
     expect(JSON.stringify(result)).not.toContain('daemon-only-stock-key');
     const credits = JSON.parse(await readFile(path.join(projectDir, 'assets/stock/credits.json'), 'utf8'));
     expect(credits[0].path).toBe(report.slots[0].path);
@@ -104,7 +118,7 @@ describe('stock search daemon credential boundary', () => {
     expect(header.context).toMatchObject({ project_id: projectId, run_id: runId });
   });
 
-  it('requires a valid, explicitly scoped tool token before accessing provider credentials', async () => {
+  it('requires a valid, explicitly scoped tool token before accessing the company service', async () => {
     expect((await request({ slots })).status).toBe(401);
     expect((await request({ slots }, 'invalid')).status).toBe(401);
     const grant = toolTokenRegistry.mint({ projectId, runId, allowedOperations: ['media:generate'] });
@@ -121,14 +135,14 @@ describe('stock search daemon credential boundary', () => {
     expect(providerRequests).toEqual([]);
   });
 
-  it('supports the local project surface and returns an explicit missing-configuration error', async () => {
+  it('supports the local project surface and returns an explicit service-unavailable error', async () => {
     const response = await request({ slots }, undefined, `/api/projects/${projectId}/media/stock-search`);
     expect(response.status).toBe(200);
     expect(((await response.json()) as StockSearchResponse).slots[0]?.status).toBe('ok');
-    vi.stubEnv('PEXELS_API_KEY', '');
+    vi.mocked(runVelaCommand).mockRejectedValue(new Error('service unavailable'));
     const missing = await request({ slots }, mint(projectId, runId).token);
     expect(missing.status).toBe(503);
-    expect(await missing.json()).toMatchObject({ error: { code: 'NO_STOCK_API_KEY' } });
+    expect(await missing.json()).toMatchObject({ error: { code: 'STOCK_SEARCH_UNAVAILABLE' } });
   });
 
   it('rejects traversal and directory symlinks before any provider call', async () => {

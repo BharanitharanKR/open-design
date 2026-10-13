@@ -152,10 +152,6 @@ export async function createStockRecorder(args: {
     } finally { await rm(lock, { recursive: true, force: true }); }
   } catch { failed = true; }
   append(header);
-  const refs = {
-    pexels: env.PEXELS_API_KEY?.trim() ? sha(env.PEXELS_API_KEY.trim()).slice(0, 24) : null,
-    pixabay: env.PIXABAY_API_KEY?.trim() ? sha(env.PIXABAY_API_KEY.trim()).slice(0, 24) : null,
-  };
   const common = (slot_index: number): MediaStockCommonProps => ({ ...context, slot_index, collection_status: 'partial' });
   return {
     callId,
@@ -167,7 +163,7 @@ export async function createStockRecorder(args: {
         properties: {
           ...common(attempt.slotIndex), provider: attempt.provider, stage: attempt.stage,
           result: attempt.status, http_status: attempt.httpStatus, error_type: stockErrorType(attempt),
-          duration_ms: attempt.durationMs, credential_ref: refs[attempt.provider],
+          duration_ms: attempt.durationMs, credential_ref: null,
           rate_limited: attempt.httpStatus === 429,
           quota_limit: attempt.rateLimit?.limit ?? null, quota_remaining: attempt.rateLimit?.remaining ?? null,
           quota_reset_unix: attempt.rateLimit?.resetUnix ?? null, retry_after: attempt.retryAfter ?? null,

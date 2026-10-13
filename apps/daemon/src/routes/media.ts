@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { parseStockSearchRequest, type StockSearchRequest } from '@open-design/contracts';
 import { resolveProjectWritePath, validateProjectPath } from '../projects.js';
-import { stockSearch, StockSearchConfigError, StockSearchInputError } from '../media/stock-search.js';
+import { stockSearch, StockSearchServiceError, StockSearchInputError } from '../media/stock-search.js';
 import { createStockRecorder } from '../media/stock-telemetry.js';
 import type { Express } from 'express';
 import type {
@@ -1026,9 +1026,11 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       OD_STOCK_ANALYTICS_LOCALE: analytics?.locale ?? '',
     } });
     try {
+      const workspaceId = getWorkspaceProjectByProjectId(db, projectId)?.workspaceId?.trim();
       const report = await stockSearch({
         ...request,
         cwd: resolveProjectDir(PROJECTS_DIR, projectId, project.metadata),
+        ...(workspaceId ? { workspaceId } : {}),
         resolveOutputPath: (relative) => resolveProjectWritePath(PROJECTS_DIR, projectId, relative, project.metadata),
         onAttempt: (event) => { recorder.record(event); },
       });
@@ -1036,7 +1038,7 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       res.json({ ...report, telemetry: { callId: recorder.callId, collectionStatus } });
     } catch (err: any) {
       await recorder.finish({ providers: [], slots: request.slots.map((slot) => ({ ...slot, status: 'error' })) });
-      if (err instanceof StockSearchConfigError) return sendApiError(res, 503, 'NO_STOCK_API_KEY', err.message);
+      if (err instanceof StockSearchServiceError) return sendApiError(res, 503, 'STOCK_SEARCH_UNAVAILABLE', err.message);
       if (err instanceof StockSearchInputError || err.code === 'EPATHESCAPE') return sendApiError(res, 400, 'INVALID_STOCK_REQUEST', err.message);
       return sendApiError(res, 500, 'STOCK_SEARCH_FAILED', 'stock search could not complete');
     }

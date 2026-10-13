@@ -1054,7 +1054,7 @@ function printRootHelp() {
 
   od media stock-search --slots '<json>'
       Download licensed Pexels / Pixabay photos for several image slots in one
-      call (provider keys are configured in the daemon).
+      call (company service uses your existing Vela login).
 
   od mcp [--daemon-url <url>]
       Run a stdio MCP server that proxies project tool calls to a
@@ -1820,7 +1820,7 @@ async function runMediaStockSearch(rawArgs) {
     let code;
     try { code = JSON.parse(text)?.error?.code; } catch { /* preserve the daemon error text */ }
     console.error(`daemon ${response.status}: ${text}`);
-    process.exit(code === 'NO_STOCK_API_KEY' ? 5 : code === 'INVALID_STOCK_REQUEST' ? 2 : 4);
+    process.exit(code === 'STOCK_SEARCH_UNAVAILABLE' ? 5 : code === 'INVALID_STOCK_REQUEST' ? 2 : 4);
   }
   const report = await response.json() as StockSearchResponse;
   for (const [slotIndex, slot] of report.slots.entries()) {
@@ -2402,8 +2402,9 @@ files folder so the FileViewer can preview them immediately.
 
 Stock search:
   Finds and downloads licensed stock photos for every slot in one call, using
-  daemon-configured PEXELS_API_KEY first and PIXABAY_API_KEY as fallback.
-  Agent shells never need provider keys. Missing daemon configuration exits 5.
+  the company Vela service: Pexels first, then Pixabay, at most once each.
+  Provider keys stay on the server. Your existing Vela login is used.
+  Unavailable service exits 5; use web search for failed or missing slots.
   Files are saved in the authorized project, independently of the CLI cwd.
   --slots '<json>'          JSON array: [{"id":"hero","query":"kung pao chicken",
                             "width":1200,"orientation":"landscape"}] (1–30 slots;
@@ -2415,9 +2416,9 @@ Stock search:
                             then by how early they appear.
   --slots-file <path|->     Read the slots array from a file or stdin instead.
   --out-dir <dir>           Project-relative output directory (default assets/stock).
-  --timeout-ms <n>          Per-request timeout (default 12000).
-  --budget-ms <n>           Total time budget for all slots (default 180000).
-  --concurrency <n>         Parallel slots (default 6).
+  --timeout-ms <n>          Per-request timeout (default/max 12000).
+  --budget-ms <n>           Total time budget for all slots (default/max 180000).
+  --concurrency <n>         Parallel slots (default/max 6).
   --project <id>            Standalone project (or OD_PROJECT_ID); tool tokens bind the project.
   --workspace <id>          Workspace scope for a bound standalone project.
   --workspace-member <id>   Workspace member for a bound standalone project.

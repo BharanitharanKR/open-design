@@ -23,8 +23,17 @@ async function recordedFallback() {
     PEXELS_API_KEY: 'sensitive-pexels-key', PIXABAY_API_KEY: 'sensitive-pixabay-key',
   } });
   const report = await stockSearch({
-    cwd, env: { PEXELS_API_KEY: 'sensitive-pexels-key', PIXABAY_API_KEY: 'sensitive-pixabay-key' },
+    cwd,
     slots: [{ id: 'private-slot-0', query: 'private query' }, { id: 'private-slot-1', query: 'private query' }],
+    search: async ({ slots }) => ({ providers: ['pexels', 'pixabay'], slots: slots.map(slot => ({
+      id: slot.id, status: 'ok', provider: 'pixabay', downloadUrl: 'https://cdn.pixabay.com/1.jpg',
+      alt: 'private query', sourceUrl: 'https://pixabay.com/photos/1/', license: 'Pixabay Content License',
+      attempts: [
+        { provider: 'pexels', stage: 'search', status: 'error', timestamp: new Date().toISOString(), durationMs: 1, httpStatus: 429, rateLimited: true,
+          retryAfter: '60', rateLimit: { period: 'month', limit: null, remaining: 0, resetUnix: null }, error: 'provider_http_error' },
+        { provider: 'pixabay', stage: 'search', status: 'ok', timestamp: new Date().toISOString(), durationMs: 1, httpStatus: 200, rateLimited: false },
+      ],
+    })) }),
     fetch: (async input => {
       const url = String(input);
       if (url.startsWith('https://api.pexels.com/')) return new Response('{}', {

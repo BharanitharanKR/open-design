@@ -1,7 +1,22 @@
 # Stock-search diagnostics and analytics
 
+## Confirmed delivery behavior
+
+The takeover of PR #8691 follows the user's 2026-10-13 decision:
+
+| ID | Behavior | Acceptance |
+| --- | --- | --- |
+| S1 | Company-managed Vela search; provider keys remain server-side. | A logged-in client without Pexels/Pixabay keys searches successfully. |
+| S2 | One Pexels search, then one Pixabay search per slot at most. | Both providers failing returns an explicit per-slot failure within the time budget. |
+| S3 | AI searches independently after tool/service failure. | Guidance covers unavailable service, timeout, failed downloads and missing results; successful slots are retained. |
+| S4 | Only valid local images count as acquisition success. | An HTTP 200 HTML body is rejected and no image is written. |
+
+The service is a synchronous endpoint in the maintained `core/amr` API,
+accessed through the existing Vela control-key/workspace client. This iteration
+does not introduce a cache, async tasks, or an independent asset platform.
+
 `od media stock-search` is an authenticated client of the running daemon.
-Provider credentials stay in the daemon; the agent shell needs only its
+Provider credentials stay on the company API server; the agent shell needs only its
 run-scoped `OD_TOOL_TOKEN` and `OD_DAEMON_URL`. Standalone callers select an
 authorized project with `--project` and optional workspace flags.
 
@@ -10,7 +25,12 @@ Both `/api/tools/media/stock-search` and the local project route
 contract. Tool tokens bind the project/run and require `media:stock-search`;
 requests cannot supply provider keys, cwd, or substitute project/run identity.
 Output directories and image/credits paths use the existing symlink-aware
-project boundary. The CLI never searches providers directly or reads their keys.
+project boundary. The CLI never searches providers directly or reads their keys. The daemon invokes
+`vela media stock-search` through its existing login/binary/workspace adapter,
+then downloads only allowlisted provider CDN URLs without authorization headers.
+The Vela client makes one API request; the service tries each configured provider
+at most once per slot. A service error exits 5; every non-ok slot triggers the
+Agent's bounded independent web search instead of repeating the stock tool.
 
 The result keeps provider search/download attempts in stdout JSON and the CLI
 prints diagnostics to stderr. The daemon journals content-free request results
@@ -48,7 +68,8 @@ An opted-out call, including one disabled before upload, is never retroactively
 uploaded after consent changes. Missing sink configuration or identity stays retryable.
 No query, slot label, prompt, URL, output path, API key, or free-form error is
 sent in analytics. `slot_index` distinguishes repeated labels; `credential_ref`
-is a truncated SHA-256 fingerprint of a high-entropy provider key, never the key.
+is null for company-managed searches. Historical local-key records may contain
+a truncated SHA-256 fingerprint, never the key.
 Detailed scrubbed failures remain in the CLI execution output.
 
 ## Events and attribution
@@ -98,3 +119,7 @@ key are reflected in provider quota snapshots, not in these event counts.
 Before creating or relying on a dashboard, reconcile a real CLI call's journal
 event ids/counts with its receipt and PostHog query results. A mock test or HTTP
 200 alone does not establish that reconciliation.
+
+Company provider keys are unavailable to the daemon, so new request events use
+`credential_ref: null`. Quota headers remain observations, and a dashboard must
+not infer per-key remaining quota from a missing credential reference.

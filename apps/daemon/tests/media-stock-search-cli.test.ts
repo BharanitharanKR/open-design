@@ -1,3 +1,4 @@
+import { runVelaCommand } from '../src/integrations/vela-command.js';
 import { execFile } from 'node:child_process';
 import type { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +12,8 @@ import { closeDatabase, insertProject, openDatabase } from '../src/db.js';
 import { ensureProject } from '../src/projects.js';
 import { startServer } from '../src/server.js';
 import { toolTokenRegistry } from '../src/tool-tokens.js';
+
+vi.mock('../src/integrations/vela-command.js', async (original) => ({ ...await original<typeof import('../src/integrations/vela-command.js')>(), runVelaCommand: vi.fn() }));
 
 const cliEntry = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
 const exec = promisify(execFile);
@@ -29,6 +32,18 @@ beforeEach(async () => {
   projectDir = await ensureProject(path.join(dataDir, 'projects'), projectId);
   vi.stubEnv('PEXELS_API_KEY', 'pexels-test-key');
   vi.stubEnv('PIXABAY_API_KEY', 'pixabay-test-key');
+  vi.mocked(runVelaCommand).mockImplementation(async (args, options) => {
+    if (args[0] !== 'media' || args[1] !== 'stock-search') throw new Error('unsupported test command');
+    const request = JSON.parse(String(options?.input));
+    return JSON.stringify({ providers: ['pexels', 'pixabay'], slots: request.slots.map((slot: { id: string }) => ({
+      id: slot.id, status: 'ok', provider: 'pixabay', download_url: 'https://cdn.pixabay.com/photo/tofu.jpg',
+      alt: 'mapo tofu', source_url: 'https://pixabay.com/photos/tofu/', license: 'Pixabay Content License',
+      attempts: [
+        { provider: 'pexels', stage: 'search', status: 'error', timestamp: new Date().toISOString(), duration_ms: 1, http_status: 429, retry_after: '60', error: 'provider_http_error' },
+        { provider: 'pixabay', stage: 'search', status: 'ok', timestamp: new Date().toISOString(), duration_ms: 1, http_status: 200 },
+      ],
+    })) });
+  });
   // Only the daemon's provider traffic is mocked. The child CLI uses real HTTP.
   const nativeFetch = globalThis.fetch;
   vi.stubGlobal('fetch', async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
@@ -78,7 +93,7 @@ it('writes a Pexels 429 to stderr and preserves it in a successful fallback JSON
   expect(result.stdout.trim().split('\n')).toHaveLength(1);
   const report = JSON.parse(result.stdout);
   expect(report.slots[0]).toMatchObject({ status: 'ok', provider: 'pixabay' });
-  expect(report.slots[0].attempts[0]).toMatchObject({ provider: 'pexels', httpStatus: 429, error: 'HTTP 429' });
+  expect(report.slots[0].attempts[0]).toMatchObject({ provider: 'pexels', httpStatus: 429, error: 'provider_http_error' });
   expect(await readFile(path.join(projectDir, report.slots[0].path))).toBeInstanceOf(Buffer);
   const events = result.stderr.trim().split('\n').map((line) => {
     expect(line).toMatch(/^\[stock-search\] /);
@@ -86,7 +101,7 @@ it('writes a Pexels 429 to stderr and preserves it in a successful fallback JSON
   });
   expect(events[0]).toMatchObject({
     slotId: 'tofu', provider: 'pexels', stage: 'search', httpStatus: 429,
-    rateLimited: true, error: 'HTTP 429', retryAfter: '60',
+    rateLimited: true, error: 'provider_http_error', retryAfter: '60',
   });
   expect(events[1]).toMatchObject({ slotId: 'tofu', provider: 'pixabay', stage: 'search', status: 'ok' });
   expect(result.stdout + result.stderr).not.toContain('pexels-test-key');

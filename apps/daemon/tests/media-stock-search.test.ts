@@ -1,284 +1,111 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { imageSize, stockSearch, StockSearchServiceError } from '../src/media/stock-search.js';
+import { searchVelaStockPhotos, type StockSearchServiceReport } from '../src/media/vela-stock-search.js';
 
-import { StockSearchConfigError, imageSize, stockSearch, subjectScore } from '../src/media/stock-search.js';
+const JPEG = Buffer.from([255,216,255,192,0,17,8,3,32,4,176,3,1,34,0]);
+const candidate = (id = 'hero') => ({ id, status: 'ok' as const, provider: 'pexels' as const,
+  downloadUrl: 'https://images.pexels.com/photos/1/test.jpeg', alt: 'Dog in a park', sourceUrl: 'https://www.pexels.com/photo/1/',
+  author: 'Ann', license: 'Pexels License', attempts: [] });
+const report = (ids = ['hero']): StockSearchServiceReport => ({ providers: ['pexels'], slots: ids.map(candidate) });
+const fetchImage = () => (async () => new Response(new Uint8Array(JPEG))) as typeof fetch;
 
-// Minimal JPEG: SOI + SOF0 declaring 1200x800.
-const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x03, 0x20, 0x04, 0xb0, 0x03, 0x01, 0x22, 0x00]);
-
-type Route = (url: string) => { status?: number; json?: unknown; body?: Buffer; headers?: Record<string, string> } | undefined;
-
-function fakeFetch(route: Route, seen: string[] = []): typeof fetch {
-  return (async (input: string | URL | Request) => {
-    const url = String(input);
-    seen.push(url);
-    const hit = route(url);
-    if (!hit) return new Response('not found', { status: 404 });
-    if (hit.body) return new Response(new Uint8Array(hit.body), {
-      status: hit.status ?? 200,
-      ...(hit.headers ? { headers: hit.headers } : {}),
-    });
-    return new Response(JSON.stringify(hit.json ?? {}), { status: hit.status ?? 200, headers: { 'content-type': 'application/json', ...hit.headers } });
-  }) as typeof fetch;
-}
-
-const pexelsPhoto = (id: number, alt: string) => ({
-  id, alt, url: `https://www.pexels.com/photo/${id}/`, photographer: 'Ann', photographer_url: 'https://www.pexels.com/@ann',
-  src: { original: `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg` },
-});
-
-describe('od media stock-search', () => {
+describe('company stock search and authorized local downloads', () => {
   let cwd: string;
   beforeEach(async () => { cwd = await mkdtemp(path.join(os.tmpdir(), 'od-stock-')); });
   afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 
-  it('downloads the candidate whose alt names the subject, not a people-led photo that mentions it', async () => {
-    const seen: string[] = [];
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'k' },
-      slots: [{ id: 'Frames', query: 'eyeglasses frame', width: 900 }],
-      fetch: fakeFetch((url) => {
-        if (url.startsWith('https://api.pexels.com/')) return { json: { photos: [
-          pexelsPhoto(1, 'Elderly woman reading a book while wearing eyeglasses'),
-          pexelsPhoto(2, 'Black eyeglasses frame on a pink background'),
-        ] } };
-        if (url.startsWith('https://images.pexels.com/photos/2/')) return { body: JPEG };
-        return undefined;
-      }, seen),
-    });
-    expect(report.providers).toEqual(['pexels']);
-    expect(report.slots[0]).toMatchObject({
-      id: 'Frames', status: 'ok', provider: 'pexels', path: expect.stringMatching(/^assets\/stock\/frames-[a-f0-9]{12}\.jpg$/),
-      width: 1200, height: 800, alt: 'Black eyeglasses frame on a pink background',
-    });
-    expect(seen).toContain('https://images.pexels.com/photos/2/pexels-photo-2.jpeg?auto=compress&cs=tinysrgb&w=900');
-    const credits = JSON.parse(await readFile(path.join(cwd, 'assets/stock/credits.json'), 'utf8'));
-    expect(credits[0]).toMatchObject({ path: report.slots[0]!.path, license: expect.stringContaining('Pexels License') });
+  it('downloads through the company service without reading a provider key and records attribution', async () => {
+    const search = vi.fn(async () => report());
+    const fetcher = vi.fn(fetchImage());
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search, fetch: fetcher });
+    expect(result.slots[0]).toMatchObject({ status: 'ok', path: 'assets/stock/hero.jpg', width: 1200, height: 800 });
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'error' });
+    expect(fetcher.mock.calls[0]?.[1]?.headers).toBeUndefined();
+    expect(JSON.parse(await readFile(path.join(cwd, 'assets/stock/credits.json'), 'utf8'))[0]).toMatchObject({ author: 'Ann', license: 'Pexels License' });
   });
 
-  it('falls back to Pixabay when Pexels has no matching photo', async () => {
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'k', PIXABAY_API_KEY: 'p' },
-      slots: [{ id: 'tofu', query: 'mapo tofu' }],
-      fetch: fakeFetch((url) => {
-        if (url.startsWith('https://api.pexels.com/')) return { json: { photos: [pexelsPhoto(3, 'City skyline at night')] } };
-        if (url.startsWith('https://pixabay.com/api/')) return { json: { hits: [{
-          pageURL: 'https://pixabay.com/photos/mapo-tofu-1/', tags: 'mapo tofu, tofu, food', user: 'bo', user_id: 7,
-          webformatURL: 'https://cdn.pixabay.com/photo/a_640.jpg', largeImageURL: 'https://cdn.pixabay.com/photo/a_1280.jpg',
-        }] } };
-        if (url === 'https://cdn.pixabay.com/photo/a_1280.jpg') return { body: JPEG };
-        return undefined;
-      }),
-    });
-    expect(report.slots[0]).toMatchObject({ status: 'ok', provider: 'pixabay', alt: 'mapo tofu, tofu, food' });
+  it('rejects an HTML error page returned with HTTP 200 instead of saving a successful image', async () => {
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search: async () => report(),
+      fetch: (async () => new Response('<html>upstream unavailable</html>')) as typeof fetch });
+    expect(result.slots[0]?.status).toBe('error');
+    await expect(readFile(path.join(cwd, 'assets/stock/hero.jpg'))).rejects.toThrow();
   });
 
-  it('reports a missing key as a configuration error instead of searching', async () => {
-    await expect(stockSearch({ cwd, env: {}, slots: [{ id: 'a', query: 'x' }] })).rejects.toBeInstanceOf(StockSearchConfigError);
+  it('returns terminal failed and missing slots without retrying the service or redownloading successes', async () => {
+    const search = vi.fn(async (): Promise<StockSearchServiceReport> => ({ providers: ['pexels', 'pixabay'], slots: [candidate('a'),
+      { id: 'b', status: 'error', error: 'provider_unavailable', attempts: [] }, { id: 'c', status: 'not_found', attempts: [] }] }));
+    const fetcher = vi.fn(fetchImage());
+    const result = await stockSearch({ cwd, slots: ['a','b','c'].map(id => ({ id, query: 'dog' })), search, fetch: fetcher });
+    expect(result.slots.map(slot => slot.status)).toEqual(['ok', 'error', 'not_found']);
+    expect(search).toHaveBeenCalledTimes(1); expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps distinct slot IDs in separate files and attribution records', async () => {
+  it('sanitizes an unavailable service and does not repeat its request', async () => {
+    const search = vi.fn(async () => { throw new Error('key=sensitive-upstream-key'); });
+    await expect(stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search })).rejects.toThrow(StockSearchServiceError);
+    expect(search).toHaveBeenCalledTimes(1);
+  });
+
+  it('bounds the whole acquisition and retains server results after the budget expires', async () => {
+    let now = 0;
+    const search = vi.fn(async () => { now = 20; return report(); });
+    const fetcher = vi.fn(fetchImage());
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search, fetch: fetcher, now: () => now, budgetMs: 10 });
+    expect(result.slots[0]?.status).toBe('budget_exceeded'); expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each(['http://127.0.0.1/internal', 'https://images.pexels.com.evil.test/x', 'https://user:password@images.pexels.com/x'])('rejects unsafe download URL %s', async (downloadUrl) => {
+    const fetcher = vi.fn(fetchImage());
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }],
+      search: async () => ({ providers: ['pexels'], slots: [{ ...candidate(), downloadUrl }] }), fetch: fetcher });
+    expect(result.slots[0]?.status).toBe('error'); expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('rejects a declared oversized download before reading its body', async () => {
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search: async () => report(),
+      fetch: (async () => new Response(new Uint8Array(JPEG), { headers: { 'content-length': String(11 * 1024 * 1024) } })) as typeof fetch });
+    expect(result.slots[0]?.status).toBe('error');
+  });
+
+  it('keeps normalized IDs distinct and merges attribution across calls', async () => {
     const ids = ['Hero', 'hero', '狗狗', '猫咪', 'hero image', 'hero-image'];
-    const fetch = fakeFetch((url) => {
-      if (url.startsWith('https://api.pexels.com/')) return { json: { photos: [pexelsPhoto(1, 'Dog in a park')] } };
-      if (url.startsWith('https://images.pexels.com/')) return { body: JPEG };
-      return undefined;
-    });
-    const report = await stockSearch({
-      cwd, env: { PEXELS_API_KEY: 'k' }, fetch,
-      slots: ids.map((id) => ({ id, query: 'dog' })),
-    });
-    expect(report.slots.every((slot) => slot.status === 'ok')).toBe(true);
-    const paths = report.slots.map((slot) => slot.path!);
-    expect(new Set(paths).size).toBe(ids.length);
-    for (const file of paths) expect(await readFile(path.join(cwd, file))).toEqual(JPEG);
-    const credits = JSON.parse(await readFile(path.join(cwd, 'assets/stock/credits.json'), 'utf8'));
-    expect(credits).toHaveLength(ids.length);
-    expect(new Set(credits.map((credit: { path: string }) => credit.path))).toEqual(new Set(paths));
+    const result = await stockSearch({ cwd, slots: ids.map(id => ({ id, query: 'dog' })), search: async () => report(ids), fetch: fetchImage() });
+    expect(new Set(result.slots.map(slot => slot.path)).size).toBe(ids.length);
+    await stockSearch({ cwd, slots: [{ id: 'extra', query: 'dog' }], search: async () => report(['extra']), fetch: fetchImage() });
+    expect(JSON.parse(await readFile(path.join(cwd, 'assets/stock/credits.json'), 'utf8'))).toHaveLength(7);
   });
 
-  it('rejects duplicate slot IDs before searching or writing files', async () => {
-    const seen: string[] = [];
-    await expect(stockSearch({
-      cwd, env: { PEXELS_API_KEY: 'k' },
-      slots: [{ id: 'hero', query: 'dog' }, { id: 'hero', query: 'cat' }],
-      fetch: fakeFetch(() => ({ json: { photos: [] } }), seen),
-    })).rejects.toThrow(/slot/i);
-    expect(seen).toEqual([]);
+  it.each([{ concurrency: 0 }, { budgetMs: Infinity }, { requestTimeoutMs: -1 }])('rejects invalid execution limits %j', async (limits) => {
+    const search = vi.fn(async () => report());
+    await expect(stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search, ...limits })).rejects.toThrow('positive integer');
+    expect(search).not.toHaveBeenCalled();
   });
+  it('rejects duplicate IDs before executing', async () => {
+    const search = vi.fn(async () => report());
+    await expect(stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }, { id: 'hero', query: 'cat' }], search })).rejects.toThrow('distinct');
+    expect(search).not.toHaveBeenCalled();
+  });
+  it('keeps acquisition successful when optional logging fails', async () => {
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search: async () => report(), fetch: fetchImage(), onAttempt: () => { throw new Error('logging unavailable'); } });
+    expect(result.slots[0]?.status).toBe('ok'); expect(imageSize(JPEG)).toEqual({ width: 1200, height: 800 });
+  });
+});
 
-  it.each([
-    { concurrency: 0 }, { concurrency: -1 }, { concurrency: Number.NaN }, { concurrency: 1.5 },
-    { requestTimeoutMs: Number.NaN }, { requestTimeoutMs: Number.POSITIVE_INFINITY },
-    { budgetMs: -1 }, { budgetMs: Number.NaN },
-  ])('rejects invalid stock-search execution limits: %j', async (limits) => {
-    const seen: string[] = [];
-    await expect(stockSearch({
-      cwd, env: { PEXELS_API_KEY: 'k' }, slots: [{ id: 'hero', query: 'dog' }],
-      fetch: fakeFetch(() => ({ json: { photos: [] } }), seen), ...limits,
-    })).rejects.toThrow(/positive integer/);
-    expect(seen).toEqual([]);
-  });
+it('Vela stock adapter sends one stdin request using the existing workspace/login environment', async () => {
+  const runner = vi.fn(async () => JSON.stringify({ providers: ['pexels'], slots: [{ id: 'hero', status: 'not_found', attempts: [] }] }));
+  const result = await searchVelaStockPhotos({ slots: [{ id: 'hero', query: 'dog' }], requestTimeoutMs: 12000, budgetMs: 180000, concurrency: 6, workspaceId: 'workspace-one' }, runner);
+  expect(result.slots[0]?.status).toBe('not_found');
+  expect(runner).toHaveBeenCalledTimes(1);
+  expect(runner.mock.calls[0]).toMatchObject([['media', 'stock-search', '--request-file', '-', '--json'], { configuredEnv: { VELA_WORKSPACE_ID: 'workspace-one' }, timeoutMs: 185000 }]);
+});
 
-  it('records Pexels monthly quota headers and keeps each slot request separate', async () => {
-    let remaining = 23_148;
-    const emitted: unknown[] = [];
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'pexels-test-key' },
-      concurrency: 1,
-      slots: [{ id: 'a', query: 'noodles' }, { id: 'b', query: 'noodles' }],
-      onAttempt: (event) => emitted.push(event),
-      fetch: fakeFetch((url) => url.startsWith('https://api.pexels.com/') ? {
-        json: { photos: [pexelsPhoto(4, 'Noodles in a bowl')] },
-        headers: {
-          'x-ratelimit-limit': '25000',
-          'x-ratelimit-remaining': String(--remaining),
-          'x-ratelimit-reset': '1792832062',
-          'authorization': 'must-not-be-logged',
-        },
-      } : { body: JPEG }),
-    });
-    expect(report.slots[0]?.attempts?.[0]).toMatchObject({
-      provider: 'pexels', stage: 'search', status: 'ok', httpStatus: 200,
-      rateLimit: { period: 'month', limit: 25000, remaining: 23147, resetUnix: 1792832062 },
-    });
-    expect(report.slots[1]?.attempts?.[0]?.rateLimit?.remaining).toBe(23146);
-    expect(emitted).toContainEqual(expect.objectContaining({ slotId: 'a', provider: 'pexels', httpStatus: 200 }));
-    expect(JSON.stringify(emitted)).not.toContain('must-not-be-logged');
-  });
-
-  it('keeps a Pexels 429 without quota headers after a successful Pixabay fallback', async () => {
-    const emitted: unknown[] = [];
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'pexels-test-key', PIXABAY_API_KEY: 'pixabay-test-key' },
-      slots: [{ id: 'tofu', query: 'mapo tofu' }],
-      onAttempt: (event) => emitted.push(event),
-      fetch: fakeFetch((url) => {
-        if (url.startsWith('https://api.pexels.com/')) return { status: 429, headers: { 'retry-after': '60' } };
-        if (url.startsWith('https://pixabay.com/api/')) return { json: { hits: [{
-          pageURL: 'https://pixabay.com/photos/mapo-tofu-1/', tags: 'mapo tofu',
-          webformatURL: 'https://cdn.pixabay.com/photo/tofu.jpg',
-        }] } };
-        return { body: JPEG };
-      }),
-    });
-    expect(report.slots[0]).toMatchObject({ status: 'ok', provider: 'pixabay' });
-    expect(report.slots[0]?.attempts?.[0]).toMatchObject({
-      provider: 'pexels', stage: 'search', status: 'error', httpStatus: 429,
-      rateLimited: true, error: 'HTTP 429', retryAfter: '60',
-      rateLimit: { period: 'month', limit: null, remaining: null, resetUnix: null },
-    });
-    expect(report.slots[0]?.attempts?.[1]).toMatchObject({ provider: 'pixabay', stage: 'search', status: 'ok' });
-    expect(emitted[0]).toMatchObject({ slotId: 'tofu', provider: 'pexels', httpStatus: 429, error: 'HTTP 429' });
-  });
-
-  it('retains both provider failures and preserves a zero remaining quota', async () => {
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'pexels-test-key', PIXABAY_API_KEY: 'pixabay-test-key' },
-      slots: [{ id: 'a', query: 'noodles' }],
-      fetch: fakeFetch((url) => url.startsWith('https://api.pexels.com/') ? {
-        status: 429,
-        headers: { 'x-ratelimit-limit': '25000', 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': 'invalid' },
-      } : { status: 503 }),
-    });
-    expect(report.slots[0]).toMatchObject({ status: 'error', error: 'pixabay: HTTP 503' });
-    expect(report.slots[0]?.attempts).toMatchObject([
-      { provider: 'pexels', httpStatus: 429, rateLimit: { limit: 25000, remaining: 0, resetUnix: null } },
-      { provider: 'pixabay', httpStatus: 503, error: 'HTTP 503' },
-    ]);
-  });
-
-  it.each([
-    ['Wed, 21 Oct 2026 07:28:00 GMT', 'Wed, 21 Oct 2026 07:28:00 GMT'],
-    ['-1', undefined],
-  ])('records a valid Retry-After date without treating %s as a loose date', async (header, expected) => {
-    const report = await stockSearch({
-      cwd, env: { PEXELS_API_KEY: 'pexels-test-key' }, slots: [{ id: 'a', query: 'noodles' }],
-      fetch: fakeFetch(() => ({ status: 429, headers: { 'retry-after': header! } })),
-    });
-    expect(report.slots[0]?.attempts?.[0]?.retryAfter).toBe(expected);
-  });
-
-  it('keeps successful acquisition when an optional execution-log sink fails', async () => {
-    const report = await stockSearch({
-      cwd, env: { PEXELS_API_KEY: 'pexels-test-key' }, slots: [{ id: 'a', query: 'noodles' }],
-      onAttempt: () => { throw new Error('log sink unavailable'); },
-      fetch: fakeFetch((url) => url.startsWith('https://api.pexels.com/')
-        ? { json: { photos: [pexelsPhoto(4, 'Noodles in a bowl')] } } : { body: JPEG }),
-    });
-    expect(report.slots[0]).toMatchObject({ status: 'ok', provider: 'pexels' });
-    expect(report.slots[0]?.attempts).toHaveLength(2);
-  });
-
-  it('distinguishes a CDN download 429 from the successful search quota', async () => {
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'pexels-test-key' },
-      slots: [{ id: 'a', query: 'noodles' }],
-      fetch: fakeFetch((url) => url.startsWith('https://api.pexels.com/')
-        ? { json: { photos: [pexelsPhoto(4, 'Noodles in a bowl')] }, headers: { 'x-ratelimit-remaining': '120' } }
-        : { status: 429 }),
-    });
-    expect(report.slots[0]?.attempts).toMatchObject([
-      { stage: 'search', status: 'ok', httpStatus: 200, rateLimit: { remaining: 120 } },
-      { stage: 'download', status: 'error', httpStatus: 429, rateLimited: true },
-    ]);
-    expect(report.slots[0]?.attempts?.[1]?.rateLimit).toBeUndefined();
-  });
-
-  it('scrubs both injected keys from network errors and diagnostic output', async () => {
-    const emitted: unknown[] = [];
-    const pexelsKey = 'pexels-secret-without-vendor-prefix';
-    const pixabayKey = 'pixabay-secret-without-vendor-prefix';
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: pexelsKey, PIXABAY_API_KEY: pixabayKey },
-      slots: [{ id: 'a', query: 'noodles' }],
-      onAttempt: (event) => emitted.push(event),
-      fetch: (async () => { throw new Error(`network failed ${pexelsKey} https://pixabay.com/api/?key=${pixabayKey}`); }) as typeof fetch,
-    });
-    expect(report.slots[0]?.attempts).toHaveLength(2);
-    expect(report.slots[0]?.attempts?.[0]).toMatchObject({ stage: 'search', status: 'error', httpStatus: null });
-    const logged = JSON.stringify({ report, emitted });
-    expect(logged).not.toContain(pexelsKey);
-    expect(logged).not.toContain(pixabayKey);
-    expect(logged).toContain('[REDACTED]');
-  });
-
-  it('marks slots that start after the budget as budget_exceeded', async () => {
-    let clock = 0;
-    const report = await stockSearch({
-      cwd,
-      env: { PEXELS_API_KEY: 'k' },
-      budgetMs: 10,
-      concurrency: 1,
-      now: () => clock,
-      slots: [{ id: 'a', query: 'noodles bowl' }, { id: 'b', query: 'noodles soup' }],
-      fetch: fakeFetch((url) => {
-        clock += 20;
-        if (url.startsWith('https://api.pexels.com/')) return { json: { photos: [pexelsPhoto(4, 'Noodles in a bowl')] } };
-        return { body: JPEG };
-      }),
-    });
-    expect(report.slots.map((s) => s.status)).toEqual(['ok', 'budget_exceeded']);
-  });
-
-  it('ranks by query words matched, then by how early the subject appears in the alt', () => {
-    expect(subjectScore('eyeglasses frame', 'Black eyeglasses frame on a table')).toBeGreaterThan(
-      subjectScore('eyeglasses frame', 'Woman wearing eyeglasses reading'),
-    );
-    expect(subjectScore('eyeglasses', 'Black eyeglasses on a pink background')).toBeGreaterThan(
-      subjectScore('eyeglasses', 'Elderly woman reading a book while wearing eyeglasses'),
-    );
-    expect(subjectScore('eyeglasses frame', 'Sunset over the sea')).toBe(0);
-    expect(subjectScore('眼镜框', 'Elderly woman wearing glasses')).toBe(1);
-    expect(imageSize(JPEG)).toEqual({ width: 1200, height: 800 });
-  });
+it('rejects a malformed Vela response before trusting it', async () => {
+  const input = { slots: [{ id: 'hero', query: 'dog' }], requestTimeoutMs: 12000, budgetMs: 180000, concurrency: 6 };
+  for (const body of [{ slots: [] }, { providers: ['unknown'], slots: [] }, { providers: ['pexels'], slots: [{ id: 'different', status: 'ok', attempts: [] }] }]) {
+    await expect(searchVelaStockPhotos(input, async () => JSON.stringify(body))).rejects.toThrow('invalid stock service');
+  }
 });
