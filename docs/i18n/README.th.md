@@ -1,11 +1,9 @@
-<h1 align="center">OpenDesign: พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบแห่งแรก</h1>
+<h1 align="center">OpenDesign: พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบ AI แห่งแรก</h1>
 
-> ✨ **[ขอแนะนำ OpenDesign Go](https://open-design.ai/pricing/)** — แพ็กเกจ Go Plan เริ่มต้นที่ 8 ดอลลาร์สหรัฐในเดือนแรก พร้อมเครดิตรายเดือนสำหรับโมเดลมากกว่า 10 รุ่น ได้แก่ GPT-6.1 Sol, GPT-6 Luna, DeepSeek V4.1 Flash, GLM-5.3 Flash-X และ MiMo V2.6 Flash. แพ็กเกจส่วนบุคคลทุกแบบมีสิทธิ์ใช้ API กับ Codex, Claude Code, DSH, OpenCode และเครื่องมืออื่น ๆ
->
-> 🧩 **[รองรับ DeepSeek Harness แล้ว.](https://open-design.ai/zh/agents/deepseek-harness-design/)** เชื่อมต่อ `dsh` Agent Harness อย่างเป็นทางการของ DeepSeek เป็น runtime แบบ native ใน OpenDesign พร้อม structured thinking, tool calls, model discovery, cancellation และ session resume ไฟล์ที่สร้างยังอยู่ใน workflow ของ OpenDesign เพื่อ live preview และส่งมอบ
+> ✨ **[ฉลอง 100K ดาวบน GitHub กับ OpenDesign Go](https://open-design.ai/pricing/)** — เพิ่มเครดิต Go เป็นสองเท่า: **เดือนแรกเพียง 8 ดอลลาร์สหรัฐ พร้อมเครดิตรายเดือนสูงสุด 120 ดอลลาร์สหรัฐสำหรับโมเดลที่รองรับใน Design Plan** ใช้ได้กับโมเดลมากกว่า 10 รุ่น เช่น GPT-6 Luna, DeepSeek V4.1 Flash, GLM-5.3 Flash-X และ MiMo V2.6 Flash แพ็กเกจส่วนบุคคลทุกแบบมีสิทธิ์ใช้ API กับ Codex, Claude Code, DSH, OpenCode และเครื่องมืออื่น ๆ
 
 <p align="center">
-  <img src="../../docs/assets/readme-hero-design-agent.webp" alt="OpenDesign: พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบแห่งแรก" width="100%" />
+  <img src="../../docs/assets/readme-hero-design-agent.webp" alt="OpenDesign: พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบ AI แห่งแรก" width="100%" />
 </p>
 
 <p align="center">
@@ -29,9 +27,9 @@
 
 ## OpenDesign คืออะไร
 
-OpenDesign คือ**พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบ** เริ่มจากบรีฟ แล้วใช้เอเจนต์เขียนโค้ดที่คุณคุ้นเคยหรือ OpenDesign Cloud สร้างต้นแบบที่สอดคล้องกับระบบดีไซน์ของคุณ แชร์ให้ทีมรับชมและรวบรวมข้อเสนอแนะ ก่อนให้เอเจนต์ปรับปรุงงานต่อในโปรเจกต์เดิม
+OpenDesign คือ**พื้นที่ทำงานร่วมกับเอเจนต์ออกแบบ AI แห่งแรก** เริ่มจากบรีฟ แล้วใช้เอเจนต์เขียนโค้ดที่คุณคุ้นเคยหรือ OpenDesign Cloud สร้างต้นแบบที่สอดคล้องกับระบบดีไซน์ของคุณ แชร์ให้ทีมรับชมและรวบรวมข้อเสนอแนะ ก่อนให้เอเจนต์ปรับปรุงงานต่อในโปรเจกต์เดิม
 
-เวิร์กโฟลว์นี้เปิดกว้างและขยายได้ ในฐานะ**ทางเลือกโอเพนซอร์สแทน Claude Design** OpenDesign ใช้สัญญาอนุญาต Apache 2.0 ทีมงานจึงตรวจสอบและปรับทักษะ เทมเพลต ระบบดีไซน์ และปลั๊กอินให้เข้ากับกระบวนการของตนได้
+เวิร์กโฟลว์นี้เปิดกว้างและขยายได้ OpenDesign ใช้สัญญาอนุญาต Apache 2.0 ทีมงานจึงตรวจสอบและปรับทักษะ เทมเพลต ระบบดีไซน์ และปลั๊กอินให้เข้ากับกระบวนการของตนได้
 
 
 ---
@@ -232,29 +230,12 @@ Live dashboard, decision room, KPI wall — artifact หน้าเดียว
 
 ## ทำไมต้อง OpenDesign
 
-> **ในเดือนเมษายน 2026, Anthropic เปิดตัว Claude Design — ครั้งแรกที่ LLM หยุดแค่เขียนข้อความ และเริ่มส่งมอบ design artifacts โดยตรง.** มัน viral มาก แต่ยังเป็น closed-source, paid-only, cloud-only, ผูกกับโมเดลของ Anthropic, skills ของ Anthropic และ surface ของ Anthropic. ไม่มี checkout, ไม่มี self-host, ไม่มี Vercel deploy, ไม่มีการสลับ agent ของคุณเอง.
-
-OpenDesign (OD) คือทางเลือกโอเพนซอร์ส. Loop เดียวกัน, mental model แบบ artifact-first เดียวกัน, แต่ไม่มี lock-in:
-
 - 🤖 **Agent-native, model-agnostic.** เราไม่ได้ ship agent. `claude` / `codex` / `cursor-agent` / `copilot` / `hermes` / `kimi` ที่มีอยู่แล้วบน `PATH` ของคุณคือ design engine. สลับได้ในคลิกเดียว.
 - 🧠 **Brand-grade เป็นค่าเริ่มต้น.** ทุก render อ่าน `DESIGN.md` ของ package ที่ active เป็น brand contract หลัก. Repo ship design-system packages 151 ชุด; package รุ่นเก่าอาจมีแค่ `DESIGN.md` ส่วน package รุ่นใหม่เพิ่ม `manifest.json`, `tokens.css`, components, assets และ provenance ได้. วาง folder เข้าไป picker ก็หาเจอ.
 - 🖥️ **Local-first, BYOK ทุกชั้น.** แอป desktop native สำหรับ macOS (Apple Silicon + Intel) และ Windows (x64). Linux AppImage อยู่ใน release lane แบบ optional. Product analytics และ session replay ต้องได้รับ consent; safety/reliability telemetry ที่ scrub ข้อมูลแล้วทำงานตลอด. ก่อนอธิบาย path ของ daemon data ต้องอ่าน **Daemon data directory contract** ใน `AGENTS.md` ที่ราก repo และ README นี้ต้องไม่ระบุ path ซ้ำ.
 - 🌍 **ประกอบกันได้บน 4 plane.** **Plugins** พา workflow ที่รันได้ · functional **skills** พาพฤติกรรมของ agent · **design templates** พา rendering blueprint · **design systems** พาแบรนด์. ทั้งสี่ใช้ directory แบบ portable และ versionable ที่ใครก็ author และ publish ได้.
-- 🔁 **Refresh codebase เดิม.** ส่ง `git` repo + `DESIGN.md` ให้ agent แล้วมัน refactor component จริงของคุณให้เข้ากับ brand spec. มี plugin เฉพาะสำหรับ migrate workflow จาก Figma / Pencil ไปเป็น React / Next.js / Vue code.
-- 🔒 **Privacy by conviction.** ทุกอย่างรันในที่ที่ข้อมูลของคุณอยู่ — laptop ของคุณ, server ของทีม, Vercel project ของคุณ. เมื่อจำเป็นต้องใช้ network, BYOK proxy ก็มี SSRF guard.
-
-### เปรียบเทียบ
-
-| | Claude Design | Figma | Lovable / v0 / Bolt | **OpenDesign** |
-|---|---|---|---|---|
-| Open source | ❌ | ❌ | ❌ | **✅ Apache-2.0** |
-| Self-host / desktop | ❌ | ❌ | ❌ | **✅ macOS + Windows + Docker** |
-| Agent-native (รันใน CLI ของคุณ) | Anthropic เท่านั้น | ❌ | Cloud agent เท่านั้น | **✅ 25 CLIs + BYOK** |
-| `DESIGN.md` ระดับแบรนด์ | Proprietary | Theme JSON | Limited tokens | **✅ ship systems 151 ชุด** |
-| Skills / plugins / templates | Closed | Plugin store | Closed | **✅ 100+ functional skills · separate rendering-template catalog · 277 plugins** |
-| HyperFrames (HTML→MP4) | ❌ | ❌ | ❌ | **✅ First-class** |
-| Refresh repo เดิมให้ตรง brand | ❌ | ❌ | ❌ | **✅ ผ่าน agent + `DESIGN.md`** |
-| Minimum billing | Pro / Max / Team | Pro / Org | Pro / Team | **BYOK · endpoint ใดก็ได้ที่เข้ากันได้** |
+- 🔁 **Refresh codebase เดิม.** ส่ง `git` repo + `DESIGN.md` ให้ agent แล้วมัน refactor component จริงของคุณให้เข้ากับ brand spec.
+- 🔒 **Privacy by conviction.** โปรเจกต์ทำงานได้บนเครื่องของคุณหรือระบบที่คุณติดตั้งเอง คำขอไปยังโมเดลคลาวด์และ OpenDesign Cloud จะถูกส่งไปยังบริการที่เกี่ยวข้อง BYOK proxy มีการป้องกัน SSRF
 
 ---
 
@@ -320,7 +301,7 @@ Node `~24`, pnpm `10.33.x`. ผู้ใช้ Windows ดู [`docs/windows-tro
 `brief → plugin → direction → design system → artifact → handoff → memory`
 
 1. **PM ส่ง brief.** Plugin picker เสนอ landing page · pitch deck · dashboard · social post · PM spec · OKR scorecard…
-2. **Designer (หรือ agent) ล็อก direction.** ยังไม่มี brand? เลือกจาก 5 direction ที่ curate ไว้. มี brand แล้ว? วาง screenshot / URL → agent เชื่อม GitHub, import Figma และ codify เป็น `DESIGN.md` ที่ reusable.
+2. **Designer (หรือ agent) ล็อก direction.** ยังไม่มี brand? เลือกจาก 5 direction ที่ curate ไว้. มี brand แล้ว? วาง screenshot / URL → agent เชื่อม GitHub และ codify เป็น `DESIGN.md` ที่ reusable.
 3. **Agent สร้าง deliverable แรก.** Plugin + functional skill หรือ design template + `DESIGN.md` ถูก bind แล้ว. CLI run ที่มี filesystem เขียน canonical project files และ preview ตามไฟล์; BYOK/plain-API run ที่ไม่มี file tools คืน `<artifact>` block ที่สมบูรณ์หนึ่งก้อน.
 4. **ส่งต่อให้ engineering.** Artifact คือ HTML/CSS จริง — วางเข้า Cursor, Codex หรือ Claude Code เพื่อ build ต่อเป็น code. หรือ export PPTX / PDF / MP4 ตรงไป marketing.
 5. **OpenDesign ฉลาดขึ้นเมื่อคุณใช้มัน.** Screenshot, font, palette และ artifact ที่ confirm แล้วจะสะสมเป็น default สำหรับ session ถัดไป. งานซ้ำน้อยลง, drift น้อยลง.
@@ -393,9 +374,9 @@ Protocol และ directory split → [`docs/skills-protocol.md`](../../docs/sk
 
 **AI & LLM** — `claude` · `cohere` · `mistral-ai` · `minimax` · `together-ai` · `replicate` · `runwayml` · `elevenlabs` · `ollama` · `x-ai`
 
-**Developer Tools** — `cursor` · `vercel` · `linear-app` · `framer` · `expo` · `clickhouse` · `mongodb` · `supabase` · `hashicorp` · `posthog` · `sentry` · `warp` · `webflow` · `sanity` · `mintlify` · `lovable` · `composio` · `opencode-ai` · `voltagent`
+**Developer Tools** — `cursor` · `vercel` · `linear-app` · `expo` · `clickhouse` · `mongodb` · `supabase` · `hashicorp` · `posthog` · `sentry` · `warp` · `sanity` · `mintlify` · `composio` · `opencode-ai` · `voltagent`
 
-**Productivity** — `notion` · `figma` · `miro` · `airtable` · `superhuman` · `intercom` · `zapier` · `cal` · `clay` · `raycast`
+**Productivity** — `notion` · `miro` · `airtable` · `superhuman` · `intercom` · `zapier` · `cal` · `clay` · `raycast`
 
 **Fintech** — `stripe` · `coinbase` · `binance` · `kraken` · `mastercard` · `revolut` · `wise`
 
@@ -423,7 +404,7 @@ Re-import library ผ่าน [`scripts/sync-design-systems.ts`](../../scripts/
 
 | Category | Count | Contents |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Complete design scenarios — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Complete design scenarios — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | One-shot image prompts — editorial, cinematic, product, portrait |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo motion templates |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | Brand `DESIGN.md` ที่ wrap เป็น plugins |
@@ -435,7 +416,6 @@ Re-import library ผ่าน [`scripts/sync-design-systems.ts`](../../scripts/
 ### Plugin ทำอะไรได้บ้าง
 
 - 🤖 **รันใน coding agent ใดก็ได้** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… ผ่าน skill protocol เดียวกับที่ agent รู้จักอยู่แล้ว.
-- 🔁 **Migrate workflow จาก Figma / Pencil** → source แบบ React, Next.js หรือ Vue. ดู [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Refresh codebase เดิมให้ตรง brand spec** — ชี้ plugin ไปที่ `git` repo + `DESIGN.md` แล้วได้ PR. ดู [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Persist custom workflows** — reusable templates ของทีมคุณอยู่ข้าง ๆ ของที่ ship มากับระบบ.
 
@@ -451,7 +431,7 @@ Plugins มี parity เต็มระหว่าง **web UI** และ **`
 od plugin list                       # list installed plugins (--task-kind / --mode / --tag filters)
 od plugin search "landing page"      # search by keyword
 od plugin info od-default            # inspect a plugin's metadata, inputs, capabilities
-od plugin install od-figma-migration # install from a registry; also accepts ./local-folder or an https://… link
+od plugin install od-default        # install from a registry; also accepts ./local-folder or an https://… link
 od plugin apply od-default --input brief="a one-page pitch for our seed round"
 od plugin upgrade od-default         # upgrade
 od plugin uninstall od-default       # uninstall
@@ -472,7 +452,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Field หลักของ `open-design.json`: `specVersion` (ปัจจุบัน `1.0.0`), `name` (stable ID), `version` (semver), optional `compat.agentSkills[].path` (ชี้ไป `./SKILL.md` เมื่อ entry expose Agent Skill), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode` (output surface เช่น `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**ประกาศเท่าที่จำเป็นขั้นต่ำ** — restricted install ให้แค่ `prompt:inject` โดย default), `od.inputs[]` (parameter ตอน apply).
+Field หลักของ `open-design.json`: `specVersion` (ปัจจุบัน `1.0.0`), `name` (stable ID), `version` (semver), optional `compat.agentSkills[].path` (ชี้ไป `./SKILL.md` เมื่อ entry expose Agent Skill), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `code-migration` / `tune-collab`), `od.mode` (output surface เช่น `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**ประกาศเท่าที่จำเป็นขั้นต่ำ** — restricted install ให้แค่ `prompt:inject` โดย default), `od.inputs[]` (parameter ตอน apply).
 
 Scaffold + validate ในเครื่อง:
 
@@ -511,7 +491,6 @@ Plugin registry endpoint: `GET /api/plugins`. ภาพรวม directory → [
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
-   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -546,7 +525,6 @@ Architecture เต็ม → [`docs/architecture.md`](../../docs/architecture.m
 - [x] 100+ functional skills · separate rendering-template catalog · 151 design-system packages · 5 visual directions · 5 device frames
 - [x] SQLite-backed projects · conversations · messages · tabs · templates
 - [x] Multi-provider BYOK proxy (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + SSRF guard
-- [x] Claude Design ZIP import (`/api/import/claude-design`)
 - [x] Sidecar protocol + Electron desktop + IPC automation
 - [x] Artifact lint API + 5-dim self-critique pre-emit gate
 - [x] **0.8.0** — plugin marketplace infrastructure (official plugins 261 ตัว, manifest spec, per-agent install scripts)
@@ -556,7 +534,6 @@ Architecture เต็ม → [`docs/architecture.md`](../../docs/architecture.m
 - [ ] AI-emitted tweaks panel UX — ยังไม่ implement
 - [ ] `npx od init` เพื่อ scaffold project พร้อม `DESIGN.md`
 - [ ] Plugin SDK + `od plugin {add,list,remove,test,publish}` CLI
-- [ ] Figma / Pencil → React / Next / Vue migration plugins (alpha)
 - [ ] Refresh-existing-codebase plugin (ชี้ไปที่ git repo + `DESIGN.md`)
 
 Phased delivery → [`docs/roadmap.md`](../../docs/roadmap.md).
@@ -695,11 +672,10 @@ SVG ด้านบน regenerate ทุกวันโดย [`.github/workflow
 
 | Project | Role |
 |---|---|
-| Claude Design | ผลิตภัณฑ์ closed-source ที่ repo นี้เป็นทางเลือกโอเพนซอร์สแทน. |
 | [`alchaincyf/huashu-design`](https://github.com/alchaincyf/huashu-design) | เข็มทิศด้าน design philosophy — workflow ของ junior designer, brand-asset protocol, anti-AI-slop checklist, critique 5 มิติ. |
 | [`op7418/guizang-ppt-skill`](https://github.com/op7418/guizang-ppt-skill) | Skill web PPT สไตล์ magazine ที่ bundle ตรงไว้ใต้ [`design-templates/guizang-ppt/`](../../design-templates/guizang-ppt/). เป็นค่าเริ่มต้นของ deck mode. |
 | [`lewislulu/html-ppt-skill`](https://github.com/lewislulu/html-ppt-skill) | ตระกูล HTML PPT Studio — 15 deck templates, 36 themes, 31 page layouts, animation runtime, magnetic-card presenter mode. |
-| [`OpenCoworkAI/open-codesign`](https://github.com/OpenCoworkAI/open-codesign) | ทางเลือกโอเพนซอร์สแทน Claude Design ตัวแรก; UX patterns ที่เรายืมมา (streaming-artifact loop, sandboxed iframe, live agent panel). |
+| [`OpenCoworkAI/open-codesign`](https://github.com/OpenCoworkAI/open-codesign) | UX patterns ที่เรายืมมา (streaming-artifact loop, sandboxed iframe, live agent panel). |
 | [`multica-ai/multica`](https://github.com/multica-ai/multica) | สถาปัตยกรรม daemon + adapter — PATH-scan agent detection, local daemon เป็น privileged process เพียงตัวเดียว. |
 | [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md) | แหล่งที่มาในอดีตของ schema `DESIGN.md` 9 section รุ่นแรกและ systems ที่ derive จาก upstream 70 ชุด; package ปัจจุบันขยาย baseline นี้ได้. |
 | [`bergside/awesome-design-skills`](https://github.com/bergside/awesome-design-skills) | แหล่งที่มาของ design skills 57 ชุดที่เพิ่มไว้ใต้ `design-systems/`. |

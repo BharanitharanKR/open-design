@@ -1,11 +1,9 @@
-<h1 align="center">OpenDesign: первое совместное рабочее пространство с дизайн-агентами</h1>
+<h1 align="center">OpenDesign: первое совместное рабочее пространство с ИИ-дизайн-агентами</h1>
 
-> ✨ **[Представляем OpenDesign Go](https://open-design.ai/pricing/)**. Go Plan стоит от 8 долларов в первый месяц и включает ежемесячные кредиты для более чем 10 моделей, в том числе GPT-6.1 Sol, GPT-6 Luna, DeepSeek V4.1 Flash, GLM-5.3 Flash-X и MiMo V2.6 Flash. Все персональные тарифы включают доступ к API для Codex, Claude Code, DSH, OpenCode и других инструментов.
->
-> 🧩 **[DeepSeek Harness теперь поддерживается.](https://open-design.ai/zh/agents/deepseek-harness-design/)** Подключите официальный Agent Harness `dsh` от DeepSeek к OpenDesign как нативную среду выполнения со структурированным мышлением, вызовами инструментов, поиском моделей, отменой и возобновлением сессии. Созданные файлы остаются в рабочем процессе OpenDesign для живого предпросмотра и передачи результата.
+> ✨ **[Отмечаем 100K звёзд на GitHub с OpenDesign Go](https://open-design.ai/pricing/)** — Кредиты Go удвоены: **8 долларов США за первый месяц и до 120 долларов США в ежемесячных кредитах для доступных в Design Plan моделей**. Используйте их с более чем 10 моделями, включая GPT-6 Luna, DeepSeek V4.1 Flash, GLM-5.3 Flash-X и MiMo V2.6 Flash. Все персональные тарифы включают доступ к API для Codex, Claude Code, DSH, OpenCode и других инструментов.
 
 <p align="center">
-  <img src="../../docs/assets/readme-hero-design-agent.webp" alt="OpenDesign: первое совместное рабочее пространство с дизайн-агентами" width="100%" />
+  <img src="../../docs/assets/readme-hero-design-agent.webp" alt="OpenDesign: первое совместное рабочее пространство с ИИ-дизайн-агентами" width="100%" />
 </p>
 
 <p align="center">
@@ -29,9 +27,9 @@
 
 ## Что такое OpenDesign
 
-OpenDesign — **совместное рабочее пространство с дизайн-агентами**. Начните с описания задачи и используйте привычного агента для разработки или OpenDesign Cloud, чтобы создать прототип в соответствии с вашей дизайн-системой. Поделитесь им с командой, соберите отзывы и попросите агента доработать результат в том же проекте.
+OpenDesign — **первое совместное рабочее пространство с ИИ-дизайн-агентами**. Начните с описания задачи и используйте привычного агента для разработки или OpenDesign Cloud, чтобы создать прототип в соответствии с вашей дизайн-системой. Поделитесь им с командой, соберите отзывы и попросите агента доработать результат в том же проекте.
 
-Этот процесс открыт и расширяем. Как **открытая альтернатива Claude Design**, OpenDesign распространяется по лицензии Apache 2.0: команды могут изучать и адаптировать навыки, шаблоны, дизайн-системы и плагины под свои процессы.
+Этот процесс открыт и расширяем. OpenDesign распространяется по лицензии Apache 2.0: команды могут изучать и адаптировать навыки, шаблоны, дизайн-системы и плагины под свои процессы.
 
 
 ---
@@ -232,29 +230,12 @@ OpenDesign — **совместное рабочее пространство с
 
 ## Почему OpenDesign
 
-> **В апреле 2026 года Anthropic выпустила Claude Design — впервые LLM перестала писать прозу и начала поставлять дизайн-артефакты напрямую.** Это стало вирусным. Но продукт остался закрытым, только платным, только облачным, привязанным к модели Anthropic, навыкам Anthropic, поверхности Anthropic. Никакого доступа к исходникам, никакого self-host, никакого деплоя на Vercel, никакой возможности подставить собственного агента.
-
-OpenDesign (OD) — это открытая альтернатива. Тот же цикл, та же ментальная модель «сначала артефакт», без всякой привязки:
-
 - 🤖 **Агентно-нативный, не зависящий от модели.** Мы не поставляем агента. `claude` / `codex` / `cursor-agent` / `copilot` / `hermes` / `kimi`, уже находящиеся в вашем `PATH`, — это дизайн-движок. Переключайтесь одним кликом.
 - 🧠 **Брендовый уровень по умолчанию.** Каждый рендер читает `DESIGN.md` активного пакета как основной контракт бренда. Репозиторий содержит 151 пакет дизайн-систем; старые пакеты могут состоять только из `DESIGN.md`, а новые — добавлять `manifest.json`, `tokens.css`, компоненты, ресурсы и сведения о происхождении. Положите папку — и выбор её найдёт.
-- 🖥️ **Локальный по умолчанию, BYOK на каждом уровне.** Нативные десктопные приложения остаются локальными, без обращений в облако. Перед описанием путей данных демона необходимо прочитать корневой `AGENTS.md`, раздел **Daemon data directory contract**.
+- 🖥️ **Локальный по умолчанию, BYOK на каждом уровне.** Нативные десктопные приложения ориентированы на локальную работу. Аналитика продукта и воспроизведение сессий требуют согласия; очищенная телеметрия безопасности и надёжности всегда включена. Перед описанием путей данных демона необходимо прочитать корневой `AGENTS.md`, раздел **Daemon data directory contract**.
 - 🌍 **Компонуемый в четырёх плоскостях.** **Плагины** несут workflow · **функциональные навыки** — поведение агента · **шаблоны дизайна** — чертежи рендеринга · **дизайн-системы** — бренд.
-- 🔁 **Обновляйте существующую кодовую базу.** Передайте `git`-репозиторий + `DESIGN.md` агенту, и он отрефакторит ваши реальные компоненты под спецификацию бренда. Специальные плагины мигрируют рабочие процессы Figma / Pencil в код React / Next.js / Vue.
-- 🔒 **Конфиденциальность по убеждению.** Всё работает там, где живут ваши данные — ваш ноутбук, сервер вашей команды, ваш проект на Vercel. Когда нужна сеть, BYOK-прокси защищён от SSRF.
-
-### Сравнение
-
-| | Claude Design | Figma | Lovable / v0 / Bolt | **OpenDesign** |
-|---|---|---|---|---|
-| Открытый исходный код | ❌ | ❌ | ❌ | **✅ Apache-2.0** |
-| Self-host / десктоп | ❌ | ❌ | ❌ | **✅ macOS + Windows + Docker** |
-| Агентно-нативный (работает в вашем CLI) | Только Anthropic | ❌ | Только облачный агент | **✅ 25 CLI + BYOK** |
-| `DESIGN.md` брендового уровня | Проприетарный | Theme JSON | Ограниченные токены | **✅ 151 поставляемых систем** |
-| Навыки / плагины / шаблоны | Закрытые | Магазин плагинов | Закрытые | **✅ 100+ функциональных навыков · отдельный каталог шаблонов рендеринга · 277 плагинов** |
-| HyperFrames (HTML→MP4) | ❌ | ❌ | ❌ | **✅ Полноправный** |
-| Обновление существующего репозитория под бренд | ❌ | ❌ | ❌ | **✅ через агента + `DESIGN.md`** |
-| Минимальный биллинг | Pro / Max / Team | Pro / Org | Pro / Team | **BYOK · любой совместимый эндпоинт** |
+- 🔁 **Обновляйте существующую кодовую базу.** Передайте `git`-репозиторий + `DESIGN.md` агенту, и он отрефакторит ваши реальные компоненты под спецификацию бренда.
+- 🔒 **Конфиденциальность по убеждению.** Проекты могут работать локально или в собственном развёртывании. Запросы к облачным моделям и OpenDesign Cloud отправляются соответствующим сервисам. BYOK-прокси включает защиту от SSRF.
 
 ---
 
@@ -333,7 +314,7 @@ Node `~24`, pnpm `10.33.x`. Пользователям WSL2 см. [`docs/wsl-set
 `brief → plugin → direction → design system → artifact → handoff → memory`
 
 1. **PM подаёт бриф.** Выбор плагина предлагает лендинг · питч-презентацию · дашборд · пост для соцсетей · PM-спецификацию · OKR-карту…
-2. **Дизайнер (или агент) фиксирует направление.** Нет бренда? Выберите одно из 5 кураторских направлений. Есть бренд? Добавьте скриншот или URL → агент подключит GitHub, импортирует Figma и кодифицирует переиспользуемый `DESIGN.md`.
+2. **Дизайнер (или агент) фиксирует направление.** Нет бренда? Выберите одно из 5 кураторских направлений. Есть бренд? Добавьте скриншот или URL → агент подключит GitHub и кодифицирует переиспользуемый `DESIGN.md`.
 3. **Агент создаёт первый результат.** CLI-запуски с файловой системой пишут канонические файлы; BYOK/API без файловых инструментов возвращает полный `<artifact>`.
 4. **Передача в разработку.** Артефакт — это настоящий HTML/CSS. Откройте его в Cursor, Codex или Claude Code, чтобы продолжать сборку как код, либо сразу экспортируйте PPTX / PDF / MP4 для маркетинга.
 5. **OpenDesign становится умнее по мере использования.** Ваши скриншоты, шрифты, палитры и подтверждённые артефакты накапливаются как значения по умолчанию для следующей сессии. Меньше переделок, меньше дрейфа.
@@ -408,9 +389,9 @@ od skills list --json
 
 **AI и LLM** — `claude` · `cohere` · `mistral-ai` · `minimax` · `together-ai` · `replicate` · `runwayml` · `elevenlabs` · `ollama` · `x-ai`
 
-**Инструменты разработчика** — `cursor` · `vercel` · `linear-app` · `framer` · `expo` · `clickhouse` · `mongodb` · `supabase` · `hashicorp` · `posthog` · `sentry` · `warp` · `webflow` · `sanity` · `mintlify` · `lovable` · `composio` · `opencode-ai` · `voltagent`
+**Инструменты разработчика** — `cursor` · `vercel` · `linear-app` · `expo` · `clickhouse` · `mongodb` · `supabase` · `hashicorp` · `posthog` · `sentry` · `warp` · `sanity` · `mintlify` · `composio` · `opencode-ai` · `voltagent`
 
-**Продуктивность** — `notion` · `figma` · `miro` · `airtable` · `superhuman` · `intercom` · `zapier` · `cal` · `clay` · `raycast`
+**Продуктивность** — `notion` · `miro` · `airtable` · `superhuman` · `intercom` · `zapier` · `cal` · `clay` · `raycast`
 
 **Финтех** — `stripe` · `coinbase` · `binance` · `kraken` · `mastercard` · `revolut` · `wise`
 
@@ -438,7 +419,7 @@ od skills list --json
 
 | Категория | Кол-во | Содержимое |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Полные дизайн-сценарии — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Полные дизайн-сценарии — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | Одношаговые промпты для изображений — редакционные, кинематографичные, продуктовые, портретные |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | Моушн-шаблоны HyperFrames / Seedance / Veo |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | Брендовые `DESIGN.md`, обёрнутые в плагины |
@@ -450,7 +431,6 @@ od skills list --json
 ### Что умеют плагины
 
 - 🤖 **Работают в любом кодинг-агенте** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… через тот же протокол навыков, который агент уже знает.
-- 🔁 **Мигрируют рабочие процессы Figma / Pencil** → исходники React, Next.js или Vue. См. [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Обновляют существующую кодовую базу под спецификацию бренда** — направьте плагин на `git`-репозиторий + `DESIGN.md`, получите PR. См. [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Сохраняют кастомные рабочие процессы** — переиспользуемые шаблоны вашей команды лежат рядом с поставляемыми.
 
@@ -466,7 +446,7 @@ od skills list --json
 od plugin list                       # список установленных плагинов (фильтры --task-kind / --mode / --tag)
 od plugin search "landing page"      # поиск по ключевым словам
 od plugin info od-default            # метаданные, входы и возможности плагина
-od plugin install od-figma-migration # установка из registry; также принимает ./local-folder или ссылку https://…
+od plugin install od-default        # установка из registry; также принимает ./local-folder или ссылку https://…
 od plugin apply od-default --input brief="одностраничный питч для нашего seed-раунда"
 od plugin upgrade od-default         # обновление
 od plugin uninstall od-default       # удаление
@@ -526,7 +506,6 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
-   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -560,7 +539,6 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] 100+ функциональных навыков · отдельный каталог шаблонов · 151 пакет дизайн-систем · 5 направлений · 5 рамок
 - [x] Проекты на SQLite · диалоги · сообщения · вкладки · шаблоны
 - [x] Мультипровайдерный BYOK-прокси (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + защита от SSRF
-- [x] Импорт ZIP из Claude Design (`/api/import/claude-design`)
 - [x] Sidecar-протокол + десктоп на Electron + IPC-автоматизация
 - [x] API линтинга артефактов + пятимерный гейт самокритики перед выдачей
 - [x] **0.8.0** — инфраструктура маркетплейса плагинов (261 официальный плагин, спецификация манифеста, скрипты установки для каждого агента)
@@ -574,7 +552,6 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] UX панели настроек, выдаваемой ИИ — ещё не реализовано
 - [ ] `npx od init` для создания каркаса проекта с `DESIGN.md`
 - [ ] Plugin SDK + CLI `od plugin {add,list,remove,test,publish}`
-- [ ] Плагины миграции Figma / Pencil → React / Next / Vue (alpha)
 - [ ] Плагин обновления существующей кодовой базы (направить на git-репозиторий + `DESIGN.md`)
 
 Поэтапная поставка → [`docs/roadmap.md`](../../docs/roadmap.md).
@@ -713,11 +690,10 @@ SVG выше регенерируется ежедневно через [`.githu
 
 | Проект | Роль |
 |---|---|
-| Claude Design | Закрытый продукт, открытой альтернативой которому является этот репозиторий. |
 | [`alchaincyf/huashu-design`](https://github.com/alchaincyf/huashu-design) | Компас дизайн-философии — рабочий процесс джуниор-дизайнера, протокол брендовых ассетов, чек-лист против AI-слопа, пятимерная критика. |
 | [`op7418/guizang-ppt-skill`](https://github.com/op7418/guizang-ppt-skill) | Навык веб-PPT в журнальном стиле, включённый дословно в [`design-templates/guizang-ppt/`](../../design-templates/guizang-ppt/). По умолчанию для режима презентаций. |
 | [`lewislulu/html-ppt-skill`](https://github.com/lewislulu/html-ppt-skill) | Семейство HTML PPT Studio — 15 шаблонов презентаций, 36 тем, 31 макет страниц, рантайм анимации, режим презентера с магнитными карточками. |
-| [`OpenCoworkAI/open-codesign`](https://github.com/OpenCoworkAI/open-codesign) | Первая открытая альтернатива Claude Design; UX-паттерны, которые мы заимствуем (цикл стриминга артефактов, изолированный iframe, живая панель агента). |
+| [`OpenCoworkAI/open-codesign`](https://github.com/OpenCoworkAI/open-codesign) | UX-паттерны, которые мы заимствуем (цикл стриминга артефактов, изолированный iframe, живая панель агента). |
 | [`multica-ai/multica`](https://github.com/multica-ai/multica) | Архитектура демона + адаптеров — обнаружение агентов сканированием PATH, локальный демон как единственный привилегированный процесс. |
 | [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md) | Исторический источник исходной 9-раздельной схемы `DESIGN.md` и 70 систем, производных от upstream; современные пакеты могут расширять эту основу. |
 | [`bergside/awesome-design-skills`](https://github.com/bergside/awesome-design-skills) | Источник 57 дизайн-навыков, добавленных в `design-systems/`. |
