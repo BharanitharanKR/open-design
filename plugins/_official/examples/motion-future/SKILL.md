@@ -18,7 +18,7 @@ A remake of a viral post by Douyin: https://www.douyin.com/video/769039304578334
 rebuilt in code from the published piece; the soundtrack is original.
 
 ## Reference files
-Copy `example.html`, `assets/app.js`, `assets/gsap.min.js`, `assets/jetbrains-mono-OFL.txt`, `assets/jetbrains-mono-subset.ttf`, `assets/lat3d.js`, `assets/soundtrack.mp3`, `assets/three.min.js.gz`, `assets/unbounded-OFL.txt`, `assets/unbounded-subset.ttf` into the composition, preserving the `assets/` path.
+Copy `example.html`, `assets/gsap.min.js`, `assets/three-addons.js`, `assets/unbounded-black-glyphs.js`, `assets/jetbrains-mono-OFL.txt`, `assets/jetbrains-mono-subset.ttf`, `assets/soundtrack.mp3`, `assets/three.min.js.gz`, `assets/unbounded-OFL.txt`, `assets/unbounded-subset.ttf` into the composition, preserving the `assets/` path.
 Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
@@ -31,7 +31,8 @@ task. Keep the HTML script URL pointing to the decompressed `.js` file.
 
 ## Art direction
 - Electric blue, black, white and chrome; heavy display type Unbounded Black with JetBrains Mono for the HUD (both SIL OFL, bundled).
-- Three.js for the 3D layer (`#gl`) under a 2D overlay canvas (`#ui`); 3D glyph outlines in `assets/lat3d.js`, all scenes in `assets/app.js`.
+- Three.js for the 3D layer (`#gl`) under a 2D overlay canvas (`#ui`). All scenes are readable code inside `example.html`.
+- `assets/three-addons.js` holds the three.js add-ons the film needs (RoomEnvironment, FontLoader, TextGeometry), unbundled. `assets/unbounded-black-glyphs.js` holds Unbounded Black outlines for every 3D word: A–Z, a–z, 0–9 and common punctuation.
 - The original is a 62s Chinese post; this reference is a 20s English highlight cut.
 
 ## Beat map (20s)
@@ -40,7 +41,9 @@ task. Keep the HTML script URL pointing to the decompressed `.js` file.
 - 13.0–14.0 ring vortex · 14.0–14.5 checker grid · 14.5–18.5 chrome FUTURE hero · 18.5–20.0 glitch → END OF TRANSMISSION
 
 ## Adapting the template
-- Swap the words and scenes in `assets/app.js`; keep hard cuts on the 120 BPM grid and the chrome hero.
+- Change the copy in `CFG` at the top of `example.html`: `brand`, `headline`, `hero` (the chrome 3D word, scaled to fit when longer than FUTURE), `heroLine`, `date`, `signal`, `wake`, `awaken`, `tags`, `objects` and `endLine`.
+- Keep hard cuts on the 120 BPM grid, the scene order in `EDIT` and the chrome hero. Scene code lives in the same file, grouped by scene.
+- 3D words support Latin letters, digits and common punctuation; the bundled display font covers Latin only.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the

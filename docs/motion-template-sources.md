@@ -80,9 +80,11 @@ with decompression instructions in the SKILL. When changing the vendored file:
 gzip -n -9 -c plugins/_official/examples/motion-future/assets/three.min.js > plugins/_official/examples/motion-future/assets/three.min.js.gz
 ```
 
-`motion-future` keeps its scene sources outside the repository; `assets/app.js`
-is the bundled, self-contained build and must be loaded by a static
-`<script src>` so plugin previews can rewrite its URL.
+`motion-future` keeps its scenes inline in `example.html`, with the copy in one
+`CFG` block. `assets/three-addons.js` carries the readable three.js examples it
+needs (RoomEnvironment, FontLoader, TextGeometry; MIT), and
+`assets/unbounded-black-glyphs.js` holds Unbounded Black outlines for the 3D
+type, so the hero word can be any Latin text.
 
 The package regression checks that referenced scripts, fonts, licenses and the
 soundtrack restore byte-for-byte. The browser regression seeks each film with
