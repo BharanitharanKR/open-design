@@ -111,6 +111,7 @@ import {
 } from '../collab/workspace-identity';
 import { parseEntryIndexConflictDetails, PublicFilePublishError } from '../collab/public-file-publish';
 import { clientRequestIdHeaders, withDaemonFailure } from '../analytics/failure-detail';
+import { randomUUID } from '../utils/uuid';
 
 /**
  * `coalescedGet` ttl for reads that may only JOIN a request still on the wire.
@@ -2017,28 +2018,63 @@ export async function fetchProjectFileSharePlan(projectId: string, fileName: str
   return resp.json() as Promise<import('@open-design/contracts').SharePlanSummary>;
 }
 
+// Only this endpoint's known codes may reach diagnostic logs; arbitrary token-shaped
+// upstream text can still contain sensitive data. No response messages are logged.
+const PUBLIC_SHARE_STATE_ERROR_CODES = new Set([
+  'invalid_file_path', 'WORKSPACE_IDENTITY_REQUIRED', 'WORKSPACE_PROJECT_SHARE_DENIED',
+  'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', 'WORKSPACE_PROJECT_PUBLISH_DENIED',
+  'SHARE_STATE_UNAVAILABLE',
+]);
+
+export class PublicFileShareStateReadError extends Error {
+  constructor(
+    readonly reason: 'http' | 'network' | 'aborted' | 'invalid_response',
+    readonly requestId: string,
+    readonly status?: number,
+    readonly code = 'UNCLASSIFIED_SHARE_STATE_ERROR',
+  ) {
+    super(`Share state read failed: ${reason}${status ? ` (${status})` : ''}`);
+    this.name = 'PublicFileShareStateReadError';
+  }
+}
+
 export async function fetchProjectFilePublicShareState(
   projectId: string,
   fileName: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<ProjectFilePublicShareResponse> {
-  const resp = await fetch(
-    `/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileName)}/publish-public`,
-    workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : undefined,
-  );
-  if (!resp.ok) {
-    const payload = (await resp.json().catch(() => null)) as
-      | { error?: { message?: string } | string; message?: string }
-      | null;
-    const errorMessage =
-      typeof payload?.error === 'object'
-        ? payload.error.message
-        : typeof payload?.error === 'string'
-          ? payload.error
-          : payload?.message;
-    throw new Error(errorMessage || `Fetch publish state failed (${resp.status})`);
+  const requestId = randomUUID();
+  const started = performance.now();
+  let status: number | undefined;
+  try {
+    const resp = await fetch(
+      `/api/projects/${encodeURIComponent(projectId)}/files/${encodeURIComponent(fileName)}/publish-public`,
+      { headers: { ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}),
+        ...clientRequestIdHeaders(requestId) } },
+    );
+    status = resp.status;
+    if (!resp.ok) {
+      const payload = (await resp.json().catch(() => null)) as
+        | { error?: { code?: unknown } | string } | null;
+      const candidate = typeof payload?.error === 'string' ? payload.error : payload?.error?.code;
+      const code = typeof candidate === 'string' && PUBLIC_SHARE_STATE_ERROR_CODES.has(candidate)
+        ? candidate : undefined;
+      throw new PublicFileShareStateReadError('http', requestId, status, code);
+    }
+    return (await resp.json()) as ProjectFilePublicShareResponse;
+  } catch (error) {
+    let reason: PublicFileShareStateReadError['reason'] = 'network';
+    if (status !== undefined) reason = 'invalid_response';
+    else if (error instanceof Error && error.name === 'AbortError') reason = 'aborted';
+    const failure = error instanceof PublicFileShareStateReadError ? error
+      : new PublicFileShareStateReadError(reason, requestId, status);
+    console.warn('[share] public file state read failure', JSON.stringify({
+      operation: 'state_read', requestId, reason: failure.reason,
+      ...(failure.status !== undefined ? { status: failure.status } : {}),
+      errorCode: failure.code, durationMs: Math.max(0, Math.round(performance.now() - started)),
+    }));
+    throw failure;
   }
-  return (await resp.json()) as ProjectFilePublicShareResponse;
 }
 
 /** Compatibility read for surfaces that only need the link, not its freshness. */

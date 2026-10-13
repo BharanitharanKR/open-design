@@ -3302,8 +3302,6 @@ export const ja: Dict = {
   'fileViewer.copyFixForAgent': "エージェント用に修正内容をコピー",
   'fileViewer.copyFixForAgentFailed': "コピーできませんでした。下の指示を選択して手動でコピーしてください。",
   "fileViewer.shareUpdateHint": "ファイルに新しい変更があります。閲覧者にはまだ前のバージョンが表示されています。",
-  "fileViewer.shareFreshnessChecking": "新しい変更を確認中…",
-  "fileViewer.shareFreshnessFailed": "新しい変更を確認できませんでした。もう一度お試しください。",
   "fileViewer.shareUpdateLink": "リンクを更新",
   "fileViewer.signInToUpdate": "ログインして更新",
   "fileViewer.signInToShare": "ログインして共有",
