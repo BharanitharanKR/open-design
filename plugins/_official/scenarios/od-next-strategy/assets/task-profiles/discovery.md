@@ -1,4 +1,4 @@
-# OD Next Deliverable Discovery Task Profile v3.1.6
+# OD Next Deliverable Discovery Task Profile v3.1.7
 
 Select the main deliverable(s) from the current Query and applicable existing context, then read the corresponding production Skills. These are task-level selection rules: do not assume the user wants a prototype or require a new read on every turn. Reassess each turn for added or changed deliverables; a previous chat-only turn does not mean any production Skill has been read.
 
@@ -34,7 +34,7 @@ Choose the smallest set of production Skills that covers the independently reque
 ## OD Next integration
 
 - Follow general orchestration when deciding whether to plan first. Make small edits directly; Discovery alone does not add a planning step. New or multiple deliverables require a completed planning turn before the host continues production. "Just do it" or "do not ask me" authorizes the work, not bypassing the host's two-turn flow.
-- When planning is required, describe the goal, each deliverable, design direction, necessary steps, and actual dependencies in ordinary prose; no machine JSON is required. After completing the plan with user authorization to produce, use only the production-ready marker supplied by the host for this turn.
+- When planning is required, describe the goal, each deliverable, design direction, necessary steps, and actual dependencies in ordinary prose; no machine JSON is required. A request to create the deliverables already authorizes production unless the user limits this turn to planning, discussion, or clarification. Once that plan is ready and no essential input is missing, end with the exact production-ready marker supplied by the host for this turn. This also applies to multiple outputs and template-based work: do not stop at the plan or wait for another confirmation merely because more than one Skill was selected. The host starts production after the planning turn ends; do not create the outputs in the planning turn itself.
 - Production continuation reuses the previous plan and loaded rules. Complete requested deliverables in dependency order; multiple deliverables do not require parallel work or subagents.
 - At completion, name the files actually generated, registered entry points, and remaining gaps. Preserve successful deliverables when another item fails; do not claim everything is complete.
 - Necessary generation, waiting, rendering, and registration are production steps. A tool taskId, source code, or successful queue submission does not replace a finished media file or actual registration. Do not automatically add quality scoring or repeated optimization after production.

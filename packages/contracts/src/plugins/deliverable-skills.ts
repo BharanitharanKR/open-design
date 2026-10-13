@@ -1,4 +1,4 @@
-export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.7';
+export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.1.8';
 
 /** Main deliverable catalog. Describes outputs; never a machine-plan admission gate. */
 export const DELIVERABLE_SKILL_IDS = [
@@ -30,7 +30,7 @@ export const DELIVERABLE_SKILLS: readonly DeliverableSkillDefinition[] = [
   { id: 'webgl', title: 'WebGL', description: 'GPU, shaders, and interactive 3D delivered as real-time HTML.', version: '3.1.1', routes: [{ id: 'webgl-html', kind: 'interactive', extensions: ['html'] }] },
   { id: 'live-artifact', title: 'Live Artifact', description: 'Views that refresh from local JSON or connected data, including task lists and dashboards; register the actual source, then refresh the same artifact without rebuilding its template.', version: '3.1.4', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
   { id: 'video', title: 'Video', description: 'Playable video files; deliver MP4 after media generation or declared animation rendering completes.', version: '3.1.3', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
-  { id: 'audio', title: 'Audio', description: 'Narration, music, and sound effects delivered as actual audio files through media interfaces.', version: '3.1.1', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
+  { id: 'audio', title: 'Audio', description: 'Narration, music, and sound effects delivered as actual audio files through media interfaces.', version: '3.1.2', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
 ];
 
 export function renderDeliverableSkillCatalog(skillRoot: string): string {
