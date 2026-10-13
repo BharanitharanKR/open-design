@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
 import { expect, test } from 'vitest';
+import { isMotionVideoComposition } from '@open-design/contracts/runtime/motion-source-player';
 
 import {
   captureFrozenSkillPackageFromSources,
@@ -23,6 +24,7 @@ test.each(['showreel', 'ui-morph', 'future', 'product-promo', 'visual-lesson'])(
       const [relativeRoot] = await materializeFrozenSkillPackage({ frozen, cwd: project });
       const reference = path.join(project, relativeRoot!);
       const html = await readFile(path.join(reference, 'example.html'), 'utf8');
+      expect(isMotionVideoComposition(html)).toBe(true);
       const skill = await readFile(path.join(reference, 'SKILL.md'), 'utf8');
       // Follow the template's documented offline preparation step for Three.js.
       if (name === 'future') {

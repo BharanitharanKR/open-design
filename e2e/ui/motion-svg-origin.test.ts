@@ -5,7 +5,7 @@ import { expect, test } from '@/playwright/suite';
 // than keeping a separate, perpetually-correct test implementation.
 const profile = readFileSync(new URL('../../plugins/_official/scenarios/od-next-strategy/assets/task-profiles/motion-design.md', import.meta.url), 'utf8');
 const helper = profile.match(/```js\n(function popShape[\s\S]*?)\n```/)![1];
-const gsap = readFileSync(new URL('../../plugins/_official/examples/motion-explainer/assets/gsap.min.js', import.meta.url), 'utf8');
+const gsap = readFileSync(new URL('../../plugins/_official/examples/motion-showreel/assets/gsap.min.js', import.meta.url), 'utf8');
 
 test('[P1] SVG disk and half disk retain their shared center after pop and backward seek', async ({ page }) => {
   await page.goto('about:blank');

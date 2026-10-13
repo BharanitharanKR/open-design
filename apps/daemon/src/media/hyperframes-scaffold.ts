@@ -1,6 +1,7 @@
 import type { HyperFramesScaffoldResponse } from '@open-design/contracts';
 import { createRequire } from 'node:module';
 import { injectMotionSourcePlayer } from '@open-design/contracts/runtime/motion-source-player';
+import { findRealTagEnd, HTML_TAG_PATTERNS } from '@open-design/contracts/runtime/html-injection-points';
 import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -100,8 +101,12 @@ export async function scaffoldHyperFramesComposition(input: {
       name: compositionId,
       createdAt,
     }, null, 2)}\n`;
+    const headEnd = findRealTagEnd(BLANK_COMPOSITION_HTML, HTML_TAG_PATTERNS.headOpen);
+    const motionSource = BLANK_COMPOSITION_HTML.slice(0, headEnd)
+      + '\n<meta name="od-motion-output" content="video">'
+      + BLANK_COMPOSITION_HTML.slice(headEnd);
     const source = compositionRoot === 'motion-source'
-      ? injectMotionSourcePlayer(BLANK_COMPOSITION_HTML.replace('https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js', './gsap.min.js'))
+      ? injectMotionSourcePlayer(motionSource.replace('https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js', './gsap.min.js'))
       : BLANK_COMPOSITION_HTML;
     const gsap = compositionRoot === 'motion-source'
       ? await readFile(require.resolve('gsap/dist/gsap.min.js')) : null;

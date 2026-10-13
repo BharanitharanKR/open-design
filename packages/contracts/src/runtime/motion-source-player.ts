@@ -1,6 +1,9 @@
 import { findRealTagOffset, HTML_TAG_PATTERNS, prependAfterDoctype } from './html-injection-points';
 
 export const MOTION_PLAYER_MARKER = 'data-od-motion-source-player';
+export const MOTION_PREVIEW_REQUEST = 'od:motion-preview-request';
+export const MOTION_PREVIEW_ACTIVITY = 'od:motion-preview-activity';
+export const MOTION_PREVIEW_PROBE = 'od:motion-preview-probe';
 
 // One clock contract for editable video playback and frame rendering. Check the
 // authored timeline BEFORE HyperFrames can pad it or reset its playback speed.
@@ -21,69 +24,7 @@ window.__odValidateMotionTimeline = function (root, tl) {
 // Shared by URL previews, srcdoc previews and the persisted editable source.
 // The renderer installs its flag before author scripts; it never sees chrome,
 // layout scaling, poster seeking, or wall-clock playback from this runtime.
-const LEGACY_PLAYER = `<script data-od-motion-source-player>
-${MOTION_TIMELINE_CHECK_SCRIPT}
-(function () {
-  function boot() {
-    if (window.__odMotionRender || window.__odMotionSourcePlayer) return;
-    var root = document.querySelector('[data-composition-id][data-duration][data-width][data-height]');
-    var mode = document.querySelector('meta[name="od-motion-output"]');
-    if (!root || (mode && mode.content === 'interactive')) return;
-    window.__odMotionSourcePlayer = true;
-    var width = Number(root.dataset.width), height = Number(root.dataset.height);
-    if (!(width > 0 && height > 0)) return;
-    var host = document.createElement('div');
-    host.setAttribute('data-od-motion-controls', '');
-    host.style.cssText = 'position:fixed;inset:auto 0 0;z-index:2147483647;height:52px;display:block';
-    var shadow = host.attachShadow({mode:'open'});
-    shadow.innerHTML = '<style>:host{color-scheme:dark}*{box-sizing:border-box}.bar{height:52px;display:flex;align-items:center;gap:10px;padding:8px 12px;background:#17191d;color:#fff;font:13px system-ui}button{border:1px solid #626772;border-radius:6px;background:#252932;color:white;padding:6px 10px;cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #8bb8ff}input{min-width:40px;flex:1;accent-color:#2f6feb}output{white-space:nowrap}</style><div class="bar"><button id="play" disabled>播放</button><button id="replay" disabled>重播</button><input aria-label="播放进度" type="range" min="0" max="1" step="0.01" value="0" disabled><output role="status">正在加载动效…</output></div>';
-    document.body.appendChild(host);
-    var play = shadow.getElementById('play'), replay = shadow.getElementById('replay');
-    var slider = shadow.querySelector('input'), status = shadow.querySelector('output');
-    var fitStyle = document.createElement('style');
-    fitStyle.textContent = 'html,body{width:100% !important;height:100% !important;margin:0 !important;overflow:hidden !important}';
-    document.head.appendChild(fitStyle);
-    // Fit via a wrapper so authored transforms on the stage remain untouched.
-    var stage = document.createElement('div');
-    root.parentNode.insertBefore(stage, root); stage.appendChild(root);
-    function fit() {
-      var scale = Math.min(innerWidth / width, Math.max(1, innerHeight - 52) / height);
-      stage.style.cssText = 'position:fixed;width:' + width + 'px;height:' + height + 'px;left:' + ((innerWidth-width*scale)/2) + 'px;top:' + ((innerHeight-52-height*scale)/2) + 'px;transform-origin:0 0;transform:scale(' + scale + ')';
-    }
-    fit(); window.addEventListener('resize', fit);
-    var started = Date.now();
-    function connect() {
-      var tl = window.__timelines && window.__timelines[root.dataset.compositionId];
-      if (!tl || typeof tl.seek !== 'function' || typeof tl.play !== 'function' || !(tl.duration() > 0)) {
-        if (Date.now()-started < 15000) { setTimeout(connect, 100); return; }
-        status.textContent = '动效未就绪，请检查时间轴或依赖文件'; return;
-      }
-      var timingError = window.__odValidateMotionTimeline(root, tl);
-      if (timingError) { tl.pause(); status.textContent = timingError; return; }
-      var duration = tl.duration();
-      play.disabled = replay.disabled = slider.disabled = false;
-      slider.max = String(duration);
-      // Render a useful still without overriding authored onUpdate callbacks.
-      tl.pause(); tl.seek(Math.min(0.5, duration / 10), false);
-      play.onclick = function () { if (tl.paused() || tl.time() >= duration) { if (tl.time() >= duration) tl.seek(0, false); tl.play(); } else tl.pause(); };
-      replay.onclick = function () { tl.pause(); tl.seek(0, false); tl.play(); };
-      slider.oninput = function () { tl.pause(); tl.seek(Number(slider.value), false); };
-      function update() {
-        if (!host.isConnected) return;
-        var time = tl.time(); slider.value = String(time);
-        play.textContent = tl.paused() || time >= duration ? '播放' : '暂停';
-        status.textContent = time.toFixed(1) + ' / ' + duration.toFixed(1) + ' s';
-        setTimeout(update, tl.paused() || time >= duration ? 200 : 33);
-      }
-      update();
-    }
-    connect();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true}); else boot();
-})();
-</script>`;
-
-const PLAYER = `<script data-od-motion-source-player="4">
+const PLAYER = `<script data-od-motion-source-player="5">
 ${MOTION_TIMELINE_CHECK_SCRIPT}
 (function () {
   function boot() {
@@ -99,27 +40,43 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
     hint.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;padding:6px 10px;border-radius:6px;background:#17191d;color:white;font:13px system-ui;display:none';
     document.body.appendChild(hint);
     function notice(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
+    var hosted = window.__odMotionPreview === true || new URL(location.href).searchParams.get('odMotionPreview') === '1';
+    var instance = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    var active = !hosted, playing = false, wantsPlay = true, pageActive = true, updateTimer = null;
+    var applyPlayback = function () {};
+    function requestActivity() { window.parent.postMessage({type:'${MOTION_PREVIEW_REQUEST}', id:instance}, '*'); }
+    function onActivity(event) {
+      var data = event.data;
+      if (!hosted || event.source !== window.parent || !data) return;
+      if (data.type === '${MOTION_PREVIEW_PROBE}') { requestActivity(); return; }
+      if (data.type !== '${MOTION_PREVIEW_ACTIVITY}' || typeof data.active !== 'boolean' || (data.active && data.id !== instance)) return;
+      active = data.active; applyPlayback();
+    }
+    window.addEventListener('message', onActivity);
     var tracks = Array.prototype.map.call(document.querySelectorAll('audio[src]'), function (audio) {
       audio.pause(); audio.autoplay = false;
       return { audio: audio, start: Number(audio.dataset.start || 0), duration: Number(audio.dataset.duration), volume: Number(audio.dataset.volume || 1), pending: false, blocked: false };
     });
     var muted = false;
-    function syncAudio(time, playing, force) {
+    function syncAudio(time, shouldPlay, force) {
       tracks.forEach(function (track) {
         var audio = track.audio, local = time - track.start;
-        var active = local >= 0 && local < track.duration;
+        var trackActive = local >= 0 && local < track.duration;
         audio.volume = Math.max(0, Math.min(1, track.volume)); audio.muted = muted;
-        if (!active || !playing) audio.pause();
+        if (!trackActive || !shouldPlay) audio.pause();
         var target = Math.max(0, Math.min(track.duration, local));
         if (audio.readyState > 0 && (force || Math.abs(audio.currentTime - target) > .2)) audio.currentTime = target;
-        if (active && playing && audio.paused && !track.pending && !track.blocked) {
+        if (trackActive && shouldPlay && audio.paused && !track.pending && !track.blocked) {
           track.pending = true;
           var promise = audio.play();
           if (promise) promise.catch(function (error) {
             if (error && error.name === 'AbortError') return;
             track.blocked = true;
             notice(error && error.name === 'NotAllowedError' ? '点击画面开启声音' : '音频无法播放，请检查素材');
-          }).finally(function () { track.pending = false; });
+          }).finally(function () {
+            track.pending = false;
+            if (!active || !pageActive || !playing || !wantsPlay) audio.pause();
+          });
           else track.pending = false;
         }
       });
@@ -143,15 +100,23 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
       }
       var timingError = window.__odValidateMotionTimeline(root, tl);
       if (timingError) { tl.pause(); notice(timingError); return; }
-      var duration = tl.duration(), playing = true;
-      function play() { playing = true; if (tl.time() >= duration) tl.seek(0, false); tl.play(); syncAudio(tl.time(), true, true); }
-      function pause() { playing = false; tl.pause(); syncAudio(tl.time(), false, true); }
+      var duration = tl.duration();
+      applyPlayback = function () {
+        clearTimeout(updateTimer); updateTimer = null;
+        playing = active && pageActive && wantsPlay;
+        if (playing) {
+          if (tl.time() >= duration) tl.seek(0, false);
+          tl.play(); syncAudio(tl.time(), true, true); update();
+        } else { tl.pause(); syncAudio(tl.time(), false, true); }
+      };
+      function play() { wantsPlay = true; applyPlayback(); }
+      function pause() { wantsPlay = false; applyPlayback(); }
       function seek(time) { pause(); tl.seek(Math.max(0, Math.min(duration, Number(time))), false); syncAudio(tl.time(), false, true); }
       function replay() { seek(0); play(); }
       window.__odMotionPlayer = {
         play: play, pause: pause, seek: seek, replay: replay,
         setMuted: function (value) { muted = !!value; syncAudio(tl.time(), playing, false); },
-        state: function () { return { playing: playing, time: tl.time(), duration: duration, muted: muted,
+        state: function () { return { playing: playing, active: active, time: tl.time(), duration: duration, muted: muted,
           audio: tracks.map(function (track) { return { paused: track.audio.paused, time: track.audio.currentTime, muted: track.audio.muted, volume: track.audio.volume, blocked: track.blocked }; }) }; }
       };
       root.addEventListener('click', function () {
@@ -159,40 +124,57 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
         if (blocked) { tracks.forEach(function (track) { track.blocked = false; }); notice(''); if (playing) syncAudio(tl.time(), true, true); else play(); }
         else if (playing) pause(); else play();
       });
-      tl.seek(0, false); play();
+      tl.seek(0, false); applyPlayback();
       function update() {
-        if (!stage.isConnected) { pause(); return; }
+        if (!stage.isConnected) { active = false; applyPlayback(); return; }
+        if (!active || !pageActive || !playing) return;
         if (playing && tl.time() >= duration) { tl.seek(0, false); tl.play(); syncAudio(0, true, true); }
         syncAudio(tl.time(), playing && !tl.paused(), false);
-        setTimeout(update, playing ? 33 : 200);
+        updateTimer = setTimeout(update, 33);
       }
-      update();
     }
+    window.addEventListener('pagehide', function () { pageActive = false; applyPlayback(); tracks.forEach(function (track) { track.audio.pause(); }); });
+    window.addEventListener('pageshow', function () {
+      pageActive = true;
+      if (hosted) { active = false; requestActivity(); }
+      applyPlayback();
+    });
+    if (hosted) requestActivity();
     connect();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true}); else boot();
 })();
 </script>`;
 
-export function injectMotionSourcePlayer(html: string): string {
+export function isMotionVideoComposition(html: string): boolean {
   const metaOffset = findRealTagOffset(html, /<meta\b[^>]*\bname\s*=\s*["']od-motion-output["']/i);
   const meta = metaOffset >= 0 ? /^<meta\b[^>]*>/i.exec(html.slice(metaOffset))?.[0] ?? '' : '';
-  if (/\bcontent\s*=\s*(?:["']interactive["']|interactive(?=\s|\/?>))/i.test(meta)) return html;
-  const video = /\bcontent\s*=\s*(?:["']video["']|video(?=\s|\/?>))/i.test(meta);
-  const player = video ? PLAYER : LEGACY_PLAYER;
+  return /\bcontent\s*=\s*(?:["']video["']|video(?=\s|\/?>))/i.test(meta);
+}
+
+export function injectMotionSourcePlayer(html: string): string {
+  if (!isMotionVideoComposition(html)) return html;
   // Runtime checks the actual DOM too; these prefilters avoid adding code to
   // ordinary prototypes/decks and do not mistake JS samples for HTML tags.
   if (findRealTagOffset(html, /<[^/!][^>]*\bdata-composition-id\s*=/i) < 0) return html;
   const existing = findRealTagOffset(html, /<script\b[^>]*\bdata-od-motion-source-player\b/i);
   if (existing >= 0) {
     const script = /^<script\b[^>]*>[\s\S]*?<\/script\s*>/i.exec(html.slice(existing));
-    if (!script || (video && /data-od-motion-source-player="4"/.test(script[0]))) return html;
-    return html.slice(0, existing) + player + html.slice(existing + script[0].length);
+    if (!script || /data-od-motion-source-player="5"/.test(script[0])) return html;
+    return html.slice(0, existing) + PLAYER + html.slice(existing + script[0].length);
   }
   const end = findRealTagOffset(html, HTML_TAG_PATTERNS.bodyClose);
-  return end < 0 ? html + player : html.slice(0, end) + player + html.slice(end);
+  return end < 0 ? html + PLAYER : html.slice(0, end) + PLAYER + html.slice(end);
 }
 
 export function markMotionFrameRender(html: string): string {
   return prependAfterDoctype(html, '<script>window.__odMotionRender=true;</script>');
+}
+
+/** Only live embedded previews wait for host activity; exports and standalone
+ * editable sources retain their existing autoplay/render behavior. */
+export function markMotionHostedPreview(html: string): string {
+  return isMotionVideoComposition(html)
+    ? prependAfterDoctype(html, '<script>window.__odMotionPreview=true;</script>')
+    : html;
 }
