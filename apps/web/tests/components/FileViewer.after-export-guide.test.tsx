@@ -33,11 +33,11 @@ async function exportHtml() {
   fireEvent.click(await screen.findByRole('menuitem', { name: /Export as standalone HTML/i }));
 }
 describe('FileViewer real HTML export completion seam', () => {
-  it('reports success once and preserves the success toast, while history remains unknown', async () => {
+  it('preserves the download toast without reporting unconfirmed saving to the guide', async () => {
     seam.exportHtml.mockResolvedValue(undefined);
     await exportHtml();
-    await waitFor(() => expect(seam.complete).toHaveBeenCalledWith('success'));
-    expect(seam.complete).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getAllByText('Export complete').length).toBeGreaterThan(0));
+    expect(seam.complete).not.toHaveBeenCalled();
     // 'Export complete' here is the success toast (`fileViewer.exportDone`),
     // a coincidentally identical string to the (mocked-hidden) guide's old
     // title — a separate key owned outside this component's scope.

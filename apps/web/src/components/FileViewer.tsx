@@ -13,7 +13,7 @@ import { CommentSyncBanner } from './share/CommentSyncBanner';
 import { invalidateCommentSyncState } from './share/useCommentSyncState';
 import { useAfterExportShareGuide } from './share/useAfterExportShareGuide';
 import { useShareGuideAppUserId } from './share/useShareGuideAppUserId';
-import { useProjectShareHistory } from './share/useProjectShareHistory';
+import { useProjectShareHistoryState } from './share/useProjectShareHistory';
 import { notifyProjectShareHistoryChanged } from './share/share-publication-events';
 import { ShareFeedbackToast } from './share/ShareFeedbackToast';
 import { TopStackedToast } from './share/TopStackedToast';
@@ -7383,8 +7383,10 @@ function HtmlViewer({
     const originPromise = resolveArtifactExportOrigin(context)
       .catch(() => unknownExportOrigin());
     const completeShareGuide = afterExportGuide.beginExport();
-    const finish = async (result: 'success' | 'failed' | 'cancelled', errorCode?: string) => {
-      if (toastFormats.has(format)) completeShareGuide(result);
+    const finish = async (result: 'success' | 'failed' | 'cancelled', errorCode?: string, saveCompleted = false) => {
+      // Blob-download exporters resolve at initiation, not at disk persistence.
+      // Only the existing native PDF save acknowledgement can offer the guide.
+      if (toastFormats.has(format) && (result !== 'success' || saveCompleted)) completeShareGuide(result);
       const originProps = await originPromise;
       trackArtifactExportResult(
         analytics.track,
@@ -7463,7 +7465,7 @@ function HtmlViewer({
               if (toastFormats.has(format)) setExportToast(null);
               return;
             }
-            void finish('success');
+            void finish('success', undefined, format === 'pdf' && result === 'desktop');
             if (toastFormats.has(format)) setExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
           },
           (err) => {
@@ -7478,7 +7480,7 @@ function HtmlViewer({
           if (toastFormats.has(format)) setExportToast(null);
           return;
         }
-        void finish('success');
+        void finish('success', undefined, format === 'pdf' && out === 'desktop');
         if (toastFormats.has(format)) setExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
       }
     } catch (err) {
@@ -15441,12 +15443,14 @@ function HtmlViewer({
   // plan and POST validate the original file, never the routing-only preview.
   const rawCanShare = isShareableArtifact;
   const shareGuideAppUserId = useShareGuideAppUserId();
-  const projectShareHistory = useProjectShareHistory(projectId, workspaceContext, JSON.stringify([file.name, publishedFileSlug, publishedFileUrl]));
+  const projectShareHistoryState = useProjectShareHistoryState(projectId, workspaceContext, JSON.stringify([file.name, publishedFileSlug, publishedFileUrl]));
+  const projectShareHistory = projectShareHistoryState.history;
   const afterExportGuide = useAfterExportShareGuide({
     scopeKey: JSON.stringify([projectId, file.name, workspaceAccountScopedCacheKey(workspaceContext)]),
     appUserId: shareGuideAppUserId,
     // The URL only invalidates the read; it never establishes binding history.
     hasEverShared: projectShareHistory?.hasEverShared ?? null,
+    historyLoading: projectShareHistoryState.status === 'loading',
     enabled: workspaceActive && !viewerOnly && rawCanShare && !streaming,
   });
   const rawCanDownload = source !== null && (isShareableArtifact || isMarkdownArtifact);
@@ -15514,7 +15518,7 @@ function HtmlViewer({
       // exists to avoid. Only a genuinely unavailable renderer falls through.
       if (!('unavailable' in res)) throw new Error(res.error);
     }
-    await exportProjectAsPdf({
+    return exportProjectAsPdf({
       deck: pdfDeck,
       fallbackPdf: () => exportAsPdf(pdfSource, pdfTitle, { deck: pdfDeck, onProgress: onExportProgress }),
       filePath: file.name,
@@ -15982,7 +15986,7 @@ function HtmlViewer({
         // below.
         if (!('unavailable' in res)) throw new Error(res.error);
       }
-      await exportProjectAsPdf({
+      return exportProjectAsPdf({
         deck: deckExportSignal,
         fallbackPdf: () => exportAsPdf(source ?? '', exportTitle, { deck: deckExportSignal, onProgress: onExportProgress }),
         filePath: file.name,

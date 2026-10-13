@@ -140,6 +140,37 @@ describe('export completion controller', () => {
     act(() => old('success'));
     expect(result.current.noticeId).toBeNull();
   });
+  it('waits only for an in-flight history read after a saved export, once per attempt', () => {
+    const initial = { ...eligible, hasEverShared: null as boolean | null, historyLoading: true };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    const complete = result.current.beginExport();
+    act(() => { complete('success'); complete('success'); });
+    expect(result.current.noticeId).toBeNull();
+    rerender({ ...initial, hasEverShared: false, historyLoading: false });
+    expect(result.current.noticeId).toBe(1);
+    act(() => result.current.dismiss());
+    act(() => complete('success'));
+    expect(result.current.noticeId).toBeNull();
+  });
+  it.each(['failed-read', 'shared', 'old-scope', 'opt-out', 'dismissed'] as const)('discards pending completion after %s', reason => {
+    const initial = { ...eligible, hasEverShared: null as boolean | null, historyLoading: true };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    act(() => result.current.beginExport()('success'));
+    if (reason === 'failed-read') rerender({ ...initial, historyLoading: false });
+    if (reason === 'shared') rerender({ ...initial, hasEverShared: true, historyLoading: false });
+    if (reason === 'old-scope') rerender({ ...initial, scopeKey: 'other-file' });
+    if (reason === 'opt-out') act(() => { expect(result.current.neverShow()).toBe(true); });
+    if (reason === 'dismissed') act(() => result.current.dismiss());
+    rerender({ ...initial, hasEverShared: false, historyLoading: false });
+    expect(result.current.noticeId).toBeNull();
+  });
+  it.each(['cancelled', 'failed'] as const)('does not retain %s while history loads', outcome => {
+    const initial = { ...eligible, hasEverShared: null as boolean | null, historyLoading: true };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    act(() => result.current.beginExport()(outcome));
+    rerender({ ...initial, hasEverShared: false, historyLoading: false });
+    expect(result.current.noticeId).toBeNull();
+  });
   it('rejects unknown history and existing stopped bindings', () => {
     const { result, rerender } = renderHook((hasEverShared: boolean | null) => useAfterExportShareGuide({ ...eligible, hasEverShared }), { initialProps: null as boolean | null });
     act(() => result.current.beginExport()('success'));

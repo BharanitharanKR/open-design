@@ -419,7 +419,7 @@ test('capture updated owner G1 portal and S12 deployment submenu',async({page})=
   await expect(menu).toBeHidden();
   await expect(provider).toHaveValue('cloudflare-pages');
 });
-test('capture first-export share guide and ever-shared exclusion P1 EX0',async({page})=>{
+test('capture confirmed-save guide and ever-shared exclusion P1 EX0 (controlled native ack)',async({page})=>{
   await page.addInitScript(()=>{localStorage.setItem('open-design:locale','zh-CN');localStorage.setItem('open-design:locale-source','manual');});
   await mockAmrPersonalWorkspace(page);
   await page.route('**/api/integrations/vela/status*',r=>r.fulfill({json:{loggedIn:true,profile:'test',configPath:'',user:{id:'ui-audit-export-account',email:'fixture@example.invalid'}}}));
@@ -432,6 +432,13 @@ test('capture first-export share guide and ever-shared exclusion P1 EX0',async({
   expect(file.ok(),await file.text()).toBeTruthy();
   let everShared=false;
   await page.route(`/api/projects/${projectId}/share-state`,r=>r.fulfill({json:{projectId,hasEverShared:everShared,bindingExists:everShared,publications:[]}}));
+  // HTTP-boundary fixture, not proof of an actual OS save or cloud authentication.
+  await page.route(`/api/projects/${projectId}/export/pdf`,r=>r.fulfill({json:{ok:true}}));
+  const savedPdf=async()=>{
+    const completed=page.waitForResponse(r=>r.url().endsWith(`/api/projects/${projectId}/export/pdf`)&&r.request().method()==='POST');
+    await page.locator('.chrome-unified-popover').getByRole('menuitem',{name:/PDF/i}).click();
+    expect((await completed).ok()).toBe(true);
+  };
   await page.clock.install();
   const firstHistory=page.waitForResponse(r=>r.url().includes(`/api/projects/${projectId}/share-state`)&&r.ok());
   await page.goto(`/projects/${projectId}/files/index.html`);
@@ -439,8 +446,7 @@ test('capture first-export share guide and ever-shared exclusion P1 EX0',async({
   const exportButton=page.getByTestId('file-workspace').getByRole('button',{name:'导出',exact:true});
   await expect(exportButton).toBeEnabled();
   await exportButton.click();
-  const htmlExport=page.locator('.chrome-unified-popover').getByRole('menuitem',{name:/HTML/i});
-  await Promise.all([page.waitForEvent('download'),htmlExport.click()]);
+  await savedPdf();
   await expect(page.getByRole('status',{name:'分享链接，让大家留下反馈'})).toBeVisible();
   await save(page,'P1','P1');
   const guide=page.getByRole('status',{name:'分享链接，让大家留下反馈'});
@@ -449,7 +455,7 @@ test('capture first-export share guide and ever-shared exclusion P1 EX0',async({
   await page.clock.fastForward(11_000);
   await expect(guide).toHaveCount(0);
   await exportButton.click();
-  await Promise.all([page.waitForEvent('download'),htmlExport.click()]);
+  await savedPdf();
   await expect(guide).toBeVisible();
   await guide.getByRole('button',{name:'不再提示'}).click();
   await expect(guide).toHaveCount(0);
@@ -458,7 +464,7 @@ test('capture first-export share guide and ever-shared exclusion P1 EX0',async({
   await suppressedHistory;
   await expect(exportButton).toBeEnabled();
   await exportButton.click();
-  await Promise.all([page.waitForEvent('download'),htmlExport.click()]);
+  await savedPdf();
   await expect(guide).toHaveCount(0);
   // Reset only this test user's preference so EX0 is independently gated by history, not by neverShow.
   await page.evaluate(()=>localStorage.removeItem('od:after-export-share-guide:v1:ui-audit-export-account'));
@@ -469,7 +475,7 @@ test('capture first-export share guide and ever-shared exclusion P1 EX0',async({
   await secondHistory;
   await expect(exportButton).toBeEnabled();
   await exportButton.click();
-  await Promise.all([page.waitForEvent('download'),htmlExport.click()]);
+  await savedPdf();
   await expect(page.getByRole('status',{name:'分享链接，让大家留下反馈'})).toHaveCount(0);
   await save(page,'EX0','EX0');
 });
