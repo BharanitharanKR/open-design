@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { parse } from 'postcss';
 import { ShareTab } from '../../../src/components/share/ShareTab';
+import { ShareButton } from '../../../src/components/share/ShareButton';
+import buttonStyles from '../../../src/components/share/ShareButton.module.css';
 import { I18nProvider } from '../../../src/i18n';
 import { readShareCss } from '../../helpers/read-share-css';
 
@@ -35,6 +37,57 @@ function props(overrides: Partial<Props> = {}): Props {
     canOpenSharePage: false, shareLinkStatusHint: '', ...overrides,
   };
 }
+
+describe('OPEND-3790 update-only green action', () => {
+  it('renders green update colors without recoloring soft actions or changing the update callback and URL', async () => {
+    // Apply the production stylesheet to the rendered CSS Module classes. This
+    // checks the actual cascade on the action, not merely a selector's presence.
+    const sheet = parse(readShareCss(resolve(__dirname, '../../../src/components/share/ShareButton.module.css')));
+    sheet.walkRules(rule => {
+      rule.selector = rule.selector.replace(/:global\(([^)]+)\)/g, '$1')
+        .replace(/\.([a-zA-Z][\w-]*)/g, (match, name: string) => buttonStyles[name] ? `.${buttonStyles[name]}` : match);
+    });
+    const style = document.createElement('style');
+    style.textContent = sheet.toString() + readFileSync(resolve(__dirname, '../../../src/styles/primitives.css'), 'utf8');
+    document.head.append(style);
+    try {
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+        fileCount: 1, totalBytes: 12, exceedsSizeLimit: false, exclusions: [],
+      })));
+      const update = vi.fn().mockResolvedValue(undefined);
+      const input = props({ projectId: 'color-fixture', filePath: 'index.html', publicationStatus: 'active', publicationFreshness: 'outdated', updateCurrentFilePublic: update });
+      const view = render(<><ShareTab {...input} /><ShareButton variant="soft">Sign in / Retry control</ShareButton></>);
+      const action = screen.getByRole('button', { name: 'fileViewer.shareUpdateLink' });
+      const colors = () => {
+        const computed = getComputedStyle(action);
+        expect(computed.color).toBe('rgb(47, 107, 63)');
+        expect(computed.backgroundColor).toBe('rgb(227, 241, 230)');
+        expect(computed.height).toBe('32px');
+        expect(computed.width).toBe('88px');
+        expect(computed.borderRadius).toBe('6px');
+      };
+      colors();
+      const soft = getComputedStyle(screen.getByRole('button', { name: 'Sign in / Retry control' }));
+      expect(soft.color).toBe('rgb(36, 95, 206)');
+      expect(soft.backgroundColor).toBe('rgb(237, 243, 255)');
+      expect(update).not.toHaveBeenCalled();
+      await act(async () => fireEvent.click(action));
+      await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+      expect(screen.getByText(input.publishedFileUrl)).toBeVisible();
+      expect(input.publishCurrentFilePublic).not.toHaveBeenCalled();
+      expect(input.copyPublishedFileLink).not.toHaveBeenCalled();
+      for (const state of [{ publishingPublicFile: true }, { viewerOnly: true }, { streaming: true }]) {
+        view.rerender(<ShareTab {...input} {...state} />);
+        expect(action).toBeDisabled();
+        colors();
+        fireEvent.click(action);
+        expect(update).toHaveBeenCalledTimes(1);
+      }
+    } finally {
+      style.remove();
+    }
+  });
+});
 
 const checkPath = 'm3 8 3 3 7-7';
 const linkPath = 'M10 13.5a5 5 0 0 0 7 .2l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 10.5a5 5 0 0 0-7-.2l-3 3a5 5 0 0 0 7 7l1.7-1.7';

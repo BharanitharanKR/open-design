@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import { Button } from '@open-design/components';
 import styles from './ShareButton.module.css';
 
-export type ShareButtonVariant = 'primary' | 'soft' | 'soft-error' | 'dark-sm';
+export type ShareButtonVariant = 'primary' | 'soft' | 'update' | 'soft-error' | 'dark-sm';
 
 export interface ShareButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant: ShareButtonVariant;
@@ -36,6 +36,7 @@ export interface ShareButtonProps extends ButtonHTMLAttributes<HTMLButtonElement
 const VARIANT_CLASS: Record<ShareButtonVariant, string | undefined> = {
   primary: styles.primary,
   soft: styles.soft,
+  update: `${styles.soft} ${styles.update}`,
   'soft-error': `${styles.soft} ${styles.softError}`,
   'dark-sm': styles.darkSm,
 };

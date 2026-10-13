@@ -28,7 +28,12 @@
   --share-ink-dark-sm: var(--share-surface-dark);
   --share-ink-dark-sm-hover: #353535;
 
-  /* Blues — the 88px soft button (update link / sign-in-to-update / plain retry). */
+  /* Update link only: ShareEntry's existing published green pair.
+     Reuse the product palette, not sampled screenshot colors. */
+  --share-update-fg: #2F6B3F;
+  --share-update-bg: #E3F1E6;
+
+  /* Blues — sign-in-to-update / plain retry (not the update action). */
   --share-blue-bg: #EDF3FF;
   --share-blue-fg: #245FCE;
   --share-blue-bg-hover: #E0EAFF;
