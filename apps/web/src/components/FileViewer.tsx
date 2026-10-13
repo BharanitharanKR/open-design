@@ -7762,6 +7762,10 @@ function HtmlViewer({
   const canPublishPublic = canPublishPublicFile(workspaceContext);
   const publicFileRequestSeqRef = useRef(0);
   const publicFileIdentityRef = useRef({ projectId, fileName: file.name });
+  const publicFileReadIdentity = JSON.stringify([projectId, file.name, workspaceAccountScopedCacheKey(workspaceContext)]);
+  const publicFileStateReadRef = useRef<{
+    key: string; promise: Promise<ProjectFilePublicShareResponse>;
+  } | null>(null);
   // False when closed; otherwise records which entry opened the modal so the
   // surface_view impression can carry entry_from.
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
@@ -7916,6 +7920,23 @@ function HtmlViewer({
     invalidatePublicFileCopy();
   }, []);
 
+  /** The entry binding check survives opening Share: identical in-flight reads
+   * join it instead of superseding its result with a competing request.
+   * Only pending reads are shared, never cached across files/accounts or mutations. */
+  function readCurrentPublicShareState(): Promise<ProjectFilePublicShareResponse> {
+    const key = JSON.stringify([publicFileReadIdentity, sourceSnapshotRefreshKey, liveHtml, streaming]);
+    const pending = publicFileStateReadRef.current;
+    if (pending?.key === key) return pending.promise;
+    const promise = fetchProjectFilePublicShareState(projectId, file.name, workspaceContext);
+    const entry = { key, promise };
+    publicFileStateReadRef.current = entry;
+    // The callers handle read errors; this chain only releases the pending entry.
+    void promise.finally(() => {
+      if (publicFileStateReadRef.current === entry) publicFileStateReadRef.current = null;
+    }).catch(() => {});
+    return promise;
+  }
+
   // The one way a share-state read lands in this viewer's share state.
   function applyPublicShareStateRead(state: ProjectFilePublicShareResponse) {
     setFileShareStatus(state.status ?? null);
@@ -7955,6 +7976,7 @@ function HtmlViewer({
     publicFileIdentityRef.current = { projectId, fileName: file.name };
     const requestSeq = ++publicFileRequestSeqRef.current;
     let cancelled = false;
+    publicFileStateReadRef.current = null;
     if (!preserveKnownLink) {
       setPublishedFileUrl('');
       setPublishedFileSlug('');
@@ -7975,20 +7997,22 @@ function HtmlViewer({
     // failing (Batch A §4.4). `viewerOnly` fails closed while ownership is
     // still unknown, and this effect re-runs when it flips writable.
     if (viewerOnly) return;
-    void fetchProjectFilePublicShareState(projectId, file.name, workspaceContext)
+    const accountGeneration = currentWorkspaceAccountGeneration();
+    void readCurrentPublicShareState()
       .then((state) => {
         const current = publicFileIdentityRef.current;
-        if (cancelled || publicFileRequestSeqRef.current !== requestSeq
+        if (cancelled || accountGeneration !== currentWorkspaceAccountGeneration() || publicFileRequestSeqRef.current !== requestSeq
           || current.projectId !== projectId || current.fileName !== file.name) return;
         applyPublicShareStateRead(state);
       })
       .catch(() => {
-        if (!cancelled && publicFileRequestSeqRef.current === requestSeq) setFileShareFreshness('unknown');
+        if (!cancelled && accountGeneration === currentWorkspaceAccountGeneration()
+          && publicFileRequestSeqRef.current === requestSeq) setFileShareFreshness('unknown');
       });
     return () => { cancelled = true; };
     // A workspace context loads asynchronously; re-read when its identity resolves.
   }, [
-    projectId, file.name, canPublishPublic, viewerOnly, workspaceActive, sourceAuthorizationScopeKey,
+    projectId, file.name, canPublishPublic, viewerOnly, workspaceActive, sourceAuthorizationScopeKey, publicFileReadIdentity,
   ]);
 
   // Opening Share or changing this file's content refreshes the one state read
@@ -7998,17 +8022,19 @@ function HtmlViewer({
       || streaming || publishingPublicFile || updateInFlightRef.current) return;
     const requestSeq = ++publicFileRequestSeqRef.current;
     setFileShareFreshness('unknown');
-    void fetchProjectFilePublicShareState(projectId, file.name, workspaceContext)
+    const accountGeneration = currentWorkspaceAccountGeneration();
+    void readCurrentPublicShareState()
       .then((state) => {
         const current = publicFileIdentityRef.current;
-        if (requestSeq !== publicFileRequestSeqRef.current
+        if (accountGeneration !== currentWorkspaceAccountGeneration() || requestSeq !== publicFileRequestSeqRef.current
           || current.projectId !== projectId || current.fileName !== file.name) return;
         applyPublicShareStateRead(state);
       })
       .catch(() => {
-        if (requestSeq === publicFileRequestSeqRef.current) setFileShareFreshness('unknown');
+        if (accountGeneration === currentWorkspaceAccountGeneration()
+          && requestSeq === publicFileRequestSeqRef.current) setFileShareFreshness('unknown');
       });
-  }, [deployMenuOpen, unifiedActionTab, sourceSnapshotRefreshKey, liveHtml, streaming, projectId, file.name, workspaceActive, canPublishPublic, viewerOnly, sourceAuthorizationScopeKey]);
+  }, [deployMenuOpen, unifiedActionTab, sourceSnapshotRefreshKey, liveHtml, streaming, projectId, file.name, workspaceActive, canPublishPublic, viewerOnly, sourceAuthorizationScopeKey, publicFileReadIdentity]);
 
   // Shared identity fields for the publish-flow events (HtmlViewer copy).
   // `artifactKindToTracking` only recognises HTML through the renderer id — an HTML
@@ -8098,6 +8124,7 @@ function HtmlViewer({
 
   async function publishCurrentFilePublic(mode?: 'resume') {
     if (streaming || viewerOnly || publishingPublicFile) return;
+    publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
     const requestAccountScope = workspaceAccountScopedCacheKey(workspaceContext);
@@ -8213,6 +8240,7 @@ function HtmlViewer({
   async function updateCurrentFilePublic() {
     if (!canPublishPublic || streaming || viewerOnly || !publishedFileSlug || publishingPublicFile
       || updateInFlightRef.current || fileShareFreshness !== 'outdated' || fileShareStatus !== 'active') return;
+    publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
     const requestAccountScope = workspaceAccountScopedCacheKey(workspaceContext);
@@ -8334,6 +8362,7 @@ function HtmlViewer({
 
   async function unpublishCurrentFilePublic() {
     if (viewerOnly || !publishedFileSlug || publishingPublicFile) return;
+    publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
     const requestSlug = publishedFileSlug;
