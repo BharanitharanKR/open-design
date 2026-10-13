@@ -195,8 +195,8 @@ function alive(t, extra = {}) {
   const blinkAt = [0.85, 2.3, 3.6, 5.1, 5.95, 7.7, 9.3, 10.4, 12.2, 13.0, 14.6].some(b => t > b && t < b + 0.09);
   return Object.assign({ hop: k * 7, tilt: Math.sin(t * Math.PI * 0.9) * 0.05, sway: -Math.cos(t * Math.PI * 0.9) * 0.05, squash: 1 + (1 - k) * 0.012, blink: blinkAt ? 1 : 0 }, extra);
 }
-// The line the mascot speaks, syllable by syllable: [start, length, openness]. The soundtrack's
-// voice is synthesised on the same timings, so mouth and sound stay in sync.
+// Visual mouth gestures alongside the copy: [start, length, openness].
+// The soundtrack contains background music only, with no voice or simulated speech.
 const SPEECH = [
   [0.62, 0.1, 0.35], [0.74, 0.1, 0.3], [0.86, 0.16, 0.4],                                         // psst…
   [1.15, 0.16, 0.9], [1.36, 0.12, 0.7], [1.5, 0.16, 0.8], [1.85, 0.12, 0.6], [1.98, 0.22, 1.0],   // Got some-thing to sell?

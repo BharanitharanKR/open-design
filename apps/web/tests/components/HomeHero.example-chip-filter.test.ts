@@ -132,6 +132,17 @@ describe('pluginMatchesExampleChip — motion-design chip', () => {
 });
 
 describe('homeHeroExamplePluginsForChip — motion-design chip', () => {
+  it('leads with the paper story and preserves the remaining Motion order regardless of catalogue order', () => {
+    const order = ['visual-lesson', 'future', 'showreel', 'ui-morph', 'product-promo'];
+    const installed = [...order].reverse().map((name) => make({
+      id: `example-motion-${name}`,
+      tags: ['motion-design'],
+      mode: 'video',
+    }));
+    expect(homeHeroExamplePluginsForChip('motion-design', installed, 'en').map((record) => record.id))
+      .toEqual(order.map((name) => `example-motion-${name}`));
+  });
+
   it('shows only motion design templates', () => {
     const ids = homeHeroExamplePluginsForChip(
       'motion-design',

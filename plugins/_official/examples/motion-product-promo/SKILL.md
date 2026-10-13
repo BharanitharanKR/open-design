@@ -37,8 +37,8 @@ script or font CDN is needed.
 - 11.2–13.3s FLOW: on black, "You create." / "We handle the", the mascot winking and grinning.
 - 13.3–15s END: a dithered wipe; "flow." becomes the wordmark's tail, the letters drop in, the head pops up behind it; tagline, Start selling and the footer.
 
-## Voice and close
-- The mascot speaks every line: `SPEECH` lists each syllable's start, length and openness, and `mouth(t)` opens the mouth and nods the head on those timings. The soundtrack's cartoon voice is synthesised on the same syllables, so keep the two in step when the copy changes.
+## Character and close
+- `SPEECH` lists the visual mouth gestures' start, length and openness; `mouth(t)` opens the mouth and nods the head alongside the copy. These are visual gestures only: the soundtrack is background music, with no voice or simulated speech.
 - At the close, "flow." springs out of "We handle the", travels to centre stage and pops into the wordmark's tail while the other letters drop in; the head peeks out from behind the wordmark, hops up and winks.
 
 ## Adapting the template
@@ -68,8 +68,11 @@ Avoid large canvas gradients and per-pixel noise: they make every captured
 frame expensive and slow the MP4 export.
 
 ## Sound
-`assets/soundtrack.mp3` is an original 15-second score made for this template
-and timed to its beats; no audio from the source video is used.
+`assets/soundtrack.mp3` is an original 15-second background music track made
+for this template and timed to its beats, with no voice or simulated speech;
+no audio from the source video is used.
+The percussion is a quiet, sparse pulse beneath the melody, with no hi-hat,
+clap pattern or extra kick impacts on transitions. Preserve this balance.
 The music is part of the look being remade. These rules replace the general
 sound guidance for this remake; apply the first one that matches the brief:
 

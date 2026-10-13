@@ -18,7 +18,13 @@ test('[P1] fresh checkout shows five motion covers without local or CDN bakes', 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('home-hero')).toBeVisible();
   await pickHomeTemplate(page, 'motion-design');
-  for (const name of ['future', 'showreel', 'ui-morph', 'product-promo', 'visual-lesson']) {
+  const motionOrder = ['visual-lesson', 'future', 'showreel', 'ui-morph', 'product-promo'];
+  const cards = page.getByTestId('home-hero-plugin-preset');
+  await expect(cards).toHaveCount(motionOrder.length);
+  await expect.poll(() => cards.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-plugin-id'))))
+    .toEqual(motionOrder.map((name) => `example-motion-${name}`));
+  await expect(cards.first()).toContainText('Bring Ideas to Life');
+  for (const name of motionOrder) {
     const row = page.locator(`[data-testid="home-hero-plugin-preset"][data-plugin-id="example-motion-${name}"]`);
     const cover = row.locator('img');
     await cover.scrollIntoViewIfNeeded();
@@ -26,9 +32,9 @@ test('[P1] fresh checkout shows five motion covers without local or CDN bakes', 
     await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
   }
   await testInfo.attach('five-bundled-motion-covers', { body: await page.screenshot(), contentType: 'image/png' });
-  const first = page.locator('[data-testid="home-hero-plugin-preset"][data-plugin-id="example-motion-future"]');
+  const first = cards.first();
   await first.getByRole('button').click();
-  await expect(page.locator('iframe[src*="/api/plugins/example-motion-future/preview"]')).toBeVisible();
+  await expect(page.locator('iframe[src*="/api/plugins/example-motion-visual-lesson/preview"]')).toBeVisible();
 });
 
 for (const name of ['showreel', 'ui-morph', 'future', 'product-promo', 'visual-lesson']) {

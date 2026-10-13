@@ -1,6 +1,6 @@
 ---
 name: motion-visual-lesson
-description: "Visual Lesson — motion design template. A 20-second paper-cutout short rebuilt from the viral original: a girl sends 'what do you love?' on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up."
+description: "Bring Ideas to Life (让灵感成真) — a 20-second OpenDesign paper story, with interactive prototypes, websites, PPT, posters and motion films collected into a book of possibilities."
 od:
   mode: video
   scenario: video
@@ -9,13 +9,13 @@ od:
     entry: example.html
 ---
 
-# Visual Lesson
+# 让灵感成真 / Bring Ideas to Life
 
-A 20-second paper-cutout short rebuilt from the viral original: a girl sends "what do you love?" on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up. `example.html` is the finished reference — start from it.
+A 20-second paper-cutout story for OpenDesign: a girl sends “OpenDesign, what can you design?” on a paper plane. The buddy demonstrates interactive prototypes, websites, PPT, posters and motion films. The works fold into a book and return to her: “It starts with your idea.” She hugs it, waves thanks, then pins “What will you design?” beside her window as an invitation to the viewer. `example.html` is the editable reference — start from it.
 
 ## Source
-A remake of a viral post by @kevin_t_ngo: https://x.com/kevin_t_ngo/status/2102437977435893771 (665K views · 6.2K likes · 3.0K bookmarks on X (as of 2026-10-13)). The composition is
-rebuilt in code from the published piece; the soundtrack is original. The original is a 28-second square film; this is a 20-second cut framed in 16:9, and its character is the Open Design buddy built from the logo mark.
+A story adaptation of a viral post by @kevin_t_ngo: https://x.com/kevin_t_ngo/status/2102437977435893771 (665K views · 6.2K likes · 3.0K bookmarks on X (as of 2026-10-13)). The composition is
+inspired by the published piece’s paper craft and rebuilt in code; the soundtrack is original. The original is a 28-second square film; this is a 20-second cut framed in 16:9, and its character is the Open Design buddy built from the logo mark.
 
 ## Reference files
 Copy `example.html`, `assets/gsap.min.js`, `assets/short-stack-OFL.txt`, `assets/short-stack-regular.ttf`, `assets/soundtrack.mp3` into the composition, preserving the `assets/` path.
@@ -23,25 +23,43 @@ Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
 ## Art direction
-- Cut paper throughout: every colour block has a torn white rim. Large grounds (sky, walls, card backgrounds) carry only faint short brush strokes and paper tooth, almost flat from afar; objects carry dry gouache strokes and crayon grain. Night blues `#262D70` / `#30398A`, wall `#4A3A8A`, yellow `#F4C443`, curtain `#EE8E96`, paper `#FFFCF3`, pen blue `#3B62B5`, red `#D8443A`.
-- Printed paper on objects: newsprint on book pages, the boat, clouds and planes; handwriting on the bread, the wall and the heart scene; music staves and contour lines on the houses.
-- The Open Design buddy: the dark rounded logo tile `#26251E` with a white ring, a face inside the ring and a cursor badge. In every card it is inside the picture: in the book, in the boat, hugging the bread, on the planet, wrapped by the octopus.
-- The girl wears a knit green sweater with a pointed white collar.
-- Font (SIL OFL, bundled): Short Stack for the hand lettering.
-- The square story sits centred in 16:9; the sides continue the scene (the house wall with vines and a neighbour's window, the town, the night sky).
+- Match the reference’s handmade paper craft: uneven torn white fibres, broad directional gouache strokes with dry bristles, and coloured paper layered around the characters. Vary each sheet’s brush angle; avoid a uniform repeated dash pattern or glossy UI styling.
+- Night blues `#262D70` / `#30398A`, purple wall `#4A3A8A`, warm yellow window `#F4C443`, pink curtains `#EE8E96`, paper `#FFFCF3`, blue pen `#3B62B5`, red pencil `#D8443A`.
+- The girl has a brown bob, yellow clip, separate paper eyes, painted teal sweater and pointed white collar. Head, upper arm, forearm and hand articulate separately; paper texture stays attached to each piece.
+- The OpenDesign buddy retains its dark logo tile, white ring and green cursor. Give it short, plump paper mittens with rounded ends, each drawn as one soft piece. Keep shoulder-to-hand reach below one third of its body width; no thin segmented arms or tiny dot hands. Move or tilt the whole buddy toward a prop so the hand really touches it: lean in to tap, float beside the tape, and tuck behind the book to hold it close.
+- Use Short Stack (SIL OFL, bundled) for English hand lettering. Preserve the source’s intimate central composition while extending walls and sky into 16:9.
+- Give each capability a recognisable designed output and its own action. Use object-led cuts, hinges, creases, hand contact and overlap, with short anticipation and a readable hold.
+- Keep capability labels clear of the buddy throughout each entrance and action. Give the prototype tap and PPT page turn enough time for both the action and its result to read.
+- Start the collecting book with empty page slots. Move the five works into their own slots one at a time; each thumbnail appears only when its work lands. Close the cover after all five have arrived.
+- Keep the reply physically continuous through its fold, flight and opening. The girl catches it at chest height with both hands; the incoming book must leave her eyes and expression visible.
+- Make the final lined invitation note large enough to read at gallery-preview size. Raise and pin it beside the girl, keep her hand in contact until release, then hold the complete “What will you design?” while she brings her hands together. This is the audience's question.
 
 ## Beat map (20s)
-- 0–2.2s the town at night sends the buddy requests; the girl at her window gets an idea.
-- 2.2–5.5s she writes "what do you love?", folds it into a paper plane and throws it.
-- 5.5–8.0s the plane crosses the night sky; the buddy reads it: curious, thinking, a spark, delight.
-- 8.0–12.0s the things it loves, one per beat: words, music, the sea, trees, dogs, bread, rain, math, the stars, an octopus.
-- 12.0–14.0s everything it loves is collaged around a heart, with the buddy in the middle.
-- 14.0–18.0s the buddy folds the note and sends it back; she opens it to a circled "you" and beams.
-- 18.0–20s the whole town lights up; she waves to the buddy.
+- 0–1s: establish the night town and the girl at her window.
+- 1–1.5s: she gets an idea and raises her pencil.
+- 1.5–3.5s: she writes “OpenDesign, what can you design?” and holds the complete question.
+- 3.5–4.25s: she folds the corners and wings of the paper plane.
+- 4.25–4.75s: she throws the plane from her window.
+- 4.75–5.5s: the plane crosses the night sky and reaches the buddy.
+- 5.5–7s: the buddy reads, thinks and responds with a spark.
+- 7–8.5s: an interactive prototype changes pages after a tap; hold the changed page.
+- 8.5–9.5s: a paper website unfolds its hero and content blocks.
+- 9.5–11s: a PPT cover turns to a chart slide; bars rise in sequence and settle.
+- 11–12s: illustrated posters overlap; the buddy tapes one into place.
+- 12–13s: a plane flies across a filmstrip while its timeline advances.
+- 13–14.1s: the five works land one by one in the book's empty page slots; its cover then folds shut.
+- 14.1–14.8s: the closed book folds into the reply and travels back through the night sky.
+- 14.8–15.6s: the girl catches the book at her chest with both hands, leaving her face visible, and opens it.
+- 15.6–17s: the open book shows all five works, with “It starts with your idea.” and a hand-drawn circle.
+- 17–17.75s: close-up of the girl hugging the book, with a closed-eye smile.
+- 17.75–18.5s: back in the town, she holds the book and waves to the buddy.
+- 18.5–20s: she raises and pins a large, legible lined note beside the window, then brings her hands together. Hold on “What will you design?” with “you” circled. This is an invitation to the viewer, after the buddy has answered her question.
 
 ## Adapting the template
-- Swap `CFG.question`, the cards (`LIST` for the labels, `S` for the illustrations) and the palette; keep the story beats on the 120 BPM grid.
-- A new card follows the existing ones: a `back` sheet, the buddy drawn live, then a `front` sheet that tucks the buddy into the picture.
+- Edit `CFG.question` (three lines), `CFG.answer`, `CFG.invitation` (three lines), `LIST` (labels), `S` (the five miniature renderers) and `PALETTE` together. Maintain the handwritten question’s safe margins.
+- Preserve the reference's reaction, thank-you and pinned-note closing gestures. Keep the audience invitation on the physical note instead of a floating town banner.
+- Keep each demonstration’s actual action and the same works in the closing book. A capability should be visible as a designed result.
+- Preserve the original bundled 20-second music; this iteration adds no speech or extra percussion.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the

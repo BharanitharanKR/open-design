@@ -12164,7 +12164,7 @@
     },
     {
       "name": "open-design/example-motion-visual-lesson",
-      "title": "Visual Lesson",
+      "title": "Bring Ideas to Life",
       "version": "0.1.0",
       "source": "github:nexu-io/open-design@main/plugins/_official/examples/motion-visual-lesson",
       "publisher": {
@@ -12174,7 +12174,7 @@
       "capabilitiesSummary": [
         "prompt:inject"
       ],
-      "description": "A 20-second paper-cutout short rebuilt from the viral original: a girl sends \"what do you love?\" on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up.",
+      "description": "A 20-second paper-cutout story: a girl asks OpenDesign what it can design. Interactive prototypes, websites, PPT, posters and motion films unfold into a book of possibilities. It starts with your idea.",
       "tags": [
         "example",
         "first-party",

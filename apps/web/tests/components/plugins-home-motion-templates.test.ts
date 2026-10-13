@@ -12,6 +12,8 @@ import url from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { CURATED_MOTION_DESIGN_PLUGIN_IDS } from '../../src/components/plugins-home/curatedPriority';
 import { examplePresetSeedPrompt } from '../../src/components/plugins-home/presetSeedPrompt';
+import { homePresetCopy } from '../../src/components/plugins-home/homePresetCopy';
+import { localizePluginTitle } from '../../src/components/plugins-home/localization';
 import { LOCALES } from '../../src/i18n/types';
 import type { InstalledPluginRecord } from '@open-design/contracts';
 
@@ -52,6 +54,18 @@ describe('curated motion design templates', () => {
       const seed = examplePresetSeedPrompt(record, locale, () => 'missing prompt');
       expect(seed.text, locale).toBe(manifest.od.useCase.query[locale]);
       expect(seed.text, locale).toMatch(/15|۱۵/);
+    }
+  });
+
+  it('uses the renamed paper story consistently across Home and Community in all supported locales', () => {
+    const id = 'example-motion-visual-lesson';
+    const manifest = JSON.parse(readFileSync(path.join(dirs.get(id)!, 'open-design.json'), 'utf8'));
+    const record = { id, title: manifest.title, manifest } as InstalledPluginRecord;
+    expect(localizePluginTitle('en', record)).toBe('Bring Ideas to Life');
+    expect(localizePluginTitle('zh-CN', record)).toBe('让灵感成真');
+    for (const locale of LOCALES) {
+      expect(manifest.title_i18n[locale], locale).toBeTruthy();
+      expect(homePresetCopy(id, locale)?.title, locale).toBe(localizePluginTitle(locale, record));
     }
   });
 });

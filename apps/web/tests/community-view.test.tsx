@@ -647,6 +647,29 @@ describe('CommunityView use handoff', () => {
     );
   }
 
+  it('leads the Motion shelf with Bring Ideas to Life and keeps the other templates in their curated order', async () => {
+    const titles = [
+      ['visual-lesson', 'Bring Ideas to Life'],
+      ['future', 'The Future Is Already Here'],
+      ['showreel', 'Motion Designer Showreel'],
+      ['ui-morph', 'One-Shape UI Motion'],
+      ['product-promo', 'Product Promo'],
+    ] as const;
+    const motionTemplates = [...titles].reverse().map(([name, title]) => plugin({
+      id: `example-motion-${name}`,
+      title,
+      manifest: {
+        tags: ['motion-design'],
+        od: { mode: 'video', preview: { type: 'html', entry: './example.html' } },
+      },
+    }));
+    serveCatalogue([...CATALOGUE, ...motionTemplates]);
+    await renderCommunity();
+    openMotionTab();
+    expect(Array.from(document.querySelectorAll('.community-template-card__title'), (el) => el.textContent))
+      .toEqual(titles.map(([, title]) => title));
+  });
+
   it('binds a motion design template as its type example from the card Use, recording the card source once', async () => {
     serveCatalogue([...CATALOGUE, MOTION_TEMPLATE]);
     const onUsePlugin = vi.fn();
