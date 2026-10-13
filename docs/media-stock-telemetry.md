@@ -1,8 +1,20 @@
 # Stock-search diagnostics and analytics
 
-`od media stock-search` keeps provider search/download attempts in stdout JSON
-and streams diagnostics to stderr. It additionally journals content-free
-request results and final slot results under the daemon's resolved data root.
+`od media stock-search` is an authenticated client of the running daemon.
+Provider credentials stay in the daemon; the agent shell needs only its
+run-scoped `OD_TOOL_TOKEN` and `OD_DAEMON_URL`. Standalone callers select an
+authorized project with `--project` and optional workspace flags.
+
+Both `/api/tools/media/stock-search` and the local project route
+`/api/projects/:id/media/stock-search` use the same executor and shared request
+contract. Tool tokens bind the project/run and require `media:stock-search`;
+requests cannot supply provider keys, cwd, or substitute project/run identity.
+Output directories and image/credits paths use the existing symlink-aware
+project boundary. The CLI never searches providers directly or reads their keys.
+
+The result keeps provider search/download attempts in stdout JSON and the CLI
+prints diagnostics to stderr. The daemon journals content-free request results
+and final slot results under its resolved data root.
 Data ownership and propagation follow [AGENTS.md](../AGENTS.md#daemon-data-directory-contract).
 There is no project-cwd or user-home fallback when `OD_DATA_DIR` is absent.
 
@@ -53,9 +65,8 @@ Upload device/session identity is pinned in the journal when collection starts;
 Run cleanup or installation identity changes cannot reassign a retry.
 
 Both carry call id, slot index, run/project/node/evaluation association, source commit when
-provided, execution source, schema version and collection status. All agent
-runtimes receive the current run/session association from the daemon. Standalone
-calls retain null Run ids. `OD_STOCK_SOURCE_COMMIT` is an optional exact source
+provided, execution source, schema version and collection status. Tool calls derive run/project association from the validated token and session
+identity from the daemon run. Standalone calls retain null Run ids. `OD_STOCK_SOURCE_COMMIT` is an optional exact source
 identity supplied by the launch environment; absent identity stays null, never
 inferred from an application version. `OD_STOCK_EXECUTION_SOURCE=validation`
 keeps authorized instrumentation checks separate from product traffic.

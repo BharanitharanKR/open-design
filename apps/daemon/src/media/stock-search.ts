@@ -1,7 +1,7 @@
 // `od media stock-search`: licensed stock photos for image slots in one call.
 //
-// Runs inside the agent's shell (no daemon round trip) with the provider keys
-// the host injected: PEXELS_API_KEY first, PIXABAY_API_KEY as fallback. All
+// Runs in the daemon with its configured provider keys: PEXELS_API_KEY first,
+// PIXABAY_API_KEY as fallback. All
 // slots are searched and downloaded concurrently under a per-request timeout
 // and one overall budget, so a slow provider cannot stall the turn. Each file is
 // requested at display width from the provider CDN, measured from its header,
@@ -13,76 +13,18 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { redactSecrets } from '../redact.js';
 
-export type StockProvider = 'pexels' | 'pixabay';
-export type StockOrientation = 'landscape' | 'portrait' | 'square';
+import type { StockProvider, StockSearchAttempt, StockSlot, StockSlotResult, StockSearchReport, StockSearchRequest } from '@open-design/contracts';
+export type { StockProvider, StockOrientation, StockRateLimit, StockSearchAttempt, StockSlot, StockSlotResult, StockSearchReport } from '@open-design/contracts';
 
-/** Quota headers describe the monthly API window, not the hourly budget. */
-export type StockRateLimit = {
-  period: 'month';
-  limit: number | null;
-  remaining: number | null;
-  resetUnix: number | null;
-};
-
-export type StockSearchAttempt = {
-  provider: StockProvider;
-  stage: 'search' | 'download';
-  status: 'ok' | 'not_found' | 'error';
-  timestamp: string;
-  /** Monotonic elapsed time; downloads include decoding and writing bytes. */
-  durationMs: number;
-  httpStatus: number | null;
-  rateLimited: boolean;
-  rateLimit?: StockRateLimit;
-  retryAfter?: string;
-  error?: string;
-};
-
-export type StockSlot = {
-  id: string;
-  query: string;
-  /** Display width in CSS pixels; the file is requested at this width. */
-  width?: number;
-  orientation?: StockOrientation;
-};
-
-export type StockSlotResult = {
-  id: string;
-  query: string;
-  status: 'ok' | 'not_found' | 'error' | 'budget_exceeded';
-  provider?: StockProvider;
-  path?: string;
-  width?: number;
-  height?: number;
-  bytes?: number;
-  alt?: string;
-  author?: string;
-  authorUrl?: string;
-  sourceUrl?: string;
-  license?: string;
-  error?: string;
-  /** Includes failed providers even when a later provider succeeds. */
-  attempts?: StockSearchAttempt[];
-};
-
-export type StockSearchOptions = {
-  slots: StockSlot[];
-  /** Project-relative directory for downloaded files (default assets/stock). */
-  outDir?: string;
+export type StockSearchOptions = StockSearchRequest & {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
-  requestTimeoutMs?: number;
-  budgetMs?: number;
-  concurrency?: number;
   fetch?: typeof fetch;
   now?: () => number;
+  /** Privileged callers confine every read/write to the authorized project. */
+  resolveOutputPath?: (relativePath: string) => Promise<string>;
   /** Allowlisted response metadata and scrubbed errors for execution logs. */
   onAttempt?: (event: StockSearchAttempt & { slotId: string; slotIndex: number }) => void;
-};
-
-export type StockSearchReport = {
-  providers: StockProvider[];
-  slots: StockSlotResult[];
 };
 
 export class StockSearchConfigError extends Error {}
@@ -285,7 +227,8 @@ export async function stockSearch(options: StockSearchOptions): Promise<StockSea
   const deadline = now() + (options.budgetMs ?? 180_000);
   const cwd = options.cwd ?? process.cwd();
   const outDir = options.outDir ?? 'assets/stock';
-  await mkdir(path.resolve(cwd, outDir), { recursive: true });
+  const resolveOutputPath = options.resolveOutputPath ?? (async (rel: string) => path.resolve(cwd, rel));
+  await mkdir(await resolveOutputPath(outDir), { recursive: true });
 
   const results = await mapLimit(options.slots, options.concurrency ?? 6, async (slot, slotIndex): Promise<StockSlotResult> => {
     const attempts: StockSearchAttempt[] = [];
@@ -328,7 +271,7 @@ export async function stockSearch(options: StockSearchOptions): Promise<StockSea
         const buf = Buffer.from(await res.arrayBuffer());
         const size = imageSize(buf);
         const rel = path.posix.join(outDir.split(path.sep).join('/'), slotFileName(slot.id));
-        await writeFile(path.resolve(cwd, rel), buf);
+        await writeFile(await resolveOutputPath(rel), buf);
         recordAttempt('ok');
         return {
           ...base,
@@ -351,15 +294,17 @@ export async function stockSearch(options: StockSearchOptions): Promise<StockSea
     return lastError ? { ...base, status: 'error', error: lastError } : { ...base, status: 'not_found' };
   });
 
-  await writeCredits(path.resolve(cwd, outDir, 'credits.json'), results.filter((r) => r.status === 'ok'));
+  await writeCredits(path.posix.join(outDir, 'credits.json'), results.filter((r) => r.status === 'ok'), resolveOutputPath);
   return { providers, slots: results };
 }
 
-async function writeCredits(file: string, fresh: StockSlotResult[]): Promise<void> {
+async function writeCredits(file: string, fresh: StockSlotResult[], resolveOutputPath: (relativePath: string) => Promise<string>): Promise<void> {
   if (fresh.length === 0) return;
+  // Resolve before the read catch so a rejected symlink cannot be treated as a missing file.
+  const target = await resolveOutputPath(file);
   let existing: Array<Partial<StockSlotResult>> = [];
   try {
-    const parsed = JSON.parse(await readFile(file, 'utf8'));
+    const parsed = JSON.parse(await readFile(target, 'utf8'));
     if (Array.isArray(parsed)) existing = parsed;
   } catch {
     // No prior credits file.
@@ -373,5 +318,5 @@ async function writeCredits(file: string, fresh: StockSlotResult[]): Promise<voi
       alt: entry.alt, author: entry.author, authorUrl: entry.authorUrl, sourceUrl: entry.sourceUrl, license: entry.license,
     });
   }
-  await writeFile(file, `${JSON.stringify([...byPath.values()], null, 2)}\n`);
+  await writeFile(await resolveOutputPath(file), `${JSON.stringify([...byPath.values()], null, 2)}\n`);
 }

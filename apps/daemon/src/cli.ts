@@ -30,8 +30,7 @@ import {
   removeJsonInstall,
 } from './mcp-agent-install.js';
 import { resolveMcpWorkspaceContext } from './mcp-workspace-context.js';
-import { StockSearchConfigError, StockSearchInputError, stockSearch } from './media/stock-search.js';
-import { createStockRecorder } from './media/stock-telemetry.js';
+import { parseStockSearchRequest, type StockSearchResponse } from '@open-design/contracts';
 
 const argv = process.argv.slice(2);
 
@@ -99,7 +98,7 @@ const MEDIA_SCAFFOLD_STRING_FLAGS = new Set([
   'daemon-url',
 ]);
 const MEDIA_SCAFFOLD_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
-const MEDIA_STOCK_SEARCH_STRING_FLAGS = new Set(['slots', 'slots-file', 'out-dir', 'budget-ms', 'timeout-ms', 'concurrency']);
+const MEDIA_STOCK_SEARCH_STRING_FLAGS = new Set(['slots', 'slots-file', 'out-dir', 'budget-ms', 'timeout-ms', 'concurrency', 'project', 'workspace', 'workspace-member', 'daemon-url']);
 const MEDIA_STOCK_SEARCH_BOOLEAN_FLAGS = new Set(['help', 'h']);
 
 const MCP_STRING_FLAGS = new Set([
@@ -1055,7 +1054,7 @@ function printRootHelp() {
 
   od media stock-search --slots '<json>'
       Download licensed Pexels / Pixabay photos for several image slots in one
-      call (needs PEXELS_API_KEY or PIXABAY_API_KEY).
+      call (provider keys are configured in the daemon).
 
   od mcp [--daemon-url <url>]
       Run a stdio MCP server that proxies project tool calls to a
@@ -1787,42 +1786,47 @@ async function runMediaStockSearch(rawArgs) {
     console.error('--slots <json> or --slots-file <path|-> required: a JSON array of {"id","query","width"?,"orientation"?}');
     process.exit(2);
   }
-  const orientations = new Set(['landscape', 'portrait', 'square']);
-  const valid = Array.isArray(slots) && slots.length > 0 && slots.length <= 30 && slots.every((slot) =>
-    slot && typeof slot.id === 'string' && slot.id.trim() && typeof slot.query === 'string' && slot.query.trim()
-      && (slot.width === undefined || Number.isFinite(slot.width))
-      && (slot.orientation === undefined || orientations.has(slot.orientation)));
-  if (!valid) {
-    console.error('each slot needs a non-empty "id" and "query"; optional "width" (number) and "orientation" (landscape|portrait|square); 1–30 slots');
+  const numberFlag = (name) => (flags[name] === undefined ? undefined : Number(flags[name]));
+  let request;
+  try {
+    request = parseStockSearchRequest({ slots, outDir: flags['out-dir'], budgetMs: numberFlag('budget-ms'), requestTimeoutMs: numberFlag('timeout-ms'), concurrency: numberFlag('concurrency') });
+  } catch (err) {
+    console.error(err.message);
     process.exit(2);
   }
-  const numberFlag = (name) => (flags[name] === undefined ? undefined : Number(flags[name]));
-  const recorder = await createStockRecorder({ slotCount: slots.length });
-  try {
-    const report = await stockSearch({
-      slots,
-      outDir: flags['out-dir'],
-      budgetMs: numberFlag('budget-ms'),
-      requestTimeoutMs: numberFlag('timeout-ms'),
-      concurrency: numberFlag('concurrency'),
-      onAttempt: (event) => {
-        console.error(`[stock-search] ${JSON.stringify(event)}`);
-        recorder.record(event);
-      },
-    });
-    const collectionStatus = await recorder.finish(report);
-    process.stdout.write(`${JSON.stringify({ ...report, telemetry: { callId: recorder.callId, collectionStatus } })}\n`);
-  } catch (err) {
-    if (err instanceof StockSearchInputError) {
-      console.error(err.message);
-      process.exit(2);
-    }
-    if (err instanceof StockSearchConfigError) {
-      process.stdout.write(`${JSON.stringify({ error: 'no_stock_api_key', message: err.message })}\n`);
-      process.exit(5);
-    }
-    throw err;
+  const daemonUrl = await cliDaemonUrl(flags);
+  const token = process.env.OD_TOOL_TOKEN;
+  const projectId = flags.project || process.env.OD_PROJECT_ID;
+  if (!token && !projectId) {
+    console.error('project id required. Pass --project <id> or set OD_PROJECT_ID.');
+    process.exit(2);
   }
+  const url = token
+    ? `${daemonUrl.replace(/\/$/, '')}/api/tools/media/stock-search`
+    : `${daemonUrl.replace(/\/$/, '')}/api/projects/${encodeURIComponent(projectId)}/media/stock-search`;
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : workspaceHeadersFromExplicitFlags(flags) ?? {}) },
+      body: JSON.stringify(request),
+    });
+  } catch (err) {
+    surfaceFetchError(err, daemonUrl);
+    process.exit(3);
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    let code;
+    try { code = JSON.parse(text)?.error?.code; } catch { /* preserve the daemon error text */ }
+    console.error(`daemon ${response.status}: ${text}`);
+    process.exit(code === 'NO_STOCK_API_KEY' ? 5 : code === 'INVALID_STOCK_REQUEST' ? 2 : 4);
+  }
+  const report = await response.json() as StockSearchResponse;
+  for (const [slotIndex, slot] of report.slots.entries()) {
+    for (const attempt of slot.attempts ?? []) console.error(`[stock-search] ${JSON.stringify({ slotId: slot.id, slotIndex, ...attempt })}`);
+  }
+  process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 
 async function runMediaScaffold(rawArgs) {
@@ -2398,8 +2402,9 @@ files folder so the FileViewer can preview them immediately.
 
 Stock search:
   Finds and downloads licensed stock photos for every slot in one call, using
-  PEXELS_API_KEY first and PIXABAY_API_KEY as fallback (no key: exit 5 with
-  {"error":"no_stock_api_key"}). Runs in the current project directory.
+  daemon-configured PEXELS_API_KEY first and PIXABAY_API_KEY as fallback.
+  Agent shells never need provider keys. Missing daemon configuration exits 5.
+  Files are saved in the authorized project, independently of the CLI cwd.
   --slots '<json>'          JSON array: [{"id":"hero","query":"kung pao chicken",
                             "width":1200,"orientation":"landscape"}] (1–30 slots;
                             width = display width in px, default 1200). Write
@@ -2413,6 +2418,10 @@ Stock search:
   --timeout-ms <n>          Per-request timeout (default 12000).
   --budget-ms <n>           Total time budget for all slots (default 180000).
   --concurrency <n>         Parallel slots (default 6).
+  --project <id>            Standalone project (or OD_PROJECT_ID); tool tokens bind the project.
+  --workspace <id>          Workspace scope for a bound standalone project.
+  --workspace-member <id>   Workspace member for a bound standalone project.
+  --daemon-url <url>        Running daemon (or OD_DAEMON_URL / sidecar discovery).
 
   Output: one JSON line {"providers":[...],"slots":[{id,status,path,width,height,
   alt,author,sourceUrl,license,...}]}. status is ok | not_found | error |

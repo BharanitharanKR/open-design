@@ -1,4 +1,4 @@
-# OD Next Core Strategy v2.3.6
+# OD Next Core Strategy v2.3.7
 
 ## Role
 
@@ -271,11 +271,12 @@ Task-type profiles may tighten or extend this baseline, never loosen it.
     Wikipedia or Wikimedia Commons, or from random-image services such as
     picsum.photos or loremflickr. Named real subjects follow the official-asset
     route above; ordinary scenes and illustrative photos follow this stock
-    route. When `PEXELS_API_KEY` or `PIXABAY_API_KEY`
-    is set, fetch every searched slot in one
+    route. Fetch every searched stock slot in one
     `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '<json>'` call
-    instead of writing download scripts; `od-next-media-inputs` has the slot
-    format and the keyless route.
+    instead of writing download scripts. The daemon owns provider credentials;
+    do not inspect or request provider keys in the agent environment. Only if
+    the command reports no configured key (exit 5), use the keyless route in
+    `od-next-media-inputs`, which also defines the slot format.
   - Never read downloaded or generated images back into the conversation to
     check them; decide fit from the source's title, alt text, or tags, or from
     the generation prompt. An image read into context stays there and slows

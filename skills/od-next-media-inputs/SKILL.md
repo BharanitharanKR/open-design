@@ -45,8 +45,8 @@ the Core imagery-by-type rule; it is the only source of those rules.
 
 ## Search stock photos
 
-- With `PEXELS_API_KEY` or `PIXABAY_API_KEY` in the environment, fetch every
-  slot in one call:
+- Fetch every stock slot through the authenticated daemon wrapper in one
+  call; provider credentials stay in the daemon, not the agent environment:
   `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '[{"id":"hero","query":"black eyeglasses frame","width":1200,"orientation":"landscape"}]'`.
   Write each query in English with the subject first. The command searches,
   re-ranks by alt text, downloads at `width` into `assets/stock/`, records
@@ -54,7 +54,8 @@ the Core imagery-by-type rule; it is the only source of those rules.
   `alt`, and `status`. Use a slot's `alt` to judge fit; for `not_found`,
   retry that slot once with a broader query. Exit code 5 means no key: use
   the keyless path below.
-- Without a key, the sites' search pages block scripts (HTTP 403). Open the
+- If the wrapper reports no configured key (exit 5), the sites' search pages
+  block scripts (HTTP 403). Open the
   search results page with the web fetch tool instead, for example
   `https://www.pexels.com/search/<query>/` or
   `https://pixabay.com/images/search/<query>/`, and read each result's photo
