@@ -60,4 +60,6 @@ it('exposes source-based recreation and fresh-design boundaries in the loaded Di
   expect(taskSkill).toContain('kind=prototype describes the output');
   expect(taskSkill).toContain('Style inspiration alone');
   expect(taskSkill).toContain('already in context');
+  expect(taskSkill).toContain('Complete reference source is artifact input, not a loaded Skill');
+  expect(taskSkill).toContain('Copying, translating, or saving that reference as a new output does not waive the read');
 });
