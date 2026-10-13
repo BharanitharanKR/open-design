@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StrictMode } from 'react';
 import { AfterExportShareGuide } from '../../../src/components/share/AfterExportShareGuide';
 
 import { useAfterExportShareGuide } from '../../../src/components/share/useAfterExportShareGuide';
@@ -97,6 +98,99 @@ describe('after export share guide', () => {
     view.unmount();
     act(() => vi.advanceTimersByTime(10_000));
     expect(events.onDismiss).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('guide observation is independent of business actions', () => {
+  const modes = ['absent', 'no-op', 'recording', 'throwing', 'pending'] as const;
+  type Event = 'view' | 'try_share' | 'close' | 'never_show_again';
+  function observer(mode: typeof modes[number], order: string[]) {
+    if (mode === 'absent') return undefined;
+    return vi.fn((event: Event) => {
+      if (mode !== 'no-op') order.push(event);
+      if (mode === 'throwing') throw new Error('measurement failed');
+      if (mode === 'pending') return new Promise<void>(() => {});
+    });
+  }
+  const actions = [
+    { name: 'close', label: labels.close, event: 'close', business: ['dismiss'], saved: true },
+    { name: 'try share', label: labels.openShare, event: 'try_share', business: ['dismiss', 'open'], saved: true },
+    { name: 'never show success', label: labels.neverShow, event: 'never_show_again', business: ['save', 'dismiss'], saved: true },
+    { name: 'never show failure', label: labels.neverShow, event: 'never_show_again', business: ['save'], saved: false },
+  ] as const;
+  describe.each(modes)('%s observer', mode => {
+    it.each(actions)('preserves $name callback order and error UI', action => {
+      const order: string[] = [];
+      const onObserve = observer(mode, order);
+      const onDismiss = vi.fn(() => { order.push('dismiss'); });
+      const onOpenShare = vi.fn(() => { order.push('open'); });
+      const onNeverShow = vi.fn(() => { order.push('save'); return action.saved; });
+      render(<AfterExportShareGuide labels={labels} onObserve={onObserve} onDismiss={onDismiss} onOpenShare={onOpenShare} onNeverShow={onNeverShow} />);
+      fireEvent.click(screen.getByRole('button', { name: action.label }));
+      const measured = mode !== 'absent' && mode !== 'no-op';
+      expect(order).toEqual([...(measured ? ['view', action.event] : []), ...action.business]);
+      if (onObserve) expect(onObserve.mock.calls.map(([event]) => event)).toEqual(['view', action.event]);
+      expect(onDismiss).toHaveBeenCalledTimes(action.business.some(callback => callback === 'dismiss') ? 1 : 0);
+      expect(onOpenShare).toHaveBeenCalledTimes(action.name === 'try share' ? 1 : 0);
+      expect(onNeverShow).toHaveBeenCalledTimes(action.label === labels.neverShow ? 1 : 0);
+      if (!action.saved) expect(screen.getByRole('alert').textContent).toBe(labels.saveFailed);
+      else expect(screen.queryByRole('alert')).toBeNull();
+    });
+    it('keeps the ten-second deadline across observer identity changes without a close event', () => {
+      const order: string[] = [];
+      const first = observer(mode, order);
+      const second = observer(mode, order);
+      const events = callbacks();
+      const view = render(<AfterExportShareGuide labels={labels} {...events} onObserve={first} />);
+      act(() => vi.advanceTimersByTime(9_000));
+      view.rerender(<AfterExportShareGuide labels={labels} {...events} onObserve={second} />);
+      act(() => vi.advanceTimersByTime(999));
+      expect(events.onDismiss).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1));
+      expect(events.onDismiss).toHaveBeenCalledTimes(1);
+      if (first) expect(first).toHaveBeenCalledExactlyOnceWith('view');
+      if (second) expect(second).not.toHaveBeenCalled();
+    });
+    it('keeps hover and descendant focus pauses across observer identity changes', () => {
+      const order: string[] = [];
+      const first = observer(mode, order);
+      const second = observer(mode, order);
+      const events = callbacks();
+      const view = render(<AfterExportShareGuide labels={labels} {...events} onObserve={first} />);
+      const region = screen.getByRole('status', { name: labels.title });
+      const button = screen.getByRole('button', { name: labels.openShare });
+      act(() => vi.advanceTimersByTime(3_000));
+      fireEvent.mouseEnter(region);
+      fireEvent.focus(button);
+      view.rerender(<AfterExportShareGuide labels={labels} {...events} onObserve={second} />);
+      fireEvent.mouseLeave(region);
+      act(() => vi.advanceTimersByTime(20_000));
+      expect(events.onDismiss).not.toHaveBeenCalled();
+      fireEvent.blur(button, { relatedTarget: screen.getByRole('button', { name: labels.close }) });
+      act(() => vi.advanceTimersByTime(20_000));
+      expect(events.onDismiss).not.toHaveBeenCalled();
+      fireEvent.blur(button, { relatedTarget: document.body });
+      act(() => vi.advanceTimersByTime(6_999));
+      expect(events.onDismiss).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1));
+      expect(events.onDismiss).toHaveBeenCalledTimes(1);
+      if (first) expect(first).toHaveBeenCalledExactlyOnceWith('view');
+      if (second) expect(second).not.toHaveBeenCalled();
+    });
+  });
+  it('exposes once per keyed instance despite StrictMode replay and rerender, using the current click observer', () => {
+    const events = callbacks();
+    const first = vi.fn();
+    const second = vi.fn();
+    const view = render(<StrictMode><AfterExportShareGuide key="one" labels={labels} {...events} onObserve={first} /></StrictMode>);
+    expect(first).toHaveBeenCalledExactlyOnceWith('view');
+    view.rerender(<StrictMode><AfterExportShareGuide key="one" labels={labels} {...events} onObserve={second} /></StrictMode>);
+    expect(second).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: labels.close }));
+    expect(second).toHaveBeenCalledExactlyOnceWith('close');
+    view.rerender(<StrictMode><AfterExportShareGuide key="two" labels={labels} {...events} onObserve={second} /></StrictMode>);
+    expect(second.mock.calls).toEqual([['close'], ['view']]);
   });
 });
 

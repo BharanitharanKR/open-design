@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { observeAnalytics } from '../../analytics/observe';
 import { Button } from '@open-design/components';
 import { advanceShareGuideClock, startShareGuideClock, type ShareGuideClock } from './after-export-share-guide';
 import { Icon } from '../Icon';
@@ -17,16 +18,24 @@ const TOTAL_MS = 10_000;
  * wave's product behavior) has no visual bar in the design — kept as an
  * invisible timer instead of reintroducing the old minibar UI.
  */
-export function AfterExportShareGuide({ onOpenShare, onDismiss, onNeverShow, labels }: {
+export function AfterExportShareGuide({ onOpenShare, onDismiss, onNeverShow, onObserve, labels }: {
   onOpenShare: () => void;
   onDismiss: () => void;
   /** Return false when the permanent preference could not be persisted. */
   onNeverShow: () => boolean;
+  /** Optional intent observation; never awaited, including preference-save failures. */
+  onObserve?: (event: 'view' | 'try_share' | 'close' | 'never_show_again') => void;
   labels: { title: string; description: string; openShare: string; neverShow: string; close: string; saveFailed: string };
 }) {
   const [clock, setClock] = useState(() => startShareGuideClock(performance.now()));
   const [interaction, setInteraction] = useState({ hovered: false, focused: false });
   const [saveFailed, setSaveFailed] = useState(false);
+  const exposed = useRef(false);
+  useEffect(() => {
+    if (exposed.current) return;
+    exposed.current = true;
+    observeAnalytics(() => { onObserve?.('view'); });
+  }, [onObserve]);
   useEffect(() => {
     if (clock.paused) return;
     const delay = Math.max(0, clock.remainingMs - (performance.now() - clock.checkedAt));
@@ -61,7 +70,10 @@ export function AfterExportShareGuide({ onOpenShare, onDismiss, onNeverShow, lab
           </div>
         </div>
       </div>
-      <Button type="button" className={styles.close} aria-label={labels.close} onClick={onDismiss}>
+      <Button type="button" className={styles.close} aria-label={labels.close} onClick={() => {
+        observeAnalytics(() => { onObserve?.('close'); });
+        onDismiss();
+      }}>
         <Icon name="share-close-fill" size={15} />
       </Button>
       <div className={styles.body}>
@@ -69,10 +81,14 @@ export function AfterExportShareGuide({ onOpenShare, onDismiss, onNeverShow, lab
         <p className={styles.desc}>{labels.description}</p>
         <div className={styles.actions}>
           <Button className={styles.dismiss} type="button" onClick={() => {
+            observeAnalytics(() => { onObserve?.('never_show_again'); });
             if (onNeverShow()) onDismiss();
             else setSaveFailed(true);
           }}>{labels.neverShow}</Button>
-          <ShareButton variant="dark-sm" onClick={() => { onDismiss(); onOpenShare(); }}>{labels.openShare}</ShareButton>
+          <ShareButton variant="dark-sm" onClick={() => {
+            observeAnalytics(() => { onObserve?.('try_share'); });
+            onDismiss(); onOpenShare();
+          }}>{labels.openShare}</ShareButton>
         </div>
         {saveFailed ? (
           <div className={styles.error}>
