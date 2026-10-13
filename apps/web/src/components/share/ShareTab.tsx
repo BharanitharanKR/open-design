@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import type { EntryIndexConflictDetails } from '@open-design/contracts';
 import { useSharePlan, type SharePlanState } from './useSharePlan';
 import { useShareScopeKeyboard } from './useShareScopeKeyboard';
+import { Button } from '@open-design/components';
 import { ShareButton } from './ShareButton';
 import { SHARE_MAX_TOTAL_BYTES, shareEntryPresentation, workspaceContextHasTeamIdentity, type ShareContentFreshness, type WorkspaceCollabContext } from '@open-design/contracts';
 import type { PublicFilePublishFailureKey } from '../../collab/public-file-publish';
