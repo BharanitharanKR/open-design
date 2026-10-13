@@ -17994,9 +17994,11 @@ function HtmlViewer({
           ) : (
             <iframe
               title="present"
-              sandbox={HTML_PREVIEW_SANDBOX}
+              sandbox={urlFrameSandbox}
+              allow={urlFrameAllow}
+              data-od-powered={usePoweredPreview ? 'true' : undefined}
               data-od-render-mode="url-load"
-              src={activePreviewSrcUrl}
+              src={urlFrameSrc}
             />
           )}
           {/* The overlay covers the whole window, so this is the only exit the

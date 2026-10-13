@@ -4,16 +4,21 @@ import { expect, test } from '@/playwright/suite';
 test('[P2] prototype layout preserves hidden form feedback and authored overrides', async ({ page }) => {
   const css = await readFile(new URL('../../plugins/_official/scenarios/od-next-strategy/assets/task-profiles/prototype/layout.css', import.meta.url), 'utf8');
   await page.setContent(`<!doctype html><html><head><style>${css}</style>
-    <style>.authored[hidden] { display: block; }</style></head><body>
+    <style>
+      .feedback { display: flex; }
+      .text-button { display: inline-flex; }
+      .authored[hidden] { display: block; }
+    </style></head><body>
     <form novalidate>
       <div class="od-field">
         <label for="name">Name</label><input id="name">
-        <p id="error" hidden>Please enter your name.</p>
+        <p id="error" class="feedback" hidden>Please enter your name.</p>
       </div>
-      <button>Register</button><p id="success" class="od-stack" hidden>Registered.</p>
+      <button>Register</button><p id="success" class="od-stack feedback" hidden>Registered.</p>
     </form>
     <div id="searchable" class="od-field" hidden="until-found">Searchable content</div>
     <div id="authored" class="od-stack authored" hidden>Authored override</div>
+    <button id="clear" class="text-button" hidden>Clear filters</button>
     <script>
       document.querySelector('form').addEventListener('submit', (event) => {
         event.preventDefault();
@@ -27,6 +32,7 @@ test('[P2] prototype layout preserves hidden form feedback and authored override
   const success = page.locator('#success');
   await expect(error).toBeHidden();
   await expect(success).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Clear filters' })).toBeHidden();
   await page.getByRole('button', { name: 'Register' }).click();
   await expect(error).toBeVisible();
   await expect(success).toBeHidden();
@@ -37,4 +43,8 @@ test('[P2] prototype layout preserves hidden form feedback and authored override
   await expect(page.locator('#searchable')).toHaveCSS('display', 'grid');
   await expect(page.locator('#searchable')).toHaveCSS('content-visibility', 'hidden');
   await expect(page.locator('#authored')).toBeVisible();
+  await page.locator('#clear').evaluate((button: HTMLButtonElement) => { button.hidden = false; });
+  await expect(page.getByRole('button', { name: 'Clear filters' })).toBeVisible();
+  await page.locator('#clear').evaluate((button: HTMLButtonElement) => { button.hidden = true; });
+  await expect(page.getByRole('button', { name: 'Clear filters' })).toBeHidden();
 });

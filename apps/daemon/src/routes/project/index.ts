@@ -19,6 +19,7 @@ import {
 } from '@open-design/contracts/runtime/preview-build-focus';
 import {
   buildPreviewFocusGuard,
+  buildPreviewVisibilityGuard,
   buildPreviewRedirectGuard,
   buildPreviewSandboxShim,
   PREVIEW_URL_GUARD_MAX_HTML_BYTES,
@@ -1817,6 +1818,7 @@ function applyUrlPreviewBridgesToHtml(
   }
 
   let html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : transformed;
+  html = injectAfterHeadOpen(html, 'data-od-preview-hidden-guard', buildPreviewVisibilityGuard());
   // Sanitize the <title> so Cmd+P -> "Save as PDF" produces a Teams-safe
   // filename. URL-load iframes cannot rely on the host rewriting the document
   // title after load, and powered previews are intentionally cross-origin.

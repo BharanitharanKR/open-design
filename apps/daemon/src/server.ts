@@ -1163,6 +1163,7 @@ import {
   isZeroConfigClipperLibraryRequest,
   parseHostHeader,
 } from './origin-validation.js';
+import { projectPoweredPreviewOriginDecision } from './http/powered-preview-origin.js';
 import { registerLibraryRoutes } from './routes/library.js';
 import {
   libraryExtensionAllowedOrigins,
@@ -3394,10 +3395,23 @@ export async function startServer({
     /^\/projects\/[^/]+\/(?:raw|preview)\/|^\/codex-pets\/[^/]+\/spritesheet$|^\/asset-cache$/;
   const _POWERED_PREVIEW_SAFE_RE = /^\/projects\/[^/]+\/powered\/.+$/u;
 
-  // Reject cross-origin requests to API endpoints.
-  // Health/version remain open for monitoring probes.
-  // Non-browser clients (no Origin header) are always allowed.
+  // Reserve project preview hosts before API exceptions and static serving.
+  app.use((req, res, next) => {
+    const projectPreviewDecision = projectPoweredPreviewOriginDecision(req, resolvedPort);
+    if (projectPreviewDecision === 'reject') {
+      return res.status(403).json({
+        error: 'Powered preview origin cannot access this API route',
+      });
+    }
+    res.locals.projectPoweredPreview = projectPreviewDecision === 'allow';
+    next();
+  });
+
+  // Reject cross-origin requests to API endpoints. Normal non-browser
+  // clients (no Origin header) retain their existing access.
   app.use('/api', (req, res, next) => {
+    if (res.locals.projectPoweredPreview === true) return next();
+
     // Live artifact previews have stricter local-daemon validation and
     // loopback CORS handling on the route itself. Let that middleware produce
     // the structured error shape and preflight headers for preview embeds.
@@ -8336,9 +8350,9 @@ export async function startServer({
   // Powered-preview isolation info. Reports the daemon's own directly-reachable
   // http origin so the web host can render WebGL/Worker/WASM/SharedArrayBuffer
   // artifacts in a cross-origin-isolated iframe (see the /powered route and
-  // apps/web/src/runtime/powered-preview.ts). The web host always swaps this
-  // loopback hostname before loading powered files; the /api origin middleware
-  // then treats that swapped browser origin as preview-only.
+  // apps/web/src/runtime/powered-preview.ts). The web host derives a separate
+  // loopback hostname per project; the /api origin middleware reserves each
+  // hostname for that project's powered GETs.
   app.get('/api/preview/isolation', (_req, res) => {
     const reportHost = reportHostForPoweredPreview();
     const baseOrigin = resolvedPort ? `http://${reportHost}:${resolvedPort}` : null;
@@ -8346,6 +8360,7 @@ export async function startServer({
     /** @type {import('@open-design/contracts').ProjectPreviewIsolationResponse} */
     const body = {
       supported: Boolean(baseOrigin),
+      projectOrigins: true,
       baseOrigin,
       pathPrefix: 'powered',
     };

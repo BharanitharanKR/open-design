@@ -998,8 +998,15 @@ test('[P0] @critical file workspace restores HTML preview after switching throug
 test('[P0] @critical HTML preview permits client-side form submission while isolating the host', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createProjectViaApi(page, 'Interactive form preview');
-  await seedHtmlArtifact(page, projectId, 'form.html', `<!doctype html><html><body>
+  await seedHtmlArtifact(page, projectId, 'form.html', `<!doctype html><html><head><style>
+    .modal-layer { display: grid; position: fixed; inset: 0; z-index: 10; }
+    .authored[hidden] { display: block; }
+  </style></head><body>
     <h1>Interactive form</h1>
+    <div class="modal-layer" hidden>Hidden popup</div>
+    <p class="authored" hidden>Intentional authored override</p>
+    <p hidden="until-found">Findable content</p>
+    <p hidden="UNTIL-FOUND">Findable content with an uppercase attribute</p>
     <form><label>Task name<input name="task"></label><button>Save task</button></form>
     <output aria-label="Saved task"></output>
     <script>document.querySelector('form').addEventListener('submit', function(event) {
@@ -1013,6 +1020,18 @@ test('[P0] @critical HTML preview permits client-side form submission while isol
     await expectWorkspaceReady(page);
     await openDesignFile(page, 'form.html');
     const preview = page.frameLocator('[data-testid="artifact-preview-frame"]');
+    await expect(preview.locator('.modal-layer')).toHaveCount(1);
+    await expect(preview.locator('.modal-layer')).toBeHidden();
+    await expect(preview.locator('.authored')).toBeVisible();
+    const findableStyles = await preview.locator('[hidden="until-found" i]').evaluateAll((nodes) => nodes.map((node) => {
+      const style = getComputedStyle(node);
+      return { display: style.display, contentVisibility: style.contentVisibility };
+    }));
+    expect(findableStyles).toHaveLength(2);
+    for (const style of findableStyles) {
+      expect(style.display).not.toBe('none');
+      expect(style.contentVisibility).toBe('hidden');
+    }
     await preview.getByLabel('Task name').fill('Created through the preview');
     await preview.getByRole('button', { name: 'Save task' }).click();
     await expect(preview.getByLabel('Saved task')).toHaveText('Created through the preview');
@@ -1022,12 +1041,18 @@ test('[P0] @critical HTML preview permits client-side form submission while isol
   }
 });
 
-test('[P0] @critical storage-backed HTML keeps changes after preview reload on the isolated origin', async ({ page }) => {
+test('[P0] @critical storage-backed HTML keeps project state isolated across preview reloads', async ({ page, context }) => {
   await routeMockAgents(page);
-  const projectId = await createProjectViaApi(page, 'Persistent form preview');
-  const storageKey = JSON.stringify(`form-preview-${projectId}`);
-  await seedHtmlArtifact(page, projectId, 'saved-form.html', `<!doctype html><html><body>
-    <h1>Persistent form</h1>
+  const projectIds = [
+    await createProjectViaApi(page, 'Persistent form preview A'),
+    await createProjectViaApi(page, 'Persistent form preview B'),
+  ];
+  // Generated pages commonly use the same ordinary key in separate projects.
+  // A project-specific artifact key would hide an origin-isolation regression.
+  const storageKey = JSON.stringify('task-board-state');
+  for (const [index, projectId] of projectIds.entries()) {
+    await seedHtmlArtifact(page, projectId, 'saved-form.html', `<!doctype html><html><body>
+    <h1>Persistent form ${index === 0 ? 'A' : 'B'}</h1>
     <form><label>Task name<input name="task"></label><button>Save task</button></form>
     <output aria-label="Saved task"></output>
     <script>const key=${storageKey};
@@ -1039,14 +1064,22 @@ test('[P0] @critical storage-backed HTML keeps changes after preview reload on t
       document.querySelector('output').textContent=value;
     });</script>
   </body></html>`);
-  await page.goto(`/projects/${projectId}`, { waitUntil: 'domcontentloaded' });
-  await expectWorkspaceReady(page);
-  await openDesignFile(page, 'saved-form.html');
+  }
+  const openProject = async (index: number) => {
+    await page.goto(`/projects/${projectIds[index]}`, { waitUntil: 'domcontentloaded' });
+    // Chromium requires a browser permission for loopback-host preview embeds.
+    // Grant it only to this test's app origin; daemon host guards stay active.
+    await context.grantPermissions(['local-network-access'], { origin: new URL(page.url()).origin });
+    await expectWorkspaceReady(page);
+    await openDesignFile(page, 'saved-form.html');
+    await expect(preview.getByRole('heading', { name: `Persistent form ${index === 0 ? 'A' : 'B'}` })).toBeVisible();
+  };
   const frame = page.locator('[data-testid="artifact-preview-frame"]');
   const preview = page.frameLocator('[data-testid="artifact-preview-frame"]');
-  await preview.getByLabel('Task name').fill('Saved across reload');
+  await openProject(0);
+  await preview.getByLabel('Task name').fill('Project A saved across reload');
   await preview.getByRole('button', { name: 'Save task' }).click();
-  await expect(preview.getByLabel('Saved task')).toHaveText('Saved across reload');
+  await expect(preview.getByLabel('Saved task')).toHaveText('Project A saved across reload');
   const src = await frame.getAttribute('src');
   expect(src).toContain('/powered/');
   expect(new URL(src!).origin).not.toBe(new URL(page.url()).origin);
@@ -1056,7 +1089,34 @@ test('[P0] @critical storage-backed HTML keeps changes after preview reload on t
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectWorkspaceReady(page);
   await openDesignFile(page, 'saved-form.html');
-  await expect(preview.getByLabel('Saved task')).toHaveText('Saved across reload');
+  await expect(preview.getByLabel('Saved task')).toHaveText('Project A saved across reload');
+
+  await page.getByRole('button', { name: 'Present', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'In this tab', exact: true }).click();
+  const presentation = page.frameLocator('.present-overlay iframe');
+  await expect(presentation.getByLabel('Saved task')).toHaveText('Project A saved across reload');
+  expect(await presentation.locator('body').evaluate(() => {
+    try { void window.parent.document.body; return true; } catch { return false; }
+  })).toBe(false);
+  await page.getByRole('button', { name: 'Exit presentation', exact: true }).click();
+
+  await openProject(1);
+  await expect(preview.getByLabel('Saved task')).toHaveText('');
+  await preview.getByLabel('Task name').fill('Project B saved separately');
+  await preview.getByRole('button', { name: 'Save task' }).click();
+  await expect(preview.getByLabel('Saved task')).toHaveText('Project B saved separately');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expectWorkspaceReady(page);
+  await openDesignFile(page, 'saved-form.html');
+  await expect(preview.getByLabel('Saved task')).toHaveText('Project B saved separately');
+
+  await openProject(0);
+  await expect(preview.getByLabel('Saved task')).toHaveText('Project A saved across reload');
+  const blockedRoutes = await preview.locator('body').evaluate(async (_, otherProjectId) => {
+    const paths = ['/api/projects', `/api/projects/${otherProjectId}/powered/saved-form.html`];
+    return Promise.all(paths.map(async (path) => ({ path, status: (await fetch(path)).status })));
+  }, projectIds[1]);
+  expect(blockedRoutes.map((route) => route.status)).toEqual([403, 403]);
 });
 
 test('[P0] @critical white-screen monitoring recovers layout stalls and confirms persistent blanks', async ({ page }) => {
