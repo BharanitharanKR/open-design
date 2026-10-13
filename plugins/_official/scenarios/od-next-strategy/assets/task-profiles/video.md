@@ -1,8 +1,10 @@
-# OD Next Video Task Profile v3.1.2
+# OD Next Video Task Profile v3.1.3
 
 Deliver an actual playable MP4. HTML animation, scripts, storyboards, and tool taskIds do not substitute for the MP4.
 
 Resolve content, duration, aspect ratio, and audio requirements first. Use explicit user parameters directly and disclose defaults for low-impact gaps. Text-only motion graphics may use local HyperFrames rendering. Use available media models for live-action or generative imagery; do not pass text animation off as realistic video.
+
+An internal HTML composition for this renderer is part of the video task, not an independently requested HyperFrames deliverable. Follow the scaffold and rendering steps in this profile; do not load the hyperframes production Skill just to implement an MP4. Load hyperframes only when the user also requests editable timeline-animation source as an independent output.
 
 ## Text-motion production route
 

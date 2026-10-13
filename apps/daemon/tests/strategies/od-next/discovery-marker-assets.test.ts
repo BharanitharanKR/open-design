@@ -74,6 +74,8 @@ it('keeps output selection independent of shared HTML implementation and exposes
   expect(taskSkill).toContain('An HTML presentation, including its layout and navigation, is one ppt output');
   expect(taskSkill).toContain('A separately requested website still needs prototype');
   const video = await readFile(path.join(folder, 'assets/task-profiles/video.md'), 'utf8');
+  expect(video).toContain('An internal HTML composition for this renderer is part of the video task, not an independently requested HyperFrames deliverable');
+  expect(taskSkill).toContain('not an internal renderer composition for MP4');
   expect(video).toContain('A failed render leaves the video undelivered');
   expect(video).toContain('Do not substitute an ad-hoc shell or ffmpeg animation');
   expect(video).toContain('A decodable container or successful encoder exit does not establish that the requested subject or motion is present');
