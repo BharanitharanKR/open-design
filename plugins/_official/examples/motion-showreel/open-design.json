@@ -72,7 +72,8 @@
     "surface": "video",
     "preview": {
       "type": "html",
-      "entry": "./example.html"
+      "entry": "./example.html",
+      "poster": "./assets/cover.jpg"
     },
     "useCase": {
       "query": {

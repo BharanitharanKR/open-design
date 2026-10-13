@@ -39,6 +39,9 @@ describe('curated motion design templates', () => {
     const skill = readFileSync(path.join(dir!, 'SKILL.md'), 'utf8');
     expect(skill).toMatch(/\bexample\.html\b/);
     expect(existsSync(path.join(dir!, 'example.html'))).toBe(true);
+    const manifest = JSON.parse(readFileSync(path.join(dir!, 'open-design.json'), 'utf8'));
+    expect(manifest.od.preview.poster).toBe('./assets/cover.jpg');
+    expect(existsSync(path.join(dir!, 'assets/cover.jpg'))).toBe(true);
   });
 
   it('seeds the showreel template from Home in every locale with its original viral prompt', () => {

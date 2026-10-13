@@ -1,4 +1,35 @@
 import { expect, test } from '@/playwright/suite';
+import { applyStandardMocks } from '@/playwright/mock-factory';
+import { pickHomeTemplate } from '@/playwright/home-hero';
+
+test('[P1] fresh checkout shows five motion covers without local or CDN bakes', async ({ page }, testInfo) => {
+  await applyStandardMocks(page);
+  await page.route(/\/api\/plugins(?:\?.*)?$/, async route => {
+    const response = await route.fetch();
+    const data = await response.json() as {
+      plugins: { manifest?: { od?: { bakedPreview?: unknown } } }[];
+    };
+    for (const plugin of data.plugins) {
+      if (plugin.manifest?.od) delete plugin.manifest.od.bakedPreview;
+    }
+    await route.fulfill({ response, json: data });
+  });
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('home-hero')).toBeVisible();
+  await pickHomeTemplate(page, 'motion-design');
+  for (const name of ['future', 'showreel', 'ui-morph', 'product-promo', 'visual-lesson']) {
+    const row = page.locator(`[data-testid="home-hero-plugin-preset"][data-plugin-id="example-motion-${name}"]`);
+    const cover = row.locator('img');
+    await cover.scrollIntoViewIfNeeded();
+    await expect(cover).toHaveAttribute('src', `/api/plugins/example-motion-${name}/asset/assets/cover.jpg`);
+    await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  }
+  await testInfo.attach('five-bundled-motion-covers', { body: await page.screenshot(), contentType: 'image/png' });
+  const first = page.locator('[data-testid="home-hero-plugin-preset"][data-plugin-id="example-motion-future"]');
+  await first.getByRole('button').click();
+  await expect(page.locator('iframe[src*="/api/plugins/example-motion-future/preview"]')).toBeVisible();
+});
 
 for (const name of ['showreel', 'ui-morph', 'future', 'product-promo', 'visual-lesson']) {
   test(`[P1] motion-${name} gallery capture contains only the composition`, async ({ page }) => {

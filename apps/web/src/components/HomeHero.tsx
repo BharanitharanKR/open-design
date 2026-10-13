@@ -2679,7 +2679,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 });
 
 // The still each row leads with: the daemon-baked poster when the plugin has
-// one, otherwise a plain image-template poster. Plugins with neither (HTML-only
+// one, otherwise a bundled HTML poster or a plain image-template poster. Plugins with neither (HTML-only
 // previews) get an empty slot rather than a live iframe — the row is a label,
 // and rendering a sandboxed page per row costs far more than it is worth.
 function presetPreviewPoster(

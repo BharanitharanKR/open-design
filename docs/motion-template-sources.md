@@ -62,7 +62,12 @@ the bundled fonts.
 ## Gallery publication
 
 `open-design.json` points to `example.html`; source and referenced assets ship
-with the official plugin. The existing pre-merge preview workflow validates
+with the official plugin. Each template also bundles `assets/cover.jpg`, declared
+as `od.preview.poster`, so a fresh branch checkout has a Home and Community
+cover before CDN previews are published. Cards prefer published baked previews
+when present, then this bundled still; detail previews retain the live HTML.
+Refresh the bundled cover from the baker's poster when changing the film's look.
+The existing pre-merge preview workflow validates
 rendering. After merge, `bake-plugin-previews.yml` uploads content-addressed
 posters and clips to R2 and opens the rolling preview-manifest PR. Each
 template signals preview-ready within the baker's 15-second budget. Verify the
