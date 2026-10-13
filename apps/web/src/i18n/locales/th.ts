@@ -3313,6 +3313,8 @@ export const th: Dict = {
   "fileViewer.shareUpdateRetry": "ลองอีกครั้ง",
   "fileViewer.unpublishFileFailed": "ปิดใช้งานลิงก์ไม่สำเร็จ โปรดลองอีกครั้ง",
   "fileViewer.publishFileFailed": "สร้างลิงก์แชร์ไม่สำเร็จ โปรดลองอีกครั้งในภายหลัง",
+  "fileViewer.shareCheckLoading": "กำลังตรวจสอบการแชร์…",
+  "fileViewer.shareCheckFailed": "ไม่สามารถตรวจสอบการแชร์ให้เสร็จสิ้นได้ โปรดลองอีกครั้ง",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

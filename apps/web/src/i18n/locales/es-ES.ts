@@ -3322,6 +3322,8 @@ export const esES: Dict = {
   "fileViewer.shareUpdateRetry": "Reintentar",
   "fileViewer.unpublishFileFailed": "No se pudo desactivar el enlace. Inténtalo de nuevo.",
   "fileViewer.publishFileFailed": "No se pudo crear el enlace para compartir. Inténtalo de nuevo más tarde.",
+  "fileViewer.shareCheckLoading": "Comprobando uso compartido…",
+  "fileViewer.shareCheckFailed": "No se pudo completar la comprobación para compartir. Inténtalo de nuevo.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

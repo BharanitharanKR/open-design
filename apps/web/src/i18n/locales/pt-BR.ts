@@ -3313,6 +3313,8 @@ export const ptBR: Dict = {
   "fileViewer.shareUpdateRetry": "Tentar novamente",
   "fileViewer.unpublishFileFailed": "Não foi possível desativar o link. Tente novamente.",
   "fileViewer.publishFileFailed": "Não foi possível criar o link de compartilhamento. Tente novamente mais tarde.",
+  "fileViewer.shareCheckLoading": "Verificando compartilhamento…",
+  "fileViewer.shareCheckFailed": "Não foi possível concluir a verificação de compartilhamento. Tente novamente.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

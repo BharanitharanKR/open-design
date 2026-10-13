@@ -3313,6 +3313,8 @@ export const pl: Dict = {
   "fileViewer.shareUpdateRetry": "Ponów",
   "fileViewer.unpublishFileFailed": "Nie udało się wyłączyć linku. Spróbuj ponownie.",
   "fileViewer.publishFileFailed": "Nie udało się utworzyć linku. Spróbuj ponownie później.",
+  "fileViewer.shareCheckLoading": "Sprawdzanie udostępniania…",
+  "fileViewer.shareCheckFailed": "Nie udało się ukończyć sprawdzania udostępniania. Spróbuj ponownie.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

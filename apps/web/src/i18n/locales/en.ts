@@ -3336,6 +3336,8 @@ export const en: Dict = {
   "fileViewer.shareUpdateRetry": "Retry",
   "fileViewer.unpublishFileFailed": "Could not turn off the link. Please try again.",
   "fileViewer.publishFileFailed": "Could not create the share link. Please try again later.",
+  "fileViewer.shareCheckLoading": "Checking sharing…",
+  "fileViewer.shareCheckFailed": "Could not complete the sharing check. Please try again.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

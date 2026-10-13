@@ -3313,6 +3313,8 @@ export const hu: Dict = {
   "fileViewer.shareUpdateRetry": "Újra",
   "fileViewer.unpublishFileFailed": "Nem sikerült kikapcsolni a linket. Próbáld újra.",
   "fileViewer.publishFileFailed": "Nem sikerült létrehozni a megosztási linket. Próbáld újra később.",
+  "fileViewer.shareCheckLoading": "Megosztás ellenőrzése…",
+  "fileViewer.shareCheckFailed": "Nem sikerült befejezni a megosztás ellenőrzését. Próbáld újra.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

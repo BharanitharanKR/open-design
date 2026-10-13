@@ -3485,6 +3485,8 @@ export const zhCN: Dict = {
   "fileViewer.shareUpdateRetry": "重试",
   "fileViewer.unpublishFileFailed": "关闭链接失败，请重试。",
   "fileViewer.publishFileFailed": "上传失败，请检查网络后重试。",
+  "fileViewer.shareCheckLoading": "正在检查分享…",
+  "fileViewer.shareCheckFailed": "无法完成分享检查，请重试。",
   "fileViewer.workspaceShareSuccess": "已分享给工作空间成员",
   "fileViewer.workspaceShareFailed": "分享到工作空间失败",
   "fileViewer.workspaceUnshareSuccess": "已移回仅自己可见",

@@ -3322,6 +3322,8 @@ export const de: Dict = {
   "fileViewer.shareUpdateRetry": "Erneut versuchen",
   "fileViewer.unpublishFileFailed": "Der Link konnte nicht deaktiviert werden. Versuche es erneut.",
   "fileViewer.publishFileFailed": "Freigabelink konnte nicht erstellt werden. Versuche es später erneut.",
+  "fileViewer.shareCheckLoading": "Freigabe wird geprüft…",
+  "fileViewer.shareCheckFailed": "Die Freigabeprüfung konnte nicht abgeschlossen werden. Bitte erneut versuchen.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

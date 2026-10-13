@@ -3313,6 +3313,8 @@ export const ru: Dict = {
   "fileViewer.shareUpdateRetry": "Повторить",
   "fileViewer.unpublishFileFailed": "Не удалось отключить ссылку. Повторите попытку.",
   "fileViewer.publishFileFailed": "Не удалось создать ссылку. Повторите попытку позже.",
+  "fileViewer.shareCheckLoading": "Проверка общего доступа…",
+  "fileViewer.shareCheckFailed": "Не удалось завершить проверку общего доступа. Повторите попытку.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

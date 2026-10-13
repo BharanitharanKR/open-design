@@ -157,17 +157,17 @@ describe('S1 first-publish visual seam', () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  it('3639: keeps the existing no-banner presentation but refuses publishing after plan failure', async () => {
+  it('3771: explains failed preflight and refuses publishing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     const publish = vi.fn().mockResolvedValue(undefined);
     render(<ShareTab {...firstProps({ projectId: 'p1', filePath: 'index.html', publishCurrentFilePublic: publish })} />);
     const toggle = screen.getByRole('switch', { name: 'fileViewer.linkAccessTitle' });
     expect(toggle).toBeEnabled();
-    await waitFor(() => expect(toggle).toBeEnabled());
-    expect(screen.queryByRole('alert')).toBeNull();
+    await screen.findByRole('alert');
+    expect(screen.getByRole('alert')).toHaveTextContent('fileViewer.shareCheckFailed');
     expect(screen.queryByText('fileViewer.sharePlanUnavailable')).toBeNull();
     const generate = screen.getByRole('menuitem', { name: 'fileViewer.generateAndCopyLink' });
-    expect(generate).toBeEnabled();
+    expect(generate).toBeDisabled();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-checked', 'false');
     expect(generate).toBeDisabled();

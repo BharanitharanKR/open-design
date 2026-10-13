@@ -3494,6 +3494,8 @@ export const zhTW: Dict = {
   "fileViewer.shareUpdateRetry": "重試",
   "fileViewer.unpublishFileFailed": "關閉連結失敗，請重試。",
   "fileViewer.publishFileFailed": "產生分享連結失敗，請稍後重試。",
+  "fileViewer.shareCheckLoading": "正在檢查分享…",
+  "fileViewer.shareCheckFailed": "無法完成分享檢查，請重試。",
   "fileViewer.workspaceShareSuccess": "已分享給工作空間成員",
   "fileViewer.workspaceShareFailed": "分享到工作空間失敗",
   "fileViewer.workspaceUnshareSuccess": "已移回僅自己可見",

@@ -3322,6 +3322,8 @@ export const ar: Dict = {
   "fileViewer.shareUpdateRetry": "إعادة المحاولة",
   "fileViewer.unpublishFileFailed": "تعذّر إيقاف الرابط. حاول مجددًا.",
   "fileViewer.publishFileFailed": "تعذّر إنشاء رابط المشاركة. حاول مجددًا لاحقًا.",
+  "fileViewer.shareCheckLoading": "جارٍ التحقق من المشاركة…",
+  "fileViewer.shareCheckFailed": "تعذّر إكمال التحقق من المشاركة. حاول مجددًا.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

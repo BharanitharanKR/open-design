@@ -3313,6 +3313,8 @@ export const ja: Dict = {
   "fileViewer.shareUpdateRetry": "再試行",
   "fileViewer.unpublishFileFailed": "リンクを無効にできませんでした。もう一度お試しください。",
   "fileViewer.publishFileFailed": "共有リンクを作成できませんでした。しばらくしてから再試行してください。",
+  "fileViewer.shareCheckLoading": "共有を確認中…",
+  "fileViewer.shareCheckFailed": "共有の確認を完了できませんでした。再試行してください。",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

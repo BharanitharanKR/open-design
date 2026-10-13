@@ -3313,6 +3313,8 @@ export const id: Dict = {
   "fileViewer.shareUpdateRetry": "Coba lagi",
   "fileViewer.unpublishFileFailed": "Tidak dapat menonaktifkan tautan. Silakan coba lagi.",
   "fileViewer.publishFileFailed": "Tidak dapat membuat tautan berbagi. Silakan coba lagi nanti.",
+  "fileViewer.shareCheckLoading": "Memeriksa berbagi…",
+  "fileViewer.shareCheckFailed": "Tidak dapat menyelesaikan pemeriksaan berbagi. Silakan coba lagi.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

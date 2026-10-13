@@ -297,7 +297,7 @@ it.each(['content', 'file', 'account'] as const)('invalidates the cached plan an
   await vi.waitFor(() => expect(reads).toBe(2));
   fireEvent.click(screen.getByRole('menuitem', { name: /generate and copy link/i }));
   expect(posts(fallback)).toHaveLength(0);
-  expect(screen.getByRole('menuitem', { name: /uploading/i })).toHaveAttribute('aria-busy', 'true');
+  expect(screen.getByRole('menuitem', { name: /checking sharing/i })).toHaveAttribute('aria-busy', 'true');
   // A queued click must not publish after the viewer becomes read-only.
   view.rerenderWith({ ...next, viewerOnly: true }, context);
   await act(async () => { pending.resolve(Response.json({ fileCount: 1, totalBytes: 100, exceedsSizeLimit: false, exclusions: [] })); });
@@ -314,7 +314,7 @@ it('retains one queued first-share click across panel close and reopen', async (
   fireEvent.click(screen.getByRole('menuitem', { name: /generate and copy link/i }));
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   fireEvent.click(screen.getByRole('button', { name: /^share$/i }));
-  expect(screen.getByRole('menuitem', { name: /uploading/i })).toBeDisabled();
+  expect(screen.getByRole('menuitem', { name: /checking sharing/i })).toBeDisabled();
   await act(async () => { pending.resolve(Response.json({ fileCount: 1, totalBytes: 100, exceedsSizeLimit: false, exclusions: [] })); });
   await vi.waitFor(() => expect(posts(fallback)).toHaveLength(1));
 });

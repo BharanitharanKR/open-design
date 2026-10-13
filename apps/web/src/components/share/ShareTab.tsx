@@ -202,6 +202,8 @@ export function ShareTab({
   const planState = sharePlanState ?? localPlan;
   const sharePlan = planState.plan;
   const publishing = publishingPublicFile || planState.waiting;
+  const checking = planState.status === 'loading';
+  const preflightFailed = planState.status === 'error';
   // S1: selected link access is only an unpublished UI intent. It never
   // transfers bytes or creates a URL until Generate and copy is clicked.
   const [prepublishLinkAccess, setPrepublishLinkAccess] = useState(true);
@@ -295,6 +297,16 @@ export function ShareTab({
                         // project in the team catalog, so say so before the first publish.
                         <p className={styles.publishHint} role="note">{t('fileViewer.publishMakesProjectTeamVisible')}</p>
                       ) : null}
+                      {checking && !publishingPublicFile ? (
+                        <p className={styles.publishHint} aria-live="polite">{t('fileViewer.shareCheckLoading')}</p>
+                      ) : null}
+                      {preflightFailed ? (
+                        <>
+                          <ShareErrorRow message={t('fileViewer.shareCheckFailed')} role="alert" />
+                          <Button variant="secondary" disabled={viewerOnly || streaming || publishing}
+                            onClick={() => { void planState.retry(); }}>{t('preview.retry')}</Button>
+                        </>
+                      ) : null}
                       {shownConflict ? (
                         <ShareConflictRow conflict={shownConflict} t={t} />
                       ) : publishFailureKey && publishFailureKey !== 'fileViewer.publishFileEntryIndexConflict' ? (
@@ -364,7 +376,7 @@ export function ShareTab({
                             action={
                               <ShareButton
                                 variant="soft"
-                                disabled={!canMutatePublicShare || viewerOnly || streaming || publishing || planTooLarge || planBlocked}
+                                disabled={!canMutatePublicShare || viewerOnly || streaming || publishing || preflightFailed || planTooLarge || planBlocked}
                                 aria-busy={publishing || undefined}
                                 onClick={() => { if (canMutatePublicShare && !viewerOnly) void planState.run(() => updateCurrentFilePublic?.() ?? Promise.resolve()); }}
                               >
@@ -377,10 +389,8 @@ export function ShareTab({
                         )
                       ) : (
                         <>
-                        {/* 2026 UI audit (G4/S1/S2/S7/S15): the plan-unavailable and
-                            missing-refs advisories were yellow banners; deleted, no lighter
-                            replacement. Neither ever blocked publishing (unlike planTooLarge
-                            above), so there is no reason left to surface here. */}
+                        {/* Missing-reference exclusions remain non-blocking; failed checks
+                            use the explicit recovery row above, never an upload error. */}
                         {publicationStatus !== 'stopped' || publishing ? (
                         <ShareProgressButton variant="upload" value={publicationStatus === 'stopped' ? null : publishProgress} label={t('fileViewer.uploadingFile')}>
                         <ShareButton
@@ -388,7 +398,7 @@ export function ShareTab({
                           hoverLighten={false}
                           transparentWhenBusy={publishing && publicationStatus !== 'stopped' && publishProgress !== null}
                           role="menuitem"
-                          disabled={streaming || viewerOnly || publishing || planTooLarge || planBlocked || (initialUnpublished && !prepublishLinkAccess)}
+                          disabled={streaming || viewerOnly || publishing || preflightFailed || planTooLarge || planBlocked || (initialUnpublished && !prepublishLinkAccess)}
                           aria-busy={publishing}
                           title={viewerOnly ? viewerOnlyDisabledTitle : streaming ? t('fileViewer.shareAfterGenerationComplete') : undefined}
                           onClick={() => {
@@ -403,7 +413,7 @@ export function ShareTab({
                             <Icon name="share-upload-arrow" size={13} strokeWidth={1.8} />
                           )}
                           <span>{publishing
-                            ? publicationStatus === 'stopped' ? t('fileViewer.shareReopening') : `${t('fileViewer.uploadingFile')}${publishProgress !== null ? ` ${Math.round(publishProgress * 100)}%` : ''}`
+                            ? !publishingPublicFile && checking ? t('fileViewer.shareCheckLoading') : publicationStatus === 'stopped' ? t('fileViewer.shareReopening') : `${t('fileViewer.uploadingFile')}${publishProgress !== null ? ` ${Math.round(publishProgress * 100)}%` : ''}`
                             : publishFailureKey === 'fileViewer.publishFileFailed' || publishFailureKey === 'fileViewer.publishFileTooLarge'
                               ? t('preview.retry')
                               : t('fileViewer.generateAndCopyLink')}</span>
@@ -412,7 +422,7 @@ export function ShareTab({
                         ) : null}
                         </>
                       ) }
-                      {publishing && !filePublished && publicationStatus !== 'stopped' ? (
+                      {publishingPublicFile && !filePublished && publicationStatus !== 'stopped' ? (
                         <p className={styles.publishHint}>{t('fileViewer.publishingContinuesOnClose')}</p>
                       ) : null}
                       </>

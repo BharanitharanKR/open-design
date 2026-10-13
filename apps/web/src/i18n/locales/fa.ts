@@ -3322,6 +3322,8 @@ export const fa: Dict = {
   "fileViewer.shareUpdateRetry": "تلاش مجدد",
   "fileViewer.unpublishFileFailed": "غیرفعال کردن پیوند ناموفق بود. لطفاً دوباره تلاش کنید.",
   "fileViewer.publishFileFailed": "ایجاد پیوند اشتراک‌گذاری ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
+  "fileViewer.shareCheckLoading": "در حال بررسی اشتراک‌گذاری…",
+  "fileViewer.shareCheckFailed": "بررسی اشتراک‌گذاری کامل نشد. لطفاً دوباره تلاش کنید.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

@@ -3313,6 +3313,8 @@ export const ko: Dict = {
   "fileViewer.shareUpdateRetry": "다시 시도",
   "fileViewer.unpublishFileFailed": "링크를 비활성화하지 못했습니다. 다시 시도해 주세요.",
   "fileViewer.publishFileFailed": "공유 링크를 만들지 못했습니다. 나중에 다시 시도해 주세요.",
+  "fileViewer.shareCheckLoading": "공유 확인 중…",
+  "fileViewer.shareCheckFailed": "공유 확인을 완료하지 못했습니다. 다시 시도해 주세요.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

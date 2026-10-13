@@ -3313,6 +3313,8 @@ export const it: Dict = {
   "fileViewer.shareUpdateRetry": "Riprova",
   "fileViewer.unpublishFileFailed": "Impossibile disattivare il link. Riprova.",
   "fileViewer.publishFileFailed": "Impossibile creare il link di condivisione. Riprova più tardi.",
+  "fileViewer.shareCheckLoading": "Verifica della condivisione…",
+  "fileViewer.shareCheckFailed": "Impossibile completare la verifica della condivisione. Riprova.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

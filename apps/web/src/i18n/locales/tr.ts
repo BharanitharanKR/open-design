@@ -3313,6 +3313,8 @@ export const tr: Dict = {
   "fileViewer.shareUpdateRetry": "Yeniden dene",
   "fileViewer.unpublishFileFailed": "Bağlantı devre dışı bırakılamadı. Lütfen tekrar deneyin.",
   "fileViewer.publishFileFailed": "Paylaşım bağlantısı oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
+  "fileViewer.shareCheckLoading": "Paylaşım kontrol ediliyor…",
+  "fileViewer.shareCheckFailed": "Paylaşım kontrolü tamamlanamadı. Lütfen tekrar deneyin.",
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',
