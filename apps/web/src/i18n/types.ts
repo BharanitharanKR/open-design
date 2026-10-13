@@ -30,6 +30,17 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'workspace.resizePanel': string;
+  'manualEdit.colorSaturation': string;
+  'manualEdit.colorFormat': string;
+  'manualEdit.pickColor': string;
+  'manualEdit.colorBrightness': string;
+  'manualEdit.nextStep': string;
+  'manualEdit.colorHue': string;
+  'manualEdit.previousStep': string;
+
+  "workspace.copyProject": string;
+  "workspace.shareToTeam": string;
   // Workspace invite acceptance (C lane)
   'invite.header.eyebrow': string;
   'invite.loading': string;
@@ -1131,6 +1142,11 @@ export interface Dict {
   'entry.socialMail': string;
   'entry.accountSettings': string;
   'chat.collapsePane': string;
+  'chat.dockOptions': string;
+  'chat.openFullView': string;
+  'chat.moveLeftPane': string;
+  'chat.moveRightPane': string;
+  'chat.minimizeConversation': string;
   'collabPresence.ariaOne': string;
   'collabPresence.aria': string;
   'collabPresence.ariaWithSelfOne': string;
@@ -2621,6 +2637,16 @@ export interface Dict {
   'ds.emptyNoMatch': string;
   'ds.badgeDefault': string;
   'ds.preview': string;
+  'ds.detailTheme': string;
+  'ds.detailComponents': string;
+  'ds.detailGraphics': string;
+  'ds.detailGuidelines': string;
+  'ds.detailNavigation': string;
+  'ds.detailEmpty': string;
+  'ds.foundationFont': string;
+  'ds.foundationShadow': string;
+  'ds.foundationRadius': string;
+  'ds.foundationSpacing': string;
   'ds.kitVisualize': string;
   'ds.kitEdit': string;
   'ds.kitSource': string;
@@ -3010,6 +3036,7 @@ export interface Dict {
   'chat.inspect.commentHint': string;
   'chat.conversationsTitle': string;
   'chat.conversationsAria': string;
+  'entry.newConversation': string;
   'chat.newConversation': string;
   'chat.newConversationsTitle': string;
   'chat.conversationsHeading': string;
@@ -4055,6 +4082,7 @@ export interface Dict {
   'fileViewer.previewAssetBlockedTitle': string;
   'fileViewer.previewAssetBlockedDetail': string;
   'fileViewer.presenterReset': string;
+  'fileViewer.presentOptions': string;
   'fileViewer.present': string;
   'fileViewer.presentInTab': string;
   'fileViewer.presentFullscreen': string;

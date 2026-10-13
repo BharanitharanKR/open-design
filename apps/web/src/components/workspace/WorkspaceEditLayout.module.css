@@ -1,10 +1,26 @@
 .layout {
+  position: relative;
   grid-column: 3;
   display: grid;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   background: transparent;
+}
+
+/* The preview module owns its top row, including when chat or the inspector
+   changes width. Keep it above the native window-drag region. */
+.tabChrome {
+  position: absolute;
+  inset: 0 16px auto 0;
+  height: 40px;
+  z-index: 120;
+  min-width: 0;
+  pointer-events: none;
+}
+
+:global(.split-focus) .tabChrome {
+  left: 8px;
 }
 
 .layout > :global(.workspace) {
@@ -86,20 +102,6 @@
   .layout :global(.ws-tabs-actions > *) {
     max-width: 100%;
     flex-wrap: wrap;
-  }
-}
-
-@container edit-preview (max-width: 720px) {
-  /* The generic viewer-toolbar queries also match this container. The
-     canvas mode switches use text rather than those toolbar tab icons. */
-  .layout :global(.canvas-dock-mode-seg .viewer-tab) {
-    width: auto;
-    min-width: 0;
-    padding-inline: 15px;
-  }
-
-  .layout :global(.canvas-dock-mode-seg .viewer-tab-label) {
-    display: inline;
   }
 }
 
