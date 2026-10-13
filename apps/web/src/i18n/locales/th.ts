@@ -3319,6 +3319,8 @@ export const th: Dict = {
   'fileViewer.publishFileServiceRejected': 'บริการแชร์ปฏิเสธคำขอ โปรดตรวจสอบบัญชีและสถานะการแชร์',
   'fileViewer.publishFileLocalSessionFailed': 'การเตรียมแชร์ในเครื่องล้มเหลว โปรดตรวจสอบการตั้งค่าไคลเอนต์',
   'fileViewer.publishFileUnconfirmed': 'ไม่สามารถยืนยันผลการแชร์ได้ โปรดตรวจสอบสถานะก่อนเผยแพร่อีกครั้ง',
+  'fileViewer.shareCheckLoading': 'กำลังตรวจสอบการแชร์…',
+  'fileViewer.shareCheckFailed': 'ไม่สามารถตรวจสอบการแชร์ให้เสร็จสิ้นได้ โปรดลองอีกครั้ง',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

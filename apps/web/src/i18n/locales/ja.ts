@@ -3319,6 +3319,8 @@ export const ja: Dict = {
   'fileViewer.publishFileServiceRejected': '共有サービスがリクエストを拒否しました。アカウントと共有状態を確認してください。',
   'fileViewer.publishFileLocalSessionFailed': 'ローカルの共有準備に失敗しました。クライアント設定を確認してください。',
   'fileViewer.publishFileUnconfirmed': '共有結果を確認できません。再公開する前に共有状態を確認してください。',
+  'fileViewer.shareCheckLoading': '共有を確認中…',
+  'fileViewer.shareCheckFailed': '共有の確認を完了できませんでした。再試行してください。',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

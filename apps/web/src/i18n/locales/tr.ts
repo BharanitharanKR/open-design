@@ -3319,6 +3319,8 @@ export const tr: Dict = {
   'fileViewer.publishFileServiceRejected': 'Paylaşım hizmeti isteği reddetti. Hesabınızı ve paylaşım durumunu kontrol edin.',
   'fileViewer.publishFileLocalSessionFailed': 'Yerel paylaşım hazırlığı başarısız oldu. İstemci yapılandırmasını kontrol edin.',
   'fileViewer.publishFileUnconfirmed': 'Paylaşım sonucu doğrulanamadı. Yeniden yayımlamadan önce durumunu kontrol edin.',
+  'fileViewer.shareCheckLoading': 'Paylaşım kontrol ediliyor…',
+  'fileViewer.shareCheckFailed': 'Paylaşım kontrolü tamamlanamadı. Lütfen tekrar deneyin.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

@@ -3319,6 +3319,8 @@ export const ru: Dict = {
   'fileViewer.publishFileServiceRejected': 'Сервис отклонил запрос. Проверьте аккаунт и состояние публикации.',
   'fileViewer.publishFileLocalSessionFailed': 'Не удалось подготовить публикацию локально. Проверьте настройки клиента.',
   'fileViewer.publishFileUnconfirmed': 'Результат публикации не подтверждён. Проверьте её состояние перед повторной публикацией.',
+  'fileViewer.shareCheckLoading': 'Проверка общего доступа…',
+  'fileViewer.shareCheckFailed': 'Не удалось завершить проверку общего доступа. Повторите попытку.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

@@ -3319,6 +3319,8 @@ export const ptBR: Dict = {
   'fileViewer.publishFileServiceRejected': 'O serviço recusou a solicitação. Verifique sua conta e o status do compartilhamento.',
   'fileViewer.publishFileLocalSessionFailed': 'A preparação local falhou. Verifique a configuração do cliente.',
   'fileViewer.publishFileUnconfirmed': 'Não foi possível confirmar o resultado. Verifique o status do compartilhamento antes de publicar novamente.',
+  'fileViewer.shareCheckLoading': 'Verificando compartilhamento…',
+  'fileViewer.shareCheckFailed': 'Não foi possível concluir a verificação de compartilhamento. Tente novamente.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

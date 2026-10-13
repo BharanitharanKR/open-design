@@ -3319,6 +3319,8 @@ export const id: Dict = {
   'fileViewer.publishFileServiceRejected': 'Layanan berbagi menolak permintaan. Periksa akun dan status berbagi Anda.',
   'fileViewer.publishFileLocalSessionFailed': 'Persiapan berbagi lokal gagal. Periksa konfigurasi klien.',
   'fileViewer.publishFileUnconfirmed': 'Hasil berbagi tidak dapat dikonfirmasi. Periksa statusnya sebelum menerbitkan kembali.',
+  'fileViewer.shareCheckLoading': 'Memeriksa berbagi…',
+  'fileViewer.shareCheckFailed': 'Tidak dapat menyelesaikan pemeriksaan berbagi. Silakan coba lagi.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

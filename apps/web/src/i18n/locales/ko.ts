@@ -3319,6 +3319,8 @@ export const ko: Dict = {
   'fileViewer.publishFileServiceRejected': '공유 서비스가 요청을 거부했습니다. 계정과 공유 상태를 확인하세요.',
   'fileViewer.publishFileLocalSessionFailed': '로컬 공유 준비에 실패했습니다. 클라이언트 설정을 확인하세요.',
   'fileViewer.publishFileUnconfirmed': '공유 결과를 확인할 수 없습니다. 다시 게시하기 전에 공유 상태를 확인하세요.',
+  'fileViewer.shareCheckLoading': '공유 확인 중…',
+  'fileViewer.shareCheckFailed': '공유 확인을 완료하지 못했습니다. 다시 시도해 주세요.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

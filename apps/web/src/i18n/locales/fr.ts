@@ -3319,6 +3319,8 @@ export const fr: Dict = {
   'fileViewer.publishFileServiceRejected': 'Le service de partage a refusé la requête. Vérifiez votre compte et l’état du partage.',
   'fileViewer.publishFileLocalSessionFailed': 'La préparation locale du partage a échoué. Vérifiez la configuration du client.',
   'fileViewer.publishFileUnconfirmed': 'Le résultat du partage n’a pas pu être confirmé. Vérifiez son état avant de publier à nouveau.',
+  'fileViewer.shareCheckLoading': 'Vérification du partage…',
+  'fileViewer.shareCheckFailed': 'Impossible de terminer la vérification du partage. Réessayez.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

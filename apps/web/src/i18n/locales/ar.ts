@@ -3328,6 +3328,8 @@ export const ar: Dict = {
   'fileViewer.publishFileServiceRejected': 'رفضت خدمة المشاركة الطلب. تحقّق من حسابك وحالة المشاركة.',
   'fileViewer.publishFileLocalSessionFailed': 'فشل التحضير المحلي للمشاركة. تحقّق من إعدادات العميل.',
   'fileViewer.publishFileUnconfirmed': 'تعذّر تأكيد نتيجة المشاركة. تحقّق من حالتها قبل النشر مجددًا.',
+  'fileViewer.shareCheckLoading': 'جارٍ التحقق من المشاركة…',
+  'fileViewer.shareCheckFailed': 'تعذّر إكمال التحقق من المشاركة. حاول مجددًا.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

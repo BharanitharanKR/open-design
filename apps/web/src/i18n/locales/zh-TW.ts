@@ -3500,6 +3500,8 @@ export const zhTW: Dict = {
   'fileViewer.publishFileServiceRejected': '分享服務拒絕了請求，請檢查帳號及分享狀態。',
   'fileViewer.publishFileLocalSessionFailed': '本機分享準備失敗，請檢查用戶端設定。',
   'fileViewer.publishFileUnconfirmed': '無法確認分享結果，請先檢查分享狀態，避免重複發佈。',
+  'fileViewer.shareCheckLoading': '正在檢查分享…',
+  'fileViewer.shareCheckFailed': '無法完成分享檢查，請重試。',
   "fileViewer.workspaceShareSuccess": "已分享給工作空間成員",
   "fileViewer.workspaceShareFailed": "分享到工作空間失敗",
   "fileViewer.workspaceUnshareSuccess": "已移回僅自己可見",

@@ -3319,6 +3319,8 @@ export const hu: Dict = {
   'fileViewer.publishFileServiceRejected': 'A megosztási szolgáltatás elutasította a kérést. Ellenőrizd a fiókot és a megosztás állapotát.',
   'fileViewer.publishFileLocalSessionFailed': 'A megosztás helyi előkészítése meghiúsult. Ellenőrizd a kliens beállításait.',
   'fileViewer.publishFileUnconfirmed': 'A megosztás eredménye nem igazolható. Újraközzététel előtt ellenőrizd az állapotát.',
+  'fileViewer.shareCheckLoading': 'Megosztás ellenőrzése…',
+  'fileViewer.shareCheckFailed': 'Nem sikerült befejezni a megosztás ellenőrzését. Próbáld újra.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

@@ -3328,6 +3328,8 @@ export const esES: Dict = {
   'fileViewer.publishFileServiceRejected': 'El servicio rechazó la solicitud. Comprueba tu cuenta y el estado del enlace.',
   'fileViewer.publishFileLocalSessionFailed': 'Falló la preparación local. Comprueba la configuración del cliente.',
   'fileViewer.publishFileUnconfirmed': 'No se pudo confirmar el resultado. Comprueba el estado del enlace antes de publicar de nuevo.',
+  'fileViewer.shareCheckLoading': 'Comprobando uso compartido…',
+  'fileViewer.shareCheckFailed': 'No se pudo completar la comprobación para compartir. Inténtalo de nuevo.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

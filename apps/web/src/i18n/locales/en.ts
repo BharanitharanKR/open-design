@@ -3342,6 +3342,8 @@ export const en: Dict = {
   'fileViewer.publishFileServiceRejected': 'The sharing service rejected the request. Check your account and share status.',
   'fileViewer.publishFileLocalSessionFailed': 'Local sharing preparation failed. Check the client configuration.',
   'fileViewer.publishFileUnconfirmed': 'The share result could not be confirmed. Check its status before publishing again.',
+  'fileViewer.shareCheckLoading': 'Checking sharing…',
+  'fileViewer.shareCheckFailed': 'Could not complete the sharing check. Please try again.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

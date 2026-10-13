@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import type { ComponentProps } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +36,55 @@ function props(overrides: Partial<Props> = {}): Props {
 
 
 describe('S7 publish failure visual seam', () => {
+  it('3771: displays checking, fails accurately, and manual retry never publishes automatically', async () => {
+    let reject!: (reason: unknown) => void;
+    request.mockImplementationOnce(() => new Promise((_resolve, no) => { reject = no; }));
+    const input = props({ filePublished: false, t: key => zhCN[key] });
+    render(<ShareTab {...input} />);
+    expect(screen.getByText(zhCN['fileViewer.shareCheckLoading'])).toBeVisible();
+    const generate = screen.getByRole('menuitem', { name: zhCN['fileViewer.generateAndCopyLink'] });
+    fireEvent.click(generate);
+    expect(generate).toBeDisabled();
+    expect(generate).toHaveTextContent(zhCN['fileViewer.shareCheckLoading']);
+    expect(screen.queryByText(zhCN['fileViewer.publishingContinuesOnClose'])).toBeNull();
+    await act(async () => { reject(new Error('connection reset')); });
+    expect(screen.getByRole('alert')).toHaveTextContent('无法完成分享检查，请重试。');
+    expect(screen.queryByText(zhCN['fileViewer.publishFileFailed'])).toBeNull();
+    expect(generate).toBeDisabled();
+    fireEvent.click(generate);
+    expect(input.publishCurrentFilePublic).not.toHaveBeenCalled();
+    let finish!: (response: Response) => void;
+    request.mockImplementationOnce(() => new Promise(yes => { finish = yes; }));
+    const retry = screen.getByRole('button', { name: zhCN['preview.retry'] });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(request).toHaveBeenCalledTimes(2);
+    await act(async () => { finish(Response.json(plan)); });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(input.publishCurrentFilePublic).not.toHaveBeenCalled();
+    fireEvent.click(generate);
+    await waitFor(() => expect(input.publishCurrentFilePublic).toHaveBeenCalledOnce());
+  });
+
+  it('3771: a failed check does not erase the already published link or prevent stop', async () => {
+    request.mockRejectedValueOnce(new Error('failed'));
+    const workspaceContext: WorkspaceCollabContext = {
+      workspaceId: 'ws', workspaceType: 'personal', workspaceMemberId: 'member', role: 'owner',
+      memberStatus: 'active', lifecycleState: 'active', billingState: 'active', planId: null, providerMode: 'platform_credits',
+      seatSummary: buildWorkspaceSeatSummary({ seatLimit: 1, usedSeats: 1 }),
+      permissions: buildWorkspacePermissions({ role: 'owner', lifecycleState: 'active' }),
+    };
+    const input = props({ workspaceContext });
+    render(<ShareTab {...input} />);
+    await screen.findByRole('alert');
+    expect(screen.getByText(input.publishedFileUrl)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'fileViewer.copyShareLink' }));
+    await act(async () => {});
+    expect(input.copyPublishedFileLink).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('switch', { name: 'fileViewer.linkAccessTitle' }));
+    expect(input.unpublishCurrentFilePublic).toHaveBeenCalledOnce();
+  });
+
   it.each(['artifact-card', 'toolbar'] as const)('offers valid recovery from %s without adding deployment controls', async (menuOrigin) => {
     const input = props({ menuOrigin, filePublished: false, publishFailureKey: 'fileViewer.publishFileFailed', t: (key) => zhCN[key] });
     const { rerender } = render(<ShareTab {...input} />);

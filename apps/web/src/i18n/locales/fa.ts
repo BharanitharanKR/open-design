@@ -3328,6 +3328,8 @@ export const fa: Dict = {
   'fileViewer.publishFileServiceRejected': 'سرویس اشتراک‌گذاری درخواست را رد کرد. حساب و وضعیت اشتراک‌گذاری را بررسی کنید.',
   'fileViewer.publishFileLocalSessionFailed': 'آماده‌سازی محلی اشتراک‌گذاری ناموفق بود. تنظیمات برنامه را بررسی کنید.',
   'fileViewer.publishFileUnconfirmed': 'نتیجه اشتراک‌گذاری تأیید نشد. پیش از انتشار دوباره، وضعیت آن را بررسی کنید.',
+  'fileViewer.shareCheckLoading': 'در حال بررسی اشتراک‌گذاری…',
+  'fileViewer.shareCheckFailed': 'بررسی اشتراک‌گذاری کامل نشد. لطفاً دوباره تلاش کنید.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

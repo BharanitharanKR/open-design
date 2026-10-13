@@ -3328,6 +3328,8 @@ export const de: Dict = {
   'fileViewer.publishFileServiceRejected': 'Der Freigabedienst hat die Anfrage abgelehnt. Prüfen Sie Ihr Konto und den Freigabestatus.',
   'fileViewer.publishFileLocalSessionFailed': 'Die lokale Vorbereitung der Freigabe ist fehlgeschlagen. Prüfen Sie die Client-Konfiguration.',
   'fileViewer.publishFileUnconfirmed': 'Das Freigabeergebnis ist unbestätigt. Prüfen Sie den Status, bevor Sie erneut veröffentlichen.',
+  'fileViewer.shareCheckLoading': 'Freigabe wird geprüft…',
+  'fileViewer.shareCheckFailed': 'Die Freigabeprüfung konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

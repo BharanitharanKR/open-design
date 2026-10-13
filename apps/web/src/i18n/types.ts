@@ -4239,6 +4239,8 @@ export interface Dict {
   'fileViewer.publishFileServiceRejected': string;
   'fileViewer.publishFileLocalSessionFailed': string;
   'fileViewer.publishFileUnconfirmed': string;
+  'fileViewer.shareCheckLoading': string;
+  'fileViewer.shareCheckFailed': string;
   'fileViewer.shareUpdateHint': string;
   'fileViewer.shareUpdateLink': string;
   'fileViewer.signInToUpdate': string;

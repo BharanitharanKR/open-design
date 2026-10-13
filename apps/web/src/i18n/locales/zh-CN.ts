@@ -3491,6 +3491,8 @@ export const zhCN: Dict = {
   'fileViewer.publishFileServiceRejected': '分享服务拒绝了请求，请检查账号及分享状态。',
   'fileViewer.publishFileLocalSessionFailed': '本地分享准备失败，请检查客户端配置。',
   'fileViewer.publishFileUnconfirmed': '无法确认分享结果，请先检查分享状态，避免重复发布。',
+  'fileViewer.shareCheckLoading': '正在检查分享…',
+  'fileViewer.shareCheckFailed': '无法完成分享检查，请重试。',
   "fileViewer.workspaceShareSuccess": "已分享给工作空间成员",
   "fileViewer.workspaceShareFailed": "分享到工作空间失败",
   "fileViewer.workspaceUnshareSuccess": "已移回仅自己可见",

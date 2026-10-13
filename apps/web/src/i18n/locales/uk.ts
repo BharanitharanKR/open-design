@@ -3319,6 +3319,8 @@ export const uk: Dict = {
   'fileViewer.publishFileServiceRejected': 'Сервіс відхилив запит. Перевірте обліковий запис і стан публікації.',
   'fileViewer.publishFileLocalSessionFailed': 'Не вдалося підготувати публікацію локально. Перевірте налаштування клієнта.',
   'fileViewer.publishFileUnconfirmed': 'Результат публікації не підтверджено. Перевірте її стан перед повторною публікацією.',
+  'fileViewer.shareCheckLoading': 'Перевірка спільного доступу…',
+  'fileViewer.shareCheckFailed': 'Не вдалося завершити перевірку спільного доступу. Повторіть спробу.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',

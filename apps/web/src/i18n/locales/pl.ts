@@ -3319,6 +3319,8 @@ export const pl: Dict = {
   'fileViewer.publishFileServiceRejected': 'Usługa odrzuciła żądanie. Sprawdź konto i stan udostępnienia.',
   'fileViewer.publishFileLocalSessionFailed': 'Lokalne przygotowanie udostępnienia nie powiodło się. Sprawdź konfigurację klienta.',
   'fileViewer.publishFileUnconfirmed': 'Nie udało się potwierdzić wyniku. Sprawdź stan udostępnienia przed ponowną publikacją.',
+  'fileViewer.shareCheckLoading': 'Sprawdzanie udostępniania…',
+  'fileViewer.shareCheckFailed': 'Nie udało się ukończyć sprawdzania udostępniania. Spróbuj ponownie.',
   'fileViewer.workspaceShareSuccess': 'Shared with workspace members',
   'fileViewer.workspaceShareFailed': 'Could not share with workspace',
   'fileViewer.workspaceUnshareSuccess': 'Moved back to private',
