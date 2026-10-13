@@ -198,6 +198,10 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
       path.join(dir, 'large-powered.html'),
       Buffer.from(`<!doctype html><html><body>${'x'.repeat((2 * 1024 * 1024) + 256)}<script>new Worker("worker.js")</script></body></html>`),
     );
+    await writeFile(
+      path.join(dir, 'large-storage.html'),
+      Buffer.from(`<!doctype html><html><body>${'x'.repeat((2 * 1024 * 1024) + 256)}<script>localStorage.setItem("task", "saved")</script></body></html>`),
+    );
     await writeFile(path.join(dir, 'body.html'), Buffer.from('<html><body><main>Preview</main></body></html>'));
     // `<head>` is optional markup, so a document can legally have none while a
     // script string contains one — the head-open half of
@@ -858,6 +862,18 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     };
     expect(body.text.length).toBeLessThanOrEqual(1024);
     expect(body.text).not.toContain('new Worker');
+    expect(body.poweredPreview.required).toBe(true);
+    expect(body.poweredPreview.scannedBytes).toBeGreaterThan(2 * 1024 * 1024);
+  });
+
+  it('returns a real-storage preview hint when the storage call is outside the returned HTML prefix', async () => {
+    const res = await fetch(`${baseUrl}/api/projects/${projectId}/text-preview/large-storage.html?limit=64`);
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      text: string;
+      poweredPreview: { required: boolean; scannedBytes: number };
+    };
+    expect(body.text).not.toContain('localStorage');
     expect(body.poweredPreview.required).toBe(true);
     expect(body.poweredPreview.scannedBytes).toBeGreaterThan(2 * 1024 * 1024);
   });

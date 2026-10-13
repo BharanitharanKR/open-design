@@ -2260,7 +2260,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(markup).toContain('data-od-render-mode="url-load" data-od-active="true"');
     expect(markup).toContain('data-od-render-mode="srcdoc" data-od-active="false"');
     expect(markup).toContain('src="/api/projects/project-1/raw/page.html?v=1710000000&amp;r=0&amp;odPreviewBridge=scroll&amp;odPreviewBridge=selection&amp;odPreviewBridge=snapshot&amp;odPreviewBridge=observability&amp;odPreviewEpoch=preview-document-');
-    expect(markup).toContain('sandbox="allow-scripts allow-downloads"');
+    expect(markup).toContain('sandbox="allow-scripts allow-forms allow-downloads"');
   });
 
   it('does not mint a second preview capability for Workspace URL-load HTML', () => {
@@ -4959,6 +4959,24 @@ describe('FileViewer SVG artifacts', () => {
     expect(srcDocFrame?.srcdoc).toContain('data-od-sandbox-shim');
   });
 
+  it('retains the opaque storage shim when the isolated preview origin is unavailable', async () => {
+    stubFetchWithWorkspaceContext(null);
+    const { container } = render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={baseFile({ name: 'saved-form.html', path: 'saved-form.html', mime: 'text/html', kind: 'html' })}
+        liveHtml='<html><body><h1>Saved tasks</h1><script>localStorage.getItem("tasks")</script></body></html>'
+      />,
+    );
+    await waitFor(() => {
+      const frame = container.querySelector('iframe[data-od-active="true"]');
+      expect(frame?.getAttribute('src')).toContain('/raw/saved-form.html');
+      expect(frame?.getAttribute('src')).toContain('odPreviewBridge=sandbox');
+      expect(frame?.getAttribute('sandbox')).not.toContain('allow-same-origin');
+    });
+  });
+
   it('uses an absolute personal-project base for injected Electron previews', () => {
     const file = baseFile({
       name: 'pages/index.html',
@@ -5184,7 +5202,7 @@ describe('FileViewer SVG artifacts', () => {
 
     await waitFor(() => {
       const frame = document.body.querySelector('.present-overlay iframe');
-      expect(frame?.getAttribute('sandbox')).toBe('allow-scripts allow-downloads');
+      expect(frame?.getAttribute('sandbox')).toBe('allow-scripts allow-forms allow-downloads');
       expect(frame?.getAttribute('data-od-render-mode')).toBe('url-load');
     });
     expect(container.querySelector('.html-viewer.is-tab-present')).toBeTruthy();
@@ -5276,7 +5294,7 @@ describe('FileViewer SVG artifacts', () => {
     render(<FileViewer projectId="project-1" projectKind="prototype" file={file} />);
 
     const frame = await screen.findByTestId('react-component-preview-frame');
-    expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-downloads');
+    expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-forms allow-downloads');
   });
 
   it('disables React component sharing controls for viewer-only shared projects', async () => {
@@ -5407,7 +5425,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(markup).toContain('data-od-render-mode="srcdoc" data-od-active="true"');
     expect(markup).toContain('data-od-render-mode="url-load" data-od-active="false"');
     expect(markup).not.toContain('data-od-lazy-srcdoc-transport');
-    expect(markup).toContain('sandbox="allow-scripts allow-downloads"');
+    expect(markup).toContain('sandbox="allow-scripts allow-forms allow-downloads"');
   });
 
   it('falls back to srcDoc when the HTML body looks deck-shaped even without an isDeck hint', () => {

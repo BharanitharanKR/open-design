@@ -6141,6 +6141,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
   }
 
   function htmlHasPoweredPreviewSignal(source: string): boolean {
+    if (/\b(?:local|session)Storage\b/.test(source)) return true;
     if (/\bSharedArrayBuffer\b/.test(source)) return true;
     if (/\bnew\s+(?:Worker|SharedWorker)\s*\(/.test(source)) return true;
     if (/\bimportScripts\s*\(/.test(source)) return true;

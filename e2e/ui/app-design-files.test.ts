@@ -995,6 +995,70 @@ test('[P0] @critical file workspace restores HTML preview after switching throug
   await expect(page.getByTestId('file-workspace')).toBeVisible();
 });
 
+test('[P0] @critical HTML preview permits client-side form submission while isolating the host', async ({ page }) => {
+  await routeMockAgents(page);
+  const projectId = await createProjectViaApi(page, 'Interactive form preview');
+  await seedHtmlArtifact(page, projectId, 'form.html', `<!doctype html><html><body>
+    <h1>Interactive form</h1>
+    <form><label>Task name<input name="task"></label><button>Save task</button></form>
+    <output aria-label="Saved task"></output>
+    <script>document.querySelector('form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      document.querySelector('output').textContent = document.querySelector('input').value;
+    });</script>
+  </body></html>`);
+
+  for (const query of ['', '?forceInline=1']) {
+    await page.goto(`/projects/${projectId}${query}`, { waitUntil: 'domcontentloaded' });
+    await expectWorkspaceReady(page);
+    await openDesignFile(page, 'form.html');
+    const preview = page.frameLocator('[data-testid="artifact-preview-frame"]');
+    await preview.getByLabel('Task name').fill('Created through the preview');
+    await preview.getByRole('button', { name: 'Save task' }).click();
+    await expect(preview.getByLabel('Saved task')).toHaveText('Created through the preview');
+    expect(await preview.locator('body').evaluate(() => {
+      try { void window.parent.document.body; return true; } catch { return false; }
+    })).toBe(false);
+  }
+});
+
+test('[P0] @critical storage-backed HTML keeps changes after preview reload on the isolated origin', async ({ page }) => {
+  await routeMockAgents(page);
+  const projectId = await createProjectViaApi(page, 'Persistent form preview');
+  const storageKey = JSON.stringify(`form-preview-${projectId}`);
+  await seedHtmlArtifact(page, projectId, 'saved-form.html', `<!doctype html><html><body>
+    <h1>Persistent form</h1>
+    <form><label>Task name<input name="task"></label><button>Save task</button></form>
+    <output aria-label="Saved task"></output>
+    <script>const key=${storageKey};
+    document.querySelector('output').textContent=localStorage.getItem(key)||'';
+    document.querySelector('form').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const value=document.querySelector('input').value;
+      localStorage.setItem(key,value);
+      document.querySelector('output').textContent=value;
+    });</script>
+  </body></html>`);
+  await page.goto(`/projects/${projectId}`, { waitUntil: 'domcontentloaded' });
+  await expectWorkspaceReady(page);
+  await openDesignFile(page, 'saved-form.html');
+  const frame = page.locator('[data-testid="artifact-preview-frame"]');
+  const preview = page.frameLocator('[data-testid="artifact-preview-frame"]');
+  await preview.getByLabel('Task name').fill('Saved across reload');
+  await preview.getByRole('button', { name: 'Save task' }).click();
+  await expect(preview.getByLabel('Saved task')).toHaveText('Saved across reload');
+  const src = await frame.getAttribute('src');
+  expect(src).toContain('/powered/');
+  expect(new URL(src!).origin).not.toBe(new URL(page.url()).origin);
+  expect(await preview.locator('body').evaluate(() => {
+    try { void window.parent.document.body; return true; } catch { return false; }
+  })).toBe(false);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expectWorkspaceReady(page);
+  await openDesignFile(page, 'saved-form.html');
+  await expect(preview.getByLabel('Saved task')).toHaveText('Saved across reload');
+});
+
 test('[P0] @critical white-screen monitoring recovers layout stalls and confirms persistent blanks', async ({ page }) => {
   const safetyEvents = await captureSafetyTelemetry(page);
   await routeMockAgents(page);
