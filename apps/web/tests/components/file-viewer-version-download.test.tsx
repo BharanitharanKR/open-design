@@ -277,11 +277,13 @@ describe('FileViewer version download actions', () => {
       ok: true,
       snapshot: { dataUrl: 'data:image/png;base64,c25hcHNob3Q=', w: 1, h: 1 },
     });
-    imageDataUrlToBlobMock.mockResolvedValueOnce(new Blob(['snapshot'], { type: 'image/png' }));
+    const imageBlob = new Blob(['snapshot'], { type: 'image/png' });
+    const save = vi.fn().mockResolvedValue('desktop');
+    imageDataUrlToBlobMock.mockResolvedValueOnce(imageBlob);
     prepareImageExportTargetMock.mockResolvedValueOnce({
       filename: 'index-v1.png',
       method: 'download',
-      save: vi.fn(),
+      save,
     });
     const { file } = setupVersionFetch();
     const versionDialog = await renderVersionDialog(file);
@@ -305,7 +307,9 @@ describe('FileViewer version download actions', () => {
     });
     expect(imageDataUrlToBlobMock).toHaveBeenCalledWith('data:image/png;base64,c25hcHNob3Q=', 'png');
     expect(prepareImageExportTargetMock).toHaveBeenCalledWith('index-v1', 'png', { useNativePicker: false });
-    expect(downloadImageDataUrlMock).toHaveBeenCalledWith('data:image/png;base64,c25hcHNob3Q=', 'index-v1.png');
+    // Desktop saves through the target so native completion can be observed.
+    await waitFor(() => expect(save).toHaveBeenCalledWith(imageBlob));
+    expect(downloadImageDataUrlMock).not.toHaveBeenCalled();
     expect(requestPreviewSnapshotMock).not.toHaveBeenCalled();
   });
 

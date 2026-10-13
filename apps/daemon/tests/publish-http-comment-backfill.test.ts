@@ -660,7 +660,7 @@ it.each([false, true])(
 								"--comment-file",
 								"-",
 								"--idempotency-key",
-								expect.stringMatching(/^[a-f0-9-]{36}$/),
+								expect.any(String),
 								"--historical-author-member-id",
 								"original-author",
 							]);
@@ -718,6 +718,19 @@ it.each([false, true])(
 					offline = false;
 					await relay.flushPendingComments();
 					expect(delivered).toHaveLength(3);
+					for (const [index, comment] of delivered.entries()) {
+						const { id, deleted } = comment as { id: string; deleted?: boolean };
+						const queuedKey = rows.find(row => row.comment.id === id)?.eventKey;
+						expect(queuedKey).toBeDefined();
+						if (deleted) {
+							// Compact deletes use a separate stable key to avoid conflicting
+							// with an older full-payload receipt whose ACK was lost.
+							expect(deliveredKeys[index]).toMatch(/^[a-f0-9]{64}$/);
+							expect(deliveredKeys[index]).not.toBe(queuedKey);
+						} else {
+							expect(deliveredKeys[index]).toBe(queuedKey);
+						}
+					}
 					expect(recoveredQueue.listDue(Date.now()).map(row => row.comment.id)).toEqual(["second"]);
 					await relay.flushPendingComments();
 					expect(attempts.filter(key => key === deliveredKeys.find((_, i) => (delivered[i] as { id: string }).id === "second"))).toHaveLength(2);
