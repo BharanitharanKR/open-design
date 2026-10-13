@@ -1,6 +1,7 @@
 import {
   PUBLIC_FILE_MANUAL_REVOKE_REQUIRED,
   SHARE_ENTRY_INDEX_CONFLICT,
+  parseApiFailureDetail,
   workspaceContextHasWorkspaceIdentity,
   type EntryIndexConflictDetails,
   type PublicFileManualRevokeRequiredData,
@@ -35,6 +36,8 @@ export function parseEntryIndexConflictDetails(value: unknown): EntryIndexConfli
   const data = value as Record<string, unknown>;
   if (typeof data.agentPrompt !== 'string' || typeof data.referencedFrom !== 'string'
     || typeof data.suggestedName !== 'string') return undefined;
+  // SAFETY: The share panel reads only the three strings checked above here;
+  // the daemon supplies the remaining conflict-plan fields.
   return data as unknown as EntryIndexConflictDetails;
 }
 
@@ -89,26 +92,37 @@ export function canPublishPublicFile(
 /** Dict keys this module may return; keeps the i18n contract explicit. */
 export type PublicFilePublishFailureKey =
   | 'fileViewer.publishFileRequiresWorkspace'
-  | 'fileViewer.publishFileFailed';
+  | 'fileViewer.publishFileFailed'
+  | 'fileViewer.publishFileConnectionFailed'
+  | 'fileViewer.publishFileSignInRequired'
+  | 'fileViewer.publishFileAccessDenied'
+  | 'fileViewer.publishFileServiceRejected'
+  | 'fileViewer.publishFileLocalSessionFailed'
+  | 'fileViewer.publishFileUnconfirmed';
 
-/**
- * Map a publish/unpublish failure to the message key the user should read.
- *
- * The daemon answers with an error CODE, which must never reach the screen. The
- * one code worth its own sentence is `WORKSPACE_IDENTITY_REQUIRED`: it is
- * reachable even with the entry point gated, because a workspace context read
- * can fail transiently (offline, hub hiccup, billing/seat state in flux) and the
- * UI then falls back to the last-known context. Telling that user "your
- * workspace identity could not be confirmed" is actionable; "Publish failed" is
- * not.
- *
- * The sentence must ask the user to SIGN IN, not to switch to a team — the gate
- * no longer has anything to do with teams, and the old copy sent personal users
- * chasing a workspace they did not need.
+/** Render only validated failure tokens, never daemon or CLI message text.
+ * A snapshot/receipt/cleanup failure may follow a committed remote mutation;
+ * its copy must describe an unconfirmed outcome, not a known upload failure.
+ * Workspace identity still asks for sign-in, not a switch to a team.
  */
 export function publicFilePublishFailureKey(error: unknown): PublicFilePublishFailureKey {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return message.includes('WORKSPACE_IDENTITY_REQUIRED')
-    ? 'fileViewer.publishFileRequiresWorkspace'
-    : 'fileViewer.publishFileFailed';
+  if (message.includes('WORKSPACE_IDENTITY_REQUIRED')) return 'fileViewer.publishFileRequiresWorkspace';
+  const failure = parseApiFailureDetail(error && typeof error === 'object' && 'failure' in error ? error.failure : undefined);
+  if (!failure) return 'fileViewer.publishFileFailed';
+  switch (failure.reason) {
+    case 'network':
+    case 'timeout': return 'fileViewer.publishFileConnectionFailed';
+    case 'not_signed_in': return 'fileViewer.publishFileSignInRequired';
+    case 'cli_missing':
+    case 'session_setup': return 'fileViewer.publishFileLocalSessionFailed';
+    case 'upstream_http':
+      if (failure.upstreamStatus === 401) return 'fileViewer.publishFileSignInRequired';
+      if (failure.upstreamStatus === 403) return 'fileViewer.publishFileAccessDenied';
+      return 'fileViewer.publishFileServiceRejected';
+    case 'session_cleanup':
+    case 'invalid_receipt': return 'fileViewer.publishFileUnconfirmed';
+    default: return failure.stage === 'snapshot' || failure.stage === 'persist'
+      ? 'fileViewer.publishFileUnconfirmed' : 'fileViewer.publishFileFailed';
+  }
 }

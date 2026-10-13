@@ -1,7 +1,8 @@
-import type { SharePublishResult } from '@open-design/contracts';
+import type { ApiFailureReason, SharePublishResult } from '@open-design/contracts';
 import type { PublicFilePublicationScope } from './public-file-publication-store.js';
 import type { createShareAliasReservations } from './share-alias-reservation.js';
-import { runVelaCommand, velaCommandStderr, velaWorkspaceCommandOptions } from '../integrations/vela-command.js';
+import { runVelaCommand, velaWorkspaceCommandOptions } from '../integrations/vela-command.js';
+import { safeVelaCommandError } from './public-file-failure.js';
 import { parseAmrShareLink, type AmrShareLink } from './public-share-viewer-url.js';
 
 /** A publish outcome plus what AMR said about its address. Only a published
@@ -49,6 +50,7 @@ export async function publishVelaShareVersion(
   input: VelaSharePublishInput,
   run: typeof runVelaCommand = runVelaCommand,
 ): Promise<VelaSharePublishResult> {
+  let reason: ApiFailureReason | undefined = 'internal';
   try {
     const request = Object.freeze({ ...input });
     // Blank versionId makes the Go command fall back to a mutable ref; blank
@@ -58,6 +60,7 @@ export async function publishVelaShareVersion(
     if (required.some(value => typeof value !== 'string' || !value.trim())) {
       throw new Error('missing publish identity');
     }
+    reason = undefined;
     const stdout = await run([
       'share', 'publish', request.resourceId,
       '--project-id', request.projectId,
@@ -69,6 +72,7 @@ export async function publishVelaShareVersion(
       '--version-id', request.versionId,
       '--json',
     ], { ...velaWorkspaceCommandOptions(request.workspaceId), timeoutMs: 30_000 });
+    reason = 'invalid_receipt';
     const value: unknown = JSON.parse(stdout);
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid receipt');
     const record = value as Record<string, unknown>;
@@ -90,13 +94,8 @@ export async function publishVelaShareVersion(
     const amrLink = parseAmrShareLink(record, request.projectId, request.slug);
     return { status: 'published', receipt, ...(amrLink ? { amrLink } : {}) };
   } catch (error) {
-    // Child diagnostics can include upstream bodies. No fallback to snapshots
-    // or implicit retry: the remote pointer may already have advanced. Keep
-    // only the upstream status/code line so the failure stays classifiable
-    // (e.g. 409 share_binding_stopped) instead of reason=unknown (OPEND-3510).
-    const failure = new Error('PUBLIC_SHARE_PUBLISH_FAILED');
-    const upstream = /API request failed with status \d{3}(?:: [^\s]+)?/.exec(velaCommandStderr(error));
-    if (upstream) Object.assign(failure, { stderr: upstream[0] });
-    throw failure;
+    // Keep only safe classification through both wrappers. No raw child output,
+    // fallback or implicit retry: the remote pointer may already have advanced.
+    throw safeVelaCommandError('PUBLIC_SHARE_PUBLISH_FAILED', error, reason);
   }
 }
