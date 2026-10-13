@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Campos principales de `open-design.json`: `specVersion`, `name`, `version` y el `compat.agentSkills[].path` opcional cuando la entrada expone un Agent Skill, además de `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` y `od.inputs[]`.
+Campos principales de `open-design.json`: `specVersion`, `name`, `version` y el `compat.agentSkills[].path` opcional cuando la entrada expone un Agent Skill, además de `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` y `od.inputs[]`.
 
 Genera el esqueleto + valida localmente:
 

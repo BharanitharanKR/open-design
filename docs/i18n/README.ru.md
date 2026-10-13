@@ -468,7 +468,7 @@ my-plugin/
 └── examples/           ← опционально: конкретные сценарии использования
 ```
 
-Основные поля: `specVersion`, `name`, `version`, опциональный `compat.agentSkills[].path` только при экспорте Agent Skill, а также `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` и `od.inputs[]`.
+Основные поля: `specVersion`, `name`, `version`, опциональный `compat.agentSkills[].path` только при экспорте Agent Skill, а также `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` и `od.inputs[]`.
 
 Создайте каркас + проверьте локально:
 

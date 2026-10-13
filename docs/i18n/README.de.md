@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Zentrale `open-design.json`-Felder sind `specVersion`, `name`, `version`, das optionale `compat.agentSkills[].path` für Einträge, die einen Agent Skill bereitstellen, sowie `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` und `od.inputs[]`.
+Zentrale `open-design.json`-Felder sind `specVersion`, `name`, `version`, das optionale `compat.agentSkills[].path` für Einträge, die einen Agent Skill bereitstellen, sowie `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` und `od.inputs[]`.
 
 Lokal scaffolden + validieren:
 

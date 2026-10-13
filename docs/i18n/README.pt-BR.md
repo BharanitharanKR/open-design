@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Campos principais: `specVersion`, `name`, `version`, o `compat.agentSkills[].path` opcional quando a entrada expõe uma Agent Skill, além de `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` e `od.inputs[]`.
+Campos principais: `specVersion`, `name`, `version`, o `compat.agentSkills[].path` opcional quando a entrada expõe uma Agent Skill, além de `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` e `od.inputs[]`.
 
 Faça o scaffold + valide localmente:
 

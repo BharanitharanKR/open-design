@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Основні поля: `specVersion`, `name`, `version`, опційний `compat.agentSkills[].path` лише при експорті Agent Skill, а також `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` і `od.inputs[]`.
+Основні поля: `specVersion`, `name`, `version`, опційний `compat.agentSkills[].path` лише при експорті Agent Skill, а також `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` і `od.inputs[]`.
 
 Каркасування + валідація локально:
 

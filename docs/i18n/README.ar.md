@@ -459,7 +459,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-الحقول الأساسية هي `specVersion` و`name` و`version`، و`compat.agentSkills[].path` الاختياري عند عرض Agent Skill، إضافة إلى `od.kind` و`od.taskKind` و`od.mode` و`od.capabilities[]` و`od.inputs[]`.
+الحقول الأساسية هي `specVersion` و`name` و`version`، و`compat.agentSkills[].path` الاختياري عند عرض Agent Skill، إضافة إلى `od.kind` و`od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`) و`od.mode` و`od.capabilities[]` و`od.inputs[]`.
 
 التهيئة والتحقق محليًا:
 

@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-핵심 필드는 `specVersion`, `name`, `version`, Agent Skill을 공개할 때만 선택적인 `compat.agentSkills[].path`, 그리고 `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]`, `od.inputs[]`입니다.
+핵심 필드는 `specVersion`, `name`, `version`, Agent Skill을 공개할 때만 선택적인 `compat.agentSkills[].path`, 그리고 `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]`, `od.inputs[]`입니다.
 
 로컬에서 스캐폴드 + 검증:
 

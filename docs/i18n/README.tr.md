@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Temel alanlar `specVersion`, `name`, `version`, yalnızca Agent Skill sunulduğunda isteğe bağlı `compat.agentSkills[].path`, ayrıca `od.kind`, `od.taskKind`, `od.mode`, `od.capabilities[]` ve `od.inputs[]` alanlarıdır.
+Temel alanlar `specVersion`, `name`, `version`, yalnızca Agent Skill sunulduğunda isteğe bağlı `compat.agentSkills[].path`, ayrıca `od.kind`, `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode`, `od.capabilities[]` ve `od.inputs[]` alanlarıdır.
 
 Yerel olarak iskeletle + doğrula:
 

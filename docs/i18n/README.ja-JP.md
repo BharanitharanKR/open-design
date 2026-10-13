@@ -457,7 +457,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-主要フィールドは `specVersion`、`name`、`version`、Agent Skill を公開する場合だけ任意の `compat.agentSkills[].path`、そして `od.kind`、`od.taskKind`、`od.mode`、`od.capabilities[]`、`od.inputs[]` です。
+主要フィールドは `specVersion`、`name`、`version`、Agent Skill を公開する場合だけ任意の `compat.agentSkills[].path`、そして `od.kind`、`od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`)、`od.mode`、`od.capabilities[]`、`od.inputs[]` です。
 
 ローカルでスキャフォールド + 検証:
 
