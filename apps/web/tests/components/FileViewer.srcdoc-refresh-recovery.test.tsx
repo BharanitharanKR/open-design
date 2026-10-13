@@ -324,15 +324,17 @@ describe('FileViewer srcDoc file-watch refresh recovery', () => {
     expect(JSON.stringify(payload)).not.toContain('partial-document');
   });
 
-  it('does not remount a healthy document while a parser-blocking script is still loading', () => {
+  it('does not remount a healthy document while a parser-blocking script is still loading', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(async (
       _input: RequestInfo | URL,
       _init?: RequestInit,
-    ) => new Response('', { status: 404 }));
+    ) => String(_input).includes('/preview-url?')
+      ? new Response(JSON.stringify({ url: '/api/projects/project-1/preview/native-scope/preview.html', documentMode: 'bootstrap-quirks', expiresAt: Date.now() + 3600000 }))
+      : new Response('', { status: 404 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(
+    await act(async () => { render(
       <FileViewer
         projectId="project-1"
         projectKind="prototype"
@@ -344,10 +346,13 @@ describe('FileViewer srcDoc file-watch refresh recovery', () => {
           <main>Delayed but healthy</main>
         </body></html>`}
       />,
-    );
+    ); });
 
     const parsingFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     const postMessage = vi.spyOn(parsingFrame.contentWindow!, 'postMessage');
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { source: parsingFrame.contentWindow, data: { type: 'od:srcdoc-transport-ready' } }));
+    });
     act(() => {
       vi.advanceTimersByTime(1_500);
     });

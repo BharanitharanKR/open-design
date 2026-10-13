@@ -33,7 +33,7 @@ interface RunShellResult {
   documentWrites: string[];
   parentMessages: unknown[];
   runScheduledCallbacks: () => void;
-  triggerMessage: (data: unknown) => void;
+  triggerMessage: (data: unknown, fromParent?: boolean) => void;
   triggerActivate: (html: string, generation?: string) => void;
 }
 
@@ -41,7 +41,7 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
   const script = extractShellScript(shellHtml);
   const parentMessages: unknown[] = [];
   const documentWrites: string[] = [];
-  const messageListeners: Array<(ev: { data: unknown }) => void> = [];
+  const messageListeners: Array<(ev: { data: unknown; source?: unknown }) => void> = [];
   const scheduledCallbacks: Array<() => void> = [];
   const intervalCallbacks = new Map<number, () => void>();
   let nextIntervalId = 1;
@@ -57,10 +57,10 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
   };
   const win = {
     parent: parentMock,
-    addEventListener(_type: string, listener: (ev: { data: unknown }) => void) {
+    addEventListener(_type: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
       messageListeners.push(listener);
     },
-    removeEventListener(_type: string, listener: (ev: { data: unknown }) => void) {
+    removeEventListener(_type: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
       const index = messageListeners.indexOf(listener);
       if (index >= 0) messageListeners.splice(index, 1);
     },
@@ -89,18 +89,26 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
       for (const callback of scheduledCallbacks.splice(0)) callback();
       for (const callback of intervalCallbacks.values()) callback();
     },
-    triggerMessage: (data: unknown) => {
-      for (const listener of messageListeners) listener({ data });
+    triggerMessage: (data: unknown, fromParent = true) => {
+      for (const listener of messageListeners) listener({ data, source: fromParent ? parentMock : {} });
     },
     triggerActivate: (html: string, generation = 'generation-1') => {
       for (const listener of messageListeners) {
-        listener({ data: { type: 'od:srcdoc-transport-activate', html, generation } });
+        listener({ source: parentMock, data: { type: 'od:srcdoc-transport-activate', html, generation } });
       }
     },
   };
 }
 
 describe('buildLazySrcdocTransport (#2253)', () => {
+  it('rejects activation from a sibling or unrelated window', () => {
+    const result = runShellInSandbox(buildLazySrcdocTransport());
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>foreign</p>', generation: 'foreign' }, false);
+    expect(result.documentWrites).toEqual([]);
+    result.triggerActivate('<p>host</p>');
+    expect(result.documentWrites).toEqual(['<p>host</p>']);
+  });
+
   it('can bootstrap a doctype-less artifact in quirks mode', () => {
     const shell = buildLazySrcdocTransport({ quirksMode: true });
 
@@ -180,7 +188,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     const script = extractShellScript(shell);
     const writes: string[] = [];
     const win: Record<string, unknown> = {
-      addEventListener(_t: string, listener: (ev: { data: unknown }) => void) {
+      addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
         (win as { __listener: typeof listener }).__listener = listener;
       },
     };
@@ -195,8 +203,9 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     };
     vm.createContext(sandbox);
     vm.runInContext(script, sandbox);
-    const listener = (win as { __listener: (ev: { data: unknown }) => void }).__listener;
+    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
     listener({
+      source: win.parent,
       data: {
         type: 'od:srcdoc-transport-activate',
         html: '<p>hi</p>',
@@ -211,7 +220,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     const script = extractShellScript(shell);
     const writes: string[] = [];
     const win: Record<string, unknown> = {
-      addEventListener(_t: string, listener: (ev: { data: unknown }) => void) {
+      addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
         (win as { __listener: typeof listener }).__listener = listener;
       },
     };
@@ -226,7 +235,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     };
     vm.createContext(sandbox);
     vm.runInContext(script, sandbox);
-    const listener = (win as { __listener: (ev: { data: unknown }) => void }).__listener;
+    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
     listener({ data: { type: 'od:srcdoc-transport-activate', html: '<p>stale</p>' } });
     expect(writes).toEqual([]);
   });
@@ -236,7 +245,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     const script = extractShellScript(shell);
     const writes: string[] = [];
     const win: Record<string, unknown> = {
-      addEventListener(_t: string, listener: (ev: { data: unknown }) => void) {
+      addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
         (win as { __listener: typeof listener }).__listener = listener;
       },
     };
@@ -251,7 +260,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     };
     vm.createContext(sandbox);
     vm.runInContext(script, sandbox);
-    const listener = (win as { __listener: (ev: { data: unknown }) => void }).__listener;
+    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
     listener({ data: { type: 'od:srcdoc-transport-activate' } });
     listener({ data: { type: 'od:srcdoc-transport-activate', html: 123 } });
     listener({ data: null });
@@ -289,7 +298,7 @@ describe('srcDoc transport activation witness', () => {
       write: vi.fn(),
     };
     const win: Record<string, unknown> = {
-      addEventListener(_type: string, listener: (ev: { data: unknown }) => void) {
+      addEventListener(_type: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
         (win as { __listener: typeof listener }).__listener = listener;
       },
     };
@@ -303,8 +312,9 @@ describe('srcDoc transport activation witness', () => {
     vm.runInContext(script, sandbox);
     parentMessages.length = 0;
 
-    const listener = (win as { __listener: (ev: { data: unknown }) => void }).__listener;
+    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
     listener({
+      source: win.parent,
       data: {
         type: 'od:srcdoc-transport-activate',
         html: '<html><body><script>const ITEMS = [];</script></body></html>',

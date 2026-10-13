@@ -135,6 +135,7 @@ function buildPresenterFrameHtml(previewHtml: string): string {
 
 export function buildSpeakerNotesPresenterHtml(options: {
   previewHtml: string;
+  previewDocumentUrl?: string;
   previewHtmlBySlide?: readonly string[];
   labels: SpeakerNotesPresenterLabels;
   title: string;
@@ -151,6 +152,7 @@ export function buildSpeakerNotesPresenterHtml(options: {
   const data = {
     previewHtml: buildPresenterFrameHtml(options.previewHtml),
     previewHtmlBySlide,
+    previewDocumentUrl: options.previewDocumentUrl,
     title: options.title,
     projectId: options.projectId,
     fileName: options.fileName,
@@ -411,7 +413,21 @@ export function buildSpeakerNotesPresenterHtml(options: {
             st.ready = true;
             if (st.want >= 0) postGo(frame, st.want);
           });
-          frame.srcdoc = htmlFor(target);
+          if (data.previewDocumentUrl) {
+            var activated = false;
+            window.addEventListener('message', function(ev){
+              if (ev.source !== frame.contentWindow) return;
+              if (ev.data && ev.data.type === 'od:srcdoc-transport-ready' && !activated) {
+                activated = true;
+                frame.contentWindow.postMessage({ type: 'od:srcdoc-transport-activate', html: htmlFor(target), generation: 'auxiliary-preview' }, '*');
+              }
+              if (ev.data && ev.data.type === 'od:srcdoc-transport-activated' && ev.data.bodyComplete) {
+                st.ready = true;
+                if (st.want >= 0) postGo(frame, st.want);
+              }
+            });
+            frame.src = data.previewDocumentUrl;
+          } else frame.srcdoc = htmlFor(target);
         } else if (st.ready) {
           postGo(frame, target);
         }

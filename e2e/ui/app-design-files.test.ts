@@ -1,7 +1,8 @@
+import { ACTIVE_ARTIFACT_PREVIEW_SELECTOR } from '@/playwright/artifact-preview';
 import { expect, test } from '@/playwright/suite';
 import { openNewProjectModal as openNewProjectModalFromProjects } from '@/playwright/rail';
 import { applyStandardMocks, routeAgents } from '@/playwright/mock-factory';
-import { expectAllProjectFilesActive, openAllProjectFiles } from '@/playwright/workspace';
+import { clickPreviewToolbarAction, expectAllProjectFilesActive, openAllProjectFiles } from '@/playwright/workspace';
 import type { Locator, Page, Request } from '@playwright/test';
 import { automatedUiScenarios } from '@/playwright/resources';
 import type { UiScenario } from '@/playwright/resources';
@@ -954,6 +955,84 @@ test('[P1] design files batch download posts selected names to the archive endpo
   expect(archiveRequest).toEqual({ files: ['download-alpha.txt', 'download-beta.txt'] });
 });
 
+for (const srcdoc of [false, true]) {
+  test(`[P1] OPEND-3782 hash initialization preserves the HTML preview (${srcdoc ? 'srcDoc' : 'URL-load'})`, async ({ page }, testInfo) => {
+    await routeMockAgents(page);
+    const projectId = await createProjectViaApi(page, 'Hash preview regression');
+    await seedProjectFile(page, projectId, 'styles.css', 'h1 { color: rgb(0, 128, 0); }');
+    await seedProjectFile(page, projectId, 'boot.js', 'window.bootLoaded = true;');
+    await seedProjectFile(page, projectId, 'logo.png', TINY_PNG_B64, 'base64');
+    await seedProjectFile(page, projectId, 'index.html', `<!doctype html><html><head>
+      <link rel="stylesheet" href="./styles.css"><script src="./boot.js"></script>
+      </head><body>${srcdoc ? '<section class="slide active">' : '<main>'}<h1>Hash home</h1><img src="./logo.png" alt="Logo">
+      <a href="#/details">Details</a><a href="#/home">Home</a><a href="#/leave" id="stay">Stay</a>
+      <script>
+        var logo = document.createElement('img');
+        logo.alt = 'Concatenated logo';
+        logo.src = document.baseURI + 'logo.png';
+        document.body.appendChild(logo);
+        document.getElementById('stay').addEventListener('click', function (event) { event.preventDefault(); });
+        function render() { document.querySelector('h1').textContent = location.hash === '#/details' ? 'Hash details' : 'Hash home'; }
+        window.addEventListener('hashchange', render);
+        if (!location.hash) location.replace('#/home');
+        render();
+      </script>${srcdoc ? '</section><section class="slide"><h2>Second slide</h2></section>' : '</main>'}</body></html>`, undefined, {
+      version: 1,
+      kind: srcdoc ? 'deck' : 'html',
+      title: 'Hash preview',
+      entry: 'index.html',
+      // Deck previews use srcDoc through the production renderer contract.
+      renderer: srcdoc ? 'deck-html' : 'html',
+      exports: ['html'],
+    });
+    const directoryRequests: string[] = [];
+    page.on('request', (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (new RegExp('/api/projects/' + projectId + '/preview/[^/]+/$').test(pathname)) directoryRequests.push(pathname);
+    });
+    await page.goto(`/projects/${projectId}`, { waitUntil: 'domcontentloaded' });
+    await expectWorkspaceReady(page);
+    await openDesignFile(page, 'index.html');
+    await expect(page.getByTestId('artifact-preview-frame'))
+      .toHaveAttribute('data-od-render-mode', srcdoc ? 'srcdoc' : 'url-load');
+    const preview = page.frameLocator('[data-testid="artifact-preview-frame"]');
+    await expect(preview.getByRole('heading', { name: 'Hash home' })).toBeVisible();
+    await expect(preview.getByRole('heading', { name: 'Hash home' })).toHaveCSS('color', 'rgb(0, 128, 0)');
+    await expect.poll(() => preview.locator('body').evaluate(() => (window as unknown as { bootLoaded: boolean }).bootLoaded)).toBe(true);
+    await expect.poll(() => preview.getByRole('img', { name: 'Logo', exact: true }).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+    await expect.poll(() => preview.getByRole('img', { name: 'Concatenated logo' }).evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1);
+    await preview.getByRole('link', { name: 'Stay', exact: true }).click();
+    expect(await preview.locator('body').evaluate(() => location.hash)).toBe('#/home');
+    await preview.getByRole('link', { name: 'Details' }).click();
+    await expect(preview.getByRole('heading', { name: 'Hash details' })).toBeVisible();
+    await preview.getByRole('link', { name: 'Details' }).click();
+    await expect(preview.getByRole('heading', { name: 'Hash details' })).toBeVisible();
+    await preview.getByRole('link', { name: 'Home', exact: true }).click();
+    await expect(preview.getByRole('heading', { name: 'Hash home' })).toBeVisible();
+    await preview.locator('body').evaluate(() => history.back());
+    await expect(preview.getByRole('heading', { name: 'Hash details' })).toBeVisible();
+    await preview.locator('body').evaluate(() => history.back());
+    await expect(preview.getByRole('heading', { name: 'Hash home' })).toBeVisible();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(preview.getByRole('heading', { name: 'Hash home' })).toBeVisible();
+    if (srcdoc) {
+      await expect(page.locator('.deck-thumbnail-loading')).toHaveCount(0);
+      await page.locator('.deck-thumbnail-button').nth(1).click();
+      await expect(preview.getByRole('heading', { name: 'Second slide' })).toBeVisible();
+      await page.locator('.deck-thumbnail-button').first().click();
+      await page.getByRole('button', { name: 'Present', exact: true }).click();
+      const popupPromise = page.waitForEvent('popup');
+      await page.getByRole('menuitem').filter({ hasText: /in this tab/i }).click();
+      const presenter = await popupPromise;
+      await expect(page.frameLocator('iframe[title="present"]').getByRole('heading', { name: 'Hash home' })).toBeVisible();
+      await expect(presenter.frameLocator('#current').getByRole('heading', { name: 'Hash home' })).toBeVisible();
+      await page.locator('.present-exit-btn').click();
+    }
+    expect(directoryRequests).toHaveLength(0);
+    await page.screenshot({ path: testInfo.outputPath('preview-working.png') });
+  });
+}
+
 test('[P0] @critical file workspace restores HTML preview after switching through a source file', async ({ page }) => {
   await routeMockAgents(page);
 
@@ -1390,4 +1469,77 @@ function designFileScenarioPriority(entry: UiScenario): 'P0' | 'P1' {
 
 function criticalDesignFileScenarioTag(entry: UiScenario): string {
   return CRITICAL_DESIGN_FILE_SCENARIO_IDS.has(entry.id) ? ' @critical' : '';
+}
+
+
+for (const hashNavigation of [false, true]) {
+  test(`[P1] OPEND-3782 edit bridge survives ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
+    await routeMockAgents(page);
+    const projectId = await createProjectViaApi(page, 'Review preview edit');
+    await seedHtmlArtifact(page, projectId, 'index.html', `<!doctype html><html><head></head><body>
+      <h1 data-od-id="hero">Review editable hero</h1>
+      <script>${hashNavigation ? "if (!location.hash) location.replace('#/home');" : ''}</script>
+      </body></html>`);
+    await page.goto(`/projects/${projectId}`, { waitUntil: 'domcontentloaded' });
+    await expectWorkspaceReady(page);
+    await openDesignFile(page, 'index.html');
+    const frame = page.frameLocator(ACTIVE_ARTIFACT_PREVIEW_SELECTOR);
+    await expect(frame.getByRole('heading', { name: 'Review editable hero' })).toBeVisible();
+    await clickPreviewToolbarAction(page, 'manual-edit-mode-toggle', /^Edit$/);
+    await expect(page.getByTestId('manual-edit-mode-toggle')).toHaveAttribute('aria-pressed', 'true');
+    try {
+      await expect(frame.locator('html[data-od-edit-mode]')).toHaveCount(1);
+      await frame.locator('[data-od-id="hero"]').click();
+      await expect(frame.locator('[data-od-id="hero"]')).toHaveAttribute('data-od-edit-selected', 'true');
+      const fontSize = page.locator('.manual-edit-modal .cc-section').filter({ hasText: 'Parameters' })
+        .locator('.cc-row').filter({ hasText: 'Font size' }).locator('input');
+      await fontSize.fill('48');
+      await expect(frame.locator('[data-od-id="hero"]')).toHaveCSS('font-size', '48px');
+      await page.locator('.manual-edit-modal').getByRole('button', { name: /^Save$/ }).click();
+      await expect.poll(async () => (await page.request.get(`/api/projects/${projectId}/raw/index.html`)).text()).toContain('font-size: 48px');
+      await expect(page.locator('.manual-edit-error')).toHaveCount(0);
+      await clickPreviewToolbarAction(page, 'manual-edit-mode-toggle', /^Edit$/);
+      await expect(frame.getByRole('heading', { name: 'Review editable hero' })).toBeVisible();
+      await clickPreviewToolbarAction(page, 'manual-edit-mode-toggle', /^Edit$/);
+      await expect(frame.locator('html[data-od-edit-mode]')).toHaveCount(1);
+
+
+    } finally {
+      const state = await page.frameLocator('[data-od-render-mode=srcdoc]').locator('html').evaluate((el) => ({
+        url: location.href,
+        editMode: el.getAttribute('data-od-edit-mode'),
+        scripts: Array.from(document.scripts).map(s => Array.from(s.attributes).map(a => a.name)),
+      }));
+      await testInfo.attach('review-state', { body: JSON.stringify(state, null, 2), contentType: 'application/json' });
+    }
+  });
+}
+
+for (const hashNavigation of [false, true]) {
+  test(`[P1] OPEND-3782 remote resources survive ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
+    await routeMockAgents(page);
+    const errors: string[] = [];
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.route('https://preview-cdn.invalid/boot.js', route => route.fulfill({
+      contentType: 'application/javascript', body: "document.querySelector('h1').textContent = 'CDN app mounted';",
+    }));
+    const projectId = await createProjectViaApi(page, 'Review CDN preview');
+    await seedHtmlArtifact(page, projectId, 'index.html', `<!doctype html><html><head></head><body>
+      <h1>CDN app waiting</h1>
+      <script>${hashNavigation ? "if (!location.hash) location.replace('#/home');" : ''}</script>
+      <script src="https://preview-cdn.invalid/boot.js"></script>
+      </body></html>`);
+    await page.goto(`/projects/${projectId}`, { waitUntil: 'domcontentloaded' });
+    await expectWorkspaceReady(page);
+    await openDesignFile(page, 'index.html');
+    const frame = page.frameLocator(ACTIVE_ARTIFACT_PREVIEW_SELECTOR);
+    if (hashNavigation) await expect.poll(() => frame.locator('body').evaluate(() => location.hash)).toBe('#/home');
+    try {
+      await expect(frame.getByRole('heading', { name: 'CDN app mounted' })).toBeVisible();
+    } finally {
+      const state = await frame.locator('body').evaluate(() => ({ url: location.href, text: document.querySelector('h1')?.textContent }));
+      const evidence = { ...state, errors };
+      await testInfo.attach('cdn-state', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
+    }
+  });
 }

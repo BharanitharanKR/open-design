@@ -36,7 +36,7 @@ import { FileViewer } from '../../src/components/FileViewer';
 import type { ProjectFile } from '../../src/types';
 
 const START_TIME = new Date('2026-08-20T10:00:00Z').getTime();
-// Daemon-side PROJECT_PREVIEW_SCOPE_TTL_MS (apps/daemon/src/server.ts).
+// Daemon-side PROJECT_PREVIEW_SCOPE_TTL_MS (apps/daemon/src/services/project-preview-scopes.ts).
 const PREVIEW_SCOPE_TTL_MS = 60 * 60 * 1000;
 const PREVIEW_SCOPE_RENEW_MARGIN_MS = 5 * 60 * 1000;
 
@@ -164,6 +164,7 @@ function stubFetch(html: () => string) {
         JSON.stringify({
           url: `/api/projects/project-1/preview/scope-000${state.mintCount}/deck.html`,
           file: 'deck.html',
+          documentMode: new URL(url, 'http://localhost').searchParams.get('documentMode') ?? 'resource',
           csp: '',
           iframeSandbox: 'allow-scripts allow-forms',
           opaqueOrigin: true,
@@ -382,4 +383,128 @@ describe('FileViewer srcDoc preview base expiry', () => {
       ).toContain('version-two');
     });
   });
+});
+
+it('renders a storage-only deck despite an initial preview scope failure', async () => {
+  const html = '<!doctype html><html><body><section class="slide"><h1>Startup available</h1></section><script>localStorage.setItem("ready", "1");</script></body></html>';
+  stubFetch(() => html);
+  const delegate = globalThis.fetch;
+  let mintCalls = 0;
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).startsWith(PREVIEW_URL_ROUTE) && ++mintCalls === 1) {
+      return new Response('', { status: 503 });
+    }
+    return delegate(input, init);
+  }));
+  renderTeamViewer(<FileViewer projectId="project-1" projectKind="prototype" file={deckFile()} isDeck />);
+  await waitFor(() => expect(mintCalls).toBe(1));
+  const initialFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  // Accept content already rendered; otherwise allow the scope retry budget to elapse.
+  if (!initialFrame.srcdoc.includes('Startup available')) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+  }
+  const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  expect(frame.srcdoc).toContain('Startup available');
+});
+
+
+it('retries initial native scope acquisition and activates the complete document', async () => {
+  const html = '<!doctype html><html><body><h1>Recovered</h1><script>if (!location.hash) location.replace("#/home")</script></body></html>';
+  stubFetch(() => html);
+  const delegate = globalThis.fetch;
+  let attempts = 0;
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).startsWith(PREVIEW_URL_ROUTE) && ++attempts === 1) return new Response('', { status: 503 });
+    return delegate(input, init);
+  }));
+  renderTeamViewer(<FileViewer projectId="project-1" projectKind="prototype" file={deckFile()} isDeck />);
+  await waitFor(() => expect(attempts).toBe(1));
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+  await waitFor(() => expect(attempts).toBe(2));
+  const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  expect(frame.src).toContain('/preview/scope-0001/deck.html');
+  expect(frame.hasAttribute('srcdoc')).toBe(false);
+  const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+  await act(async () => {
+    window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { type: 'od:srcdoc-transport-ready' } }));
+  });
+  const activation = postMessage.mock.calls.map(([message]) => message as { type?: string; html?: string })
+    .find(message => message.type === 'od:srcdoc-transport-activate');
+  expect(activation?.html).toContain('<h1 data-od-id=');
+  expect(activation?.html).toContain('Recovered');
+  expect(new DOMParser().parseFromString(activation?.html ?? '', 'text/html').querySelector('base')).toBeNull();
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('cancels a pending native scope retry when the viewer unmounts', async () => {
+  stubFetch(() => '<!doctype html><html><body><script>location.replace("#/home")</script></body></html>');
+  const delegate = globalThis.fetch;
+  let attempts = 0;
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).startsWith(PREVIEW_URL_ROUTE)) { attempts++; return new Response('', { status: 503 }); }
+    return delegate(input, init);
+  }));
+  const { unmount } = renderTeamViewer(<FileViewer projectId="project-1" projectKind="prototype" file={deckFile()} isDeck />);
+  await waitFor(() => expect(attempts).toBe(1));
+  unmount();
+  await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+  expect(attempts).toBe(1);
+});
+
+
+it('recovers a native carrier on a replacement scope while preserving its hash', async () => {
+  const fetchState = stubFetch(() => '<!doctype html><html><body><h1>Recovery snapshot</h1><script>if (!location.hash) location.replace("#/home")</script></body></html>');
+  renderTeamViewer(<FileViewer projectId="project-1" projectKind="prototype" file={deckFile()} isDeck />);
+  const frame = await waitFor(() => {
+    const current = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    expect(current.src).toContain('/preview/scope-0001/deck.html');
+    return current;
+  });
+  const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    source: frame.contentWindow,
+    data: { type: 'od:preview-base-scope', documentUrl: frame.src + '#/details' },
+  })));
+  fetchState.failRenewal = true;
+  await act(async () => { await vi.advanceTimersByTimeAsync(PREVIEW_SCOPE_TTL_MS - PREVIEW_SCOPE_RENEW_MARGIN_MS); });
+  const recoveredFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  expect(recoveredFrame.src).toContain('/preview/scope-0002/deck.html#/details');
+  const recoveredPostMessage = vi.spyOn(recoveredFrame.contentWindow!, 'postMessage');
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    source: recoveredFrame.contentWindow, data: { type: 'od:srcdoc-transport-ready' },
+  })));
+  expect(recoveredPostMessage.mock.calls.some(([message]) => message.type === 'od:srcdoc-transport-activate' && message.html.includes('Recovery snapshot'))).toBe(true);
+  expect(postMessage.mock.calls.some(([message]) => message.type === 'od:preview-base-update')).toBe(false);
+});
+
+it('replaces Electron\'s prewarmed Blob frame when the native carrier becomes available', async () => {
+  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Chrome/140 Electron/38');
+  const BrowserURL = URL;
+  vi.stubGlobal('URL', class extends BrowserURL {
+    static createObjectURL() { return 'blob:http://localhost:3000/warm-bootstrap'; }
+  });
+  stubFetch(() => '<!doctype html><html><body><h1>Native ready</h1><script>if (!location.hash) location.replace("#/home")</script></body></html>');
+  const delegate = globalThis.fetch;
+  let release!: () => void;
+  const pendingScope = new Promise<void>(resolve => { release = resolve; });
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).startsWith(PREVIEW_URL_ROUTE)) await pendingScope;
+    return delegate(input, init);
+  }));
+  renderTeamViewer(<FileViewer projectId="project-1" projectKind="prototype" file={deckFile()} isDeck />);
+  const warmFrame = await waitFor(() => screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement);
+  expect(warmFrame.src).toContain('blob:');
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    source: warmFrame.contentWindow, data: { type: 'od:srcdoc-transport-ready' },
+  })));
+  await act(async () => { release(); });
+  const nativeFrame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  expect(nativeFrame.src).toContain('/preview/scope-0001/deck.html');
+  expect(nativeFrame).not.toBe(warmFrame);
+  const postMessage = vi.spyOn(nativeFrame.contentWindow!, 'postMessage');
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    source: nativeFrame.contentWindow, data: { type: 'od:srcdoc-transport-ready' },
+  })));
+  expect(postMessage.mock.calls.some(([message]) => message.type === 'od:srcdoc-transport-activate' && message.html.includes('Native ready'))).toBe(true);
 });

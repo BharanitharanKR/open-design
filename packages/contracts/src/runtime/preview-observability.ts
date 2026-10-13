@@ -29,10 +29,12 @@ export interface PreviewBaseScopeMessage {
   type: typeof PREVIEW_BASE_SCOPE_MESSAGE_TYPE;
   href: string;
   expiresAt: number;
+  /** Current native file URL, including its authored fragment. */
+  documentUrl?: string;
 }
 
 export function buildPreviewBaseHrefBridge(
-  initialScope?: { readonly href: string; readonly expiresAt: number },
+  initialScope?: { readonly href: string; readonly expiresAt: number; readonly documentUrl?: string },
 ): string {
   const initialScopeJson = initialScope
     ? JSON.stringify(initialScope).replace(/</g, '\\u003c')
@@ -41,13 +43,34 @@ export function buildPreviewBaseHrefBridge(
   if (window.__odPreviewBaseBridge) return;
   window.__odPreviewBaseBridge = true;
   var initialScope = ${initialScopeJson};
+  // A native preview document has base-uri 'none', so adding a <base> would
+  // violate its CSP. Expose the same fragment-free directory base to scripts
+  // as the original raw preview, even after location.hash changes.
+  if (initialScope && !document.querySelector('base')) {
+    try {
+      var nativeBase = Object.getOwnPropertyDescriptor(Node.prototype, 'baseURI');
+      var entryBase = new URL(initialScope.href, location.href).href;
+      var previewDocument = document;
+      if (nativeBase && nativeBase.get && new URL(location.href).pathname === new URL(initialScope.documentUrl || entryBase, location.href).pathname) {
+        Object.defineProperty(Node.prototype, 'baseURI', {
+          configurable: nativeBase.configurable,
+          enumerable: nativeBase.enumerable,
+          get: function(){
+            return this === previewDocument || this.ownerDocument === previewDocument
+              ? entryBase : nativeBase.get.call(this);
+          }
+        });
+      }
+    } catch (_) {}
+  }
   function announce(){
     if (!initialScope) return;
     try {
       window.parent.postMessage({
         type: '${PREVIEW_BASE_SCOPE_MESSAGE_TYPE}',
         href: initialScope.href,
-        expiresAt: initialScope.expiresAt
+        expiresAt: initialScope.expiresAt,
+        documentUrl: initialScope.documentUrl ? location.href : undefined
       }, '*');
     } catch (_) {}
   }
@@ -68,9 +91,21 @@ export function buildPreviewBaseHrefBridge(
       if (!sameOrigin) return;
       var parts = next.pathname.split('/');
       if (parts[1] !== 'api' || parts[2] !== 'projects' || !parts[3] || parts[4] !== 'preview' || !parts[5]) return;
+      if (parts[3] !== current.pathname.split('/')[3]) return;
       if (next.pathname.charAt(next.pathname.length - 1) !== '/') return;
       var base = document.querySelector('base[data-od-project-preview-base]');
-      if (!base) return;
+      if (!base) {
+        // This is a native URL document under base-uri 'none'.
+        // After daemon restart it cannot change its effective base in place;
+        // recover on the new bound file, preserving the current hash.
+        if (initialScope && new URL(location.href).pathname === new URL(initialScope.documentUrl || initialScope.href, location.href).pathname) {
+          var suffix = initialScope.documentUrl
+            ? new URL(initialScope.documentUrl, location.href).pathname.slice(new URL(initialScope.href, location.href).pathname.length)
+            : '';
+          location.replace(next.href + suffix + location.search + location.hash);
+        }
+        return;
+      }
       base.setAttribute('href', next.href);
       window.parent.postMessage({
         type: 'od:preview-base-updated',
@@ -79,6 +114,7 @@ export function buildPreviewBaseHrefBridge(
       }, '*');
     } catch (_) {}
   });
+  window.addEventListener('hashchange', announce);
   announce();
 })();</script>`;
 }

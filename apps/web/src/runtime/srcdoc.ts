@@ -69,6 +69,8 @@ import { isApprovedFontStylesheetHref } from './deck-thumbnail-parser';
 export type SrcdocOptions = {
   deck?: boolean;
   baseHref?: string;
+  /** Native bootstrap already has the correct document URL; never inject a directory <base>. */
+  nativeDocumentBase?: { href: string; expiresAt: number; documentUrl: string };
   initialSlideIndex?: number;
   hideDeckChrome?: boolean;
   deckClickNavigation?: boolean;
@@ -359,7 +361,9 @@ export function buildSrcdoc(
   const withOdIds = annotateMissingOdIds(withSafeTitle);
   const withSourcePaths = options.editBridge ? annotateManualEditSourcePaths(withOdIds) : withOdIds;
   const withBase = options.baseHref ? injectBaseHref(withSourcePaths, options.baseHref) : withSourcePaths;
-  const withPreviewBaseBridge = options.baseHref
+  const withPreviewBaseBridge = options.nativeDocumentBase
+    ? injectAfterHeadOpen(withSourcePaths, buildPreviewBaseHrefBridge(options.nativeDocumentBase))
+    : options.baseHref
     ? injectPreviewBaseHrefBridge(withBase)
     : withBase;
   const withDeferredFonts = options.deferFontStylesheets
@@ -473,62 +477,7 @@ function normalizeHtmlFragmentLikeNavigation(html: string): string {
  *      key-driven re-mount), in which case the message is dropped and the
  *      iframe stays stuck on the empty shell. See #2253.
  */
-export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {}): string {
-  const doctype = options.quirksMode ? '' : '<!doctype html>\n';
-  return `${doctype}<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script data-od-lazy-srcdoc-transport>(function(){
-      var readyInterval = null;
-      var readyAttempts = 0;
-      function stopReadyAnnouncements(){
-        if (readyInterval !== null && typeof clearInterval === 'function') {
-          clearInterval(readyInterval);
-        }
-        readyInterval = null;
-      }
-      function announceReady(){
-        try {
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'od:srcdoc-transport-ready' }, '*');
-          }
-        } catch (_) { /* sandboxed parent — host falls back to onLoad */ }
-      }
-      function handleTransportMessage(ev){
-        var data = ev && ev.data;
-        if (data && data.type === 'od:srcdoc-transport-shell-probe') {
-          announceReady();
-          return;
-        }
-        if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string' || typeof data.generation !== 'string' || !data.generation) return;
-        stopReadyAnnouncements();
-        if (typeof window.removeEventListener === 'function') {
-          window.removeEventListener('message', handleTransportMessage);
-        }
-        document.open();
-        document.write(data.html);
-        document.close();
-      }
-      window.addEventListener('message', handleTransportMessage);
-      announceReady();
-      // A cached app-lifetime Blob can finish long before React attaches the
-      // parent's listener. Keep announcing until activation instead of
-      // guessing a host-mount delay; cap the retries so a broken host cannot
-      // leave a background timer running forever. The host's probe remains a
-      // recovery path after this ten-second window.
-      if (window.parent && window.parent !== window && typeof setInterval === 'function') {
-        readyInterval = setInterval(function(){
-          announceReady();
-          readyAttempts += 1;
-          if (readyAttempts >= 100) stopReadyAnnouncements();
-        }, 100);
-      }
-    })();</script>
-  </head>
-  <body></body>
-</html>`;
-}
+export { buildLazySrcdocTransport } from '@open-design/contracts/runtime/preview-guards';
 
 export interface SrcDocActivationInputs {
   /** The real artifact HTML the host wants to inject into the shell. */
@@ -1585,6 +1534,7 @@ function injectSandboxShim(doc: string): string {
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
   document.addEventListener('click', (e) => {
+    if (e.defaultPrevented) return;
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
     if (!link) return;
@@ -1602,6 +1552,9 @@ function injectSandboxShim(doc: string): string {
         if (target) {
           target.scrollIntoView();
           location.hash === href && history.replaceState(null, '', ' ');
+          location.hash = href;
+        } else {
+          // Hash routers use fragments without matching DOM element IDs.
           location.hash = href;
         }
       }

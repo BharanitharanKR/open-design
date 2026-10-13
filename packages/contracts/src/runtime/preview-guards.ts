@@ -62,6 +62,7 @@ export function buildPreviewSandboxShim(): string {
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
   document.addEventListener('click', function(e){
+    if (e.defaultPrevented) return;
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
     if (!link) return;
@@ -79,6 +80,9 @@ export function buildPreviewSandboxShim(): string {
         if (target) {
           target.scrollIntoView();
           if (location.hash === href) history.replaceState(null, '', ' ');
+          location.hash = href;
+        } else {
+          // Hash routers use fragments without matching DOM element IDs.
           location.hash = href;
         }
       }
@@ -251,4 +255,72 @@ export function buildPreviewRedirectGuard(
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', evaluate);
   else evaluate();
 })();</script>`;
+}
+
+/** External scripts may contain navigation invisible to the HTML source scan. */
+export function previewHtmlNeedsNativeNavigation(source: string): boolean {
+  return previewHtmlHasLoadTimeLocationNavigation(source) || /<script\b[^>]*\bsrc\s*=/i.test(source);
+}
+
+/** Match native navigation's document mode before any bridge is injected. */
+export function previewHtmlUsesQuirksMode(source: string): boolean {
+  return !/^\s*(?:<!--[\s\S]*?-->\s*)*<!doctype\b/i.test(source);
+}
+
+export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {}): string {
+  const doctype = options.quirksMode ? '' : '<!doctype html>\n';
+  return `${doctype}<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script data-od-lazy-srcdoc-transport>(function(){
+      var readyInterval = null;
+      var readyAttempts = 0;
+      function stopReadyAnnouncements(){
+        if (readyInterval !== null && typeof clearInterval === 'function') {
+          clearInterval(readyInterval);
+        }
+        readyInterval = null;
+      }
+      function announceReady(){
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'od:srcdoc-transport-ready' }, '*');
+          }
+        } catch (_) { /* sandboxed parent — host falls back to onLoad */ }
+      }
+      function handleTransportMessage(ev){
+        if (ev.source !== window.parent) return;
+        var data = ev && ev.data;
+        if (data && data.type === 'od:srcdoc-transport-shell-probe') {
+          announceReady();
+          return;
+        }
+        if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string' || typeof data.generation !== 'string' || !data.generation) return;
+        stopReadyAnnouncements();
+        if (typeof window.removeEventListener === 'function') {
+          window.removeEventListener('message', handleTransportMessage);
+        }
+        document.open();
+        document.write(data.html);
+        document.close();
+      }
+      window.addEventListener('message', handleTransportMessage);
+      announceReady();
+      // A cached app-lifetime Blob can finish long before React attaches the
+      // parent's listener. Keep announcing until activation instead of
+      // guessing a host-mount delay; cap the retries so a broken host cannot
+      // leave a background timer running forever. The host's probe remains a
+      // recovery path after this ten-second window.
+      if (window.parent && window.parent !== window && typeof setInterval === 'function') {
+        readyInterval = setInterval(function(){
+          announceReady();
+          readyAttempts += 1;
+          if (readyAttempts >= 100) stopReadyAnnouncements();
+        }, 100);
+      }
+    })();</script>
+  </head>
+  <body></body>
+</html>`;
 }

@@ -1,3 +1,5 @@
+import { createServer } from 'node:http';
+import { buildLazySrcdocTransport } from '@open-design/contracts/runtime/preview-guards';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,7 +9,7 @@ import { promisify } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const rendererState = vi.hoisted(() => ({ loadedUrls: [] as string[] }));
+const rendererState = vi.hoisted(() => ({ loadedUrls: [] as string[], writes: [] as string[] }));
 
 vi.mock('electron', () => {
   const image = {
@@ -28,6 +30,7 @@ vi.mock('electron', () => {
         sendCommand: async () => undefined,
       },
       executeJavaScript: async (source: string): Promise<unknown> => {
+        if (source.includes('document.write(')) rendererState.writes.push(source);
         if (source.includes("document.querySelectorAll('.slide")) return 0;
         if (source.includes('document.documentElement.scrollHeight')) return 1;
         if (source === 'window.devicePixelRatio || 1') return 1;
@@ -94,15 +97,47 @@ const sourceHtml = `<!doctype html>
 
 type BaseResolution = {
   readonly baseURI: string;
+  readonly hash?: string;
+  readonly heading?: string;
   readonly imageSrc: string;
   readonly stylesheetHref: string;
 };
 
 afterEach(() => {
   rendererState.loadedUrls.length = 0;
+  rendererState.writes.length = 0;
 });
 
 describe('scoped renderer base precedence', () => {
+  it('keeps a hash-routed export on its selected historical snapshot in Electron', async () => {
+    let documentRequests = 0;
+    const server = createServer((request, response) => {
+      if (request.url === '/api/projects/export/preview/scope/index.html') {
+        documentRequests++;
+        response.setHeader('Content-Type', 'text/html');
+        response.setHeader('Content-Security-Policy', "sandbox allow-scripts allow-downloads; base-uri 'none'; object-src 'none'; form-action 'none'");
+        response.end(buildLazySrcdocTransport());
+      } else { response.statusCode = 404; response.end('Not a document'); }
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as { port: number }).port;
+    const baseHref = `http://127.0.0.1:${port}/api/projects/export/preview/scope/`;
+    try {
+      const result = await exportArtifact({
+        html: '<!doctype html><html><head><link rel="stylesheet" href="styles/x.css"></head><body><h1>Historical snapshot</h1><img src="assets/hero.png"><script>if (!location.hash) location.replace("#/history")</script></body></html>',
+        baseHref, documentUrl: baseHref + 'index.html', deck: false, format: 'image', title: 'History',
+      });
+      try {
+        expect(result.ok).toBe(true);
+        expect(rendererState.writes).toHaveLength(1);
+        const state = await probeLoadedDocument(singleLoadedUrl(), rendererState.writes[0]);
+        expect(state).toMatchObject({ baseURI: baseHref, hash: '#/history', heading: 'Historical snapshot' });
+        expect(state.imageSrc).toBe(baseHref + 'assets/hero.png');
+        expect(documentRequests).toBe(1);
+      } finally { if (result.path) await rm(dirname(result.path), { force: true, recursive: true }); }
+    } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+  }, ELECTRON_PROBE_TEST_TIMEOUT_MS);
+
   it('uses the scoped base for deck-capture CSS and images when HTML already has an external base', async () => {
     // Given: a deck-capture request whose source document already declares another base.
     const input = {
@@ -160,11 +195,12 @@ function expectedResolution(): BaseResolution {
   };
 }
 
-async function probeLoadedDocument(url: string): Promise<BaseResolution> {
+async function probeLoadedDocument(url: string, activation = ''): Promise<BaseResolution> {
   const probeDir = await mkdtemp(join(tmpdir(), 'od-electron-base-probe-'));
   const urlFile = join(probeDir, 'url.txt');
   await writeFile(join(probeDir, 'package.json'), '{"main":"main.cjs"}\n');
   await writeFile(urlFile, url);
+  await writeFile(join(probeDir, 'activation.txt'), activation);
   await writeFile(join(probeDir, 'main.cjs'), `
 const { app, BrowserWindow } = require('electron');
 const { readFile } = require('node:fs/promises');
@@ -175,8 +211,11 @@ app.whenReady().then(async () => {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   await window.loadURL(await readFile(process.env.OD_BASE_PROBE_URL_FILE, 'utf8'));
+  const activation = await readFile(process.env.OD_BASE_PROBE_ACTIVATION_FILE, 'utf8');
+  if (activation) await window.webContents.executeJavaScript(activation);
   const result = await window.webContents.executeJavaScript(\`({
     baseURI: document.baseURI,
+    hash: location.hash, heading: document.querySelector('h1')?.textContent,
     imageSrc: document.querySelector('img').src,
     stylesheetHref: document.querySelector('link[rel="stylesheet"]').href,
   })\`, true);
@@ -198,7 +237,7 @@ app.whenReady().then(async () => {
     const electronArgs = [probeDir, '--no-sandbox', '--disable-gpu'];
     const command = process.platform === 'linux' ? 'xvfb-run' : electronPath;
     const args = process.platform === 'linux' ? ['-a', electronPath, ...electronArgs] : electronArgs;
-    const env: NodeJS.ProcessEnv = { ...process.env, OD_BASE_PROBE_URL_FILE: urlFile };
+    const env: NodeJS.ProcessEnv = { ...process.env, OD_BASE_PROBE_URL_FILE: urlFile, OD_BASE_PROBE_ACTIVATION_FILE: join(probeDir, 'activation.txt') };
     delete env.ELECTRON_RUN_AS_NODE;
     const { stdout } = await execFileP(command, args, { env, timeout: ELECTRON_PROBE_TIMEOUT_MS });
     const marker = stdout.split(/\r?\n/).find((line) => line.startsWith('OD_BASE_PROBE:'));
@@ -224,6 +263,7 @@ function parseBaseResolution(value: unknown): BaseResolution {
   }
   return {
     baseURI: value.baseURI,
+    ...('heading' in value && typeof value.heading === 'string' ? { heading: value.heading, hash: 'hash' in value ? String(value.hash) : '' } : {}),
     imageSrc: value.imageSrc,
     stylesheetHref: value.stylesheetHref,
   };

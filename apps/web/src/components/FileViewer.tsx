@@ -1,3 +1,4 @@
+import { PreviewDocumentFrame } from './PreviewDocumentFrame';
 import { useExperienceError } from '../observability/use-experience-error';
 import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-detail';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
@@ -30,7 +31,7 @@ import {
   type WorkspaceCollabContext,
 } from '@open-design/contracts';
 import { PREVIEW_OBSERVABILITY_HOST_STATE_MESSAGE_TYPE } from '@open-design/contracts/runtime/preview-observability';
-import { PREVIEW_URL_GUARD_MAX_HTML_BYTES } from '@open-design/contracts/runtime/preview-guards';
+import { PREVIEW_URL_GUARD_MAX_HTML_BYTES, previewHtmlNeedsNativeNavigation, previewHtmlUsesQuirksMode } from '@open-design/contracts/runtime/preview-guards';
 import {
   isPreviewRuntimeState,
   type PreviewRuntimeState,
@@ -7836,7 +7837,7 @@ function HtmlViewer({
     identity: string;
     scope: ProjectPreviewBaseScope;
   } | null>(null);
-  const effectiveScopedSrcDocPreviewBase =
+  const candidateScopedSrcDocPreviewBase =
     scopedSrcDocPreviewBase?.identity === srcDocPreviewBaseIdentity
       ? scopedSrcDocPreviewBase.scope
       : null;
@@ -8405,6 +8406,7 @@ function HtmlViewer({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const srcDocShellReadyFrameRef = useRef<HTMLIFrameElement | null>(null);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
   const srcDocNavigationCommittedRef = useRef<{
     frame: HTMLIFrameElement;
@@ -10246,6 +10248,12 @@ function HtmlViewer({
     && !needsPowered;
   const setSrcDocPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
     if (srcDocPreviewIframeRef.current !== frame) {
+      // React detaches/reattaches this callback when the active transport
+      // changes. Preserve readiness for the same retained DOM node.
+      if (frame && frame !== srcDocShellReadyFrameRef.current) {
+        srcDocShellReadyFrameRef.current = null;
+        activatedSrcDocTransportHtmlRef.current = null;
+      }
       srcDocNavigationCommittedRef.current = null;
       srcDocContentReadyRef.current = null;
     }
@@ -10267,38 +10275,79 @@ function HtmlViewer({
     ),
     [currentSourceIdentity, routingHtmlSource, routingSourceIdentity],
   );
+  const needsNativePreviewDocument = authoredSrcDocBase === false && !needsPowered
+    && !passiveLargeHtmlPreview && previewHtmlNeedsNativeNavigation(routingHtmlSource ?? '');
+  const nativeDocumentMode = previewHtmlUsesQuirksMode(routingHtmlSource ?? '')
+    ? 'bootstrap-quirks' as const : 'bootstrap' as const;
+  const effectiveScopedSrcDocPreviewBase = candidateScopedSrcDocPreviewBase
+    && (needsNativePreviewDocument
+      ? candidateScopedSrcDocPreviewBase.documentMode === nativeDocumentMode
+      : !candidateScopedSrcDocPreviewBase.documentMode)
+    ? candidateScopedSrcDocPreviewBase : null;
+  const nativePreviewScope = needsNativePreviewDocument ? effectiveScopedSrcDocPreviewBase : null;
+  const nativeDocumentBase = useMemo(() => nativePreviewScope?.documentUrl ? {
+    href: nativePreviewScope.href,
+    expiresAt: nativePreviewScope.expiresAt,
+    documentUrl: nativePreviewScope.documentUrl,
+  } : undefined, [nativePreviewScope]);
+  const nativePreviewLocationRef = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      workspaceContext?.workspaceType !== 'team'
-      ||
-      useUrlLoadPreview
-      || authoredSrcDocBase !== false
-      || effectiveScopedSrcDocPreviewBase
-      || !workspaceActive
-      || projectResourceReadBlocked
-    ) return;
-    let cancelled = false;
-    const identity = srcDocPreviewBaseIdentity;
-    void fetchProjectPreviewBaseHref(projectId, file.name).then((scope) => {
-      if (cancelled || !scope) return;
-      const next = { identity, scope };
-      activeSrcDocPreviewBaseRef.current = next;
-      setScopedSrcDocPreviewBase(next);
-      setAuxiliarySrcDocPreviewBase({ identity, href: scope.href });
-    });
-    return () => {
-      cancelled = true;
+    nativePreviewLocationRef.current = nativePreviewScope?.documentUrl ?? null;
+    if (!nativePreviewScope?.documentUrl) return;
+    const expected = new URL(nativePreviewScope.documentUrl);
+    const receive = (event: MessageEvent) => {
+      if (event.source !== srcDocPreviewIframeRef.current?.contentWindow
+        || event.data?.type !== 'od:preview-base-scope'
+        || typeof event.data.documentUrl !== 'string') return;
+      try {
+        const actual = new URL(event.data.documentUrl);
+        if (actual.origin === expected.origin && actual.pathname === expected.pathname) {
+          nativePreviewLocationRef.current = actual.href;
+        }
+      } catch { /* Ignore malformed document identities. */ }
     };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [nativePreviewScope]);
+  const [previewScopeFailure, setPreviewScopeFailure] = useState<string | null>(null);
+  useEffect(() => {
+    if ((workspaceContext?.workspaceType !== 'team' && !needsNativePreviewDocument)
+      || useUrlLoadPreview || authoredSrcDocBase !== false
+      || effectiveScopedSrcDocPreviewBase || !workspaceActive || projectResourceReadBlocked) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const identity = srcDocPreviewBaseIdentity;
+    setPreviewScopeFailure(null);
+    const acquire = async () => {
+      try {
+        const scope = await fetchProjectPreviewBaseHref(projectId, file.name, undefined, {
+          ...(needsNativePreviewDocument ? { documentMode: nativeDocumentMode } : {}),
+          signal: controller.signal,
+          throwOnError: true,
+        });
+        if (controller.signal.aborted) return;
+        if (!scope) throw new Error('Invalid preview scope response');
+        const next = { identity, scope };
+        activeSrcDocPreviewBaseRef.current = next;
+        setScopedSrcDocPreviewBase(next);
+        setAuxiliarySrcDocPreviewBase({ identity, href: scope.href });
+        setPreviewScopeFailure(null);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const status = (error as { status?: number })?.status;
+        setPreviewScopeFailure(identity);
+        if ((status === undefined || status >= 500 || status === 408 || status === 429) && ++attempts < 3) {
+          timer = setTimeout(() => void acquire(), PREVIEW_SCOPE_RETRY_MS);
+        }
+      }
+    };
+    void acquire();
+    return () => { controller.abort(); if (timer) clearTimeout(timer); };
   }, [
-    authoredSrcDocBase,
-    effectiveScopedSrcDocPreviewBase,
-    file.name,
-    projectId,
-    projectResourceReadBlocked,
-    srcDocPreviewBaseIdentity,
-    useUrlLoadPreview,
-    workspaceActive,
-    workspaceContext,
+    authoredSrcDocBase, effectiveScopedSrcDocPreviewBase, file.mtime, file.name,
+    needsNativePreviewDocument, nativeDocumentMode, projectId, projectResourceReadBlocked,
+    reloadKey, srcDocPreviewBaseIdentity, useUrlLoadPreview, workspaceActive, workspaceContext,
   ]);
   const urlPreviewBaseIdentity = `url\0${srcDocPreviewBaseIdentity}`;
   const effectiveUrlLoadedPreviewBase =
@@ -10340,11 +10389,13 @@ function HtmlViewer({
     frame?.contentWindow?.postMessage({ type: 'od:preview-base-scope-probe' }, '*');
     return () => window.removeEventListener('message', onMessage);
   }, [projectId, urlPreviewBaseIdentity, workspaceActive]);
-  const postPreviewBaseUpdate = useCallback((href: string) => {
+  const postPreviewBaseUpdate = useCallback((href: string, skipFrame?: HTMLIFrameElement | null) => {
     const requestId = `preview-base-${Date.now()}`;
     const message = { type: 'od:preview-base-update', requestId, href };
     const frames = viewerRootRef.current?.querySelectorAll('iframe') ?? [];
-    for (const frame of frames) frame.contentWindow?.postMessage(message, '*');
+    for (const frame of frames) {
+      if (frame !== skipFrame) frame.contentWindow?.postMessage(message, '*');
+    }
     const presenter = presenterWindowRef.current;
     if (presenter && !presenter.closed) {
       try {
@@ -10384,7 +10435,7 @@ function HtmlViewer({
       const renewedExpiresAt = await renewProjectPreviewBaseScope(projectId, scope.href);
       if (cancelled) return;
       if (renewedExpiresAt !== null) {
-        const renewed = { href: scope.href, expiresAt: renewedExpiresAt };
+        const renewed = { ...scope, expiresAt: renewedExpiresAt };
         if (useUrlLoadPreview) {
           urlLoadedPreviewBaseRef.current = { identity, scope: renewed };
         } else {
@@ -10395,20 +10446,32 @@ function HtmlViewer({
       }
 
       // A daemon restart or a suspended browser can invalidate the in-memory
-      // capability. Replace only the live <base>; do not navigate the iframe.
-      const replacement = await fetchProjectPreviewBaseHref(projectId, file.name);
+      // capability. Update ordinary bases in place; native carriers must reload.
+      const replacement = await fetchProjectPreviewBaseHref(projectId, file.name, undefined, {
+        ...(useUrlLoadPreview ? {
+          documentMode: 'url' as const, bridges: new URLSearchParams(previewBridgeQuery).getAll('odPreviewBridge'),
+        } : needsNativePreviewDocument ? { documentMode: nativeDocumentMode } : {}),
+      });
       if (cancelled) return;
       if (!replacement) {
         schedule(scope, true);
         return;
+      }
+      if (replacement.documentUrl && !useUrlLoadPreview && nativePreviewLocationRef.current) {
+        const previous = new URL(nativePreviewLocationRef.current);
+        const next = new URL(replacement.documentUrl);
+        next.hash = previous.hash;
+        next.search = previous.search;
+        replacement.documentUrl = next.href;
       }
       if (useUrlLoadPreview) {
         urlLoadedPreviewBaseRef.current = { identity, scope: replacement };
       } else {
         activeSrcDocPreviewBaseRef.current = { identity, scope: replacement };
         setAuxiliarySrcDocPreviewBase({ identity, href: replacement.href });
+        if (needsNativePreviewDocument) setScopedSrcDocPreviewBase({ identity, scope: replacement });
       }
-      postPreviewBaseUpdate(replacement.href);
+      postPreviewBaseUpdate(replacement.href, needsNativePreviewDocument && !useUrlLoadPreview ? srcDocPreviewIframeRef.current : null);
       schedule(replacement);
     };
 
@@ -10427,6 +10490,9 @@ function HtmlViewer({
     file.name,
     mode,
     postPreviewBaseUpdate,
+    previewBridgeQuery,
+    needsNativePreviewDocument,
+    nativeDocumentMode,
     projectId,
     projectResourceReadBlocked,
     srcDocPreviewBaseIdentity,
@@ -10788,6 +10854,10 @@ function HtmlViewer({
 
   const srcDocBaseSeedHref = effectiveScopedSrcDocPreviewBase?.href
     ?? previewRuntimeUrl(projectRawUrl(projectId, baseDirFor(file.name), workspaceContext));
+  const awaitingScopedSrcDocNavigation = !useUrlLoadPreview
+    && authoredSrcDocBase === false
+    && needsNativePreviewDocument
+    && !nativePreviewScope;
   const srcDocBaseSelectionIdentity = [
     srcDocPreviewBaseIdentity,
     sourceSnapshotRefreshKey,
@@ -10822,6 +10892,8 @@ function HtmlViewer({
     transportPreviewMeasurementDocumentEpoch,
     effectiveDeck ? 'deck' : 'html',
     srcDocBaseHref,
+    nativePreviewScope?.documentUrl ?? 'inline',
+    awaitingScopedSrcDocNavigation ? 'scope-pending' : 'scope-ready',
   ].join('\0');
   const candidateSrcDocTransport = useMemo(
     () => {
@@ -10843,9 +10915,14 @@ function HtmlViewer({
       const entry: SrcDocTransportCacheEntry = {
         sourceFingerprint: sourceFingerprint ?? '',
         generation,
-        srcDoc: previewSource ? buildSrcdoc(previewSource, {
+        srcDoc: previewSource && !awaitingScopedSrcDocNavigation ? buildSrcdoc(previewSource, {
           deck: effectiveDeck,
-          baseHref: srcDocBaseHref,
+          baseHref: nativePreviewScope ? undefined : srcDocBaseHref,
+          nativeDocumentBase: nativePreviewScope?.documentUrl ? {
+            href: nativePreviewScope.href,
+            expiresAt: nativePreviewScope.expiresAt,
+            documentUrl: nativePreviewScope.documentUrl,
+          } : undefined,
           initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
           hideDeckChrome: effectiveDeck,
           selectionBridge: true,
@@ -11047,7 +11124,9 @@ function HtmlViewer({
   const presentationSrcDoc = useMemo(
     () => (deckVisualSource && inTabPresent ? buildSrcdoc(deckVisualSource, {
       deck: effectiveDeck,
-      baseHref: latestSrcDocPreviewBaseHref,
+      baseHref: nativeDocumentBase ? undefined : latestSrcDocPreviewBaseHref,
+      nativeDocumentBase,
+      transportActivationGeneration: 'auxiliary-preview',
       initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
       hideDeckChrome: effectiveDeck,
       deckClickNavigation: effectiveDeck,
@@ -11061,6 +11140,7 @@ function HtmlViewer({
       file.name,
       previewStateKey,
       latestSrcDocPreviewBaseHref,
+      nativeDocumentBase,
     ],
   );
   // Per-slide thumbnail documents are built lazily by DeckThumbnailRail, one
@@ -11070,15 +11150,17 @@ function HtmlViewer({
   // `freezeMotion` settles deck animations at their final frame so N
   // miniature documents don't keep the compositor rasterizing forever.
   const buildDeckThumbnailSrcDoc = useCallback(
-    (index: number) => buildSrcdoc(deckVisualSource ?? '', {
+    (index: number) => needsNativePreviewDocument && !nativeDocumentBase ? '' : buildSrcdoc(deckVisualSource ?? '', {
       deck: true,
-      baseHref: latestSrcDocPreviewBaseHref,
+      baseHref: nativeDocumentBase ? undefined : latestSrcDocPreviewBaseHref,
+      nativeDocumentBase,
+      transportActivationGeneration: 'auxiliary-preview',
       initialSlideIndex: index,
       hideDeckChrome: true,
       previewFocusGuard: true,
       freezeMotion: true,
     }),
-    [deckVisualSource, latestSrcDocPreviewBaseHref],
+    [deckVisualSource, latestSrcDocPreviewBaseHref, nativeDocumentBase, needsNativePreviewDocument],
   );
   // Parse the deck once per source into per-slide shadow-root render data. When
   // renderable, DeckThumbnailRail mounts a single cloned slide per thumbnail
@@ -11122,7 +11204,8 @@ function HtmlViewer({
     () => persistentPreviewBootstrapUrl(lazySrcDocTransport, srcDocUsesQuirksMode),
     [lazySrcDocTransport, srcDocUsesQuirksMode],
   );
-  const usesPersistentSrcDocTransport = persistentSrcDocTransportUrl !== null;
+  const nativeSrcDocTransportUrl = nativePreviewScope?.documentUrl ?? null;
+  const usesPersistentSrcDocTransport = nativeSrcDocTransportUrl !== null || persistentSrcDocTransportUrl !== null;
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
   const [srcDocShellReady, setSrcDocShellReady] = useState(false);
   const [srcDocRecoveryGeneration, setSrcDocRecoveryGeneration] = useState<string | null>(null);
@@ -11362,7 +11445,7 @@ function HtmlViewer({
   // flip this back to true. See #2253.
   useEffect(() => {
     setSrcDocShellReady(false);
-  }, [srcDocTransportResetKey]);
+  }, [srcDocTransportResetKey, nativeSrcDocTransportUrl]);
   // The workspace keeps FileViewer mounted when a user switches between
   // projects that expose the same file tab. The frame name still changes with
   // the project identity, so React replaces the actual iframe. Never let that
@@ -11382,6 +11465,7 @@ function HtmlViewer({
       if (ev.source !== srcDocPreviewIframeRef.current?.contentWindow) return;
       const data = ev.data as { type?: string } | null;
       if (data?.type !== 'od:srcdoc-transport-ready') return;
+      srcDocShellReadyFrameRef.current = srcDocPreviewIframeRef.current;
       setSrcDocShellReady(true);
     }
     window.addEventListener('message', onMessage);
@@ -11628,8 +11712,21 @@ function HtmlViewer({
       if (typeof data.href !== 'string' || data.href.length === 0) return;
       let matches: boolean;
       try {
-        matches = new URL(data.href, window.location.href).href
-          === new URL(frame.getAttribute('src') ?? '', window.location.href).href;
+        const actual = new URL(data.href, window.location.href);
+        const expected = new URL(frame.getAttribute('src') ?? '', window.location.href);
+        actual.hash = ''; expected.hash = '';
+        const nativePrefix = `/api/projects/${encodeURIComponent(projectId)}/preview/`;
+        const nativePath = actual.pathname.startsWith(nativePrefix)
+          ? actual.pathname.slice(nativePrefix.length).split('/').slice(1).join('/') : null;
+        matches = actual.href === expected.href || (
+          actual.origin === expected.origin
+          && nativePath === file.name.split('/').map(encodeURIComponent).join('/')
+          && (() => {
+            for (const name of ['odPreviewBridge', 'workspaceId', 'workspaceMemberId']) expected.searchParams.delete(name);
+            actual.searchParams.sort(); expected.searchParams.sort();
+            return actual.search === expected.search;
+          })()
+        );
       } catch {
         return;
       }
@@ -11638,7 +11735,7 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [workspaceActive]);
+  }, [workspaceActive, projectId, file.name]);
   // Non-Electron runtimes retain the historical lazy-shell/direct-srcDoc
   // split. Electron always keeps the stable bootstrap shell and activates the
   // enhanced document in place through the handshake above.
@@ -11667,7 +11764,7 @@ function HtmlViewer({
   // documents move through the activation bridge, so a content generation,
   // project activation, or file-tab switch cannot supersede an in-flight
   // parent-frame navigation.
-  const srcDocTransportUrl = persistentSrcDocTransportUrl;
+  const srcDocTransportUrl = nativeSrcDocTransportUrl ?? persistentSrcDocTransportUrl;
   // Materialize the srcDoc iframe the first time it actually becomes the active
   // (visible) transport — i.e. the first Mark/Edit/Comment/Inspect entry. We do
   // NOT pre-render it while hidden/idle: that ran a second live copy during
@@ -11766,7 +11863,7 @@ function HtmlViewer({
       srcDoc: srcDocActivationContent,
       useUrlLoadPreview: useUrlLoadPreview && !srcDocMaterialized,
       useLazySrcDocTransport,
-      shellReady: srcDocShellReady,
+      shellReady: srcDocShellReady && srcDocShellReadyFrameRef.current === target,
       activatedHtml: activatedSrcDocTransportHtmlRef.current,
     };
     if (!canActivateSrcDocTransport(activationInputs)) {
@@ -13744,7 +13841,9 @@ function HtmlViewer({
     const count = Math.max(deckSlideCount, speakerNotes.length, 1);
     const presenterPreviewHtmlBySlide = Array.from({ length: count }, (_, index) => buildSrcdoc(deckVisualSource, {
       deck: true,
-      baseHref: latestSrcDocPreviewBaseHref,
+      baseHref: nativeDocumentBase ? undefined : latestSrcDocPreviewBaseHref,
+      nativeDocumentBase,
+      transportActivationGeneration: 'auxiliary-preview',
       initialSlideIndex: index,
       hideDeckChrome: true,
       previewFocusGuard: true,
@@ -13761,6 +13860,7 @@ function HtmlViewer({
     presenterWindowRef.current = popup;
     const html = buildSpeakerNotesPresenterHtml({
       previewHtml: presenterPreviewHtmlBySlide[0] ?? '',
+      previewDocumentUrl: nativeDocumentBase?.documentUrl,
       previewHtmlBySlide: presenterPreviewHtmlBySlide,
       title: exportTitle,
       projectId,
@@ -17411,6 +17511,12 @@ function HtmlViewer({
           ) : null}
       </>)}
       <div className="viewer-body" ref={previewBodyRef}>
+        {awaitingScopedSrcDocNavigation && previewScopeFailure === srcDocPreviewBaseIdentity ? (
+          <div role="alert">
+            {t('fileViewer.versions.previewFailed')}
+            <button type="button" onClick={() => setReloadKey((key) => key + 1)}>{t('fileViewer.reload')}</button>
+          </div>
+        ) : null}
         {initialPreviewLoading ? (
           <FileViewerLoadingSkeleton />
         ) : (
@@ -17440,6 +17546,7 @@ function HtmlViewer({
                 activeIndex={activeDeckSlideIndex}
                 labelTotal={deckNavTotal}
                 buildThumbSrcDoc={buildDeckThumbnailSrcDoc}
+                documentUrl={nativeDocumentBase?.documentUrl}
                 parsedDeck={parsedDeckThumbnails}
                 previewViewport={deckThumbnailRenderViewport}
                 onSelect={(index) => {
@@ -17573,7 +17680,7 @@ function HtmlViewer({
                       )}
                       <iframe
                         key={usesPersistentSrcDocTransport
-                          ? `${srcDocPreviewFrameName}:persistent:${srcDocTransportResetKey}`
+                          ? `${srcDocPreviewFrameName}:persistent:${nativeSrcDocTransportUrl ?? "blob"}:${srcDocTransportResetKey}`
                           : srcDocTransportResetKey}
                         ref={setSrcDocPreviewIframe}
                         name={srcDocPreviewFrameName}
@@ -17639,7 +17746,10 @@ function HtmlViewer({
                             srcDocFrameDedupeResetForRef.current = frame;
                             activatedSrcDocTransportHtmlRef.current = null;
                           }
-                          if (useLazySrcDocTransport) setSrcDocShellReady(true);
+                          if (useLazySrcDocTransport) {
+                            srcDocShellReadyFrameRef.current = frame;
+                            setSrcDocShellReady(true);
+                          }
                           const activatedTransport = activateLoadedSrcDocTransport(frame);
                           if (frame && activatedTransport) {
                             // The shell is about to replace its document. Any
@@ -17980,9 +18090,10 @@ function HtmlViewer({
           aria-label={t('fileViewer.present')}
         >
           {effectiveDeck || !useUrlLoadPreview ? (
-            <iframe
+            <PreviewDocumentFrame
               title="present"
               sandbox="allow-scripts allow-downloads"
+              documentUrl={nativeDocumentBase?.documentUrl}
               data-od-render-mode="srcdoc"
               srcDoc={effectiveDeck ? presentationSrcDoc : srcDoc}
             />

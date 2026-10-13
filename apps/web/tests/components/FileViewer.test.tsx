@@ -1930,8 +1930,8 @@ describe('FileViewer SVG artifacts', () => {
           workspaceActive={workspaceActive}
         />
       );
-      const firstSource = '<!doctype html><html><head><link rel="stylesheet" href="app.css"></head><body><main>Blob preview v1</main><img src="art.png"><script src="app.jsx"></script><script>location.reload()</script></body></html>';
-      const secondSource = '<!doctype html><html><body><main>Blob preview v2</main><script>location.reload()</script></body></html>';
+      const firstSource = '<!doctype html><html><head><link rel="stylesheet" href="app.css"></head><body><main>Blob preview v1</main><img src="art.png"><script>localStorage.setItem("preview", "1")</script></body></html>';
+      const secondSource = '<!doctype html><html><body><main>Blob preview v2</main><script>localStorage.setItem("preview", "2")</script></body></html>';
       const { rerender } = render(renderViewer(firstSource));
 
       const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
@@ -1951,7 +1951,7 @@ describe('FileViewer SVG artifacts', () => {
       expect(activations()[0]?.html).toContain(
         '<base href="http://localhost:3000/api/projects/blob-preview-project/raw/pages/" data-od-project-preview-base>',
       );
-      expect(activations()[0]?.html).toContain('src="app.jsx"');
+      expect(activations()[0]?.html).toContain('localStorage.setItem');
       expect(activations()[0]?.html).toContain('data-od-edit-bridge');
       expect(activations()[0]?.html).toContain('data-od-srcdoc-transport-activation');
 
@@ -2082,7 +2082,7 @@ describe('FileViewer SVG artifacts', () => {
             mime: 'text/html',
             kind: 'html',
           })}
-          liveHtml={'<!doctype html><html><body><main>Project preview</main><script>location.reload()</script></body></html>'}
+          liveHtml={'<!doctype html><html><body><main>Project preview</main><script>localStorage.setItem("preview", "1")</script></body></html>'}
           workspaceActive
         />
       );

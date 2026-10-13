@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import { DECK_STRUCTURED_SLIDE_SELECTOR } from '@open-design/contracts/runtime/deck-stage-fallback';
 import { buildSrcdoc } from '../../src/runtime/srcdoc';
+import { buildPreviewBaseHrefBridge } from '@open-design/contracts/runtime/preview-observability';
 
 const deckHtml = `<!doctype html>
 <html>
@@ -30,6 +31,39 @@ const brokenDeckStageHtml = `<!doctype html>
 </html>`;
 
 describe('buildSrcdoc', () => {
+  it.each(['', 'index.html'])('keeps a native entry %s base fragment-free for scripts and descendant nodes (OPEND-3782)', (entry) => {
+    const href = '/api/projects/project-1/preview/scope-1/pages/';
+    const dom = new JSDOM(`<html><head>${buildPreviewBaseHrefBridge({ href, expiresAt: 123, documentUrl: href + entry })}</head><body><img></body></html>`, {
+      url: `http://open-design.local${href}${entry}?theme=dark#/home`, runScripts: 'dangerously',
+    });
+    expect(dom.window.document.querySelector('base')).toBeNull();
+    expect(dom.window.document.baseURI + 'logo.svg').toBe(`http://open-design.local${href}logo.svg`);
+    expect(dom.window.document.body.baseURI).toBe(`http://open-design.local${href}`);
+    dom.window.location.hash = '#/details';
+    expect(dom.window.document.baseURI).toBe(`http://open-design.local${href}`);
+    dom.window.close();
+  });
+
+  it('keeps legacy baseURI concatenation working when the scope is replaced (OPEND-3782)', () => {
+    const doc = buildSrcdoc(
+      '<!doctype html><html><head></head><body><main>Preview</main></body></html>',
+      { baseHref: 'od://app/api/projects/project-1/preview/scope-1/pages/' },
+    );
+    const dom = new JSDOM(doc, { url: 'http://open-design.local/', runScripts: 'dangerously', pretendToBeVisual: true });
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
+      source: dom.window.parent,
+      data: {
+        type: 'od:preview-base-update',
+        href: 'od://app/api/projects/project-1/preview/scope-2/pages/',
+      },
+    }));
+    expect(dom.window.document.baseURI + 'logo.svg')
+      .toBe('od://app/api/projects/project-1/preview/scope-2/pages/logo.svg');
+    expect(new URL('./asset.svg', dom.window.document.baseURI).href)
+      .toBe('od://app/api/projects/project-1/preview/scope-2/pages/asset.svg');
+    dom.window.close();
+  });
+
   it('preserves an artifact-authored base instead of overriding its navigation semantics', () => {
     const authored = '<base href="https://cdn.example/assets/">';
     const doc = buildSrcdoc(
