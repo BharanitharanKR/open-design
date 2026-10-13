@@ -3483,6 +3483,8 @@ export const zhTW: Dict = {
     "fileViewer.copyFixForAgent": "複製給 Agent",
     "fileViewer.copyFixForAgentFailed": "複製失敗。請手動選取下方指令並複製。",
   "fileViewer.shareUpdateHint": "檔案有新變更，訪客看到的仍是上一版。",
+  "fileViewer.shareFreshnessChecking": "正在檢查新變更…",
+  "fileViewer.shareFreshnessFailed": "暫時無法檢查新變更。請重試。",
   "fileViewer.shareUpdateLink": "更新連結",
   "fileViewer.signInToUpdate": "登入後更新",
   "fileViewer.signInToShare": "登入後分享",

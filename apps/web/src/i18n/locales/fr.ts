@@ -3302,6 +3302,8 @@ export const fr: Dict = {
   'fileViewer.copyFixForAgent': "Copier le correctif pour l’agent",
   'fileViewer.copyFixForAgentFailed': "Copie impossible. Sélectionnez l’instruction ci-dessous et copiez-la manuellement.",
   "fileViewer.shareUpdateHint": "Le fichier contient de nouvelles modifications. Les visiteurs voient encore la version précédente.",
+  "fileViewer.shareFreshnessChecking": "Recherche de nouvelles modifications…",
+  "fileViewer.shareFreshnessFailed": "Impossible de vérifier les nouvelles modifications. Réessayez.",
   "fileViewer.shareUpdateLink": "Mettre à jour le lien",
   "fileViewer.signInToUpdate": "Se connecter pour mettre à jour",
   "fileViewer.signInToShare": "Se connecter pour partager",
