@@ -404,7 +404,7 @@ Re-import library ผ่าน [`scripts/sync-design-systems.ts`](../../scripts/
 
 | Category | Count | Contents |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Complete design scenarios — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Complete design scenarios — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | One-shot image prompts — editorial, cinematic, product, portrait |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo motion templates |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | Brand `DESIGN.md` ที่ wrap เป็น plugins |
@@ -416,6 +416,7 @@ Re-import library ผ่าน [`scripts/sync-design-systems.ts`](../../scripts/
 ### Plugin ทำอะไรได้บ้าง
 
 - 🤖 **รันใน coding agent ใดก็ได้** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… ผ่าน skill protocol เดียวกับที่ agent รู้จักอยู่แล้ว.
+- 🔁 **Migrate workflow จาก Figma / Pencil** → source แบบ React, Next.js หรือ Vue. ดู [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Refresh codebase เดิมให้ตรง brand spec** — ชี้ plugin ไปที่ `git` repo + `DESIGN.md` แล้วได้ PR. ดู [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Persist custom workflows** — reusable templates ของทีมคุณอยู่ข้าง ๆ ของที่ ship มากับระบบ.
 
@@ -452,7 +453,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Field หลักของ `open-design.json`: `specVersion` (ปัจจุบัน `1.0.0`), `name` (stable ID), `version` (semver), optional `compat.agentSkills[].path` (ชี้ไป `./SKILL.md` เมื่อ entry expose Agent Skill), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `code-migration` / `tune-collab`), `od.mode` (output surface เช่น `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**ประกาศเท่าที่จำเป็นขั้นต่ำ** — restricted install ให้แค่ `prompt:inject` โดย default), `od.inputs[]` (parameter ตอน apply).
+Field หลักของ `open-design.json`: `specVersion` (ปัจจุบัน `1.0.0`), `name` (stable ID), `version` (semver), optional `compat.agentSkills[].path` (ชี้ไป `./SKILL.md` เมื่อ entry expose Agent Skill), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode` (output surface เช่น `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**ประกาศเท่าที่จำเป็นขั้นต่ำ** — restricted install ให้แค่ `prompt:inject` โดย default), `od.inputs[]` (parameter ตอน apply).
 
 Scaffold + validate ในเครื่อง:
 
@@ -491,6 +492,7 @@ Plugin registry endpoint: `GET /api/plugins`. ภาพรวม directory → [
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -525,6 +527,7 @@ Architecture เต็ม → [`docs/architecture.md`](../../docs/architecture.m
 - [x] 100+ functional skills · separate rendering-template catalog · 151 design-system packages · 5 visual directions · 5 device frames
 - [x] SQLite-backed projects · conversations · messages · tabs · templates
 - [x] Multi-provider BYOK proxy (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + SSRF guard
+- [x] Claude Design ZIP import (`/api/import/claude-design`)
 - [x] Sidecar protocol + Electron desktop + IPC automation
 - [x] Artifact lint API + 5-dim self-critique pre-emit gate
 - [x] **0.8.0** — plugin marketplace infrastructure (official plugins 261 ตัว, manifest spec, per-agent install scripts)
@@ -534,6 +537,7 @@ Architecture เต็ม → [`docs/architecture.md`](../../docs/architecture.m
 - [ ] AI-emitted tweaks panel UX — ยังไม่ implement
 - [ ] `npx od init` เพื่อ scaffold project พร้อม `DESIGN.md`
 - [ ] Plugin SDK + `od plugin {add,list,remove,test,publish}` CLI
+- [ ] Figma / Pencil → React / Next / Vue migration plugins (alpha)
 - [ ] Refresh-existing-codebase plugin (ชี้ไปที่ git repo + `DESIGN.md`)
 
 Phased delivery → [`docs/roadmap.md`](../../docs/roadmap.md).

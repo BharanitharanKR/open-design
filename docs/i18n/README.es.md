@@ -408,7 +408,7 @@ Vuelve a importar la biblioteca con [`scripts/sync-design-systems.ts`](../../scr
 
 | Categoría | Cantidad | Contenido |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Escenarios de diseño completos — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Escenarios de diseño completos — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | Prompts de imagen de una sola toma — editorial, cinematográfico, producto, retrato |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | Plantillas de movimiento HyperFrames / Seedance / Veo |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | `DESIGN.md` de marca empaquetados como plugins |
@@ -420,6 +420,7 @@ También [`plugins/community/`](../../plugins/community/) para plugins de la com
 ### Qué pueden hacer los plugins
 
 - 🤖 **Ejecutarse en cualquier agente de codificación** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… a través del mismo protocolo de skills que el agente ya conoce.
+- 🔁 **Migrar flujos de trabajo de Figma / Pencil** → código fuente React, Next.js o Vue. Consulta [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Renovar una base de código existente a una especificación de marca** — apunta un plugin a un repo `git` + `DESIGN.md`, obtén un PR. Consulta [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Persistir flujos de trabajo personalizados** — las plantillas reutilizables de tu equipo conviven junto a las incluidas.
 
@@ -495,6 +496,7 @@ Endpoint del registro de plugins: `GET /api/plugins`. Resumen del directorio →
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -528,6 +530,7 @@ Arquitectura completa → [`docs/architecture.md`](../../docs/architecture.md). 
 - [x] Más de 100 skills funcionales · catálogo separado de plantillas · 151 paquetes de sistemas de diseño · 5 direcciones visuales · 5 marcos de dispositivo
 - [x] Proyectos · conversaciones · mensajes · pestañas · plantillas respaldados por SQLite
 - [x] Proxy BYOK multiproveedor (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + protección SSRF
+- [x] Importación de ZIP de Claude Design (`/api/import/claude-design`)
 - [x] Protocolo de sidecar + escritorio Electron + automatización IPC
 - [x] API de lint de artefactos + barrera de autocrítica de 5 dimensiones previa a la emisión
 - [x] **0.8.0** — infraestructura del marketplace de plugins (261 plugins oficiales, especificación de manifiesto, scripts de instalación por agente)
@@ -537,6 +540,7 @@ Arquitectura completa → [`docs/architecture.md`](../../docs/architecture.md). 
 - [ ] UX del panel de ajustes emitido por IA — aún no implementado
 - [ ] `npx od init` para generar un proyecto con `DESIGN.md`
 - [ ] SDK de plugins + CLI `od plugin {add,list,remove,test,publish}`
+- [ ] Plugins de migración Figma / Pencil → React / Next / Vue (alfa)
 - [ ] Plugin de renovación de base de código existente (apuntar a un repo git + `DESIGN.md`)
 
 Entrega por fases → [`docs/roadmap.md`](../../docs/roadmap.md).

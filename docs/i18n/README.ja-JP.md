@@ -408,7 +408,7 @@ od skills list --json
 
 | カテゴリー | 数 | 内容 |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 完全なデザインシナリオ — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 完全なデザインシナリオ — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | ワンショットの画像プロンプト — エディトリアル、シネマティック、プロダクト、ポートレート |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo のモーションテンプレート |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | プラグインとしてラップされたブランド `DESIGN.md` |
@@ -420,6 +420,7 @@ od skills list --json
 ### プラグインにできること
 
 - 🤖 **任意のコーディングエージェントで実行** — [Claude Code](../../docs/agent-adapters.md)、Codex、Cursor、Copilot、[OpenClaw](https://github.com/openclaw/openclaw)、[Antigravity](https://antigravity.google)、Hermes、Kimi… エージェントがすでに知っている同じスキルプロトコルを通じて。
+- 🔁 **Figma / Pencil のワークフローを移行** → React、Next.js、または Vue のソースへ。[`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/) を参照。
 - 🛠️ **既存のコードベースをブランド仕様にリフレッシュ** — プラグインを `git` リポジトリ + `DESIGN.md` に向ければ、PR が得られます。[`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/) を参照。
 - 💾 **カスタムワークフローを永続化** — チームの再利用可能なテンプレートが、同梱されたものの隣に並びます。
 
@@ -495,6 +496,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -528,6 +530,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] 100 種類以上の機能スキル · 独立テンプレートカタログ · 151 のデザインシステムパッケージ · 5 つのビジュアル方向性 · 5 つのデバイスフレーム
 - [x] SQLite を裏に持つプロジェクト · 会話 · メッセージ · タブ · テンプレート
 - [x] マルチプロバイダー BYOK プロキシ（`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`）+ SSRF ガード
+- [x] Claude Design ZIP インポート（`/api/import/claude-design`）
 - [x] サイドカープロトコル + Electron デスクトップ + IPC 自動化
 - [x] アーティファクト lint API + 5 次元の自己批評による発行前ゲート
 - [x] **0.8.0** — プラグインマーケットプレイスのインフラ（261 の公式プラグイン、マニフェスト仕様、エージェントごとのインストールスクリプト）
@@ -537,6 +540,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] AI が発行する tweaks パネルの UX — 未実装
 - [ ] `npx od init` で `DESIGN.md` を備えたプロジェクトをスキャフォールド
 - [ ] プラグイン SDK + `od plugin {add,list,remove,test,publish}` CLI
+- [ ] Figma / Pencil → React / Next / Vue の移行プラグイン（アルファ）
 - [ ] 既存コードベースのリフレッシュプラグイン（git リポジトリ + `DESIGN.md` に向ける）
 
 段階的なデリバリー → [`docs/roadmap.md`](../../docs/roadmap.md)。

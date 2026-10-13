@@ -410,7 +410,7 @@ od skills list --json
 
 | الفئة | العدد | المحتويات |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | سيناريوهات تصميم كاملة — [`od-default`](../../plugins/_official/scenarios/od-default/)، [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/)، [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)، [`od-react-export`](../../plugins/_official/scenarios/od-react-export/)، [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/)، [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/)، [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/)، [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/)، [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/)، [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | سيناريوهات تصميم كاملة — [`od-default`](../../plugins/_official/scenarios/od-default/)، [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/)، [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/)، [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)، [`od-react-export`](../../plugins/_official/scenarios/od-react-export/)، [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/)، [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/)، [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/)، [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/)، [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/)، [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | موجّهات صور بلقطة واحدة — تحريرية، سينمائية، منتجات، بورتريه |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | قوالب حركة HyperFrames / Seedance / Veo |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | ملفات `DESIGN.md` للعلامات التجارية مغلَّفة كإضافات |
@@ -422,6 +422,7 @@ od skills list --json
 ### ما يمكن للإضافات فعله
 
 - 🤖 **التشغيل في أي وكيل برمجة** — [Claude Code](../../docs/agent-adapters.md) وCodex وCursor وCopilot و[OpenClaw](https://github.com/openclaw/openclaw) و[Antigravity](https://antigravity.google) وHermes وKimi… عبر بروتوكول المهارات نفسه الذي يعرفه الوكيل أصلًا.
+- 🔁 **نقل سير عمل Figma / Pencil** ← شفرة React أو Next.js أو Vue. راجع [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **تحديث قاعدة شفرة موجودة وفق مواصفة علامة تجارية** — وجّه إضافة نحو مستودع `git` + ملف `DESIGN.md`، واحصل على PR. راجع [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **الاحتفاظ بسير عمل مخصّص** — تجلس قوالب فريقك القابلة لإعادة الاستخدام بجوار القوالب المشحونة.
 
@@ -497,6 +498,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -530,6 +532,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] أكثر من 100 مهارة وظيفية · كتالوج قوالب منفصل · 151 حزمة نظام تصميم · 5 اتجاهات بصرية · 5 إطارات أجهزة
 - [x] مشاريع مدعومة بـ SQLite · محادثات · رسائل · علامات تبويب · قوالب
 - [x] وكيل BYOK متعدد المزوّدين (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + حماية SSRF
+- [x] استيراد ZIP من Claude Design (`/api/import/claude-design`)
 - [x] بروتوكول جانبي + سطح مكتب Electron + أتمتة IPC
 - [x] واجهة API لفحص المخرجات + بوابة نقد ذاتي بخمسة أبعاد قبل الإصدار
 - [x] **0.8.0** — بنية تحتية لسوق الإضافات (261 إضافة رسمية، مواصفة البيان، سكربتات تثبيت لكل وكيل)
@@ -539,6 +542,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] تجربة استخدام لوحة تعديلات يصدرها الذكاء الاصطناعي — لم تُنفَّذ بعد
 - [ ] `npx od init` لتهيئة مشروع بملف `DESIGN.md`
 - [ ] SDK للإضافات + واجهة `od plugin {add,list,remove,test,publish}` CLI
+- [ ] إضافات نقل Figma / Pencil ← React / Next / Vue (ألفا)
 - [ ] إضافة تحديث قاعدة شفرة موجودة (وجّهها نحو مستودع git + ملف `DESIGN.md`)
 
 التسليم المرحلي ← [`docs/roadmap.md`](../../docs/roadmap.md).

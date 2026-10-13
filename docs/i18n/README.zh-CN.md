@@ -412,7 +412,7 @@ od skills list --json
 
 | 分类 | 数量 | 内容 |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 完整设计方案——[`od-default`](../../plugins/_official/scenarios/od-default/)、[`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/)、[`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)、[`od-react-export`](../../plugins/_official/scenarios/od-react-export/)、[`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/)、[`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/)、[`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/)、[`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/)、[`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/)、[`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 完整设计方案——[`od-default`](../../plugins/_official/scenarios/od-default/)、[`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/)、[`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/)、[`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)、[`od-react-export`](../../plugins/_official/scenarios/od-react-export/)、[`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/)、[`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/)、[`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/)、[`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/)、[`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/)、[`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | 一次性图片提示词——编辑、电影、产品、人像 |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo 动态模板 |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | 品牌 `DESIGN.md` 包装为插件 |
@@ -424,6 +424,7 @@ od skills list --json
 ### 插件能做什么
 
 - 🤖 **在任何编码 Agent 中运行**——[Claude Code](../../docs/agent-adapters.md)、Codex、Cursor、Copilot、[OpenClaw](https://github.com/openclaw/openclaw)、[Antigravity](https://antigravity.google)、Hermes、Kimi……通过 Agent 已知的同一套技能协议。
+- 🔁 **迁移 Figma / Pencil 工作流** → React、Next.js 或 Vue 源码。参见 [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/)。
 - 🛠️ **将现有代码库刷新到品牌规范**——将插件指向 `git` 仓库 + `DESIGN.md`，获得一个 PR。参见 [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)。
 - 💾 **持久化自定义工作流**——你团队的可复用模板与发布的模板并列。
 
@@ -460,7 +461,7 @@ my-plugin/
 └── examples/           ← 可选：具体用例
 ```
 
-`open-design.json` 的核心字段：`specVersion`（当前 `1.0.0`）、`name`（稳定 ID）、`version`（semver）、可选的 `compat.agentSkills[].path`（条目公开 Agent Skill 时指向 `./SKILL.md`）、`od.kind`（`skill` / `scenario` / `atom` / `bundle`）、`od.taskKind`（`new-generation` / `code-migration` / `tune-collab`）、`od.mode`（输出表面，如 `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`）、`od.capabilities[]`（**按最小权限声明**，默认受限安装只给 `prompt:inject`）、`od.inputs[]`（应用时的参数）。
+`open-design.json` 的核心字段：`specVersion`（当前 `1.0.0`）、`name`（稳定 ID）、`version`（semver）、可选的 `compat.agentSkills[].path`（条目公开 Agent Skill 时指向 `./SKILL.md`）、`od.kind`（`skill` / `scenario` / `atom` / `bundle`）、`od.taskKind`（`new-generation` / `figma-migration` / `code-migration` / `tune-collab`）、`od.mode`（输出表面，如 `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`）、`od.capabilities[]`（**按最小权限声明**，默认受限安装只给 `prompt:inject`）、`od.inputs[]`（应用时的参数）。
 
 脚手架 + 本地验证：
 
@@ -499,6 +500,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio 服务器                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -533,6 +535,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] 100+ 功能技能 · 独立渲染模板目录 · 151 个设计系统包 · 5 视觉方向 · 5 设备外框
 - [x] SQLite 支撑的项目 · 会话 · 消息 · 标签页 · 模板
 - [x] 多供应商 BYOK 代理（`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`）+ SSRF 防护
+- [x] Claude Design ZIP 导入（`/api/import/claude-design`）
 - [x] Sidecar 协议 + Electron 桌面 + IPC 自动化
 - [x] 工件 Lint API + 五维自评预输出门控
 - [x] **0.8.0**——插件市场基础设施（261 个官方插件、manifest 规范、逐 Agent 安装脚本）
@@ -546,6 +549,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] AI 输出的调参面板 UX——尚未实现
 - [ ] `npx od init` 脚手架创建带 `DESIGN.md` 的项目
 - [ ] 插件 SDK + `od plugin {add,list,remove,test,publish}` CLI
+- [ ] Figma / Pencil → React / Next / Vue 迁移插件（alpha）
 - [ ] 刷新现有代码库插件（指向 git 仓库 + `DESIGN.md`）
 
 分阶段交付 → [`docs/roadmap.md`](../../docs/roadmap.md)。

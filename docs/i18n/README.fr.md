@@ -428,7 +428,7 @@ Réimportez la bibliothèque via [`scripts/sync-design-systems.ts`](../../script
 
 | Catégorie | Nombre | Contenu |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Scénarios de design complets — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Scénarios de design complets — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | Prompts d'image en un coup — éditorial, cinématographique, produit, portrait |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | Modèles de mouvement HyperFrames / Seedance / Veo |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | `DESIGN.md` de marque emballés en plugins |
@@ -440,6 +440,7 @@ Voir aussi [`plugins/community/`](../../plugins/community/) pour les plugins com
 ### Ce que les plugins peuvent faire
 
 - 🤖 **S'exécuter dans n'importe quel agent de code** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… via le même protocole de skill que l'agent connaît déjà.
+- 🔁 **Migrer les workflows Figma / Pencil** → source React, Next.js ou Vue. Voir [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Rafraîchir une base de code existante selon des spécifications de marque** — pointez un plugin vers un dépôt `git` + un `DESIGN.md`, obtenez une PR. Voir [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Persister des workflows personnalisés** — les modèles réutilisables de votre équipe côtoient ceux livrés d'origine.
 
@@ -476,7 +477,7 @@ my-plugin/
 └── examples/           ← optional: concrete use cases
 ```
 
-Champs principaux de `open-design.json` : `specVersion` (actuellement `1.0.0`), `name` (identifiant stable), `version` (version sémantique), `compat.agentSkills[].path` (optionnel, pointe vers `./SKILL.md` lorsqu'un Agent Skill est exposé), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `code-migration` / `tune-collab`), `od.mode` (surface de sortie, par exemple `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**déclarez le minimum** : une installation restreinte n'accorde que `prompt:inject` par défaut) et `od.inputs[]` (paramètres fournis lors de l'application).
+Champs principaux de `open-design.json` : `specVersion` (actuellement `1.0.0`), `name` (identifiant stable), `version` (version sémantique), `compat.agentSkills[].path` (optionnel, pointe vers `./SKILL.md` lorsqu'un Agent Skill est exposé), `od.kind` (`skill` / `scenario` / `atom` / `bundle`), `od.taskKind` (`new-generation` / `figma-migration` / `code-migration` / `tune-collab`), `od.mode` (surface de sortie, par exemple `prototype` / `deck` / `live-artifact` / `image` / `video` / `hyperframes` / `audio` / `design-system` / `scenario`), `od.capabilities[]` (**déclarez le minimum** : une installation restreinte n'accorde que `prompt:inject` par défaut) et `od.inputs[]` (paramètres fournis lors de l'application).
 
 Échafaudez + validez localement :
 
@@ -515,6 +516,7 @@ Point de terminaison du registre des plugins : `GET /api/plugins`. Vue d'ensembl
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -549,6 +551,7 @@ Architecture complète → [`docs/architecture.md`](../../docs/architecture.md).
 - [x] Plus de 100 skills fonctionnels · catalogue séparé de modèles · 151 packages de systèmes · 5 directions visuelles · 5 cadres d'appareils
 - [x] Projets · conversations · messages · onglets · modèles adossés à SQLite
 - [x] Proxy BYOK multi-fournisseurs (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) avec des préréglages compatibles OpenAI, dont Atlas Cloud, et une protection SSRF
+- [x] Import de ZIP Claude Design (`/api/import/claude-design`)
 - [x] Protocole sidecar + bureau Electron + automatisation IPC
 - [x] API de lint d'artefacts + portail d'auto-critique en 5 dimensions avant émission
 - [x] **0.8.0** — infrastructure de marketplace de plugins (261 plugins officiels, spec de manifeste, scripts d'installation par agent)
@@ -562,6 +565,7 @@ Architecture complète → [`docs/architecture.md`](../../docs/architecture.md).
 - [ ] UX du panneau de réglages émis par l'IA — pas encore implémenté
 - [ ] `npx od init` pour échafauder un projet avec un `DESIGN.md`
 - [ ] SDK de plugins + CLI `od plugin {add,list,remove,test,publish}`
+- [ ] Plugins de migration Figma / Pencil → React / Next / Vue (alpha)
 - [ ] Plugin de rafraîchissement de base de code existante (pointer vers un dépôt git + un `DESIGN.md`)
 
 Historique de la livraison par phases (document archivé) → [`docs/roadmap.md`](../../docs/roadmap.md).

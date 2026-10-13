@@ -408,7 +408,7 @@ Kütüphaneyi [`scripts/sync-design-systems.ts`](../../scripts/sync-design-syste
 
 | Kategori | Sayı | İçerik |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Eksiksiz tasarım senaryoları — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Eksiksiz tasarım senaryoları — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | Tek seferlik görsel komutları — editöryel, sinematik, ürün, portre |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo hareket şablonları |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | Eklenti olarak sarmalanmış marka `DESIGN.md` dosyaları |
@@ -420,6 +420,7 @@ Ayrıca topluluk eklentileri için [`plugins/community/`](../../plugins/communit
 ### Eklentiler ne yapabilir
 
 - 🤖 **Herhangi bir kodlama ajanında çalışın** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… ajanın zaten bildiği aynı beceri protokolü aracılığıyla.
+- 🔁 **Figma / Pencil iş akışlarını taşıyın** → React, Next.js veya Vue kaynağı. Bkz. [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Mevcut bir kod tabanını bir marka spesifikasyonuna yenileyin** — bir eklentiyi bir `git` deposu + `DESIGN.md` dosyasına yönlendirin, bir PR alın. Bkz. [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Özel iş akışlarını kalıcı kılın** — ekibinizin yeniden kullanılabilir şablonları, sunulanların yanında durur.
 
@@ -495,6 +496,7 @@ Eklenti kayıt uç noktası: `GET /api/plugins`. Dizin genel bakışı → [`plu
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -528,6 +530,7 @@ Tam mimari → [`docs/architecture.md`](../../docs/architecture.md). Beceri prot
 - [x] 100+ işlevsel beceri · ayrı render şablonu kataloğu · 151 tasarım sistemi paketi · 5 görsel yön · 5 cihaz çerçevesi
 - [x] SQLite destekli projeler · konuşmalar · mesajlar · sekmeler · şablonlar
 - [x] Çok sağlayıcılı BYOK proxy (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + SSRF koruması
+- [x] Claude Design ZIP içe aktarma (`/api/import/claude-design`)
 - [x] Sidecar protokolü + Electron masaüstü + IPC otomasyonu
 - [x] Artifact lint API'si + 5 boyutlu öz-eleştiri ön-yayın kapısı
 - [x] **0.8.0** — eklenti pazar yeri altyapısı (261 resmî eklenti, manifest spesifikasyonu, ajan başına kurulum betikleri)
@@ -537,6 +540,7 @@ Tam mimari → [`docs/architecture.md`](../../docs/architecture.md). Beceri prot
 - [ ] AI tarafından yayılan ayar paneli UX'i — henüz uygulanmadı
 - [ ] `DESIGN.md` ile bir projeyi iskeletlemek için `npx od init`
 - [ ] Plugin SDK + `od plugin {add,list,remove,test,publish}` CLI
+- [ ] Figma / Pencil → React / Next / Vue taşıma eklentileri (alpha)
 - [ ] Mevcut kod tabanını yenileme eklentisi (bir git deposu + `DESIGN.md` dosyasına yönlendirin)
 
 Aşamalı teslimat → [`docs/roadmap.md`](../../docs/roadmap.md).

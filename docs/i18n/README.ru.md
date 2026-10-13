@@ -419,7 +419,7 @@ od skills list --json
 
 | Категория | Кол-во | Содержимое |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Полные дизайн-сценарии — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | Полные дизайн-сценарии — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | Одношаговые промпты для изображений — редакционные, кинематографичные, продуктовые, портретные |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | Моушн-шаблоны HyperFrames / Seedance / Veo |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | Брендовые `DESIGN.md`, обёрнутые в плагины |
@@ -431,6 +431,7 @@ od skills list --json
 ### Что умеют плагины
 
 - 🤖 **Работают в любом кодинг-агенте** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… через тот же протокол навыков, который агент уже знает.
+- 🔁 **Мигрируют рабочие процессы Figma / Pencil** → исходники React, Next.js или Vue. См. [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/).
 - 🛠️ **Обновляют существующую кодовую базу под спецификацию бренда** — направьте плагин на `git`-репозиторий + `DESIGN.md`, получите PR. См. [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/).
 - 💾 **Сохраняют кастомные рабочие процессы** — переиспользуемые шаблоны вашей команды лежат рядом с поставляемыми.
 
@@ -506,6 +507,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -539,6 +541,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] 100+ функциональных навыков · отдельный каталог шаблонов · 151 пакет дизайн-систем · 5 направлений · 5 рамок
 - [x] Проекты на SQLite · диалоги · сообщения · вкладки · шаблоны
 - [x] Мультипровайдерный BYOK-прокси (`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + защита от SSRF
+- [x] Импорт ZIP из Claude Design (`/api/import/claude-design`)
 - [x] Sidecar-протокол + десктоп на Electron + IPC-автоматизация
 - [x] API линтинга артефактов + пятимерный гейт самокритики перед выдачей
 - [x] **0.8.0** — инфраструктура маркетплейса плагинов (261 официальный плагин, спецификация манифеста, скрипты установки для каждого агента)
@@ -552,6 +555,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] UX панели настроек, выдаваемой ИИ — ещё не реализовано
 - [ ] `npx od init` для создания каркаса проекта с `DESIGN.md`
 - [ ] Plugin SDK + CLI `od plugin {add,list,remove,test,publish}`
+- [ ] Плагины миграции Figma / Pencil → React / Next / Vue (alpha)
 - [ ] Плагин обновления существующей кодовой базы (направить на git-репозиторий + `DESIGN.md`)
 
 Поэтапная поставка → [`docs/roadmap.md`](../../docs/roadmap.md).

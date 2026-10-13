@@ -408,7 +408,7 @@ od skills list --json
 
 | 카테고리 | 개수 | 내용 |
 |---|---|---|
-| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 완전한 디자인 시나리오 — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
+| [`scenarios/`](../../plugins/_official/scenarios/) | 13 | 완전한 디자인 시나리오 — [`od-default`](../../plugins/_official/scenarios/od-default/), [`od-design-refine`](../../plugins/_official/scenarios/od-design-refine/), [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/), [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/), [`od-react-export`](../../plugins/_official/scenarios/od-react-export/), [`od-nextjs-export`](../../plugins/_official/scenarios/od-nextjs-export/), [`od-vue-export`](../../plugins/_official/scenarios/od-vue-export/), [`od-media-generation`](../../plugins/_official/scenarios/od-media-generation/), [`od-new-generation`](../../plugins/_official/scenarios/od-new-generation/), [`od-tune-collab`](../../plugins/_official/scenarios/od-tune-collab/), [`od-plugin-authoring`](../../plugins/_official/scenarios/od-plugin-authoring/), [`od-share-to-community`](../../plugins/_official/scenarios/od-share-to-community/), [`od-web-effect-extractor`](../../plugins/_official/scenarios/od-web-effect-extractor/) |
 | [`image-templates/`](../../plugins/_official/image-templates/) | 45 | 원샷 이미지 프롬프트 — 에디토리얼, 시네마틱, 제품, 인물 |
 | [`video-templates/`](../../plugins/_official/video-templates/) | 63 | HyperFrames / Seedance / Veo 모션 템플릿 |
 | [`design-systems/`](../../plugins/_official/design-systems/) | 143 | 플러그인으로 감싼 브랜드 `DESIGN.md` |
@@ -420,6 +420,7 @@ od skills list --json
 ### 플러그인이 할 수 있는 일
 
 - 🤖 **어떤 코딩 에이전트에서든 실행** — [Claude Code](../../docs/agent-adapters.md), Codex, Cursor, Copilot, [OpenClaw](https://github.com/openclaw/openclaw), [Antigravity](https://antigravity.google), Hermes, Kimi… 에이전트가 이미 알고 있는 동일한 스킬 프로토콜을 통해.
+- 🔁 **Figma / Pencil 워크플로 마이그레이션** → React, Next.js, 또는 Vue 소스. [`od-figma-migration`](../../plugins/_official/scenarios/od-figma-migration/)을 참고하세요.
 - 🛠️ **기존 코드베이스를 브랜드 사양에 맞게 새롭게** — 플러그인을 `git` 저장소 + `DESIGN.md`에 겨누면 PR을 받습니다. [`od-code-migration`](../../plugins/_official/scenarios/od-code-migration/)을 참고하세요.
 - 💾 **커스텀 워크플로 영구 저장** — 팀의 재사용 가능한 템플릿이 기본 제공 템플릿 옆에 놓입니다.
 
@@ -495,6 +496,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
    │  /api/chat (SSE)   /api/proxy/* │
    │  /api/projects/:id/files/...    │
    │  /api/artifacts/{save,lint}     │
+   │  /api/import/claude-design      │
    │  MCP stdio server                │
    └─────────┬───────────────────────┘
              │ spawn(cli, [...], { cwd: managed project cwd })
@@ -528,6 +530,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [x] 100개 이상의 기능 스킬 · 별도 렌더링 템플릿 카탈로그 · 151개 디자인 시스템 패키지 · 5개의 비주얼 방향 · 5개의 디바이스 프레임
 - [x] SQLite 기반 프로젝트 · 대화 · 메시지 · 탭 · 템플릿
 - [x] 다중 프로바이더 BYOK 프록시(`/api/proxy/{anthropic,openai,azure,google,ollama,senseaudio}/stream`) + SSRF 가드
+- [x] Claude Design ZIP 가져오기(`/api/import/claude-design`)
 - [x] 사이드카 프로토콜 + Electron 데스크톱 + IPC 자동화
 - [x] 아티팩트 린트 API + 5차원 자가 비평 내보내기 전 게이트
 - [x] **0.8.0** — 플러그인 마켓플레이스 인프라(261개 공식 플러그인, 매니페스트 사양, 에이전트별 설치 스크립트)
@@ -537,6 +540,7 @@ pnpm guard && pnpm --filter @open-design/plugin-runtime typecheck
 - [ ] AI가 내보내는 tweaks 패널 UX — 아직 구현되지 않음
 - [ ] `DESIGN.md`로 프로젝트를 스캐폴드하는 `npx od init`
 - [ ] 플러그인 SDK + `od plugin {add,list,remove,test,publish}` CLI
+- [ ] Figma / Pencil → React / Next / Vue 마이그레이션 플러그인(알파)
 - [ ] 기존 코드베이스 새롭게 하기 플러그인(git 저장소 + `DESIGN.md`에 겨눔)
 
 단계별 제공 → [`docs/roadmap.md`](../../docs/roadmap.md).
