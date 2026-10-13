@@ -1180,7 +1180,7 @@ test('claude flags promptViaStdin and never embeds the prompt in argv', () => {
   assert.ok(args.includes('-p'), 'claude argv must include -p');
 });
 
-test('claude enables native Child behavior frames only for an observed OD Next Run', () => {
+test('claude enables native Child behavior frames when advertised without blocking older runtimes', () => {
   assert.equal(
     claude.buildArgs('', [], [], {}, {}).includes('--forward-subagent-text'),
     false,
@@ -1197,10 +1197,12 @@ test('claude enables native Child behavior frames only for an observed OD Next R
   } finally {
     agentCapabilities.delete('claude');
   }
-  assert.throws(
-    () => claude.buildArgs('', [], [], {}, { observeNativeChildBehavior: true }),
-    /advertised --forward-subagent-text support/,
-  );
+  const argsWithoutForwardText = claude.buildArgs('', [], [], {}, {
+    observeNativeChildBehavior: true,
+  });
+  assert.equal(argsWithoutForwardText.includes('--forward-subagent-text'), false);
+  assert.ok(argsWithoutForwardText.includes('--output-format'));
+  assert.ok(argsWithoutForwardText.includes('--permission-mode'));
 });
 
 // ---- Claude Code --add-dir capability (issue #430) -------------------------

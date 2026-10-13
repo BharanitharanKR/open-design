@@ -30,7 +30,6 @@ import {
   composeOdNextStrategyCorePromptV2,
   OD_NEXT_BUNDLE_ECHO_GUARD_V2,
   odNextStrategyRecipeIdentityV2,
-  renderOdNextRuntimeFactsV2,
   composeOdNextStrategyStableRequestContextV2,
   executionProfileFromStreamFormat,
   PLUGIN_SHARE_ACTION_PLUGIN_IDS,
@@ -9904,9 +9903,6 @@ export async function startServer({
     platformHintSignal,
     devicePlatformSignal = null,
     frozenSkillPackage,
-    odNextSyntheticCanary = false,
-    odNextAutomaticAdmission = false,
-    runtimeCapabilitySnapshot,
   }) => {
     const project =
       typeof projectId === 'string' && projectId
@@ -10573,23 +10569,13 @@ export async function startServer({
     }
 
     // Strategy identity, package/profile drift checks, atom loading, runtime
-    // capability facts, and local-only synthetic policy are owned by the OD
-    // Next prompt service. This composition root only supplies detected runtime
-    // versions and process configuration.
+    // profile selection are owned by the OD Next prompt service.
     const odNextStrategyRecipe = await resolveOdNextPromptRecipeForRun({
       db,
       bundledPluginsDir: BUNDLED_PLUGINS_DIR,
       appliedPluginSnapshotId,
-      agentId,
       streamFormat,
       atomPromptsEnabled: bundledAtomPromptsEnabled,
-      syntheticCanary: odNextSyntheticCanary,
-      automaticAdmission: odNextAutomaticAdmission,
-      runtimeCapabilitySnapshot,
-      getRuntimeVersions: () => ensureDetectedRuntimeVersions(
-        agentId,
-        agentCliEnvForAgent(appConfigForPrompt?.agentCliEnv, agentId),
-      ),
     });
 
     // Hoisted verbatim out of the composeSystemPrompt() call so the exact same
@@ -10777,7 +10763,6 @@ export async function startServer({
       assertOdNextSemanticRequestFactProducerCoverage('daemon_system_prompt', {
         strategy_task_skill: odNextStrategyRecipe.taskSkill,
         strategy_task_type: odNextStrategyRecipe.taskType,
-        strategy_runtime_capability_facts: odNextStrategyRecipe.planningFacts,
         project_and_design_context: {
           metadata,
           template,
@@ -10799,18 +10784,14 @@ export async function startServer({
       ? composeOdNextStrategyCorePromptV2(odNextStrategyRecipe)
       : composeSystemPrompt(systemPromptInputs);
     // OD Next sends a canonical XML tree, not this Markdown string. The tree's
-    // cache-stable head, its per-task identity, and the runtime-owned planning
-    // facts are three separate products of the same verified recipe, so they are
-    // composed here together and placed in different bundle slots downstream.
+    // cache-stable head and per-task identity are composed here together and
+    // placed in their existing bundle slots downstream.
     const odNextBundleHead = odNextStrategyRecipe
       ? composeOdNextStrategyBundleHeadV2(odNextStrategyRecipe)
       : null;
     const odNextRecipeIdentity = odNextStrategyRecipe
       ? odNextStrategyRecipeIdentityV2(odNextStrategyRecipe)
       : null;
-    const odNextRuntimeFacts = odNextStrategyRecipe
-      ? renderOdNextRuntimeFactsV2(odNextStrategyRecipe, odNextStableRequestContext ?? {})
-      : '';
     // The chat handler also needs to know where the active skill lives
     // on disk so it can stage a per-project copy of its side files
     // before spawning the agent. Returning that here avoids a second
@@ -10821,7 +10802,7 @@ export async function startServer({
       prompt,
       odNextBundleHead,
       odNextRecipeIdentity,
-      odNextRuntimeFacts,
+      odNextRuntimeFacts: '',
       odNextStableContextPrompt: odNextStableRequestContext
         ? composeOdNextStrategyStableRequestContextV2(
             odNextStableRequestContext,
