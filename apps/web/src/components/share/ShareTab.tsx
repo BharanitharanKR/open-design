@@ -209,6 +209,9 @@ export function ShareTab({
   const planState = sharePlanState ?? localPlan;
   const sharePlan = planState.plan;
   const publishing = publishingPublicFile || planState.waiting;
+  const publishRetry = publishFailureKey !== null
+    && publishFailureKey !== 'fileViewer.publishFileRequiresWorkspace'
+    && publishFailureKey !== 'fileViewer.publishFileEntryIndexConflict';
   // S1: selected link access is only an unpublished UI intent. It never
   // transfers bytes or creates a URL until Generate and copy is clicked.
   const [prepublishLinkAccess, setPrepublishLinkAccess] = useState(true);
@@ -423,14 +426,14 @@ export function ShareTab({
                         >
                           {publishing ? (
                             <Icon name="share-spinner" size={13} strokeWidth={2} className="icon-spin" />
-                          ) : publishFailureKey === 'fileViewer.publishFileFailed' ? (
+                          ) : publishRetry ? (
                             <Icon name="share-refresh-arrows" size={13} strokeWidth={1.8} />
                           ) : (
                             <Icon name="share-upload-arrow" size={13} strokeWidth={1.8} />
                           )}
                           <span>{publishing
                             ? publicationStatus === 'stopped' ? t('fileViewer.shareReopening') : `${t('fileViewer.uploadingFile')}${publishProgress !== null ? ` ${Math.round(publishProgress * 100)}%` : ''}`
-                            : publishFailureKey === 'fileViewer.publishFileFailed' || publishFailureKey === 'fileViewer.publishFileTooLarge'
+                            : publishRetry
                               ? t('preview.retry')
                               : t('fileViewer.generateAndCopyLink')}</span>
                         </ShareButton>

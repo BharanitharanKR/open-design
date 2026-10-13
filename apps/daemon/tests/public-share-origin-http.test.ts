@@ -72,7 +72,7 @@ for (const scenario of cases) it.each([false, true])(`${scenario.name}: HTTP pub
     // remote alias. Never record or advertise that as an atomic publication.
     if (pending) {
       expect(response.status).toBe(502);
-      expect(body).toEqual({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: 'snapshot', reason: 'unknown' } });
+      expect(body).toEqual({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: 'snapshot', reason: 'invalid_receipt' } });
       expect(store.getRevision(scope)).toBeNull();
       expect(createShareBindingOutbox(db).list()).toEqual([]);
       return;

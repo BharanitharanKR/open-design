@@ -18,7 +18,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { SidecarFactory } from '@open-design/sidecar';
 import { APP_KEYS, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, mediaFailureNextStep } from '@open-design/contracts';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, mediaFailureNextStep, parseApiFailureDetail } from '@open-design/contracts';
 import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
 import { exportRoutePath } from './export-cli-routing.js';
@@ -7247,9 +7247,10 @@ async function projectShareHttpFailure(resp) {
     return exitWithStructuredError({ code: 'too_large', message: 'Share exceeds size limit.', data });
   }
   const nested = typeof body?.error === 'object' && body.error !== null;
+  const failure = parseApiFailureDetail(body?.failure);
   const error = nested
     ? body.error
-    : typeof body?.error === 'string' && typeof body.message === 'string'
+    : typeof body?.error === 'string'
       ? { ...body, code: body.error }
       : null;
   // Flat human explanations must not become machine codes. Existing share DTO
@@ -7258,8 +7259,8 @@ async function projectShareHttpFailure(resp) {
   if (typeof code === 'string' && code && (nested || code === 'too_large' || /^[A-Z][A-Z0-9_]*$/.test(code))) {
     return exitWithStructuredError({
       code: normalizeRecoverableErrorCode(code, error.message),
-      message: typeof error.message === 'string' ? error.message : `HTTP ${resp.status}`,
-      data: structuredErrorData(error),
+      message: typeof error.message === 'string' ? error.message : failure ? 'Share operation failed.' : `HTTP ${resp.status}`,
+      data: { ...structuredErrorData(error), ...(failure ? { failure } : {}) },
     });
   }
   return exitWithStructuredError({ code: 'http-error', message: `HTTP ${resp.status}` });

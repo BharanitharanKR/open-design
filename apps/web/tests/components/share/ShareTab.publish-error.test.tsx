@@ -39,7 +39,7 @@ describe('S7 publish failure visual seam', () => {
     const input = props({ menuOrigin, filePublished: false, publishFailureKey: 'fileViewer.publishFileFailed', t: (key) => zhCN[key] });
     const { rerender } = render(<ShareTab {...input} />);
     const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('上传失败，请检查网络后重试。');
+    expect(status).toHaveTextContent('生成分享链接失败，请稍后重试。');
     const retry = screen.getByRole('menuitem', { name: zhCN['preview.retry'] });
     expect(status.compareDocumentPosition(retry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(retry);
@@ -53,7 +53,12 @@ describe('S7 publish failure visual seam', () => {
     expect(screen.queryByRole('menuitem', { name: zhCN['preview.retry'] })).toBeNull();
     expect(screen.getByRole('button', { name: zhCN['fileViewer.copyShareLink'] })).toBeEnabled();
   });
-  it.each(['fileViewer.publishFileFailed', 'fileViewer.publishFileTooLarge'] as const)('shows %s and preserves retry without copying', async (publishFailureKey) => {
+  it.each([
+    'fileViewer.publishFileFailed', 'fileViewer.publishFileTooLarge',
+    'fileViewer.publishFileConnectionFailed', 'fileViewer.publishFileSignInRequired',
+    'fileViewer.publishFileAccessDenied', 'fileViewer.publishFileServiceRejected',
+    'fileViewer.publishFileLocalSessionFailed', 'fileViewer.publishFileUnconfirmed',
+  ] as const)('shows %s and preserves retry without copying', async (publishFailureKey) => {
     const input = props({ filePublished: false, publishFailureKey, t: (key) => zhCN[key] });
     render(<ShareTab {...input} />);
     const status = screen.getByRole('status');
@@ -88,7 +93,9 @@ describe('S7 publish failure visual seam', () => {
   });
 
   it('keeps generic and size messages distinct, without attributing unknown failures to the network', () => {
-    expect(zhCN['fileViewer.publishFileFailed']).toBe('上传失败，请检查网络后重试。');
+    expect(zhCN['fileViewer.publishFileFailed']).toBe('生成分享链接失败，请稍后重试。');
+    expect(zhCN['fileViewer.publishFileFailed']).not.toMatch(/网络|上传/);
+    expect(zhCN['fileViewer.publishFileFailed']).not.toBe(zhCN['fileViewer.publishFileTooLarge']);
     expect(zhCN['fileViewer.publishFileTooLarge']).toBe('项目超过 20 MiB 分享上限。请减小 HTML 和引用资源的总大小后重试。');
   });
 
