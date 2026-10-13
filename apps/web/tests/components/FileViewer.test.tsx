@@ -3889,9 +3889,9 @@ describe('FileViewer SVG artifacts', () => {
       projectId: 'project-1',
       projectKind: 'prototype' as const,
       file,
-      // Storage access forces the preview onto the srcDoc transport used by
-      // Manual Edit in the packaged Electron client.
-      liveHtml: '<html><body><script>localStorage.getItem("theme")</script><main>Editable</main></body></html>',
+      // An inline Babel script selects the guarded srcDoc transport without
+      // requesting the isolated origin used by Web Storage artifacts.
+      liveHtml: '<html><body><script type="text/babel">const ready = true;</script><main>Editable</main></body></html>',
     };
     const { rerender } = render(<FileViewer {...props} filesRefreshKey={1} />);
 
@@ -10177,7 +10177,7 @@ describe('FileViewer tweaks toolbar', () => {
           projectId="project-1"
           projectKind="prototype"
           file={htmlPreviewFile({ name: 'page.html', path: 'page.html' })}
-          liveHtml={'<html><body><script>localStorage.getItem("theme")</script><img src="assets/hero.png"></body></html>'}
+          liveHtml={'<html><body><script type="text/babel">const ready = true;</script><img src="assets/hero.png"></body></html>'}
         />,
         personalWorkspaceContext(),
       );
