@@ -6692,7 +6692,7 @@ function ReactComponentViewer({
   workspaceActive?: boolean;
 }) {
   const t = useT();
-  const analytics = useAnalytics();
+  const _analytics = useAnalytics();
   // `FileWorkspace` keeps a non-active viewer mounted, so an in-flight publish
   // can settle after the user has switched away. The ref carries the LIVE value
   // into those continuations; the captured prop would still read the
@@ -7183,7 +7183,7 @@ function HtmlViewer({
   commentPortalId,
   onCommentModeChange,
   onObservedPublicShareLink,
-  observedPublicShareLink,
+  observedPublicShareLink: _observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
   shareLoginReturnRef,
@@ -16664,8 +16664,13 @@ function HtmlViewer({
       onClose={clearBoardComposer}
       onSaveComment={() => { fireCommentPopoverClick('save_comment'); return savePersistentComment(); }}
       onSendBatch={() => {
-        const saved = currentActiveComposerComment();
-        fireCommentPopoverClick('send_to_chat', saved ? [saved] : undefined);
+        observeAnalytics(() => {
+          const saved = currentActiveComposerComment();
+          // Observe the same saved-comment branch as sendBoardBatch, without changing its submission.
+          const unchanged = saved && queuedBoardNotes.length === 0 && boardImages.length === 0
+            && commentDraft.trim() === saved.note.trim();
+          fireCommentPopoverClick('send_to_chat', unchanged ? [saved] : undefined);
+        });
         return sendBoardBatch();
       }}
       images={boardImagePreviews}

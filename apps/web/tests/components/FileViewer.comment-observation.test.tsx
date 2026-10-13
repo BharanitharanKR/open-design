@@ -56,4 +56,46 @@ describe('real saved-comment selection observer', () => {
       expect(send.mock.calls[1]?.[0]).toEqual([expect.objectContaining({ id: 'B' })]);
     },
   );
+
+  it.each(['unchanged', 'edited', 'queued-notes', 'image'] as const)(
+    'observes only the actual unchanged saved-comment composer submission: %s', async kind => {
+      const send = vi.fn().mockResolvedValue({ status: 'rejected', commentIds: [] });
+      const saved = { ...comment('A'), ...(kind === 'queued-notes' ? { selectionKind: 'pod' as const } : {}) };
+      render(<FileViewer projectId="p" projectKind="prototype" file={file}
+        liveHtml="<html><body>Hello</body></html>" previewComments={[saved]}
+        onSendBoardCommentAttachments={send} />);
+      fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+      fireEvent.click(screen.getByRole('button', { name: /Open comment for/ }));
+      const input = await screen.findByTestId('comment-popover-input');
+      if (kind === 'edited') fireEvent.change(input, { target: { value: 'changed private feedback' } });
+      if (kind === 'queued-notes') fireEvent.click(screen.getByTestId('comment-popover-add-note'));
+      const image = new File(['image'], 'fixture.png', { type: 'image/png' });
+      if (kind === 'image') {
+        vi.stubGlobal('URL', Object.assign(class extends URL {}, {
+          createObjectURL: () => 'blob:comment-observation', revokeObjectURL: vi.fn(),
+        }));
+        const upload = screen.getByTestId('comment-popover').querySelector('input[type="file"]');
+        if (!upload) throw new Error('missing real image attachment control');
+        fireEvent.change(upload, { target: { files: [image] } });
+      }
+      measurement.track.mockClear();
+      fireEvent.click(screen.getByTestId('comment-add-send'));
+      await waitFor(() => expect(send).toHaveBeenCalledOnce());
+      const submitted = send.mock.calls[0]?.[0];
+      if (kind === 'unchanged') expect(submitted).toEqual([
+        expect.objectContaining({ id: 'A', source: 'saved-comment', comment: 'private-A' }),
+      ]);
+      else {
+        expect(submitted).toEqual([expect.objectContaining({ source: 'board-batch' })]);
+        expect(submitted[0].id).not.toBe('A');
+        if (kind === 'edited') expect(submitted[0].comment).toBe('changed private feedback');
+        if (kind === 'image') expect(send.mock.calls[0]?.[1]).toEqual([image]);
+      }
+      const clicks = measurement.track.mock.calls.filter(([name, props]) => name === 'ui_click' && props.element === 'send_to_chat');
+      expect(clicks).toHaveLength(1);
+      if (kind === 'unchanged') expect(clicks[0]?.[1]).toMatchObject({ submitted_comment_ids: ['A'] });
+      else expect(clicks[0]?.[1]).not.toHaveProperty('submitted_comment_ids');
+      expect(screen.getByTestId('comment-popover-input')).toBeVisible();
+    },
+  );
 });
