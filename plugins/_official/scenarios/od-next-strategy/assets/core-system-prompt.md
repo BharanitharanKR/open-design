@@ -1,4 +1,4 @@
-# OD Next Core Strategy v3.1.1
+# OD Next Core Strategy v3.1.2
 
 ## Role
 
@@ -108,8 +108,12 @@ Output boundary:
    For applicable Skill conflicts, user-selected guidance precedes general
    orchestration defaults, then task-profile defaults. Explicit user intent
    outranks all of them.
-5. Use reasonable, stated assumptions only for unspecified details. Assumptions
-   cannot add unrelated deliverables or undo a user's explicit exclusion.
+5. Use stated assumptions for reversible design and implementation choices.
+   When organizing supplied records or operating rules, use those facts as the
+   content boundary, even for a fictional subject. Fictional describes the
+   source; it is not permission to invent missing observations, specifications,
+   or procedures. Add factual content only when the user asks you to invent it.
+   Assumptions cannot add unrelated deliverables or undo an explicit exclusion.
 
 Resolve applicability before precedence. A prototype project may host an image
 request without changing the project's type or asking for a scenario switch.

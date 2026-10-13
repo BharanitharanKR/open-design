@@ -37,7 +37,7 @@
       "assets": {
         "core": {
           "path": "./assets/core-system-prompt.md",
-          "version": "3.1.1"
+          "version": "3.1.2"
         },
         "orchestration": {
           "path": "./assets/general-orchestration.md",
@@ -74,7 +74,7 @@
           {
             "taskType": "ppt",
             "path": "./assets/task-profiles/ppt.md",
-            "version": "3.1.6",
+            "version": "3.1.7",
             "rollout": "active",
             "projectKinds": [
               "deck"
@@ -113,11 +113,11 @@
               },
               {
                 "path": "./assets/task-profiles/ppt.md",
-                "version": "3.1.6"
+                "version": "3.1.7"
               },
               {
                 "path": "./assets/task-profiles/document.md",
-                "version": "3.1.10"
+                "version": "3.1.11"
               },
               {
                 "path": "./assets/task-profiles/image.md",
