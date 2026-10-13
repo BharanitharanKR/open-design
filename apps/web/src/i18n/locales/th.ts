@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const th: Dict = {
   "collab.contentUpdate.available": "มีเวอร์ชันใหม่บนคลาวด์",
   "collab.contentUpdate.updating": "กำลังอัปเดต…",
-  "collab.contentUpdate.askAgain": "ถามก่อนอัปเดต",
+  "collab.contentUpdate.askAgain": "เปิดการแจ้งเตือนอัปเดตอีกครั้ง",
   "collab.contentUpdate.title": "มีการอัปเดตบนคลาวด์",
-  "collab.contentUpdate.description": "แทนที่โปรเจกต์นี้ด้วยเนื้อหาล่าสุดบนคลาวด์หรือไม่? HTML กู้คืนจากประวัติในเครื่องได้ แต่ไฟล์อื่นที่ถูกเขียนทับอาจสูญหาย",
-  "collab.contentUpdate.dontPrompt": "ไม่ถามอีกสำหรับโปรเจกต์นี้เป็นเวลา 24 ชั่วโมง",
+  "collab.contentUpdate.description": "ซิงค์เนื้อหาล่าสุดจากอุปกรณ์อื่นมายังอุปกรณ์นี้หรือไม่? เนื้อหาโครงการในเครื่องจะถูกแทนที่ หน้าเว็บกู้คืนได้จากประวัติเวอร์ชันในเครื่อง แต่รูปภาพและไฟล์อื่นอาจกู้คืนไม่ได้",
+  "collab.contentUpdate.dontPrompt": "ไม่แจ้งเตือนโครงการนี้เป็นเวลา 24 ชั่วโมง",
   "collab.contentUpdate.later": "ยังไม่อัปเดต",
   "collab.contentUpdate.replace": "แทนที่ด้วยเวอร์ชันคลาวด์",
   "collab.contentUpdate.failed": "อัปเดตไม่สำเร็จ โปรดลองอีกครั้ง",

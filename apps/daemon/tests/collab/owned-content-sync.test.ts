@@ -35,6 +35,20 @@ function setup() {
 }
 
 describe('owner content overwrite authority', () => {
+  it('silences every cloud head for 24h without replacing content, while allowing a manual offer', async () => {
+    const f = setup();
+    try {
+      expect(await f.controller.request(scope, { action: 'dismiss', version: 4, dontPromptFor24h: true }))
+        .toMatchObject({ state: 'suppressed', localVersion: null, latestVersion: 4 });
+      f.head(5);
+      expect(await f.controller.request(scope, { action: 'check' }, 5))
+        .toMatchObject({ state: 'suppressed', localVersion: null, latestVersion: 5 });
+      expect(f.apply).not.toHaveBeenCalled();
+      expect(await f.controller.request(scope, { action: 'check', manual: true }))
+        .toMatchObject({ state: 'confirmation_required', latestVersion: 5 });
+    } finally { f.close(); }
+  });
+
   it('restores cursor and permission from a newly opened SQLite database', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'od-owner-state-'));
     const file = path.join(root, 'state.sqlite');
@@ -43,14 +57,14 @@ describe('owner content overwrite authority', () => {
       migrateOwnedContentSync(db);
       createSqliteOwnedContentStore(db).write(scope, {
         localVersion: 4, latestVersion: 5, ignoredVersion: null,
-        autoApplyUntil: 123_456, fingerprint: 'received-content',
+        promptSuppressedUntil: 123_456, fingerprint: 'received-content',
       });
       db.close();
       db = new Database(file);
       migrateOwnedContentSync(db);
       const store = createSqliteOwnedContentStore(db);
-      expect(store.read(scope)).toMatchObject({ localVersion: 4, latestVersion: 5, autoApplyUntil: 123_456, fingerprint: 'received-content' });
-      expect(store.read({ ...scope, viewerMemberId: 'another-account', ownerMemberId: 'another-account' }).autoApplyUntil).toBeNull();
+      expect(store.read(scope)).toMatchObject({ localVersion: 4, latestVersion: 5, promptSuppressedUntil: 123_456, fingerprint: 'received-content' });
+      expect(store.read({ ...scope, viewerMemberId: 'another-account', ownerMemberId: 'another-account' }).promptSuppressedUntil).toBeNull();
       db.close();
     } finally { await rm(root, { recursive: true, force: true }); }
   });
@@ -61,24 +75,63 @@ describe('owner content overwrite authority', () => {
       expect((await f.controller.request(scope, { action: 'check' })).state).toBe('confirmation_required');
       f.head(5);
       const stale = await f.controller.request(scope, { action: 'accept', version: 4, dontPromptFor24h: true });
-      expect(stale).toMatchObject({ state: 'confirmation_required', latestVersion: 5, autoApplyUntil: null });
+      expect(stale).toMatchObject({ state: 'confirmation_required', latestVersion: 5, promptSuppressedUntil: null });
       expect(f.apply).not.toHaveBeenCalled();
     } finally { f.close(); }
   });
 
-  it('persists 24h authorization through a controller restart and expires exactly at the boundary', async () => {
+  it('persists reminder silence through restart, keeps it after one acceptance, and expires on status read', async () => {
     const f = setup();
     try {
-      await f.controller.request(scope, { action: 'accept', version: 4, dontPromptFor24h: true });
+      await f.controller.request(scope, { action: 'dismiss', version: 4, dontPromptFor24h: true });
       const expiry = 100_000 + 86_400_000;
       const restarted = createOwnedContentSync(f.deps);
       f.head(5); f.clock(expiry - 1);
-      expect((await restarted.request(scope, { action: 'check' })).localVersion).toBe(5);
+      expect(await restarted.request(scope, { action: 'check' })).toMatchObject({ state: 'suppressed', localVersion: null, latestVersion: 5 });
+      expect(f.apply).not.toHaveBeenCalled();
+      expect(await restarted.request(scope, { action: 'check', manual: true })).toMatchObject({ state: 'confirmation_required' });
+      // Manual intent belongs to that caller; page entry and other devices remain quiet.
+      expect(await restarted.request(scope, { action: 'check' })).toMatchObject({ state: 'suppressed' });
+      expect(await restarted.request(scope, { action: 'accept', version: 5 })).toMatchObject({ localVersion: 5, promptSuppressedUntil: expiry });
+      f.head(6);
+      expect(await restarted.request(scope, { action: 'check' }, 6)).toMatchObject({ state: 'suppressed', localVersion: 5 });
       f.head(6); f.clock(expiry);
-      expect((await restarted.request(scope, { action: 'check' })).state).toBe('confirmation_required');
-      expect(f.apply).toHaveBeenCalledTimes(2);
+      expect(restarted.read(scope)).toMatchObject({ state: 'confirmation_required', promptSuppressedUntil: null });
+      expect(f.apply).toHaveBeenCalledTimes(1);
       expect((await restarted.request({ ...scope, workspaceId: 'w2', resourceTeamId: 'w2' }, { action: 'check' })).state).toBe('confirmation_required');
     } finally { f.close(); }
+  });
+
+  it('restores prompts for the current pending head and keeps cancellation distinct from timed silence', async () => {
+    const f = setup();
+    try {
+      await f.controller.request(scope, { action: 'dismiss', version: 4, dontPromptFor24h: true });
+      f.head(5);
+      await f.controller.request(scope, { action: 'check' }, 5);
+      await f.controller.request(scope, { action: 'check', manual: true });
+      expect(await f.controller.request(scope, { action: 'dismiss', version: 5 })).toMatchObject({ state: 'suppressed' });
+      expect(await f.controller.request(scope, { action: 'reset-preference' })).toMatchObject({ state: 'confirmation_required', latestVersion: 5, promptSuppressedUntil: null });
+      expect(f.apply).not.toHaveBeenCalled();
+    } finally { f.close(); }
+  });
+
+  it('does not adopt or preserve legacy automatic overwrite permission during migration', () => {
+    const db = new Database(':memory:');
+    try {
+      db.exec(`CREATE TABLE owned_content_sync (
+        scope_key TEXT PRIMARY KEY, local_version INTEGER, latest_version INTEGER,
+        ignored_version INTEGER, auto_apply_until INTEGER, fingerprint TEXT
+      )`);
+      const key = JSON.stringify([scope.workspaceId, scope.resourceTeamId, scope.viewerMemberId, scope.ownerMemberId, scope.projectId]);
+      db.prepare('INSERT INTO owned_content_sync VALUES (?, 4, 5, NULL, 9999999999999, ?)').run(key, 'checkpoint');
+      migrateOwnedContentSync(db);
+      expect(createSqliteOwnedContentStore(db).read(scope)).toMatchObject({ localVersion: 4, latestVersion: 5, promptSuppressedUntil: null, fingerprint: 'checkpoint' });
+      expect(db.prepare('SELECT auto_apply_until FROM owned_content_sync').get()).toEqual({ auto_apply_until: null });
+      const store = createSqliteOwnedContentStore(db);
+      store.write(scope, { ...store.read(scope), promptSuppressedUntil: 1000 });
+      migrateOwnedContentSync(db);
+      expect(store.read(scope).promptSuppressedUntil).toBe(1000);
+    } finally { db.close(); }
   });
 
   it('dismisses only the current version, and a manual check can re-offer it', async () => {
@@ -93,10 +146,10 @@ describe('owner content overwrite authority', () => {
     } finally { f.close(); }
   });
 
-  it('re-offers a dismissed version when a manual check joins an ordinary check', async () => {
+  it.each([false, true])('re-offers a dismissed version when a manual check joins an ordinary check (silenced=%s)', async silenced => {
     const f = setup();
     try {
-      await f.controller.request(scope, { action: 'dismiss', version: 4 });
+      await f.controller.request(scope, { action: 'dismiss', version: 4, dontPromptFor24h: silenced });
       let releaseHead!: (version: number) => void;
       f.deps.head = vi.fn()
         .mockImplementationOnce(() => new Promise<number>(resolve => { releaseHead = resolve; }))
@@ -105,9 +158,25 @@ describe('owner content overwrite authority', () => {
       await vi.waitFor(() => expect(f.deps.head).toHaveBeenCalledOnce());
       const manual = f.controller.request(scope, { action: 'check', manual: true });
       releaseHead(4);
-      await expect(ordinary).resolves.toMatchObject({ state: 'ignored' });
+      await expect(ordinary).resolves.toMatchObject({ state: silenced ? 'suppressed' : 'ignored' });
       await expect(manual).resolves.toMatchObject({ state: 'confirmation_required', latestVersion: 4 });
       expect(f.deps.head).toHaveBeenCalledTimes(2);
+    } finally { f.close(); }
+  });
+
+  it('keeps active silence local to the exact project, workspace and member scope', async () => {
+    const f = setup();
+    try {
+      await f.controller.request(scope, { action: 'dismiss', version: 4, dontPromptFor24h: true });
+      for (const isolated of [
+        { ...scope, projectId: 'p2' },
+        { ...scope, workspaceId: 'w2', resourceTeamId: 'w2' },
+        { ...scope, viewerMemberId: 'other', ownerMemberId: 'other' },
+      ]) {
+        expect(await f.controller.request(isolated, { action: 'check' })).toMatchObject({ state: 'confirmation_required', promptSuppressedUntil: null });
+      }
+      expect(await f.controller.request(scope, { action: 'check' })).toMatchObject({ state: 'suppressed' });
+      expect(f.apply).not.toHaveBeenCalled();
     } finally { f.close(); }
   });
 
@@ -120,7 +189,7 @@ describe('owner content overwrite authority', () => {
       expect((await f.controller.request(scope, { action: 'accept', version: 5, dontPromptFor24h: true })).state).toBe('busy');
       f.busy(false); f.apply.mockRejectedValueOnce(new Error('download failed'));
       expect((await f.controller.request(scope, { action: 'accept', version: 5, dontPromptFor24h: true })).state).toBe('failed');
-      expect(f.store.read(scope)).toMatchObject({ localVersion: 4, autoApplyUntil: null });
+      expect(f.store.read(scope)).toMatchObject({ localVersion: 4, promptSuppressedUntil: null });
     } finally { f.close(); }
   });
 

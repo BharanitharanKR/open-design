@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const esES: Dict = {
   "collab.contentUpdate.available": "Nueva versión en la nube",
   "collab.contentUpdate.updating": "Actualizando…",
-  "collab.contentUpdate.askAgain": "Preguntar antes de actualizar",
+  "collab.contentUpdate.askAgain": "Restaurar avisos de actualización",
   "collab.contentUpdate.title": "Actualización en la nube disponible",
-  "collab.contentUpdate.description": "¿Reemplazar este proyecto con el contenido más reciente de la nube? El HTML se puede recuperar del historial local; otros archivos sobrescritos pueden perderse.",
-  "collab.contentUpdate.dontPrompt": "No preguntar por este proyecto durante 24 horas",
+  "collab.contentUpdate.description": "¿Sincronizar el contenido más reciente de otro dispositivo en este? Se sustituirá el contenido local del proyecto. Las páginas pueden recuperarse del historial local; las imágenes y otros archivos podrían no recuperarse.",
+  "collab.contentUpdate.dontPrompt": "No avisar de este proyecto durante 24 horas",
   "collab.contentUpdate.later": "Ahora no",
   "collab.contentUpdate.replace": "Reemplazar con la versión de la nube",
   "collab.contentUpdate.failed": "Error al actualizar. Inténtalo de nuevo.",

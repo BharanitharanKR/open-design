@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const tr: Dict = {
   "collab.contentUpdate.available": "Bulutta yeni sürüm var",
   "collab.contentUpdate.updating": "Güncelleniyor…",
-  "collab.contentUpdate.askAgain": "Güncellemeden önce sor",
+  "collab.contentUpdate.askAgain": "Güncelleme bildirimlerini geri aç",
   "collab.contentUpdate.title": "Bulut güncellemesi mevcut",
-  "collab.contentUpdate.description": "Bu proje en son bulut içeriğiyle değiştirilsin mi? HTML yerel geçmişten kurtarılabilir; üzerine yazılan diğer dosyalar kaybolabilir.",
-  "collab.contentUpdate.dontPrompt": "Bu proje için 24 saat boyunca tekrar sorma",
+  "collab.contentUpdate.description": "Başka bir cihazdaki en güncel içerik bu cihaza eşitlensin mi? Yerel proje içeriği değiştirilecektir. Sayfalar yerel sürüm geçmişinden geri yüklenebilir; görseller ve diğer dosyalar geri yüklenemeyebilir.",
+  "collab.contentUpdate.dontPrompt": "Bu proje için 24 saat bildirim gösterme",
   "collab.contentUpdate.later": "Şimdi değil",
   "collab.contentUpdate.replace": "Bulut sürümüyle değiştir",
   "collab.contentUpdate.failed": "Güncelleme başarısız. Tekrar deneyin.",

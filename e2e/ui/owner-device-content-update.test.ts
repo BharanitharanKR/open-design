@@ -4,7 +4,7 @@ import { startFakeCollabHub } from '@/playwright/fake-collab-hub';
 import { applyStandardMocks } from '@/playwright/mock-factory';
 import { clusterTest as test, expect } from '@/playwright/suite';
 
-test('[P1] owner device offers page-entry and SSE updates with scoped 24h consent', async ({ browser }, testInfo) => {
+test('[P1] owner device silences page-entry and SSE prompts without automatic replacement', async ({ browser }, testInfo) => {
   test.setTimeout(360_000);
   const workspaceId = 'ws-owner-device-ui';
   const owner = { controlKey: 'owner-device-ui-key', memberId: 'mem-owner-device-ui', name: 'Owner', role: 'owner' as const };
@@ -70,14 +70,64 @@ test('[P1] owner device offers page-entry and SSE updates with scoped 24h consen
     await badge.click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole('checkbox').check();
+    const beforeChoice = (await (await b.request.get(`/api/projects/${id}/collab/status`, { headers })).json()).ownedContentUpdate.latestVersion;
+    await writeAndPublish('Cloud changes while choosing silence');
+    await expect.poll(async () => (await (await b.request.get(`/api/projects/${id}/collab/status`, { headers })).json()).ownedContentUpdate.latestVersion, { timeout: 30_000 }).toBeGreaterThan(beforeChoice);
+    await expect(dialog.getByRole('checkbox')).toBeChecked();
+    await dialog.getByRole('button', { name: 'Not now', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const restore = controls.getByRole('button', { name: 'Restore update prompts' });
+    await expect(restore).toBeVisible();
+    async function updateStatus() {
+      const response = await b.request.get(`/api/projects/${id}/collab/status`, { headers });
+      expect(response.ok(), await response.text()).toBeTruthy();
+      return (await response.json()).ownedContentUpdate;
+    }
+    const silenced = await updateStatus();
+    expect(silenced.state).toBe('suppressed');
+    expect(silenced.promptSuppressedUntil).toBeGreaterThan(Date.now());
+    await writeAndPublish('Silent first version');
+    await expect.poll(async () => (await updateStatus()).latestVersion, { timeout: 30_000 }).toBeGreaterThan(silenced.latestVersion);
+    const firstSilent = await updateStatus();
+    await writeAndPublish('Silent latest version');
+    await expect.poll(async () => (await updateStatus()).latestVersion, { timeout: 30_000 }).toBeGreaterThan(firstSilent.latestVersion);
+    expect(await updateStatus()).toMatchObject({ state: 'suppressed', localVersion: silenced.localVersion, promptSuppressedUntil: silenced.promptSuppressedUntil });
+    await expect(dialog).toHaveCount(0);
+    await expect(badge).toBeVisible();
+    expect(await (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text()).toContain('First version');
+    await b.reload();
+    await expect(badge).toBeVisible({ timeout: 60_000 });
+    await expect(restore).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await b.screenshot({ path: testInfo.outputPath('owner-update-silenced.png'), animations: 'disabled' });
+    await testInfo.attach('Silenced reminder with manual entry', { path: testInfo.outputPath('owner-update-silenced.png'), contentType: 'image/png' });
+    await badge.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+    // Refreshing a manually opened dialog must not turn it into an automatic prompt.
+    await b.reload();
+    await expect(badge).toBeVisible({ timeout: 60_000 });
+    await expect(dialog).toHaveCount(0);
+    await badge.click();
+    await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Sync and overwrite' }).click();
     await expect(dialog).toHaveCount(0, { timeout: 30_000 });
-    await expect(controls.getByRole('button', { name: 'Turn off automatic sync' })).toBeVisible();
-    await writeAndPublish('Automatic version');
-    await expect.poll(async () => (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text(), { timeout: 30_000 }).toContain('Automatic version');
+    await expect.poll(async () => (await updateStatus()).state, { timeout: 30_000 }).toBe('up_to_date');
+    expect((await updateStatus()).promptSuppressedUntil).toBe(silenced.promptSuppressedUntil);
+    expect(await (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text()).toContain('Silent latest version');
+    const accepted = await updateStatus();
+    await writeAndPublish('Still silenced after manual sync');
+    await expect.poll(async () => (await updateStatus()).latestVersion, { timeout: 30_000 }).toBeGreaterThan(accepted.latestVersion);
     await expect(dialog).toHaveCount(0);
-    await controls.getByRole('button', { name: 'Turn off automatic sync' }).click();
-    await expect(controls.getByRole('button', { name: 'Turn off automatic sync' })).toHaveCount(0);
+    expect(await (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text()).toContain('Silent latest version');
+    await restore.click();
+    await expect(restore).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    expect((await updateStatus()).promptSuppressedUntil).toBeNull();
+    await dialog.getByRole('button', { name: 'Sync and overwrite' }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 30_000 });
+    await expect.poll(async () => (await updateStatus()).state, { timeout: 30_000 }).toBe('up_to_date');
+    expect(await (await b.request.get(`/api/projects/${id}/raw/index.html`, { headers })).text()).toContain('Still silenced after manual sync');
   } catch (error) { failed = true; throw error; }
   finally { await cluster?.close({ preserve: failed }); await hub.close(); }
 });

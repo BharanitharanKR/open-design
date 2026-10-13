@@ -2290,7 +2290,7 @@ export function registerCollabSyncRoutes(
     }
     if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
       const update = await deps.ownedContentSync.request({ projectId, ...scope }, { action: 'check', manual: true });
-      if (update.state === 'confirmation_required' || update.state === 'ignored') {
+      if (update.state === 'confirmation_required' || update.state === 'ignored' || update.state === 'suppressed') {
         return res.status(409).json({ error: 'COLLAB_OVERWRITE_CONFIRMATION_REQUIRED', update });
       }
       if (update.state !== 'up_to_date') return res.status(update.state === 'busy' ? 409 : 502).json({ error: update.errorCode ?? 'PROJECT_SYNC_FAILED', update });

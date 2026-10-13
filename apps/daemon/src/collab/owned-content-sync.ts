@@ -30,10 +30,12 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
   function snapshot(scope: OwnedContentScope, state?: OwnedProjectContentUpdate['state'], errorCode?: OwnedProjectContentUpdate['errorCode']): OwnedProjectContentUpdate {
     const record = deps.store.read(scope);
     const pending = record.latestVersion != null && record.latestVersion > (record.localVersion ?? -1);
+    const suppressed = (record.promptSuppressedUntil ?? 0) > now();
     return {
-      state: state ?? (pending ? record.ignoredVersion === record.latestVersion ? 'ignored' : 'confirmation_required' : 'up_to_date'),
+      state: state ?? (pending ? suppressed ? 'suppressed'
+        : record.ignoredVersion === record.latestVersion ? 'ignored' : 'confirmation_required' : 'up_to_date'),
       latestVersion: record.latestVersion, localVersion: record.localVersion,
-      autoApplyUntil: record.autoApplyUntil != null && record.autoApplyUntil > now() ? record.autoApplyUntil : null,
+      promptSuppressedUntil: record.promptSuppressedUntil != null && record.promptSuppressedUntil > now() ? record.promptSuppressedUntil : null,
       updatedAt: now(), ...(errorCode ? { errorCode } : {}),
     };
   }
@@ -53,7 +55,7 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     if (!deps.isSupported(scope)) return publish(scope, 'unsupported', 'PROJECT_DIRECTORY_UNSUPPORTED');
     if (scope.ownerMemberId !== scope.viewerMemberId) throw new Error('owned content requires the current owner');
     if (request.action === 'reset-preference') {
-      updateRecord(scope, { autoApplyUntil: null });
+      updateRecord(scope, { promptSuppressedUntil: null, ignoredVersion: null });
       return publish(scope);
     }
     const head = hintedVersion ?? await deps.head(scope);
@@ -61,34 +63,38 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
     const old = deps.store.read(scope);
     const latest = head == null ? old.latestVersion : Math.max(old.latestVersion ?? -1, head);
     updateRecord(scope, { latestVersion: latest });
-    let record = deps.store.read(scope);
+    const record = deps.store.read(scope);
     const hasContent = await deps.hasContent(scope);
     if (latest == null || (hasContent && latest <= (record.localVersion ?? -1))) return publish(scope, 'up_to_date');
     if (request.action === 'dismiss') {
-      if (request.version !== latest) return publish(scope);
-      updateRecord(scope, { ignoredVersion: latest });
-      return publish(scope, 'ignored');
+      // Reminder silence covers all heads, so it does not depend on accepting an exact head.
+      if (request.version !== latest && !request.dontPromptFor24h) return publish(scope);
+      updateRecord(scope, request.dontPromptFor24h
+        ? { promptSuppressedUntil: now() + DAY_MS, ignoredVersion: null }
+        : { ignoredVersion: (record.promptSuppressedUntil ?? 0) > now() ? null : latest });
+      return publish(scope);
     }
     const accepted = request.action === 'accept' && request.version === latest;
-    if (request.action === 'accept' && !accepted) return publish(scope);
+    if (request.action === 'accept' && !accepted) {
+      return publish(scope, 'confirmation_required');
+    }
     if (request.manual && request.action === 'check') {
       updateRecord(scope, { ignoredVersion: null });
-      record = deps.store.read(scope);
     }
-    if (!accepted && record.ignoredVersion === latest) return publish(scope, 'ignored');
-    if (hasContent && !accepted && (record.autoApplyUntil ?? 0) <= now()) return publish(scope, 'confirmation_required');
+    // Existing files are replaced only by explicit exact-head acceptance.
+    if (hasContent && !accepted) return publish(scope, request.manual ? 'confirmation_required' : undefined);
     if (applying.has(scope.projectId) || deps.isBusy(scope.projectId) || (publications.get(scope.projectId) ?? 0) > 0) return publish(scope, 'busy', 'PROJECT_BUSY');
     applying.add(scope.projectId);
     publish(scope, 'downloading');
     try {
-      // A 24h preference is committed only after replacement succeeds.
+      // Acceptance is one replacement, independent of any existing reminder silence.
       const received = await deps.apply(scope, latest);
       if (received.version !== latest) throw new Error('published version changed; check again');
       updateRecord(scope, {
         localVersion: received.version,
         latestVersion: Math.max(deps.store.read(scope).latestVersion ?? -1, received.version),
         fingerprint: received.fingerprint, ignoredVersion: null,
-        ...(accepted && request.dontPromptFor24h ? { autoApplyUntil: now() + DAY_MS } : {}),
+        ...(accepted && request.dontPromptFor24h ? { promptSuppressedUntil: now() + DAY_MS } : {}),
       });
       await deps.onApplied?.(scope, received.version);
       return publish(scope);
@@ -140,8 +146,9 @@ export function createOwnedContentSync(deps: OwnedContentSyncDeps) {
 
   function read(scope: OwnedContentScope): OwnedProjectContentUpdate {
     const previous = states.get(ownedContentScopeKey(scope));
-    // Read the preference afresh so an expired clock never grants permission.
-    return previous ? { ...snapshot(scope, previous.state, previous.errorCode), updatedAt: previous.updatedAt } : snapshot(scope);
+    // Derive consent states afresh so expiry re-offers even an unchanged pending head.
+    const transient = previous && ['downloading', 'busy', 'failed', 'unsupported'].includes(previous.state);
+    return previous ? { ...snapshot(scope, transient ? previous.state : undefined, transient ? previous.errorCode : undefined), updatedAt: previous.updatedAt } : snapshot(scope);
   }
 
   return {

@@ -91,7 +91,7 @@ test('OPEND-3493: a second owner device approves updates and continues publishin
           await expect.poll(() => hub.eventLog.slice(checkpoint).some(event => event.type === 'project-content-changed' && event.projectId === id && (event.version ?? 0) > initialVersion), { timeout: 30_000 }).toBe(true);
           // Control must actually receive v2 before judging the same-account B.
           await expect.poll(() => read(cUrl, MEMBER), { timeout: 30_000 }).toEqual({ status: 200, content: v2 });
-          type Update = { state: string; latestVersion: number; localVersion: number; autoApplyUntil: number | null };
+          type Update = { state: string; latestVersion: number; localVersion: number; promptSuppressedUntil: number | null };
           const updatePath = `/api/projects/${id}/collab/update`;
           async function action(input: Record<string, unknown>) {
             return (await requestJson<{ update: Update }>(bUrl, updatePath, { headers: headers(OWNER), method: 'POST', body: input })).update;
@@ -110,7 +110,7 @@ test('OPEND-3493: a second owner device approves updates and continues publishin
           const checkpointCommands = hub.commandLog.length;
           const accepted = await action({ action: 'accept', version: reoffered.latestVersion, dontPromptFor24h: true });
           expect(accepted.state).toBe('up_to_date');
-          expect(accepted.autoApplyUntil).toBeGreaterThan(Date.now());
+          expect(accepted.promptSuppressedUntil).toBeGreaterThan(Date.now());
           expect(await read(bUrl, OWNER)).toEqual({ status: 200, content: v2 });
           const history = await requestJson<{ versions: Array<{ id: string; source: string; current: boolean }> }>(bUrl, `/api/projects/${id}/files/index.html/versions`, { headers: headers(OWNER) });
           expect(history.versions.filter(v => v.source === 'sync').length).toBeGreaterThanOrEqual(2);

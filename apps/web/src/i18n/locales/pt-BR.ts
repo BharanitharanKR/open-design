@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const ptBR: Dict = {
   "collab.contentUpdate.available": "Nova versão na nuvem",
   "collab.contentUpdate.updating": "Atualizando…",
-  "collab.contentUpdate.askAgain": "Perguntar antes de atualizar",
+  "collab.contentUpdate.askAgain": "Restaurar avisos de atualização",
   "collab.contentUpdate.title": "Atualização na nuvem disponível",
-  "collab.contentUpdate.description": "Substituir este projeto pelo conteúdo mais recente da nuvem? O HTML pode ser recuperado do histórico local; outros arquivos sobrescritos podem ser perdidos.",
-  "collab.contentUpdate.dontPrompt": "Não perguntar sobre este projeto por 24 horas",
+  "collab.contentUpdate.description": "Sincronizar o conteúdo mais recente de outro dispositivo neste? O conteúdo local do projeto será substituído. As páginas podem ser recuperadas do histórico local; imagens e outros arquivos talvez não possam.",
+  "collab.contentUpdate.dontPrompt": "Não avisar sobre este projeto por 24 horas",
   "collab.contentUpdate.later": "Agora não",
   "collab.contentUpdate.replace": "Substituir pela versão da nuvem",
   "collab.contentUpdate.failed": "Falha na atualização. Tente novamente.",

@@ -1472,14 +1472,14 @@ describe('collab sync routes', () => {
         state: 'up_to_date' as const,
         latestVersion: null,
         localVersion: null,
-        autoApplyUntil: null,
+        promptSuppressedUntil: null,
         updatedAt: Date.now(),
       })),
       read: vi.fn(() => ({
         state: 'up_to_date' as const,
         latestVersion: null,
         localVersion: null,
-        autoApplyUntil: null,
+        promptSuppressedUntil: null,
         updatedAt: Date.now(),
       })),
     } as unknown as NonNullable<RegisterCollabSyncRoutesDeps['ownedContentSync']>;

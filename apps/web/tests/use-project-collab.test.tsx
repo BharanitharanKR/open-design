@@ -63,7 +63,7 @@ describe('useProjectCollab', () => {
   it('checks on entry and exposes owner updates despite a legacy local_only stamp', async () => {
     const owner = makeContext({ workspaceMemberId: 'wm-owner' });
     const calls: string[] = [];
-    const update = { state: 'confirmation_required', latestVersion: 2, localVersion: 1, autoApplyUntil: null, updatedAt: 1 };
+    const update = { state: 'confirmation_required', latestVersion: 2, localVersion: 1, promptSuppressedUntil: null, updatedAt: 1 };
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const pathname = new URL(String(input), 'http://d.local').pathname;
       calls.push(pathname);

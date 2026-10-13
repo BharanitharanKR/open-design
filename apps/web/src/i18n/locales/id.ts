@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const id: Dict = {
   "collab.contentUpdate.available": "Versi cloud baru tersedia",
   "collab.contentUpdate.updating": "Memperbarui…",
-  "collab.contentUpdate.askAgain": "Tanya sebelum memperbarui",
+  "collab.contentUpdate.askAgain": "Pulihkan pemberitahuan pembaruan",
   "collab.contentUpdate.title": "Pembaruan cloud tersedia",
-  "collab.contentUpdate.description": "Ganti proyek ini dengan konten cloud terbaru? HTML dapat dipulihkan dari riwayat lokal; file lain yang ditimpa mungkin hilang.",
-  "collab.contentUpdate.dontPrompt": "Jangan tanya lagi untuk proyek ini selama 24 jam",
+  "collab.contentUpdate.description": "Sinkronkan konten terbaru dari perangkat lain ke perangkat ini? Konten proyek lokal akan diganti. Halaman dapat dipulihkan dari riwayat versi lokal; gambar dan berkas lain mungkin tidak dapat dipulihkan.",
+  "collab.contentUpdate.dontPrompt": "Jangan beri tahu tentang proyek ini selama 24 jam",
   "collab.contentUpdate.later": "Tidak sekarang",
   "collab.contentUpdate.replace": "Ganti dengan versi cloud",
   "collab.contentUpdate.failed": "Pembaruan gagal. Coba lagi.",

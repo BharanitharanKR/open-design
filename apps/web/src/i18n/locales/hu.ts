@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const hu: Dict = {
   "collab.contentUpdate.available": "Új felhőverzió",
   "collab.contentUpdate.updating": "Frissítés…",
-  "collab.contentUpdate.askAgain": "Kérdezzen frissítés előtt",
+  "collab.contentUpdate.askAgain": "Frissítési értesítések visszaállítása",
   "collab.contentUpdate.title": "Felhőfrissítés érhető el",
-  "collab.contentUpdate.description": "Lecseréli a projektet a legújabb felhőtartalomra? A HTML visszaállítható a helyi előzményekből; más felülírt fájlok elveszhetnek.",
-  "collab.contentUpdate.dontPrompt": "Ennél a projektnél 24 óráig ne kérdezzen",
+  "collab.contentUpdate.description": "Szinkronizálja egy másik eszköz legújabb tartalmát erre az eszközre? A helyi projekttartalom lecserélődik. Az oldalak visszaállíthatók a helyi verzióelőzményekből; a képek és más fájlok esetleg nem.",
+  "collab.contentUpdate.dontPrompt": "Ne értesítsen erről a projektről 24 órán át",
   "collab.contentUpdate.later": "Most nem",
   "collab.contentUpdate.replace": "Csere a felhőverzióra",
   "collab.contentUpdate.failed": "A frissítés sikertelen. Próbálja újra.",

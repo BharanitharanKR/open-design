@@ -542,7 +542,14 @@ export class CollabClient {
         ownerRole,
       };
       if (ownedGeneration === this.ownedContentGeneration && statusRequestGeneration === this.contentTransferStatusRequestGeneration) {
-        next.ownedContentUpdate = parseOwnedProjectContentUpdate(body?.ownedContentUpdate);
+        const update = parseOwnedProjectContentUpdate(body?.ownedContentUpdate);
+        const current = this.snapshot.ownedContentUpdate;
+        // A manually opened dialog is local to this client. Status/SSE rereads
+        // cannot hide it for the same head, and a fresh page never inherits it.
+        const keepManualOffer = current?.state === 'confirmation_required'
+          && current.promptSuppressedUntil != null && update?.state === 'suppressed'
+          && current.latestVersion === update.latestVersion && current.localVersion === update.localVersion;
+        next.ownedContentUpdate = keepManualOffer ? { ...update, state: 'confirmation_required' } : update;
       }
       const transferResponseIsCurrent =
         reportsContentTransferState

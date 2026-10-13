@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const ru: Dict = {
   "collab.contentUpdate.available": "Новая версия в облаке",
   "collab.contentUpdate.updating": "Обновление…",
-  "collab.contentUpdate.askAgain": "Спрашивать перед обновлением",
+  "collab.contentUpdate.askAgain": "Возобновить уведомления об обновлениях",
   "collab.contentUpdate.title": "Доступно обновление из облака",
-  "collab.contentUpdate.description": "Заменить проект последним содержимым из облака? HTML можно восстановить из локальной истории; другие перезаписанные файлы могут быть потеряны.",
-  "collab.contentUpdate.dontPrompt": "Не спрашивать об этом проекте в течение 24 часов",
+  "collab.contentUpdate.description": "Синхронизировать последние данные с другого устройства на это? Локальное содержимое проекта будет заменено. Страницы можно восстановить из локальной истории версий; изображения и другие файлы могут быть невосстановимы.",
+  "collab.contentUpdate.dontPrompt": "Не уведомлять об этом проекте 24 часа",
   "collab.contentUpdate.later": "Не сейчас",
   "collab.contentUpdate.replace": "Заменить версией из облака",
   "collab.contentUpdate.failed": "Не удалось обновить. Повторите попытку.",

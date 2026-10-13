@@ -3,10 +3,10 @@ import type { Dict } from "../types";
 export const zhCN: Dict = {
   "collab.contentUpdate.available": "其他设备有更新",
   "collab.contentUpdate.updating": "正在同步…",
-  "collab.contentUpdate.askAgain": "关闭自动同步",
+  "collab.contentUpdate.askAgain": "恢复更新提示",
   "collab.contentUpdate.title": "其他设备有更新",
-  "collab.contentUpdate.description": "是否同步其他设备的最新内容到本机？同步后将覆盖本机项目内容。",
-  "collab.contentUpdate.dontPrompt": "24 小时内自动同步此项目",
+  "collab.contentUpdate.description": "是否同步其他设备的最新内容到本机？同步将覆盖本机项目内容。页面可从本地历史版本恢复，图片等其他文件可能无法恢复。",
+  "collab.contentUpdate.dontPrompt": "24 小时内本项目不再提示",
   "collab.contentUpdate.later": "暂不同步",
   "collab.contentUpdate.replace": "同步并覆盖",
   "collab.contentUpdate.failed": "更新失败，请重试。",

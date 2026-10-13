@@ -3,10 +3,10 @@ import type { Dict } from '../types';
 export const ko: Dict = {
   "collab.contentUpdate.available": "클라우드에 새 버전이 있습니다",
   "collab.contentUpdate.updating": "업데이트 중…",
-  "collab.contentUpdate.askAgain": "업데이트 전에 확인",
+  "collab.contentUpdate.askAgain": "업데이트 알림 복원",
   "collab.contentUpdate.title": "클라우드 업데이트가 있습니다",
-  "collab.contentUpdate.description": "이 프로젝트를 최신 클라우드 내용으로 덮어쓸까요? HTML은 로컬 기록에서 복구할 수 있지만 다른 덮어쓴 파일은 복구하지 못할 수 있습니다.",
-  "collab.contentUpdate.dontPrompt": "이 프로젝트는 24시간 동안 다시 묻지 않기",
+  "collab.contentUpdate.description": "다른 기기의 최신 내용을 이 기기에 동기화할까요? 로컬 프로젝트 내용이 덮어써집니다. 페이지는 로컬 버전 기록에서 복원할 수 있지만 이미지와 다른 파일은 복원하지 못할 수 있습니다.",
+  "collab.contentUpdate.dontPrompt": "이 프로젝트의 알림을 24시간 표시하지 않기",
   "collab.contentUpdate.later": "나중에",
   "collab.contentUpdate.replace": "클라우드 버전으로 덮어쓰기",
   "collab.contentUpdate.failed": "업데이트에 실패했습니다. 다시 시도하세요.",

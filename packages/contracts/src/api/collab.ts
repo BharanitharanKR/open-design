@@ -175,14 +175,15 @@ export interface CollabPullResponse extends OkResponse {
 }
 
 export type OwnedProjectContentUpdateState =
-  | 'up_to_date' | 'confirmation_required' | 'ignored' | 'downloading'
+  | 'up_to_date' | 'confirmation_required' | 'ignored' | 'suppressed' | 'downloading'
   | 'busy' | 'failed' | 'unsupported';
 
 export interface OwnedProjectContentUpdate {
   state: OwnedProjectContentUpdateState;
   latestVersion: number | null;
   localVersion: number | null;
-  autoApplyUntil: number | null;
+  /** Device-local reminder silence; never an authorization to replace content. */
+  promptSuppressedUntil: number | null;
   updatedAt: number;
   errorCode?: 'PROJECT_BUSY' | 'PROJECT_DIRECTORY_UNSUPPORTED' | 'PROJECT_SYNC_FAILED';
 }
@@ -192,6 +193,7 @@ export interface OwnedProjectContentUpdateRequest {
   action: 'check' | 'accept' | 'dismiss' | 'reset-preference';
   /** Exact offered head. A stale acceptance cannot approve a newer snapshot. */
   version?: number;
+  /** Silence future automatic prompts, including new heads; explicit acceptance remains required. */
   dontPromptFor24h?: boolean;
   /** Explicit manual checks can re-offer a previously dismissed version. */
   manual?: boolean;
@@ -204,17 +206,17 @@ export interface OwnedProjectContentUpdateResponse {
 export function parseOwnedProjectContentUpdate(value: unknown): OwnedProjectContentUpdate | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  const states: readonly string[] = ['up_to_date', 'confirmation_required', 'ignored', 'downloading', 'busy', 'failed', 'unsupported'];
+  const states: readonly string[] = ['up_to_date', 'confirmation_required', 'ignored', 'suppressed', 'downloading', 'busy', 'failed', 'unsupported'];
   if (typeof input.state !== 'string' || !states.includes(input.state)) return null;
   const version = (v: unknown): v is number | null => v === null || (typeof v === 'number' && Number.isSafeInteger(v) && v >= 0);
   if (!version(input.latestVersion) || !version(input.localVersion)
-    || (input.autoApplyUntil !== null && (typeof input.autoApplyUntil !== 'number' || !Number.isFinite(input.autoApplyUntil) || input.autoApplyUntil < 0))
+    || (input.promptSuppressedUntil !== null && (typeof input.promptSuppressedUntil !== 'number' || !Number.isFinite(input.promptSuppressedUntil) || input.promptSuppressedUntil < 0))
     || typeof input.updatedAt !== 'number' || !Number.isFinite(input.updatedAt)) return null;
   const codes = ['PROJECT_BUSY', 'PROJECT_DIRECTORY_UNSUPPORTED', 'PROJECT_SYNC_FAILED'];
   return {
     state: input.state as OwnedProjectContentUpdateState,
     latestVersion: input.latestVersion, localVersion: input.localVersion,
-    autoApplyUntil: input.autoApplyUntil as number | null, updatedAt: input.updatedAt,
+    promptSuppressedUntil: input.promptSuppressedUntil as number | null, updatedAt: input.updatedAt,
     ...(typeof input.errorCode === 'string' && codes.includes(input.errorCode)
       ? { errorCode: input.errorCode as NonNullable<OwnedProjectContentUpdate['errorCode']> } : {}),
   };

@@ -1226,7 +1226,7 @@ function printCollabHelp() {
   od collab pull <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab check <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab accept <projectId> --version <n> [--dont-prompt-24h] --workspace <id> --workspace-member <id> [--json]
-  od collab dismiss <projectId> --version <n> --workspace <id> --workspace-member <id> [--json]
+  od collab dismiss <projectId> --version <n> [--dont-prompt-24h] --workspace <id> --workspace-member <id> [--json]
   od collab ask-again <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab share-resource <design-systems|plugins|skills> <id> --workspace <id> --workspace-member <id> [--json]
   od collab team-resources <design-systems|plugins|skills> --workspace <id> --workspace-member <id> [--json]
@@ -1407,14 +1407,14 @@ async function runCollab(args) {
         action: sub === 'ask-again' ? 'reset-preference' : sub,
         ...(version !== undefined ? { version } : {}),
         ...(sub === 'check' ? { manual: true } : {}),
-        ...(sub === 'accept' ? { dontPromptFor24h: Boolean(flags['dont-prompt-24h']) } : {}),
+        ...(sub === 'accept' || sub === 'dismiss' ? { dontPromptFor24h: Boolean(flags['dont-prompt-24h']) } : {}),
       });
       emit(body, () => {
         const update = body.update;
         console.log(`state\t${update?.state ?? '-'}`);
         console.log(`latestVersion\t${update?.latestVersion ?? '-'}`);
         console.log(`localVersion\t${update?.localVersion ?? '-'}`);
-        console.log(`autoApplyUntil\t${update?.autoApplyUntil ?? '-'}`);
+        console.log(`promptSuppressedUntil\t${update?.promptSuppressedUntil ?? '-'}`);
         if (update?.state === 'confirmation_required') console.log('The cloud version replaces local project content. HTML history can be recovered; other overwritten files may be lost. Use od collab accept --version <n> to approve.');
       });
       if (['failed', 'busy', 'unsupported'].includes(body.update?.state)) process.exitCode = 3;
