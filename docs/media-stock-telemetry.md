@@ -7,7 +7,7 @@ The takeover of PR #8691 follows the user's 2026-10-13 decision:
 | ID | Behavior | Acceptance |
 | --- | --- | --- |
 | S1 | Company-managed Vela search; provider keys remain server-side. | A logged-in client without Pexels/Pixabay keys searches successfully. |
-| S2 | One Pexels search, then one Pixabay search per slot at most. | Both providers failing returns an explicit per-slot failure within the time budget. |
+| S2 | Admin-configured channel priority; one attempt per channel, default cap two. | Both providers failing returns an explicit per-slot failure within the time budget. |
 | S3 | AI searches independently after tool/service failure. | Guidance covers unavailable service, timeout, failed downloads and missing results; successful slots are retained. |
 | S4 | Only valid local images count as acquisition success. | An HTTP 200 HTML body is rejected and no image is written. |
 
@@ -45,7 +45,7 @@ does not mean PostHog has indexed them. `failed` means local capture failed,
 including capacity or filesystem errors. Image acquisition continues either way.
 
 The running daemon checks for completed journals every 30 seconds, at most four
-calls per pass. Each call sends one HTTP batch, at most 150 events / 256 KiB.
+calls per pass. Each call sends one HTTP batch, at most 240 events / 512 KiB.
 Delivery failures use exponential backoff from one minute to 30 minutes and
 retain the journal. Stable `$insert_id` values survive retransmission. A 2xx
 receipt means ingestion accepted the batch, not query-visible completeness;
@@ -54,7 +54,7 @@ PostHog configuration never starts this collector. CLI execution does not
 wait for a network upload or create a PostHog client. Graceful daemon shutdown
 also makes a bounded two-second delivery pass; undelivered records remain retryable.
 
-Journals are limited to 256 KiB per call, with a 32 MiB / 1024-call spool
+Journals are limited to 512 KiB per call, with a 32 MiB / 1024-call spool
 admission ceiling. Admission uses an atomic cross-process lock with a 250 ms
 contention budget and reserves maximum size for each active call. Completed,
 acknowledged or consent-disabled journals are retained seven days;
@@ -78,8 +78,8 @@ Detailed scrubbed failures remain in the CLI execution output.
   download outcome, including HTTP status, error category, monotonic duration,
   Pexels quota fields and normalized Retry-After. Download duration includes
   image inspection and writing bytes. Null quota fields remain unknown.
-- `media_stock_slot_result`: one final result per input slot. Pexels attempts,
-  fallback attempts, fallback reason and successful Pixabay recovery are
+- `media_stock_slot_result`: one final result per input slot. The configured primary channel, attempted channel IDs,
+  fallback attempts, fallback reason and successful fallback recovery are
   explicit fields. Duration is the sum of its observed request-stage durations.
 
 Upload device/session identity is pinned in the journal when collection starts;
@@ -103,9 +103,9 @@ Use request events for traffic/error rates and slot events for recovery rates.
 
 | Metric | Definition |
 | --- | --- |
-| Pexels API volume | Pexels request events with stage=search |
-| Pexels API 429 rate | Search events with HTTP 429 / observed Pexels search events |
-| Pixabay fallback rate | fallback_attempted slots / pexels_attempted slots |
+| Channel API volume | Request events by configured channel ID with stage=search |
+| Channel API 429 rate | Search events with HTTP 429 / search events for that channel |
+| Configured fallback rate | fallback_attempted slots / slots with a primary search attempt |
 | Recovery success rate | fallback_succeeded slots / fallback_attempted slots |
 | Latest known monthly quota | Latest non-null quota response per credential_ref and reset window, with observation time |
 | Latency | P50/P95 duration, split by provider and search/download |
@@ -123,3 +123,24 @@ event ids/counts with its receipt and PostHog query results. A mock test or HTTP
 Company provider keys are unavailable to the daemon, so new request events use
 `credential_ref: null`. Quota headers remain observations, and a dashboard must
 not infer per-key remaining quota from a missing credential reference.
+
+## Admin-managed channel compatibility (2026-10-13)
+
+AMR PR #257 owns channel/key/priority configuration. The service returns stable
+channel IDs, and the client advertises `max_attempts: 6` while the Admin policy
+default remains two. Service errors still hand only missing slots back to AI
+search. Shared public-asset fetching validates HTTPS, each redirect and the
+connection-time DNS answer, without a client-maintained supplier/CDN list.
+The brand module keeps its original API through re-exports of that same guard.
+
+Slot telemetry adds optional `primary_provider` and `attempted_providers`;
+existing version-1 journals remain readable. `pexels_attempted` is retained only
+for compatibility and counts the legacy channel ID; it is not the denominator
+for configurable routing. Six channels plus download/final events across 30 slots
+need up to 240 events, so spool and uploader use shared 240-event/512-KiB bounds.
+The global spool remains 32 MiB.
+
+Validation includes generic third-channel parsing/download/telemetry, priority
+reversal, redirect refusal, existing brand DNS-rebinding coverage and failures
+returning to AI. Supplier/CDN responses are fixtures, not live-provider quality
+or deployment evidence.

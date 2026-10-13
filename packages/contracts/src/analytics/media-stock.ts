@@ -1,5 +1,6 @@
 /** Content-free stock-photo telemetry, independent of paid media generation. */
-export type MediaStockProvider = 'pexels' | 'pixabay';
+export const MEDIA_STOCK_BATCH_LIMITS = { events: 240, bytes: 512 * 1024 } as const;
+export type MediaStockProvider = string;
 export type MediaStockError = 'none' | 'rate_limit_429' | 'http_error' | 'timeout' | 'network_error' | 'invalid_response' | 'write_error' | 'unknown';
 export interface MediaStockCommonProps {
   call_id: string;
@@ -31,7 +32,10 @@ export interface MediaStockRequestResultProps extends MediaStockCommonProps {
 export interface MediaStockSlotResultProps extends MediaStockCommonProps {
   provider: MediaStockProvider | null;
   result: 'ok' | 'not_found' | 'error' | 'budget_exceeded';
+  /** Legacy compatibility counter; use primary_provider/attempted_providers for routing. */
   pexels_attempted: boolean;
+  primary_provider?: MediaStockProvider | null;
+  attempted_providers?: MediaStockProvider[];
   fallback_attempted: boolean;
   fallback_reason: MediaStockError | 'not_found' | 'none';
   fallback_succeeded: boolean;

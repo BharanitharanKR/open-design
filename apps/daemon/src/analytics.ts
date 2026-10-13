@@ -1,3 +1,4 @@
+import { MEDIA_STOCK_BATCH_LIMITS } from '@open-design/contracts/analytics';
 // Daemon-side PostHog capture. Mirrors apps/daemon/src/langfuse-trace.ts in
 // its env-gating discipline: without POSTHOG_KEY in the env every entry point
 // is a no-op, so dev builds and third-party forks impose zero overhead.
@@ -200,7 +201,7 @@ export async function captureStockAnalyticsBatch(args: {
   const cfg = readPosthogConfig(args.env);
   if (!cfg) return 'retry';
   if (!args.events.length) return 'disabled';
-  if (args.events.length > 150) return 'retry';
+  if (args.events.length > MEDIA_STOCK_BATCH_LIMITS.events) return 'retry';
   try {
     const appCfg = await readAppConfig(args.dataDir);
     if (appCfg.telemetry?.metrics !== true) return 'disabled';
@@ -221,7 +222,7 @@ export async function captureStockAnalyticsBatch(args: {
       },
     }));
     const body = JSON.stringify({ token: cfg.key, batch });
-    if (Buffer.byteLength(body) > 256 * 1024) return 'retry';
+    if (Buffer.byteLength(body) > MEDIA_STOCK_BATCH_LIMITS.bytes) return 'retry';
     const response = await (args.fetch ?? fetch)(`${cfg.host}/batch/`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body,
       signal: args.signal ? AbortSignal.any([args.signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),

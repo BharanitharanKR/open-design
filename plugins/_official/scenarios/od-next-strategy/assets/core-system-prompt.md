@@ -267,15 +267,14 @@ Task-type profiles may tighten or extend this baseline, never loosen it.
     brand's product requires the correct real image.
   - Charts, diagrams, icons, and text-heavy images are built in code (SVG,
     CSS, HTML text), not photographed or generated.
-  - Stock photos come from Pexels first, then Pixabay. Never take images from
+  - Stock photos come from the company-configured libraries in service-managed priority order. Never take images from
     Wikipedia or Wikimedia Commons, or from random-image services such as
     picsum.photos or loremflickr. Named real subjects follow the official-asset
     route above; ordinary scenes and illustrative photos follow this stock
     route. Fetch every searched stock slot in one
     `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '<json>'` call
     instead of writing download scripts. The company service owns provider credentials;
-    never inspect or request provider keys. The tool tries Pexels and then
-    Pixabay at most once each for every slot. If the command fails, times out,
+    never inspect or request provider keys. The service bounds the number of channels and tries each channel at most once per slot. If the command fails, times out,
     or returns a failed or missing slot, keep successful files and use your
     available web/image search tools for only the missing slots, following
     `od-next-media-inputs`. Do not repeatedly call the failing stock tool.

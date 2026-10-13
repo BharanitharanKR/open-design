@@ -23,7 +23,7 @@ describe('company stock search and authorized local downloads', () => {
     const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search, fetch: fetcher });
     expect(result.slots[0]).toMatchObject({ status: 'ok', path: 'assets/stock/hero.jpg', width: 1200, height: 800 });
     expect(search).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'error' });
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' });
     expect(fetcher.mock.calls[0]?.[1]?.headers).toBeUndefined();
     expect(JSON.parse(await readFile(path.join(cwd, 'assets/stock/credits.json'), 'utf8'))[0]).toMatchObject({ author: 'Ann', license: 'Pexels License' });
   });
@@ -50,6 +50,23 @@ describe('company stock search and authorized local downloads', () => {
     expect(search).toHaveBeenCalledTimes(1);
   });
 
+  it('downloads a future channel from a public HTTPS CDN without a client supplier allowlist', async () => {
+    const fetcher = vi.fn(fetchImage());
+    const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }],
+      search: async () => ({ providers: ['future-library'], slots: [{ ...candidate(), provider: 'future-library', downloadUrl: 'https://93.184.216.34/future.jpg' }] }), fetch: fetcher });
+    expect(result.slots[0]).toMatchObject({ status: 'ok', provider: 'future-library' });
+    expect(fetcher.mock.calls[0]?.[1]?.dispatcher).toBeDefined();
+  });
+
+  it('blocks private and HTTP redirect targets before contacting them', async () => {
+    for (const location of ['https://169.254.169.254/latest/meta-data/', 'http://93.184.216.35/image.jpg']) {
+      const fetcher = vi.fn(async () => new Response(null, { status: 302, headers: { location } }));
+      const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search: async () => report(), fetch: fetcher as typeof fetch });
+      expect(result.slots[0]?.status).toBe('error');
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it('bounds the whole acquisition and retains server results after the budget expires', async () => {
     let now = 0;
     const search = vi.fn(async () => { now = 20; return report(); });
@@ -58,7 +75,7 @@ describe('company stock search and authorized local downloads', () => {
     expect(result.slots[0]?.status).toBe('budget_exceeded'); expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it.each(['http://127.0.0.1/internal', 'https://images.pexels.com.evil.test/x', 'https://user:password@images.pexels.com/x'])('rejects unsafe download URL %s', async (downloadUrl) => {
+  it.each(['http://127.0.0.1/internal', 'https://127.0.0.1/internal', 'https://user:password@images.pexels.com/x'])('rejects unsafe download URL %s', async (downloadUrl) => {
     const fetcher = vi.fn(fetchImage());
     const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }],
       search: async () => ({ providers: ['pexels'], slots: [{ ...candidate(), downloadUrl }] }), fetch: fetcher });
@@ -108,4 +125,16 @@ it('rejects a malformed Vela response before trusting it', async () => {
   for (const body of [{ slots: [] }, { providers: ['unknown'], slots: [] }, { providers: ['pexels'], slots: [{ id: 'different', status: 'ok', attempts: [] }] }]) {
     await expect(searchVelaStockPhotos(input, async () => JSON.stringify(body))).rejects.toThrow('invalid stock service');
   }
+});
+
+it('accepts three configured channels while rejecting repeated channel attempts', async () => {
+  const input = { slots: [{ id: 'hero', query: 'dog' }], requestTimeoutMs: 12000, budgetMs: 180000, concurrency: 6 };
+  const providers = ['company-pixabay', 'company-pexels', 'future-library'];
+  const attempts = providers.map(provider => ({ provider, stage: 'search', status: 'error', timestamp: new Date().toISOString(), duration_ms: 1, http_status: 503 }));
+  const body = { providers, slots: [{ id: 'hero', status: 'error', attempts }] };
+  const runner = vi.fn(async (..._args: Parameters<typeof import("../src/integrations/vela-command.js").runVelaCommand>) => JSON.stringify(body));
+  expect((await searchVelaStockPhotos(input, runner)).slots[0]?.attempts).toHaveLength(3);
+  expect(JSON.parse(String(runner.mock.calls[0]![1]!.input))).toMatchObject({ max_attempts: 6 });
+  body.slots[0]!.attempts[1] = attempts[0]!;
+  await expect(searchVelaStockPhotos(input, async () => JSON.stringify(body))).rejects.toThrow('invalid stock service slot');
 });

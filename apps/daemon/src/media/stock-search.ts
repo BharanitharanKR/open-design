@@ -1,8 +1,9 @@
+import { fetchPublicAsset } from '../public-asset-fetch.js';
 // Company-managed stock search through Vela; download only into the authorized project.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import type { StockProvider, StockSearchAttempt, StockSlotResult, StockSearchReport, StockSearchRequest } from '@open-design/contracts';
+import type { StockSearchAttempt, StockSlotResult, StockSearchReport, StockSearchRequest } from '@open-design/contracts';
 import { searchVelaStockPhotos, type VelaStockSearchInput, type StockSearchServiceReport } from './vela-stock-search.js';
 export type { StockProvider, StockOrientation, StockRateLimit, StockSearchAttempt, StockSlot, StockSlotResult, StockSearchReport } from '@open-design/contracts';
 
@@ -78,16 +79,6 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: nu
   return out;
 }
 
-/** Download only the known public provider CDN; never forward Vela authorization. */
-function stockDownloadUrl(value: string, provider: StockProvider): string {
-  const url = new URL(value);
-  const host = provider === 'pexels' ? 'images.pexels.com' : 'cdn.pixabay.com';
-  if (url.protocol !== 'https:' || url.hostname !== host || url.username || url.password || url.port) {
-    throw new Error('invalid stock image URL');
-  }
-  return url.toString();
-}
-
 async function boundedImageBody(response: Response): Promise<Buffer> {
   const length = Number(response.headers.get('content-length'));
   if (length > MAX_IMAGE_BYTES) throw new Error('stock image exceeds size limit');
@@ -144,9 +135,9 @@ export async function stockSearch(options: StockSearchOptions): Promise<StockSea
       attempts.push(attempt); emit(attempt);
     };
     try {
-      const url = stockDownloadUrl(candidate.downloadUrl!, provider);
-      const response = await (options.fetch ?? fetch)(url, { redirect: 'error',
-        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, Math.max(1, deadline - now()))) });
+      const response = await fetchPublicAsset(candidate.downloadUrl!, {
+        signal: AbortSignal.timeout(Math.min(requestTimeoutMs, Math.max(1, deadline - now()))) },
+        { httpsOnly: true, ...(options.fetch ? { fetch: options.fetch } : {}) });
       httpStatus = response.status;
       if (!response.ok) throw new Error(`download HTTP ${httpStatus}`);
       const buf = await boundedImageBody(response);

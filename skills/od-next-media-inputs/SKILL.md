@@ -48,8 +48,8 @@ the Core imagery-by-type rule; it is the only source of those rules.
 - Fetch every stock slot through the authenticated daemon wrapper in one
   call, using the company service and your existing Vela login:
   `"$OD_NODE_BIN" "$OD_BIN" media stock-search --slots '[{"id":"hero","query":"black eyeglasses frame","width":1200,"orientation":"landscape"}]'`.
-  Write queries in English with the subject first. The service tries Pexels
-  once and then Pixabay once for each slot, ranks by alt text, and returns
+  Write queries in English with the subject first. The service follows configured channel priority,
+  tries each channel at most once within its attempt limit, ranks by alt text, and returns
   each result. The wrapper downloads images into `assets/stock/` and records
   credits in `assets/stock/credits.json`. Provider keys stay on the server;
   never ask the user to configure a stock-provider key.
@@ -68,8 +68,7 @@ the Core imagery-by-type rule; it is the only source of those rules.
   usable image is found.
 - Download at display size (long edge 1600 px or less) and keep each JPEG or
   WebP under about 400 KB.
-- Record each photo's page URL, author when shown, and license (Pexels
-  License or Pixabay Content License) in a comment or sidecar next to the
+- Record each photo's page URL, author when shown, and license returned by the source in a comment or sidecar next to the
   asset.
 - When the time budget runs out, keep the files that succeeded. Use a
   disclosed placeholder for any remaining slot.

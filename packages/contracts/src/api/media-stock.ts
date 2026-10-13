@@ -1,4 +1,6 @@
-export type StockProvider = 'pexels' | 'pixabay';
+export type StockProvider = string;
+/** Stable service-managed channel IDs; never URLs or credentials. */
+export const isStockProvider = (value: unknown): value is StockProvider => typeof value === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(value);
 export type StockOrientation = 'landscape' | 'portrait' | 'square';
 
 /** Quota headers describe the monthly API window, not the hourly budget. */

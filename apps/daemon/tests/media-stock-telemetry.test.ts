@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { stockSearch } from '../src/media/stock-search.js';
-import { collectStockTelemetry, createStockRecorder, parseStockJournal, readStockJournal, startStockTelemetryCollector, stockTelemetryDir } from '../src/media/stock-telemetry.js';
+import { STOCK_TELEMETRY_LIMITS, collectStockTelemetry, createStockRecorder, parseStockJournal, readStockJournal, startStockTelemetryCollector, stockTelemetryDir } from '../src/media/stock-telemetry.js';
 import { captureStockAnalyticsBatch } from '../src/analytics.js';
 import type { StockJournal } from '../src/media/stock-telemetry.js';
 
@@ -15,6 +15,34 @@ beforeEach(async () => {
   await writeFile(path.join(cwd, 'app-config.json'), JSON.stringify({ installationId: 'test-install', telemetry: { metrics: true, content: false } }));
 });
 afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+
+it('records reversed priority and a future fallback channel without assuming Pexels is primary', async () => {
+  const recorder = await createStockRecorder({ slotCount: 1, env: { OD_DATA_DIR: cwd } });
+  const attempts = [
+    { provider: 'company-pixabay', stage: 'search' as const, status: 'error' as const, timestamp: new Date().toISOString(), durationMs: 1, httpStatus: 503, rateLimited: false },
+    { provider: 'future-library', stage: 'search' as const, status: 'ok' as const, timestamp: new Date().toISOString(), durationMs: 1, httpStatus: 200, rateLimited: false },
+  ];
+  attempts.forEach(attempt => recorder.record({ ...attempt, slotIndex: 0 }));
+  expect(await recorder.finish({ providers: ['company-pixabay', 'future-library'], slots: [{ id: 'a', query: 'dog', status: 'ok', provider: 'future-library', attempts }] })).toBe('complete');
+  const journal = await readStockJournal(cwd, recorder.callId);
+  expect(journal?.events.at(-1)?.properties).toMatchObject({ primary_provider: 'company-pixabay', attempted_providers: ['company-pixabay', 'future-library'], fallback_attempted: true, fallback_succeeded: true, fallback_reason: 'http_error' });
+});
+
+it('uploads a maximum six-channel batch rather than retrying forever at the legacy event limit', async () => {
+  const recorder = await createStockRecorder({ slotCount: 30, env: { OD_DATA_DIR: cwd } });
+  const providers = Array.from({ length: 6 }, (_, index) => `channel-${index}`);
+  const slots = Array.from({ length: 30 }, (_, slotIndex) => {
+    const attempts = providers.map(provider => ({ provider, stage: 'search' as const, status: 'error' as const, timestamp: new Date().toISOString(), durationMs: 1, httpStatus: 503, rateLimited: false }));
+    attempts.forEach(attempt => recorder.record({ ...attempt, slotIndex }));
+    return { id: `slot-${slotIndex}`, query: 'dog', status: 'error' as const, attempts };
+  });
+  expect(await recorder.finish({ providers, slots })).toBe('complete');
+  const journal = await readStockJournal(cwd, recorder.callId);
+  expect(journal?.events).toHaveLength(210);
+  const fetcher = vi.fn(async () => Response.json({ status: 1 }));
+  expect(await captureStockAnalyticsBatch({ dataDir: cwd, events: journal!.events, sessionId: recorder.callId, appVersion: 'test', env: { POSTHOG_KEY: 'phc_test' }, fetch: fetcher as typeof fetch })).toBe('uploaded');
+  expect(fetcher).toHaveBeenCalledOnce();
+});
 
 async function recordedFallback() {
   const recorder = await createStockRecorder({ slotCount: 2, env: {
@@ -166,11 +194,11 @@ it('reserves active-call capacity atomically under concurrent admission', async 
   await setup.finish({ providers: [], slots: [{ id: 'a', query: 'x', status: 'budget_exceeded' }] });
   const dir = stockTelemetryDir(cwd);
   for (const name of await readdir(dir)) await rm(path.join(dir, name));
-  await Promise.all(Array.from({ length: 127 }, () => writeFile(path.join(dir, `${randomUUID()}.active.jsonl`), '')));
+  await Promise.all(Array.from({ length: Math.floor(STOCK_TELEMETRY_LIMITS.spoolBytes / STOCK_TELEMETRY_LIMITS.callBytes) - 1 }, () => writeFile(path.join(dir, `${randomUUID()}.active.jsonl`), '')));
   const recorders = await Promise.all([0, 1].map(() => createStockRecorder({ env: { OD_DATA_DIR: cwd }, slotCount: 1 })));
   const outcomes = await Promise.all(recorders.map(recorder => recorder.finish({ providers: [], slots: [{ id: 'a', query: 'x', status: 'budget_exceeded' }] })));
   expect(outcomes.sort()).toEqual(['complete', 'failed']);
-  expect((await readdir(dir)).filter(name => name.endsWith('.jsonl'))).toHaveLength(128);
+  expect((await readdir(dir)).filter(name => name.endsWith('.jsonl'))).toHaveLength(Math.floor(STOCK_TELEMETRY_LIMITS.spoolBytes / STOCK_TELEMETRY_LIMITS.callBytes));
 });
 
 it('flushes a newly completed call before the next periodic pass on graceful shutdown', async () => {
@@ -188,7 +216,7 @@ it('rechecks a dead admission owner exclusively when two writers recover togethe
   const dir = stockTelemetryDir(cwd);
   await mkdir(path.join(dir, '.admission'), { recursive: true });
   await writeFile(path.join(dir, '.admission', 'owner'), '2147483647');
-  await Promise.all(Array.from({ length: 127 }, () => writeFile(path.join(dir, `${randomUUID()}.active.jsonl`), '')));
+  await Promise.all(Array.from({ length: Math.floor(STOCK_TELEMETRY_LIMITS.spoolBytes / STOCK_TELEMETRY_LIMITS.callBytes) - 1 }, () => writeFile(path.join(dir, `${randomUUID()}.active.jsonl`), '')));
   const originalKill = process.kill;
   const kill = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
     if (pid === 2147483647) throw Object.assign(new Error('dead owner'), { code: 'ESRCH' });
@@ -198,7 +226,7 @@ it('rechecks a dead admission owner exclusively when two writers recover togethe
     const recorders = await Promise.all([0, 1].map(() => createStockRecorder({ env: { OD_DATA_DIR: cwd }, slotCount: 1 })));
     const outcomes = await Promise.all(recorders.map(recorder => recorder.finish({ providers: [], slots: [{ id: 'a', query: 'x', status: 'budget_exceeded' }] })));
     expect(outcomes.sort()).toEqual(['complete', 'failed']);
-    expect((await readdir(dir)).filter(name => name.endsWith('.jsonl'))).toHaveLength(128);
+    expect((await readdir(dir)).filter(name => name.endsWith('.jsonl'))).toHaveLength(Math.floor(STOCK_TELEMETRY_LIMITS.spoolBytes / STOCK_TELEMETRY_LIMITS.callBytes));
     expect(kill.mock.calls.filter(([pid]) => pid === 2147483647).length).toBeGreaterThanOrEqual(2);
     expect(await readdir(dir)).not.toContain('.admission-recovery');
   } finally { kill.mockRestore(); }

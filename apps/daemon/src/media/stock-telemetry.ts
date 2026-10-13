@@ -1,13 +1,14 @@
+import { isStockProvider } from '@open-design/contracts';
 import { createHash, randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { MediaStockCommonProps, MediaStockError, MediaStockTelemetryEvent } from '@open-design/contracts/analytics';
+import { MEDIA_STOCK_BATCH_LIMITS, type MediaStockCommonProps, type MediaStockError, type MediaStockTelemetryEvent } from '@open-design/contracts/analytics';
 import type { StockSearchAttempt, StockSearchReport } from './stock-search.js';
 import { readAppConfig } from '../app-config.js';
 
 export const STOCK_TELEMETRY_LIMITS = {
-  callBytes: 256 * 1024, spoolBytes: 32 * 1024 * 1024, files: 1024,
-  events: 150, callsPerPass: 4, pollMs: 30_000, partialAfterMs: 10 * 60_000,
+  callBytes: MEDIA_STOCK_BATCH_LIMITS.bytes, spoolBytes: 32 * 1024 * 1024, files: 1024,
+  events: MEDIA_STOCK_BATCH_LIMITS.events, callsPerPass: 4, pollMs: 30_000, partialAfterMs: 10 * 60_000,
   retentionMs: 7 * 24 * 60 * 60_000,
 } as const;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -174,16 +175,19 @@ export async function createStockRecorder(args: {
       for (const [index, slot] of report.slots.entries()) {
         const attempts = slot.attempts ?? [];
         const pexels = attempts.filter(attempt => attempt.provider === 'pexels');
-        const fallback = pexels.length > 0 && attempts.some(attempt => attempt.provider === 'pixabay');
-        const lastPexels = pexels.at(-1);
+        const primary = report.providers[0] ?? null;
+        const searches = attempts.filter(attempt => attempt.stage === 'search');
+        const fallback = searches.some(attempt => attempt.provider !== primary);
+        const lastPrimary = searches.filter(attempt => attempt.provider === primary).at(-1);
         append({
           id: `${callId}:slot:${index}`, timestamp: new Date().toISOString(), event: 'media_stock_slot_result',
           properties: {
             ...common(index), provider: slot.provider ?? null, result: slot.status,
-            pexels_attempted: pexels.length > 0, fallback_attempted: fallback,
-            fallback_reason: fallback && lastPexels
-              ? lastPexels.status === 'not_found' ? 'not_found' : stockErrorType(lastPexels) : 'none',
-            fallback_succeeded: fallback && slot.status === 'ok' && slot.provider === 'pixabay',
+            pexels_attempted: pexels.length > 0, primary_provider: primary,
+            attempted_providers: [...new Set(searches.map(attempt => attempt.provider))], fallback_attempted: fallback,
+            fallback_reason: fallback && lastPrimary
+              ? lastPrimary.status === 'not_found' ? 'not_found' : stockErrorType(lastPrimary) : 'none',
+            fallback_succeeded: fallback && slot.status === 'ok' && slot.provider !== primary,
             duration_ms: attempts.reduce((total, attempt) => total + attempt.durationMs, 0),
           },
         });
@@ -200,7 +204,7 @@ export async function createStockRecorder(args: {
 
 const COMMON_KEYS = ['call_id', 'slot_index', 'run_id', 'project_id', 'node_id', 'evaluation_run_id', 'case_id', 'source_commit', 'execution_source', 'collection_status', 'stock_schema_version'];
 const REQUEST_KEYS = ['provider', 'stage', 'result', 'http_status', 'error_type', 'duration_ms', 'credential_ref', 'rate_limited', 'quota_limit', 'quota_remaining', 'quota_reset_unix', 'retry_after'];
-const SLOT_KEYS = ['provider', 'result', 'pexels_attempted', 'fallback_attempted', 'fallback_reason', 'fallback_succeeded', 'duration_ms'];
+const SLOT_KEYS = ['primary_provider', 'attempted_providers', 'provider', 'result', 'pexels_attempted', 'fallback_attempted', 'fallback_reason', 'fallback_succeeded', 'duration_ms'];
 const ERROR_TYPES = ['none', 'rate_limit_429', 'http_error', 'timeout', 'network_error', 'invalid_response', 'write_error', 'unknown'];
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const nullableId = (value: unknown): boolean => value === null || typeof value === 'string' && ID.test(value);
@@ -248,7 +252,7 @@ export function parseStockJournal(raw: string, callId: string): StockJournal | n
         || typeof row.id !== 'string' || !row.id.startsWith(`${callId}:`) || row.id.length > 100
         || ids.has(row.id) || !Number.isFinite(Date.parse(row.timestamp))
         || p.call_id !== callId || !Number.isInteger(p.slot_index) || p.slot_index < 0 || p.slot_index >= header.slotCount
-        || !finite(p.duration_ms) || !(p.provider === 'pexels' || p.provider === 'pixabay' || !request && p.provider === null)) return null;
+        || !finite(p.duration_ms) || !(isStockProvider(p.provider) || !request && p.provider === null)) return null;
       ids.add(row.id);
       if (!request) {
         if (slotIndices.has(p.slot_index)) return null;
@@ -264,6 +268,8 @@ export function parseStockJournal(raw: string, callId: string): StockJournal | n
       } else if (!['ok', 'not_found', 'error', 'budget_exceeded'].includes(p.result)
         || ![...ERROR_TYPES, 'not_found'].includes(p.fallback_reason)
         || ['pexels_attempted', 'fallback_attempted', 'fallback_succeeded'].some(key => typeof p[key] !== 'boolean')) return null;
+      if (!request && ((p.primary_provider !== undefined && p.primary_provider !== null && !isStockProvider(p.primary_provider))
+        || (p.attempted_providers !== undefined && (!Array.isArray(p.attempted_providers) || p.attempted_providers.length > 6 || p.attempted_providers.some((provider: unknown) => !isStockProvider(provider)) || new Set(p.attempted_providers).size !== p.attempted_providers.length)))) return null;
       const properties: Record<string, unknown> = {};
       for (const key of [...COMMON_KEYS, ...(request ? REQUEST_KEYS : SLOT_KEYS)]) properties[key] = p[key];
       // Correlation belongs to the call header, not to independently edited rows.
