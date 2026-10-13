@@ -236,6 +236,33 @@ describe('Z11a · ShareTab 搬动前的 DOM 基线', () => {
   });
 });
 
+describe('OPEND-3796 share error explanations', () => {
+  it.each([
+    ['network', 'Connection failed or timed out. Check the network and share status before retrying.'],
+    ['session_setup', 'Local sharing preparation failed. Check the client configuration.'],
+    ['invalid_receipt', 'The share result could not be confirmed. Check its status before publishing again.'],
+    ['unknown', 'The share result could not be confirmed. Check its status before publishing again.'],
+  ])('renders %s without raw diagnostics or an implicit retry', async (reason, message) => {
+    const fetchMock = stubFetch();
+    const fallback = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url.includes('/publish-public') && init?.method === 'POST') {
+        return new Response(JSON.stringify({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE',
+          failure: { stage: 'snapshot', reason }, stderr: 'private-child-output' }), { status: 502 });
+      }
+      return fallback(input, init);
+    });
+    renderViewer(teamContext());
+    fireEvent.click(toolbarAction('Share'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Generate and copy link/i }));
+    expect(await screen.findByText(message)).toBeVisible();
+    expect(await screen.findByRole('menuitem', { name: 'Retry' })).toBeVisible();
+    expect(document.body).not.toHaveTextContent('private-child-output');
+    expect(fetchMock.mock.calls.filter(([input, init]) => String(input).includes('/publish-public') && init?.method === 'POST')).toHaveLength(1);
+  });
+});
+
 describe('Shared share shell header', () => {
   it.each([false, true])('puts workspace scope after the public action with deployment in the header, published=%s', async published => {
     stubFetch(published);

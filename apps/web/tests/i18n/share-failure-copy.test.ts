@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // Recovery copy must work for card and toolbar: only retry exists in both.
 const expected: Record<string, string> = {
   "ar": "تعذّر إنشاء رابط المشاركة. حاول مجددًا لاحقًا.",
-  "de": "Freigabelink konnte nicht erstellt werden. Versuche es später erneut.",
+  'de': 'Freigabelink konnte nicht erstellt werden. Versuchen Sie es später erneut.',
   "en": "Could not create the share link. Please try again later.",
   "es-ES": "No se pudo crear el enlace para compartir. Inténtalo de nuevo más tarde.",
   "fa": "ایجاد پیوند اشتراک‌گذاری ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
@@ -21,7 +21,7 @@ const expected: Record<string, string> = {
   "th": "สร้างลิงก์แชร์ไม่สำเร็จ โปรดลองอีกครั้งในภายหลัง",
   "tr": "Paylaşım bağlantısı oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
   "uk": "Не вдалося створити посилання. Повторіть спробу пізніше.",
-  "zh-CN": "上传失败，请检查网络后重试。",
+  'zh-CN': '生成分享链接失败，请稍后重试。',
   "zh-TW": "產生分享連結失敗，請稍後重試。"
 };
 const directory = resolve(__dirname, '../../src/i18n/locales');
@@ -35,5 +35,12 @@ describe('Owner S7 publish failure copy', () => {
     const module = await import(/* @vite-ignore */ resolve(directory, `${locale}.ts`));
     const dict = Object.values(module).find(value => value && typeof value === 'object' && 'fileViewer.publishFileFailed' in value);
     expect(dict).toHaveProperty(['fileViewer.publishFileFailed'], copy);
+    for (const key of [
+      'fileViewer.publishFileConnectionFailed', 'fileViewer.publishFileSignInRequired',
+      'fileViewer.publishFileAccessDenied', 'fileViewer.publishFileServiceRejected',
+      'fileViewer.publishFileLocalSessionFailed', 'fileViewer.publishFileUnconfirmed',
+    ]) {
+      expect(dict).toHaveProperty([key], expect.stringMatching(/\S/));
+    }
   });
 });

@@ -2,6 +2,7 @@ import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { runVelaCommand } from '../integrations/vela-command.js';
 import type { VelaControlApiContext } from '../integrations/vela.js';
+import { safeVelaCommandError } from './public-file-failure.js';
 
 /** Recover only this protocol's private configs whose creator is definitely gone.
  * A reused PID, EPERM, legacy name or symlink is deliberately left alone. This
@@ -46,6 +47,7 @@ export async function runPinnedVelaCommand(
   input: PinnedVelaCommandInput,
   run: typeof runVelaCommand = runVelaCommand,
 ): Promise<string> {
+  let preparing = true;
   try {
     const { profile, apiUrl, controlKey } = input.session;
     const { dataRoot, workspaceId } = input;
@@ -57,10 +59,12 @@ export async function runPinnedVelaCommand(
     }
     await cleanupAbandonedPinnedVelaSessions(dataRoot);
     const home = await mkdtemp(path.join(dataRoot, `vela-session-v1-${process.pid}-`));
+    let commandRejected = false;
     try {
       await writeFile(path.join(home, 'config.json'), JSON.stringify({
         profiles: { [profile]: { controlKey, apiUrl } },
       }), { mode: 0o600, flag: 'wx' });
+      preparing = false;
       return await run(args, {
         configuredEnv: {
           ...configuredEnv,
@@ -71,10 +75,20 @@ export async function runPinnedVelaCommand(
         },
         timeoutMs: 30_000,
       });
+    } catch (error) {
+      commandRejected = true;
+      throw error;
     } finally {
-      await rm(home, { recursive: true, force: true });
+      try {
+        await rm(home, { recursive: true, force: true });
+      } catch (error) {
+        // Preserve the primary failure if there is one. A failed cleanup after
+        // success remains a failure, but must not look like a network rejection.
+        if (commandRejected) console.warn('[od] pinned Vela session cleanup failed');
+        else throw safeVelaCommandError('VELA_PINNED_COMMAND_FAILED', error, 'session_cleanup');
+      }
     }
-  } catch {
-    throw new Error('VELA_PINNED_COMMAND_FAILED');
+  } catch (error) {
+    throw safeVelaCommandError('VELA_PINNED_COMMAND_FAILED', error, preparing ? 'session_setup' : undefined);
   }
 }
