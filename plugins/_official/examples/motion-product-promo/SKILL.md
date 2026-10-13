@@ -37,8 +37,12 @@ script or font CDN is needed.
 - 11.2–13.3s FLOW: on black, "You create." / "We handle the", the mascot winking and grinning.
 - 13.3–15s END: a dithered wipe; "flow." becomes the wordmark's tail, the letters drop in, the head pops up behind it; tagline, Start selling and the footer.
 
+## Voice and close
+- The mascot speaks every line: `SPEECH` lists each syllable's start, length and openness, and `mouth(t)` opens the mouth and nods the head on those timings. The soundtrack's cartoon voice is synthesised on the same syllables, so keep the two in step when the copy changes.
+- At the close, "flow." springs out of "We handle the", travels to centre stage and pops into the wordmark's tail while the other letters drop in; the head peeks out from behind the wordmark, hops up and winks.
+
 ## Adapting the template
-- Swap `CFG.brand`, `CFG.domain`, `CFG.store`, the card, product and checkout copy, prices and palette; keep the six chapters on their timing.
+- Swap `CFG.brand`, `CFG.domain`, `CFG.store`, the card, product and checkout copy, prices and palette; keep the six chapters on their timing, and retime `SPEECH` to new lines.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the

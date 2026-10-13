@@ -177,8 +177,11 @@ function mascot(g, o) {
   // mouth: a small smile, or an open mouth with a tongue
   const open = o.open || 0, mx = lx * 0.9, my = 0.47 * r + ly;
   if (open > 0.05) {
-    g.fillStyle = grey(0); g.beginPath(); g.ellipse(mx, my - 0.02 * r, 0.13 * r * (0.8 + open * 0.2), 0.12 * r * open + 0.03 * r, 0, 0, Math.PI); g.fill();
-    g.fillStyle = grey(150); g.beginPath(); g.ellipse(mx, my + 0.06 * r * open, 0.07 * r, 0.04 * r * open, 0, 0, Math.PI); g.fill();
+    // a wide D-shaped mouth that reads at a distance, teeth showing when it opens wide
+    const mw = 0.17 * r * (0.75 + open * 0.35), mh = 0.22 * r * open + 0.04 * r;
+    g.fillStyle = grey(0); g.beginPath(); g.ellipse(mx, my - 0.03 * r, mw, mh, 0, 0, Math.PI); g.fill();
+    g.fillStyle = grey(150); g.beginPath(); g.ellipse(mx, my - 0.03 * r + mh * 0.62, mw * 0.55, mh * 0.34, 0, 0, Math.PI); g.fill();
+    if (open > 0.45) { g.fillStyle = grey(250); g.fillRect(mx - mw * 0.62, my - 0.03 * r, mw * 1.24, 0.035 * r); }
   } else {
     g.strokeStyle = grey(0); g.lineWidth = 0.045 * r; g.lineCap = 'round'; g.beginPath(); g.arc(mx, my - 0.16 * r * s, 0.15 * r, Math.PI * (0.5 - 0.3 * s), Math.PI * (0.5 + 0.3 * s)); g.stroke();
   }
@@ -192,6 +195,28 @@ function alive(t, extra = {}) {
   const blinkAt = [0.85, 2.3, 3.6, 5.1, 5.95, 7.7, 9.3, 10.4, 12.2, 13.0, 14.6].some(b => t > b && t < b + 0.09);
   return Object.assign({ hop: k * 7, tilt: Math.sin(t * Math.PI * 0.9) * 0.05, sway: -Math.cos(t * Math.PI * 0.9) * 0.05, squash: 1 + (1 - k) * 0.012, blink: blinkAt ? 1 : 0 }, extra);
 }
+// The line the mascot speaks, syllable by syllable: [start, length, openness]. The soundtrack's
+// voice is synthesised on the same timings, so mouth and sound stay in sync.
+const SPEECH = [
+  [0.62, 0.1, 0.35], [0.74, 0.1, 0.3], [0.86, 0.16, 0.4],                                         // psst…
+  [1.15, 0.16, 0.9], [1.36, 0.12, 0.7], [1.5, 0.16, 0.8], [1.85, 0.12, 0.6], [1.98, 0.22, 1.0],   // Got some-thing to sell?
+  [2.95, 0.14, 0.6], [3.45, 0.14, 0.6], [3.95, 0.16, 0.7],                                         // courses, ebooks, apps
+  [4.58, 0.12, 0.7], [4.72, 0.1, 0.5], [4.84, 0.16, 0.8], [5.05, 0.12, 0.6], [5.18, 0.08, 0.4], [5.28, 0.08, 0.4], [5.38, 0.12, 0.5],
+  [5.7, 0.08, 0.4], [5.8, 0.22, 0.9], [6.15, 0.08, 0.5], [6.26, 0.12, 0.8], [6.4, 0.18, 0.7],      // Pennyflow turns it into a store in minutes
+  [11.3, 0.18, 0.9], [11.75, 0.12, 0.7], [11.9, 0.16, 0.8], [12.25, 0.14, 0.8], [12.55, 0.12, 0.8], [12.68, 0.12, 0.6],
+  [13.05, 0.12, 0.6], [13.2, 0.24, 1.0]                                                            // You create. We handle the flow.
+];
+function mouth(t) {
+  let m = 0;
+  for (const [a, d, k] of SPEECH) {
+    if (t < a - 0.04 || t > a + d + 0.08) continue;
+    const e = t < a ? (t - a + 0.04) / 0.04 : t < a + d ? 1 - 0.35 * Math.sin((t - a) / d * Math.PI * 2) ** 2 : 1 - (t - a - d) / 0.08;
+    m = Math.max(m, k * clamp(e));
+  }
+  return m;
+}
+// talking adds a nod to whatever the scene's pose is
+function talking(t, o) { const m = mouth(t); return Object.assign({}, o, { open: Math.max(o.open || 0, m), hop: (o.hop || 0) + m * 6, tilt: (o.tilt || 0) + m * 0.04 * Math.sin(t * 17) }); }
 // an extra hop with a squash on landing, starting at `at`
 function jump(t, at, h = 36) { const u = seg(t, at, at + 0.42); if (u <= 0 || u >= 1) return { hop: 0, squash: 1 }; return { hop: Math.sin(u * Math.PI) * h, squash: u > 0.8 ? 1 + (1 - Math.abs(u - 0.9) * 10) * 0.08 : 1 - Math.sin(u * Math.PI) * 0.05 }; }
 function merge(a, b) { return Object.assign({}, a, { hop: (a.hop || 0) + b.hop, squash: (a.squash || 1) * b.squash }); }
@@ -240,11 +265,10 @@ function hud(t, label, color) {
 function hook(t) {
   ctx.fillStyle = CFG.white; ctx.fillRect(0, 0, CFG.w, CFG.h);
   const x = t < 0.4 ? lerp(2060, 1374, EZ.o3(seg(t, 0, 0.4))) : lerp(1374, 1470, EZ.io3(seg(t, 0.4, 2.2)));
-  const talk = t > 0.62 && t < 1.38 ? Math.abs(Math.sin((t - 0.62) * 22)) : 0;
   const land = seg(t, 0.36, 0.62), landing = { hop: 0, squash: 1 + Math.sin(land * Math.PI) * 0.09 * (1 - land) };
   const curious = EZ.io3(seg(t, 1.1, 1.35)) * (1 - EZ.io3(seg(t, 1.85, 2.05)));
   const look = t < 0.55 ? -0.7 : t < 1.1 ? -0.3 : -0.6;
-  halftone(g => mascot(g, merge(merge(alive(t, { x, y: 515, r: 265, look, lookY: -0.25 * curious, open: talk * 0.8 + (t > 1.2 && t < 1.4 ? 0.6 : 0), smile: t > 2.0 ? 1 : 0.75, eyes: t > 2.05 && t < 2.4 ? 'happy' : 'open', tilt: -0.14 * curious + 0.08 * EZ.o3(seg(t, 2.0, 2.2)) }), landing), jump(t, 2.02, 30))));
+  halftone(g => mascot(g, talking(t, merge(merge(alive(t, { x, y: 515, r: 265, look, lookY: -0.25 * curious, smile: t > 2.0 ? 1 : 0.75, eyes: t > 2.05 && t < 2.4 ? 'happy' : 'open', tilt: -0.14 * curious + 0.08 * EZ.o3(seg(t, 2.0, 2.2)) }), landing), jump(t, 2.02, 30)))));
   // the whispered bubble
   const bub = EZ.back(seg(t, 0.55, 0.75)) * (1 - seg(t, 1.4, 1.55));
   if (bub > 0) {
@@ -288,7 +312,7 @@ function cards(t) {
   const pops = [2.95, 3.45, 3.95].map(a => seg(t, a, a + 0.28));
   const gaze = pops.reduce((n, p, i) => p > 0 ? i : n, -1);
   const latest = Math.max(0, gaze), hopNow = gaze >= 0 ? jump(t, [2.95, 3.45, 3.95][latest], 26) : { hop: 0, squash: 1 };
-  halftone(g => mascot(g, merge(alive(t, { x: 372, y: lerp(1260, 560, up), r: 220, look: 0.55 + latest * 0.2, lookY: -0.25 + latest * 0.1, smile: 0.85, eyes: t > 4.05 && t < 4.35 ? 'happy' : 'open', open: t > 4.05 && t < 4.35 ? 0.5 : 0 }), hopNow)), [17, 17, 17], [255, 255, 255]);
+  halftone(g => mascot(g, talking(t, merge(alive(t, { x: 372, y: lerp(1260, 560, up), r: 220, look: 0.55 + latest * 0.2, lookY: -0.25 + latest * 0.1, smile: 0.85, eyes: t > 4.05 && t < 4.35 ? 'happy' : 'open', open: t > 4.05 && t < 4.35 ? 0.5 : 0 }), hopNow))), [17, 17, 17], [255, 255, 255]);
   pops.forEach((p, i) => { if (p > 0) productCard(i, CARD.x0 + i * (CARD.w + CARD.gap), CARD.y + (1 - EZ.o3(p)) * 60, lerp(0.62, 1, EZ.back(p)), clamp(p * 3), (1 - EZ.o3(p)) * 0.08); });
   hud(t, t < 2.6 ? '01 — hook' : '02 — anything', 'rgba(255,255,255,.6)');
 }
@@ -348,7 +372,7 @@ function store(t) {
   const mp = EZ.back(seg(t, 6.25, 6.45));
   if (mp > 0) { ctx.save(); ctx.translate(100 + tw('in ', 130, F.sans, 600), 680); ctx.scale(mp, mp); txt('minutes.', 0, 0, 190, F.ital, CFG.blue); ctx.restore(); }
   const up = EZ.o3(seg(t, 4.6, 4.95)), happy = t > 6.78 && t < 7.1;
-  halftone(g => mascot(g, merge(alive(t, { x: 1020, y: lerp(1240, 800, up), r: 170, look: 0.7, lookY: -0.5, smile: 0.9, open: happy ? 0.75 : 0, eyes: happy ? 'happy' : 'open', tilt: happy ? 0.12 : undefined }), jump(t, 6.78, 40))));
+  halftone(g => mascot(g, talking(t, merge(alive(t, { x: 1020, y: lerp(1240, 800, up), r: 170, look: 0.7, lookY: -0.5, smile: 0.9, open: happy ? 0.75 : 0, eyes: happy ? 'happy' : 'open', tilt: happy ? 0.12 : undefined }), jump(t, 6.78, 40)))));
   phone(t);
   hud(t, '03 — store', '#A8A8A8');
 }
@@ -448,10 +472,12 @@ function bento(t) {
 }
 
 /* ============ 05 — flow (11.2 – 13.35 s) ============ */
+// where "flow." lands at the end of "We handle the", so the wordmark can pick it up there
+function flowWordX() { return 140 + tw('We ', 130, F.sans, 600) + tw('handle ', 130, F.sans, 600) + tw('the ', 130, F.sans, 600); }
 function flow(t) {
   ctx.fillStyle = CFG.black; ctx.fillRect(0, 0, CFG.w, CFG.h);
   const grin = t > 12.85;
-  halftone(g => mascot(g, merge(alive(t, { x: 1650, y: 560, r: 185, look: -0.6, smile: 0.9, wink: t < 11.5, open: grin ? 0.75 : 0, eyes: grin ? 'happy' : 'open' }), jump(t, 12.85, 34))), [6, 6, 6], [255, 255, 255]);
+  halftone(g => mascot(g, talking(t, merge(alive(t, { x: 1650, y: 560, r: 185, look: -0.6, smile: 0.9, wink: t < 11.5, open: grin ? 0.45 : 0, eyes: grin ? 'happy' : 'open' }), jump(t, 12.85, 34)))), [6, 6, 6], [255, 255, 255]);
   rise('You', 140, 520, 160, F.sans, '#fff', seg(t, 11.3, 11.55), 600);
   const cp = EZ.o3(seg(t, 11.75, 12.0));
   if (cp > 0) txt('create.', 140 + tw('You ', 160, F.sans, 600) + (1 - cp) * 60, 520, 190, F.ital, '#fff', 'left', cp);
@@ -462,6 +488,9 @@ function flow(t) {
   const thx = hx + tw('handle ', 130, F.sans, 600), th = EZ.back(seg(t, 13.05, 13.22));
   if (th > 0) txt('the', thx, 790 - (1 - th) * 50 - 10 * th, 130, F.sans, CFG.soft, 'left', clamp(th), 600);
   if (t > 12.8 && t < 13.05 && (t * 6 % 1) < 0.5) { ctx.fillStyle = CFG.soft; ctx.fillRect(thx, 770, 18, 6); }
+  // "flow." springs up out of the line in blue
+  const fp = seg(t, 13.12, 13.3);
+  if (fp > 0) { const k = EZ.back(fp); ctx.save(); ctx.translate(flowWordX(), 790 + (1 - k) * 150); ctx.scale(lerp(0.4, 1, k), lerp(0.4, 1, k) * (1 + 0.12 * Math.sin(fp * Math.PI))); txt('flow.', 0, 0, 130, F.ital, CFG.blue, 'left', clamp(fp * 3)); ctx.restore(); }
   hud(t, '05 — flow', '#7A7A7A');
 }
 
@@ -471,12 +500,17 @@ function endCard(t) {
   ctx.fillStyle = CFG.white; ctx.fillRect(0, 0, CFG.w, CFG.h);
   const full = tw(CFG.brand, WORD.size, F.serif), x0 = 960 - full / 2, stem = CFG.brand.slice(0, -4);
   // "flow." arrives first, in the italic of the line before, then becomes the wordmark's tail
-  const head = EZ.back(seg(t, 13.9, 14.2));
-  if (head > 0) halftone(g => mascot(g, alive(t, { x: 1105, y: lerp(640, 382, head), r: 150, body: false, look: 0.15, smile: 1, wink: t > 14.45 && t < 14.8, tilt: 0.1 * Math.sin(seg(t, 14.2, 15) * Math.PI) })));
-  const fl = EZ.o3(seg(t, 13.36, 13.5)), morph = EZ.io3(seg(t, 13.48, 13.6));
+  const peek = EZ.back(seg(t, 13.88, 14.04)), up = EZ.back(seg(t, 14.06, 14.26)), head = peek;
+  if (head > 0) halftone(g => mascot(g, alive(t, { x: 1105, y: lerp(640, 478, peek) - up * 96, r: 150, body: false, look: 0.15, smile: 1, wink: t > 14.45 && t < 14.8, tilt: 0.1 * Math.sin(seg(t, 14.2, 15) * Math.PI) })));
+  // "flow." travels from the end of the line to centre stage, grows, then turns into the wordmark's tail with a pop
+  const go = EZ.o3(seg(t, 13.3, 13.44)), morph = EZ.io3(seg(t, 13.48, 13.6)), pop = seg(t, 13.56, 13.8);
   const tailX = x0 + tw(stem, WORD.size, F.serif);
-  if (morph < 1) txt('flow.', lerp(1104, tailX, morph), lerp(640, WORD.y, morph), lerp(150, WORD.size, morph), F.ital, CFG.blue, 'left', fl * (1 - morph));
-  if (morph > 0) txt('flow', tailX, WORD.y, WORD.size, F.serif, CFG.ink, 'left', morph);
+  const fx = lerp(lerp(flowWordX(), 1104, go), tailX, morph), fy = lerp(lerp(790, 640, go), WORD.y, morph), fs = lerp(lerp(130, 170, go), WORD.size, morph);
+  if (morph < 1) txt('flow.', fx, fy, fs, F.ital, CFG.blue, 'left', 1 - morph);
+  if (morph > 0) {
+    const k = pop > 0 ? 1 + 0.22 * Math.sin(pop * Math.PI) * (1 - pop) * 2 : 1, cxw = tailX + tw('flow', WORD.size, F.serif) / 2;
+    ctx.save(); ctx.translate(cxw, WORD.y); ctx.scale(k, k); ctx.translate(-cxw, -WORD.y); txt('flow', tailX, WORD.y, WORD.size, F.serif, CFG.ink, 'left', morph); ctx.restore();
+  }
   // the head pops up from behind the wordmark, then winks
   // the stem letters drop in one by one
   let x = x0;
