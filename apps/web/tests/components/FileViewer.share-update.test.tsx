@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
-function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown'; failures?: number; failureStage?: 'push' | 'snapshot' | 'manual'; historyStatus?: 'active' | 'stopped'; fileStatus?: 'active' | 'stopped'; amrAuthenticated?: boolean; noPublication?: boolean } = {}) {
+function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown'; failures?: number; failureStage?: 'push' | 'snapshot' | 'manual' | 'file'; historyStatus?: 'active' | 'stopped'; fileStatus?: 'active' | 'stopped'; amrAuthenticated?: boolean; noPublication?: boolean } = {}) {
   let freshness = options.freshness ?? 'outdated';
   let fileStatus = options.fileStatus ?? 'active';
   let failures = options.failures ?? 0;
@@ -50,9 +50,10 @@ function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown
     if (url.includes('/share-state')) return new Response(JSON.stringify({ projectId: 'proj', hasEverShared: !options.noPublication, bindingExists: !options.noPublication, publications: options.noPublication ? [] : [{ sourceFilePath: 'index.html', slug: 'stable', status: options.historyStatus ?? 'active' }] }), { status: 200 });
     if (url.includes('publish-public')) {
       if (init?.method === 'POST') {
-        if (failures-- > 0) return new Response(JSON.stringify(options.failureStage === 'manual'
+        if (failures-- > 0) return new Response(JSON.stringify(options.failureStage === 'file'
+          ? { error: 'FILE_UNAVAILABLE' } : options.failureStage === 'manual'
           ? { error: { code: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED', message: 'Publication metadata could not be saved', data: { projectId: 'proj', ...publication } } }
-          : { error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: options.failureStage ?? 'push', reason: 'network' } }), { status: 502 });
+          : { error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: options.failureStage ?? 'push', reason: 'network' } }), { status: options.failureStage === 'file' ? 400 : 502 });
         freshness = 'current';
         // Contract shape: SharePublishResponse.
         return new Response(JSON.stringify({ status: 'published', url: publication.url,
@@ -349,8 +350,8 @@ it('S6-OK updates the stable alias, shows global transient success, and never au
   await waitFor(() => expect(fetch.mock.calls.filter(([url, init]) => String(url).includes('publish-public') && !init?.method).length).toBeGreaterThanOrEqual(3));
 });
 
-it('S6-ERR preserves old link after failed update, never retries automatically, then explicit toast retry succeeds', async () => {
-  const { fetch } = publishedRoute({ failures: 1 });
+it.each(['push', 'file'] as const)('S6-ERR %s failure preserves old link, never retries automatically, then explicit retry succeeds', async (failureStage) => {
+  const { fetch } = publishedRoute({ failures: 1, failureStage });
   await openShare();
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /update link/i })); });
   await waitFor(() => expect(posts(fetch)).toHaveLength(1));

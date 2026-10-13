@@ -9,15 +9,18 @@ import {
 	within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installMockOpenDesignHost } from "@open-design/host/testing";
+import type { OpenDesignHostDownloadResult } from "@open-design/host";
 import { resetWorkspaceAccountGeneration } from "../../src/collab/workspace-identity";
 import { FileViewer } from "../../src/components/FileViewer";
 import type { ProjectFile } from "../../src/types";
 
-const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), fallbackPdf: vi.fn(), guideInput: vi.fn() }));
+const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), fallbackPdf: vi.fn(), imageSnapshot: vi.fn(), guideInput: vi.fn() }));
 vi.mock("../../src/runtime/exports", async () => ({
 	...(await vi.importActual("../../src/runtime/exports")),
 	exportProjectAsHtml: seam.exportHtml,
 	exportAsPdf: seam.fallbackPdf,
+  exportProjectImageDataUrl: seam.imageSnapshot,
 }));
 // Observe the input but run the real guide hook and its account-scoped storage/clock.
 vi.mock("../../src/components/share/useAfterExportShareGuide", async () => {
@@ -120,6 +123,49 @@ async function exportHtml(format: 'html' | 'pdf' = 'html') {
 }
 
 describe("Owner P1 real FileViewer export-to-share chain", () => {
+  it.each((['pdf', 'html', 'zip', 'image'] as const).flatMap(format => (['completed', 'cancelled', 'interrupted'] as const).map(state => ({format, state}))))('desktop $format waits for native $state', async ({ format, state }) => {
+    const actual = await vi.importActual<typeof import('../../src/runtime/exports')>('../../src/runtime/exports');
+    seam.exportHtml.mockImplementation(actual.exportProjectAsHtml);
+    seam.imageSnapshot.mockResolvedValue({ ok: true, snapshot: { dataUrl: 'data:image/png;base64,iVBORw0KGgo=', w: 1, h: 1 } });
+    let notify!: (result: OpenDesignHostDownloadResult) => void;
+    const unsubscribe = vi.fn();
+    const restoreHost = installMockOpenDesignHost({ host: { downloads: {
+      subscribe: listener => { notify = listener; return unsubscribe; },
+    } } });
+    const OriginalURL = URL;
+    vi.stubGlobal('URL', Object.assign(class extends OriginalURL {}, {
+      createObjectURL: () => 'blob:default-pdf-proof', revokeObjectURL: vi.fn(),
+    }));
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const regularRequest = request.getMockImplementation()!;
+    request.mockImplementation((input, init) => ['/api/projects/project-guide/export/pdf-image', '/api/projects/project-guide/export/html', '/api/projects/project-guide/archive'].includes(String(input))
+      ? Promise.resolve(new Response('pdf bytes', { headers: { 'content-type': 'application/pdf' } }))
+      : regularRequest(input, init));
+    try {
+      await readyViewer();
+      if (format === 'image') {
+        fireEvent.click(await screen.findByRole('button', { name: /^Export$/ }));
+        fireEvent.click(await screen.findByRole('menuitem', { name: /Export as image/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /^Save$/ }));
+      } else if (format === 'zip') {
+        fireEvent.click(await screen.findByRole('button', { name: /^Export$/ }));
+        fireEvent.click(await screen.findByRole('menuitem', { name: /zip/i }));
+      } else await exportHtml(format);
+      await waitFor(() => expect(notify).toBeTypeOf('function'));
+      expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+      await act(async () => notify({ url: 'blob:another-export', state: 'completed' }));
+      expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+      await act(async () => notify({ url: 'blob:default-pdf-proof', state }));
+      if (state === 'completed') {
+        expect(await screen.findByRole('status', { name: 'Share the link, invite feedback' })).toBeVisible();
+      } else {
+        expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+        expect(screen.queryByText('Export complete')).toBeNull();
+      }
+      expect(unsubscribe).toHaveBeenCalledOnce();
+    } finally { restoreHost(); }
+  });
+
 	it.each(['toolbar', 'artifact-card'] as const)("retains a saved PDF completion from %s while focus refreshes sharing history", async entry => {
 		await readyViewer(entry === 'artifact-card');
 		let finishSave!: (response: Response) => void;

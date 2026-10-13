@@ -125,6 +125,25 @@ describe('Vela CLI collaboration client failures', () => {
     });
   });
 
+  it('preserves a real Featuretest body-parser 413 without an errorCode', async () => {
+    const client = createVelaCliCollabClient({
+      run: async () => { throw Object.assign(new Error('not a classifier'), {
+        stdout: JSON.stringify({ error: 'API request failed with status 413', status: 413 }),
+      }); },
+    });
+    const failure = await client.pushComment('team-1', 'p1', {} as CollabCloudComment).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(CollabCloudError);
+    expect(failure).toMatchObject({ status: 413, code: 'PAYLOAD_TOO_LARGE' });
+    for (const status of [403, 410, 500]) {
+      expect(collabCloudErrorFromVelaFailure(Object.assign(new Error('not a classifier'), {
+        stdout: JSON.stringify({ error: 'PAYLOAD_TOO_LARGE SHARE_STOPPED', status }),
+      }))).toBeNull();
+    }
+    expect(collabCloudErrorFromVelaFailure(Object.assign(new Error('not a classifier'), {
+      stdout: JSON.stringify({ error: 'API request failed with status 413' }),
+    }))).toBeNull();
+  });
+
   it('retains the legacy nested error.code envelope', () => {
     expect(collabCloudErrorFromVelaFailure(Object.assign(new Error('not a classifier'), {
       stdout: JSON.stringify({ error: { status: 410, code: 'SHARE_STOPPED', message: 'stopped' } }),

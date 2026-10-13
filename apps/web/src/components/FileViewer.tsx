@@ -7384,8 +7384,8 @@ function HtmlViewer({
       .catch(() => unknownExportOrigin());
     const completeShareGuide = afterExportGuide.beginExport();
     const finish = async (result: 'success' | 'failed' | 'cancelled', errorCode?: string, saveCompleted = false) => {
-      // Blob-download exporters resolve at initiation, not at disk persistence.
-      // Only the existing native PDF save acknowledgement can offer the guide.
+      // Only an acknowledged native save may offer the guide. Older hosts and
+      // browsers report download initiation without claiming disk persistence.
       if (toastFormats.has(format) && (result !== 'success' || saveCompleted)) completeShareGuide(result);
       const originProps = await originPromise;
       trackArtifactExportResult(
@@ -7465,7 +7465,7 @@ function HtmlViewer({
               if (toastFormats.has(format)) setExportToast(null);
               return;
             }
-            void finish('success', undefined, format === 'pdf' && result === 'desktop');
+            void finish('success', undefined, result === 'desktop');
             if (toastFormats.has(format)) setExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
           },
           (err) => {
@@ -7480,7 +7480,7 @@ function HtmlViewer({
           if (toastFormats.has(format)) setExportToast(null);
           return;
         }
-        void finish('success', undefined, format === 'pdf' && out === 'desktop');
+        void finish('success', undefined, out === 'desktop');
         if (toastFormats.has(format)) setExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
       }
     } catch (err) {
@@ -8294,10 +8294,11 @@ function HtmlViewer({
         ...daemonErrorCodeProp(error), ...failureDetailProps(error),
       }, requestId);
       if (requestSeq === publicFileRequestSeqRef.current) {
-        // Only push fails before the remote alias can move. A snapshot or
+        // Local file reads and push fail before the remote alias can move. A snapshot or
         // persistence failure (or an unclassified response) may have already
         // advanced it; never promise the old bytes or offer blind retry.
-        if (failureDetailProps(error).failed_stage === 'push') {
+        if (failureDetailProps(error).failed_stage === 'push'
+          || (error instanceof PublicFilePublishError && error.status === 400 && error.code === 'FILE_UNAVAILABLE')) {
           setUpdateToast('failure');
         } else {
           setFileShareFreshness('unknown');
@@ -15511,7 +15512,7 @@ function HtmlViewer({
         deck: pdfDeck,
         ...(context?.versionId ? { versionId: context.versionId } : {}),
       });
-      if (res.ok) return;
+      if (res.ok) return res.completion;
       // A SEMANTIC failure (bad deck routing, unreadable renderer output,
       // renderer 502, ...) must surface, not silently downgrade to the vector
       // PDF, which can reintroduce the fidelity bugs the screenshot path
@@ -15977,7 +15978,7 @@ function HtmlViewer({
           // a desktop host (no per-host divergence).
           deck: deckExportSignal,
         });
-        if (res.ok) return;
+        if (res.ok) return res.completion;
         // A SEMANTIC failure (bad deck routing, unreadable renderer output,
         // renderer 502, …) must surface — NOT silently downgrade to the vector
         // PDF, which can reintroduce the CJK-glyph / fidelity bugs the
@@ -16048,6 +16049,7 @@ function HtmlViewer({
     // re-render removes the button.
     if (imageExportInFlightRef.current) return;
     imageExportInFlightRef.current = true;
+    const completeShareGuide = afterExportGuide.beginExport();
     // Unify with the PPTX/PDF flow: close the modal and surface progress through
     // the same portaled, viewport-centered export toast instead of an in-modal
     // spinner + a separate (non-portaled, off-center) saved toast.
@@ -16094,11 +16096,18 @@ function HtmlViewer({
         fireImageExportResult('cancelled');
         return;
       }
-      if (target.method === 'download' && imageExportFormat === 'png' && dataUrl) {
+      let saved: void | 'desktop' | 'cancelled' | 'download' = undefined;
+      if (!isOpenDesignHostAvailable() && target.method === 'download' && imageExportFormat === 'png' && dataUrl) {
         downloadImageDataUrl(dataUrl, target.filename);
       } else {
-        await target.save(blob);
+        saved = await target.save(blob);
       }
+      if (saved === 'cancelled') {
+        setExportToast(null);
+        fireImageExportResult('cancelled');
+        return;
+      }
+      if (saved === 'desktop' || target.method === 'picker') completeShareGuide('success');
       fireImageExportResult('success');
       setExportToast({
         message:
@@ -18432,6 +18441,7 @@ function HtmlViewer({
                             : t('fileViewer.exportPptxNa'),
                       );
                     }
+                    return res.completion;
                   });
                 }}
               >

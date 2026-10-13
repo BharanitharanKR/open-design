@@ -368,8 +368,8 @@ export type VelaCliCollabClient = ReturnType<typeof createVelaCliCollabClient>;
  * Preserve a Vela command's machine-readable HTTP failure without ever
  * classifying its human stderr. `runVelaCommand` carries rejected stdout, and
  * structured command envelopes put the Go-defined fields at the root. Legacy
- * nested `error.code` remains accepted; both fields are required so a code
- * alone cannot cancel data.
+ * nested `error.code` remains accepted. A code alone cannot cancel data;
+ * a structured 413 without a code can only pause delivery.
  */
 export function collabCloudErrorFromVelaFailure(
 	error: unknown,
@@ -402,7 +402,11 @@ export function collabCloudErrorFromVelaFailure(
 	const status =
 		detail?.[VELA_CLI_FAILURE_ENVELOPE_FIELDS.status] ??
 		root[VELA_CLI_FAILURE_ENVELOPE_FIELDS.status];
-	const code = detail?.code ?? root[VELA_CLI_FAILURE_ENVELOPE_FIELDS.code];
+	// The deployed CLI preserves status but omits errorCode for body-parser 413s.
+	// Pausing that revision retains data; terminal cancellation still requires
+	// the explicit 410 + SHARE_STOPPED pair below the transport boundary.
+	const wireCode = detail?.code ?? root[VELA_CLI_FAILURE_ENVELOPE_FIELDS.code];
+	const code = status === 413 && wireCode == null ? "PAYLOAD_TOO_LARGE" : wireCode;
 	const message =
 		detail?.message ?? root[VELA_CLI_FAILURE_ENVELOPE_FIELDS.message];
 	if (
