@@ -108,6 +108,8 @@ import {
   trackDeckViewerClick,
   trackSpeakerNotesSaveResult,
   trackShareOptionPopoverClick,
+  trackShareGuideSurfaceView,
+  trackShareGuideClick,
 } from '../analytics/events';
 import { recordFirstLoopStep } from '../onboarding/first-loop';
 import { observeAnalytics } from '../analytics/observe';
@@ -17481,6 +17483,17 @@ function HtmlViewer({
                         close: t('fileViewer.shareGuide.close'),
                         saveFailed: t('fileViewer.shareGuide.preferenceSaveFailed'),
                       }}
+                      onObserve={event => observeAnalytics(() => {
+                        const identity = {
+                          page_name: 'artifact' as const,
+                          area: 'share_guide' as const,
+                          project_id: projectId,
+                          project_kind: projectKind,
+                          artifact_id: anonymizeArtifactId({ projectId, fileName: file.name }),
+                        };
+                        if (event === 'view') trackShareGuideSurfaceView(analytics.track, identity);
+                        else trackShareGuideClick(analytics.track, { ...identity, element: event });
+                      })}
                       onDismiss={afterExportGuide.dismiss}
                       onNeverShow={afterExportGuide.neverShow}
                       onOpenShare={() => {
