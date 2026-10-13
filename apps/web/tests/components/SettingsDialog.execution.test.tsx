@@ -1075,6 +1075,66 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
   });
 
+  it.each([
+    'http://127.0.0.1:11434',
+    'http://[::1]:11434',
+  ])('saves and auto-tests a keyless custom Ollama provider at %s', async (baseUrl) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === '/api/workspace/context') {
+        return workspaceContextResponse(null);
+      }
+      if (url === '/api/memory') {
+        return new Response(
+          JSON.stringify({ enabled: true, memories: [], extraction: null }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      expect(url).toBe('/api/test/connection');
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        mode: 'provider',
+        protocol: 'ollama',
+        apiKey: '',
+        baseUrl,
+        model: 'gemma3:4b',
+      });
+      return new Response(
+        JSON.stringify({ ok: true, kind: 'ok', latencyMs: 28, model: 'gemma3:4b' }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { onPersist } = renderSettingsDialog({
+      mode: 'api',
+      apiProtocol: 'ollama',
+      apiKey: '',
+      baseUrl,
+      apiProviderBaseUrl: null,
+      model: 'gemma3:4b',
+    });
+
+    expect(screen.getByRole('button', { name: 'Test' })).toBeTruthy();
+    fireEvent.change(screen.getByRole('spinbutton', { name: /Max tokens/ }), {
+      target: { value: '2048' },
+    });
+
+    await waitForPersist(onPersist, expect.objectContaining({
+      mode: 'api',
+      apiProtocol: 'ollama',
+      apiKey: '',
+      baseUrl,
+      model: 'gemma3:4b',
+      maxTokens: 2048,
+    }), {});
+    expect((onPersist.mock.calls.at(-1)?.[0] as AppConfig).byokPendingProviderKey).toBeUndefined();
+    await waitFor(() => {
+      expect(screen.getByText(/Connected\. Replied in 28 ms/)).toBeTruthy();
+    });
+    expect(fetchMock.mock.calls.filter(([input]) =>
+      input.toString() === '/api/test/connection',
+    )).toHaveLength(1);
+  });
+
   it('keeps protocol drafts isolated without leaking API keys between tabs', () => {
     renderSettingsDialog({ apiKey: 'anthropic-key' });
 
