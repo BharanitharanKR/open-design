@@ -25,6 +25,11 @@ it('ships ten loadable main Skills without restoring the retired machine protoco
     expect(() => assertOdNextPlanningBuildOnlyV2(body, name)).not.toThrow();
   }
   expect(assets.taskSkill).toContain('Query');
+  // The loaded prompt must gate native reads before presenting catalog choices.
+  const opening = assets.taskSkill.split('\n\n')[1];
+  expect(opening).toContain('Before choosing a deliverable type or calling a tool');
+  expect(opening).toContain('text-only planning');
+  expect(assets.taskSkill).toContain('Only for a request that authorizes producing or editing an artifact');
   expect(assets.taskSkill).toContain('production-ready');
   expect(assets.taskSkill).not.toMatch(/requiredDeliverables|runtime-state|planContractHash/);
   expect(DELIVERABLE_SKILLS).toHaveLength(10);
@@ -70,7 +75,7 @@ it('keeps output selection independent of shared HTML implementation and exposes
   if (!resolved.ok) throw Error(resolved.errors.join(';'));
   const binding = createBundledStrategyBindingV2({ plugin: resolved.record, taskType: 'discovery' });
   const { taskSkill } = loadBundledStrategyPromptAssetsV2({ plugin: resolved.record, binding });
-  expect(taskSkill).toContain('Choose the smallest set of production Skills that covers the independently requested outputs before issuing any Skill reads');
+  expect(taskSkill).toContain('For authorized production, choose the smallest set of production Skills that covers the independently requested outputs before issuing any Skill reads');
   expect(taskSkill).toContain('An HTML presentation, including its layout and navigation, is one ppt output');
   expect(taskSkill).toContain('A separately requested website still needs prototype');
   const video = await readFile(path.join(folder, 'assets/task-profiles/video.md'), 'utf8');
