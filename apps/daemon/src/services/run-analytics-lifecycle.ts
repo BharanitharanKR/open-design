@@ -68,7 +68,11 @@ import { summarizeRunDiagnosticsForAnalytics } from '../run-diagnostics.js';
 import { classifyRunFailure } from '../run-failure-classification.js';
 import { deriveRunErrorCode, runResultFromStatus } from '../run-result.js';
 import { terminalLifecycleForPosthogLocalQueue } from '../observability/run-terminal-lifecycle.js';
-import { runMessageEventPersistenceAnalytics } from '../runtimes/chat-run-messages.js';
+import {
+  runEventStorageShapeAnalytics,
+  runMessageEventPersistenceAnalytics,
+} from '../runtimes/chat-run-messages.js';
+import { readRunStorageAnalytics } from '../storage/run-storage-analytics.js';
 import { getDetectedRuntimeVersions } from '../runtimes/detection.js';
 import {
   deriveActivationMilestones,
@@ -305,6 +309,21 @@ export interface RunAnalyticsLifecycle {
    * the terminal half attaches to `runs.wait` and settles on its own.
    */
   install(input: RunAnalyticsInstallInput): void;
+}
+
+function runFinishedStorageProperties(
+  db: Parameters<typeof readRunStorageAnalytics>[0],
+  run: Parameters<typeof runEventStorageShapeAnalytics>[0] & { id: string },
+): Record<string, unknown> | null {
+  try {
+    const properties = {
+      ...readRunStorageAnalytics(db, { runId: run.id, assistantMessageId: run.assistantMessageId }),
+      ...runEventStorageShapeAnalytics(run),
+    };
+    return Object.keys(properties).length > 0 ? properties : null;
+  } catch {
+    return null;
+  }
 }
 
 export function createRunAnalyticsLifecycle(
@@ -972,6 +991,7 @@ export function createRunAnalyticsLifecycle(
             : undefined;
           const finishedProperties: Record<string, unknown> = {
               ...baseProps,
+              ...(run.diagnosticIncidentIds?.length ? { diagnostic_incident_ids: run.diagnosticIncidentIds } : {}),
               // The gate that refused an OD Next turn. `result` above comes
               // from the physical run status, and a refused turn normally exits
               // 0 — so without this the whole class counted as `success` while
@@ -979,6 +999,8 @@ export function createRunAnalyticsLifecycle(
               // terminal projection, the same object the SSE `end` payload and
               // the failure card were built from, so the three cannot drift.
               ...odNextBlockedAnalyticsFromStrategyTask(run.strategyTask),
+              ...(run.strategyTask?.settlementReason ? { od_next_settlement_reason: run.strategyTask.settlementReason } : {}),
+              ...(run.strategyTask?.settlementFacts ? { od_next_settlement_facts: run.strategyTask.settlementFacts } : {}),
               design_system_id: run.designSystemId ?? undefined,
               design_system_digest: run.designSystemDigest ?? undefined,
               design_system_selection_source: run.designSystemSelectionSource ?? 'none',
@@ -1225,6 +1247,10 @@ export function createRunAnalyticsLifecycle(
             properties: finishedProperties,
             insertId: runInsertId,
           });
+          // Storage observability rides only on the emitted copy: the recovery
+          // snapshot above and `finishedProperties` itself stay unchanged, and
+          // a startup replay re-measures from SQLite instead.
+          const storageProperties = runFinishedStorageProperties(db, run);
           let captureResult: AnalyticsCaptureResult;
           try {
             captureResult = normalizeAnalyticsCaptureResult(
@@ -1232,7 +1258,9 @@ export function createRunAnalyticsLifecycle(
                 eventName: 'run_finished',
                 context: analyticsContext,
                 appVersion: design.getAppVersion(),
-                properties: finishedProperties,
+                properties: storageProperties
+                  ? { ...finishedProperties, ...storageProperties }
+                  : finishedProperties,
                 insertId: `${runInsertId}-finish`,
               })),
             );

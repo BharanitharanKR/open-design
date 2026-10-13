@@ -1,5 +1,6 @@
 export * from './common.js';
 export * from './errors.js';
+export * from './api/failure-detail.js';
 export * from './settings-nav.js';
 export * from './tasks.js';
 export * from './api/app-config.js';
@@ -23,6 +24,7 @@ export * from './api/comments.js';
 export * from './api/collab.js';
 export * from './api/project-sync.js';
 export * from './api/team-resources.js';
+export * from './api/touchpointOffline.js';
 export * from './api/touchpointTestRuntime.js';
 export * from './api/connectionTest.js';
 export * from './api/artifact-focus-marker.js';
@@ -61,6 +63,14 @@ export * from './examples.js';
 export * from './execution-profile.js';
 export * from './artifacts/od-card.js';
 export * from './artifacts/chat-protocol-context.js';
+export * from './artifacts/artifact-transcript.js';
+export * from './artifacts/history-question-form.js';
+export {
+  computeSkipRanges,
+  rangeContains,
+  isRealArtifactOpenAt,
+  INLINE_CODE_RE,
+} from './artifacts/artifact-markdown-context.js';
 export * from './runtime/deck-stage-fallback.js';
 export * from './runtime/html-injection-points.js';
 export * from './runtime/deck-protocol.js';
@@ -83,6 +93,7 @@ export * from './prompts/chat-turn-host-protocol.js';
 export * from './prompts/deck-framework.js';
 export * from './prompts/od-next-device-frame.js';
 export * from './prompts/od-next-strategy.js';
+export * from './prompts/od-next-production-marker.js';
 export * from './prompts/canonical-xml.js';
 export * from './prompts/od-next-prompt-bundle.js';
 export * from './prompts/od-next-prompt-bundle-v2.js';
