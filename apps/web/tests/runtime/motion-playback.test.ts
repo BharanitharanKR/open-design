@@ -5,8 +5,9 @@ import { injectMotionSourcePlayer, MOTION_PREVIEW_ACTIVITY, MOTION_PREVIEW_REQUE
 type MotionWindow = Window & {
   __odMotionSourcePlayer?: boolean;
   __odMotionPreview?: boolean;
+  __odMotionThumbnail?: boolean;
   __timelines?: Record<string, unknown>;
-  __odMotionPlayer?: { state(): { playing: boolean }; pause(): void; play(): void };
+  __odMotionPlayer?: { state(): { playing: boolean }; pause(): void; play(): void; setMuted(value: boolean): void };
 };
 const motionWindow = window as MotionWindow;
 let dispose: (() => void) | undefined;
@@ -15,6 +16,7 @@ afterEach(() => {
   dispose?.();
   delete motionWindow.__odMotionSourcePlayer;
   delete motionWindow.__odMotionPreview;
+  delete motionWindow.__odMotionThumbnail;
   delete motionWindow.__odMotionPlayer;
   delete motionWindow.__timelines;
   document.body.innerHTML = '';
@@ -23,7 +25,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function boot(hosted: boolean, playResult: Promise<void> = Promise.resolve()) {
+function boot(hosted: boolean, playResult: Promise<void> = Promise.resolve(), thumbnail = false) {
   vi.useFakeTimers();
   const listeners = vi.spyOn(window, 'addEventListener');
   const post = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {});
@@ -43,6 +45,7 @@ function boot(hosted: boolean, playResult: Promise<void> = Promise.resolve()) {
   };
   motionWindow.__timelines = { main: timeline };
   motionWindow.__odMotionPreview = hosted;
+  motionWindow.__odMotionThumbnail = thumbnail;
   const html = injectMotionSourcePlayer(document.documentElement.outerHTML);
   const script = /<script data-od-motion-source-player[^>]*>([\s\S]*?)<\/script>/.exec(html)![1];
   window.eval(script!);
@@ -69,6 +72,25 @@ it('keeps standalone motion autoplay unchanged', () => {
   expect(player.state().playing).toBe(true);
   expect(timeline.paused()).toBe(false);
   expect(audio.paused).toBe(false);
+});
+
+it('loops the thumbnail timeline while keeping its soundtrack paused and permanently muted', async () => {
+  const { audio, timeline, player, activity } = boot(true, Promise.resolve(), true);
+  activity(true);
+  expect(player.state().playing).toBe(true);
+  expect(timeline.paused()).toBe(false);
+  expect(audio.paused).toBe(true);
+  expect(audio.muted).toBe(true);
+  expect(audio.play).not.toHaveBeenCalled();
+  timeline.seek(15);
+  await vi.advanceTimersByTimeAsync(34);
+  expect(timeline.time()).toBe(0);
+  expect(timeline.paused()).toBe(false);
+  player.setMuted(false);
+  expect(audio.muted).toBe(true);
+  expect(audio.play).not.toHaveBeenCalled();
+  activity(false);
+  expect(timeline.paused()).toBe(true);
 });
 
 it('pauses audio and the timeline while hidden, blocks play while inactive and resumes when active', async () => {

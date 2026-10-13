@@ -1800,6 +1800,7 @@ function applyUrlPreviewBridgesToHtml(
   transformed: string | Buffer,
   mime: string,
   requestedBridge: unknown,
+  requestedMotionPreview?: unknown,
 ): string | Buffer {
   if (
     !(
@@ -1810,7 +1811,8 @@ function applyUrlPreviewBridgesToHtml(
       wantsUrlPreviewBuildFocusBridge(requestedBridge) ||
       wantsUrlPreviewSandboxGuard(requestedBridge) ||
       wantsUrlPreviewFocusGuard(requestedBridge) ||
-      wantsUrlPreviewRedirectGuard(requestedBridge)
+      wantsUrlPreviewRedirectGuard(requestedBridge) ||
+      requestedMotionPreview === '1'
     ) ||
     !/^text\/html(?:;|$)/i.test(mime)
   ) {
@@ -7028,6 +7030,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             transformed,
             file.mime,
             req.query.odPreviewBridge,
+            req.query.odMotionPreview,
           );
           const workspaceId = typeof req.query.workspaceId === 'string'
             ? req.query.workspaceId
@@ -7141,7 +7144,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
-          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge);
+          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge, req.query.odMotionPreview);
         },
       );
     } catch (err: any) {

@@ -5,7 +5,7 @@ const bindings = new WeakMap<HTMLIFrameElement, ActivityBinding>();
 
 /** Bind for the iframe's full lifetime, including its time in the parking
  * pool. A reloaded hidden document must receive inactive before it can play. */
-export function bindMotionPreviewActivity(frame: HTMLIFrameElement): void {
+export function bindMotionPreviewActivity(frame: HTMLIFrameElement, onSize?: (size: { width: number; height: number }) => void): void {
   if (bindings.has(frame)) return;
   const host = frame.ownerDocument.defaultView;
   if (!host) return;
@@ -18,8 +18,9 @@ export function bindMotionPreviewActivity(frame: HTMLIFrameElement): void {
   };
   const onRequest = (event: MessageEvent) => {
     if (event.source !== frame.contentWindow || !event.source) return;
-    const data = event.data as { type?: unknown; id?: unknown } | null;
+    const data = event.data as { type?: unknown; id?: unknown; width?: unknown; height?: unknown } | null;
     if (data?.type !== MOTION_PREVIEW_REQUEST || typeof data.id !== 'string' || data.id.length === 0 || data.id.length > 128) return;
+    if (typeof data.width === 'number' && typeof data.height === 'number' && Number.isFinite(data.width) && Number.isFinite(data.height) && data.width > 0 && data.height > 0 && data.width <= 16384 && data.height <= 16384) onSize?.({ width: data.width, height: data.height });
     frame.contentWindow?.postMessage({ type: MOTION_PREVIEW_ACTIVITY, id: data.id, active: frame.dataset.odActive === 'true' }, '*');
   };
   const onLoad = () => send();

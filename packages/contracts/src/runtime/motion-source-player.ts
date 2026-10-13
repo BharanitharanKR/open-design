@@ -24,7 +24,7 @@ window.__odValidateMotionTimeline = function (root, tl) {
 // Shared by URL previews, srcdoc previews and the persisted editable source.
 // The renderer installs its flag before author scripts; it never sees chrome,
 // layout scaling, poster seeking, or wall-clock playback from this runtime.
-const PLAYER = `<script data-od-motion-source-player="5">
+const PLAYER = `<script data-od-motion-source-player="6">
 ${MOTION_TIMELINE_CHECK_SCRIPT}
 (function () {
   function boot() {
@@ -41,10 +41,11 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
     document.body.appendChild(hint);
     function notice(text) { hint.textContent = text; hint.style.display = text ? 'block' : 'none'; }
     var hosted = window.__odMotionPreview === true || new URL(location.href).searchParams.get('odMotionPreview') === '1';
+    var thumbnail = window.__odMotionThumbnail === true || new URL(location.href).searchParams.get('odMotionThumbnail') === '1';
     var instance = Date.now().toString(36) + Math.random().toString(36).slice(2);
     var active = !hosted, playing = false, wantsPlay = true, pageActive = true, updateTimer = null;
     var applyPlayback = function () {};
-    function requestActivity() { window.parent.postMessage({type:'${MOTION_PREVIEW_REQUEST}', id:instance}, '*'); }
+    function requestActivity() { window.parent.postMessage({type:'${MOTION_PREVIEW_REQUEST}', id:instance, width:width, height:height}, '*'); }
     function onActivity(event) {
       var data = event.data;
       if (!hosted || event.source !== window.parent || !data) return;
@@ -57,10 +58,11 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
       audio.pause(); audio.autoplay = false;
       return { audio: audio, start: Number(audio.dataset.start || 0), duration: Number(audio.dataset.duration), volume: Number(audio.dataset.volume || 1), pending: false, blocked: false };
     });
-    var muted = false;
+    var muted = thumbnail;
     function syncAudio(time, shouldPlay, force) {
       tracks.forEach(function (track) {
         var audio = track.audio, local = time - track.start;
+        if (thumbnail) { audio.muted = true; audio.pause(); return; }
         var trackActive = local >= 0 && local < track.duration;
         audio.volume = Math.max(0, Math.min(1, track.volume)); audio.muted = muted;
         if (!trackActive || !shouldPlay) audio.pause();
@@ -115,7 +117,7 @@ ${MOTION_TIMELINE_CHECK_SCRIPT}
       function replay() { seek(0); play(); }
       window.__odMotionPlayer = {
         play: play, pause: pause, seek: seek, replay: replay,
-        setMuted: function (value) { muted = !!value; syncAudio(tl.time(), playing, false); },
+        setMuted: function (value) { muted = thumbnail || !!value; syncAudio(tl.time(), playing, false); },
         state: function () { return { playing: playing, active: active, time: tl.time(), duration: duration, muted: muted,
           audio: tracks.map(function (track) { return { paused: track.audio.paused, time: track.audio.currentTime, muted: track.audio.muted, volume: track.audio.volume, blocked: track.blocked }; }) }; }
       };
@@ -160,7 +162,7 @@ export function injectMotionSourcePlayer(html: string): string {
   const existing = findRealTagOffset(html, /<script\b[^>]*\bdata-od-motion-source-player\b/i);
   if (existing >= 0) {
     const script = /^<script\b[^>]*>[\s\S]*?<\/script\s*>/i.exec(html.slice(existing));
-    if (!script || /data-od-motion-source-player="5"/.test(script[0])) return html;
+    if (!script || /data-od-motion-source-player="6"/.test(script[0])) return html;
     return html.slice(0, existing) + PLAYER + html.slice(existing + script[0].length);
   }
   const end = findRealTagOffset(html, HTML_TAG_PATTERNS.bodyClose);

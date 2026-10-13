@@ -189,7 +189,7 @@ The Open Design video composition contract:
 
 ```html
 <div id="main" data-composition-id="main" data-start="0"
-     data-duration="15" data-width="1920" data-height="1080">
+     data-duration="15" data-width="1920" data-height="1080" data-poster-time="13.5">
   <!-- Real scene elements, sized for this stage. -->
 </div>
 <script>
@@ -324,6 +324,13 @@ prototype does not turn it into a video request.
    `<link rel="alternate" type="video/mp4" href="../../film.mp4">` in the head.
    The href must identify the actual planned MP4 inside the project. The
    interactive equivalent declares `content="interactive"` and needs no MP4.
+   For video, choose a stable, representative moment in your actual timeline
+   and declare its time in seconds as `data-poster-time` on that root. It must
+   satisfy `0 <= time < data-duration`; avoid an empty opening or a transition.
+   Prefer a frame that communicates the product or main idea at thumbnail size.
+   The host validates the source/video clock and dimensions and extracts this
+   exact frame from the finished MP4. Do not generate a separate invented cover,
+   change the video's opening for the cover, or bake preview containers into it.
 3. Render through the host:
    `"$OD_NODE_BIN" "$OD_BIN" media generate --project "$OD_PROJECT_ID" --surface video --model hyperframes-html --composition-dir "motion-source/film" --output "film.mp4"`.
    If it returns a task ID, use `"$OD_NODE_BIN" "$OD_BIN" media wait <id>` and wait for success.
