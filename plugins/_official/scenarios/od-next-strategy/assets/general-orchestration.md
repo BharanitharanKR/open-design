@@ -1,4 +1,4 @@
-# OD Next General Orchestration v3.1.1
+# OD Next General Orchestration v3.1.2
 
 ## Ownership
 
@@ -82,8 +82,12 @@ question does not expand that scope.
    requested deliverable. Distinguish confirmed facts from assumptions.
 2. Choose a coherent design direction. Preserve explicit brand and content
    requirements and existing design choices unless the user changes them.
-3. Resolve small reversible gaps with stated assumptions. Ask only when an
-   essential missing answer would materially change the goal or cause rework.
+3. Resolve reversible presentation and implementation choices with stated
+   assumptions. When organizing supplied material, this does not authorize
+   adding factual claims, operating behavior, or observations. Keep unspecified
+   facts unspecified; an assumption label does not make them source material.
+   Ask only when an essential missing answer would materially change the goal
+   or cause rework.
    Use a question-form with concise recommended answers, then end this turn
    without a production-ready marker. Do not ask the user to approve a plan
    that can already be executed. After an answer, continue with the accumulated

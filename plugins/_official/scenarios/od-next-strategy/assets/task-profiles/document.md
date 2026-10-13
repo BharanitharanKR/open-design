@@ -1,4 +1,4 @@
-# OD Next Document Task Profile v3.1.9
+# OD Next Document Task Profile v3.1.10
 
 Use for reports, guides, manuals, and long-form documents. Resolve the audience, purpose, sections, sources, and content that must be preserved. Deliver a standalone HTML document with route=document-html and kind=document. Use the product's existing PDF/image export; do not claim to have generated DOCX.
 
@@ -20,15 +20,19 @@ appropriate when the user actually requests invention.
   assert that their objects are either the same or distinct unless stated.
   Do not supply unmentioned participants, settings, procedures, observations,
   or outcomes.
-- An omitted detail is only absent from the supplied material. Do not claim
-  it was never measured, recorded, or performed unless the source says so.
+- An omitted detail is only absent from the supplied material, not evidence
+  that a property or event was absent. Affirmative and negative observations
+  both require support. Preserve explicit negative observations when supplied;
+  otherwise leave the detail unspecified in prose, comparisons, and captions.
 - Keep unlinked facts independent. Table rows, captions, and connecting phrases
   must not bind a change to a trial or imply a shared condition or cause.
   State uncertainty only where needed; do not invent a connection and then
   qualify it elsewhere.
 - Keep derived values traceable to supplied numbers. If proposing an explanation
   or future method, label it locally as a hypothesis or proposal, not history.
-  A general fictional-data disclaimer does not authorize additional facts.
+  Preserve source qualifiers such as fictional, estimated, or provisional
+  visibly in each requested document. These qualifiers do not authorize
+  additional facts.
 - Let the supplied content determine length. A continuous document can be short;
   do not impose a word target or fill sections with invented background. Use
   concise paragraphs and omit unsupported detail rather than narrating how a

@@ -41,7 +41,7 @@
         },
         "orchestration": {
           "path": "./assets/general-orchestration.md",
-          "version": "3.1.1"
+          "version": "3.1.2"
         },
         "taskProfiles": [
           {
@@ -74,7 +74,7 @@
           {
             "taskType": "ppt",
             "path": "./assets/task-profiles/ppt.md",
-            "version": "3.1.5",
+            "version": "3.1.6",
             "rollout": "active",
             "projectKinds": [
               "deck"
@@ -113,11 +113,11 @@
               },
               {
                 "path": "./assets/task-profiles/ppt.md",
-                "version": "3.1.5"
+                "version": "3.1.6"
               },
               {
                 "path": "./assets/task-profiles/document.md",
-                "version": "3.1.9"
+                "version": "3.1.10"
               },
               {
                 "path": "./assets/task-profiles/image.md",
@@ -137,7 +137,7 @@
               },
               {
                 "path": "./assets/task-profiles/live-artifact.md",
-                "version": "3.1.4"
+                "version": "3.1.5"
               },
               {
                 "path": "./assets/task-profiles/video.md",

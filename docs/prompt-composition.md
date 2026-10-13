@@ -229,6 +229,22 @@ concatenated into the prompt head. Prefer neither when the content is a host
 contract — give it one source in `packages/contracts` and have every path
 consume it, as the deck framework now does.
 
+## Refreshable HTML templates
+
+The shared daemon renderer `apps/daemon/src/live-artifacts/render.ts` owns
+`html_template_v1` binding semantics for both CLI and HTTP registration and
+refresh. Alongside escaped scalar paths and single-level repeats, the numeric
+binding `{{sum data.items count}}` sums an own numeric field path across the
+current source array on every render. Nested field paths are allowed; empty
+arrays yield zero. Missing or non-numeric values and non-finite totals fail the
+render rather than silently reporting an incomplete total. This is a bounded
+operation, not JavaScript evaluation or a general expression language.
+
+The OD Next live-artifact profile documents this capability. Its prompt change
+is scoped to Discovery delivery; no Legacy prompt or deck protocol is changed.
+Existing templates keep their current behavior. A runtime without sum support
+rejects the new binding, so the updated profile must ship with its renderer.
+
 ## Known gaps
 
 Verified on `6fb440a86` (2026-08-31).

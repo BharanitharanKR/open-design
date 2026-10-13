@@ -1,4 +1,4 @@
-# OD Next Presentation Task Profile v3.1.5
+# OD Next Presentation Task Profile v3.1.6
 
 > Rollout: active
 
@@ -24,9 +24,9 @@ format. Freeze type, color, page grid, margins, chart language, imagery, and
 section rhythm in the Design Spec. Record the chosen narrative structure in
 the Task Profile.
 
-Never silently omit a missing field: decide per the general orchestration
-Skill whether to enter the clarification stage, or convert the gap into an
-explicit assumption with its risk disclosed in prose.
+Resolve missing design choices per the general orchestration Skill. Missing
+source facts stay unspecified; do not fill them with plausible assumptions to
+complete a narrative. Ask only when the omission blocks the requested work.
 
 Quality focus: narrative coherence, one clear point per slide, readability,
 truthful data, layout fitted to content, and consistency across the deck.
@@ -54,6 +54,11 @@ and existing templates; user references apply only within their designated
 scope; this profile's defaults fill only what remains unspecified.
 
 ### Preserve the source before choosing a narrative
+
+Keep source qualifiers such as fictional examples, estimates, or provisional
+results visible in the delivered deck, including its opening or relevant slide
+captions. A note only in the plan, chat reply, or a companion document does not
+qualify the deck. Preserve these distinctions when shortening the supplied text.
 
 Preserve explicit relationships as well as individual facts. If the source says
 an event occurred before or after a change, keep that relationship; do not relabel

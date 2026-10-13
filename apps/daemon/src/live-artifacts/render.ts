@@ -17,6 +17,8 @@ export interface LiveArtifactRenderOutput {
 const TEMPLATE_INTERPOLATION = /{{\s*([^{}]+?)\s*}}/g;
 const RAW_TEMPLATE_INTERPOLATION = /{{{[^{}]*}}}|{{\s*&[^{}]*}}/;
 const TEMPLATE_PATH = /^(?:data|[A-Za-z_][A-Za-z0-9_]*)(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|\d+))*$/;
+// A bounded numeric aggregate, not a general expression language.
+const SUM_BINDING = /^sum\s+(data(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|\d+))+)\s+([A-Za-z_][A-Za-z0-9_]*(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|\d+))*)$/;
 // `data-od-repeat="item in data.items"` — one loop variable over one `data.*` array.
 const REPEAT_DIRECTIVE = /\s*\bdata-od-repeat\s*=\s*"([^"]*)"/i;
 const REPEAT_DIRECTIVE_SPEC = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(data(?:\.(?:[A-Za-z_][A-Za-z0-9_-]*|\d+))*)\s*$/;
@@ -81,8 +83,37 @@ function scalarOrThrow(value: unknown, binding: string): string {
   return escapeHtmlTemplateValue(value);
 }
 
+/** Aggregates read only own JSON fields; missing values never become zero. */
+function readSumPath(root: unknown, segments: string[]): unknown {
+  let value = root;
+  for (const segment of segments) {
+    if (value === null || typeof value !== 'object' || !Object.hasOwn(value, segment)) return undefined;
+    value = (value as Record<string, unknown>)[segment];
+  }
+  return value;
+}
+
+/** Recompute from current rows at registration and every refreshed render. */
+function sumTemplateField(dataJson: BoundedJsonObject, arrayPath: string, fieldPath: string): string {
+  const rows = readSumPath(dataJson, arrayPath.split('.').slice(1));
+  if (!Array.isArray(rows)) throw new Error(`sum source must be an array: ${arrayPath}`);
+  let total = 0;
+  const fieldSegments = fieldPath.split('.');
+  for (const row of rows) {
+    const value = readSumPath(row, fieldSegments);
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new Error(`sum field must be a finite number: ${fieldPath}`);
+    }
+    total += value;
+    if (!Number.isFinite(total)) throw new Error(`sum total must be finite: ${arrayPath}`);
+  }
+  return escapeHtmlTemplateValue(total);
+}
+
 function rootResolver(dataJson: BoundedJsonObject): BindingResolver {
   return (binding) => {
+    const sum = SUM_BINDING.exec(binding);
+    if (sum?.[1] && sum[2]) return sumTemplateField(dataJson, sum[1], sum[2]);
     if (!TEMPLATE_PATH.test(binding) || !binding.startsWith('data')) {
       throw new Error(`invalid template binding path: ${binding}`);
     }
@@ -92,6 +123,7 @@ function rootResolver(dataJson: BoundedJsonObject): BindingResolver {
 
 function childResolver(parent: BindingResolver, varName: string, item: unknown): BindingResolver {
   return (binding) => {
+    if (/^sum\s/.test(binding)) return parent(binding);
     if (!TEMPLATE_PATH.test(binding)) throw new Error(`invalid template binding path: ${binding}`);
     const segments = binding.split('.');
     if (segments[0] !== varName) return parent(binding);
