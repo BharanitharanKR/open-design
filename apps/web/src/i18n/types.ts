@@ -4233,6 +4233,12 @@ export interface Dict {
   'fileViewer.publishFileRequiresTeam': string;
   'fileViewer.publishFileRequiresWorkspace': string;
   'fileViewer.publishFileFailed': string;
+  'fileViewer.publishFileConnectionFailed': string;
+  'fileViewer.publishFileSignInRequired': string;
+  'fileViewer.publishFileAccessDenied': string;
+  'fileViewer.publishFileServiceRejected': string;
+  'fileViewer.publishFileLocalSessionFailed': string;
+  'fileViewer.publishFileUnconfirmed': string;
   'fileViewer.shareCheckLoading': string;
   'fileViewer.shareCheckFailed': string;
   'fileViewer.shareUpdateHint': string;

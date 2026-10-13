@@ -285,6 +285,20 @@ describe('od project CLI', () => {
       expect(JSON.parse(result.stderr)).toEqual({ error: { code: 'http-error', message: 'HTTP 500', data: {} } });
     });
 
+    it.each(['flat', 'nested'])('exposes only safe publication failure detail (%s)', async shape => {
+      const failure = { stage: 'snapshot', reason: 'session_cleanup' };
+      const error = { code: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', message: 'Share operation failed.' };
+      const body = { error: shape === 'flat' ? error.code : error,
+        failure: { ...failure, upstreamStatus: 999, upstreamCode: 'private body', stderr: 'private-output' },
+        secret: 'private-key' };
+      stub = await startProjectStubServer(undefined, body, 502);
+      const result = await runCli([...args, '--daemon-url', stub.baseUrl]);
+      expect(result.code).toBe(1);
+      expect(JSON.parse(result.stderr).error).toEqual({ ...error, data: { failure } });
+      expect(result.stderr).not.toContain('private');
+      expect(stub.requests).toHaveLength(1);
+    });
+
     it('keeps actual connection failures classified as daemon-not-running', async () => {
       const closed = await startProjectStubServer();
       await closed.close();

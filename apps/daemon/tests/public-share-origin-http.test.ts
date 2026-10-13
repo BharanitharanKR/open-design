@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { createCollabRuntime } from '../src/collab/runtime.js';
 import { registerCollabSyncRoutes } from '../src/routes/collab-sync.js';
@@ -72,7 +72,7 @@ for (const scenario of cases) it.each([false, true])(`${scenario.name}: HTTP pub
     // remote alias. Never record or advertise that as an atomic publication.
     if (pending) {
       expect(response.status).toBe(502);
-      expect(body).toEqual({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: 'snapshot', reason: 'unknown' } });
+      expect(body).toEqual({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure: { stage: 'snapshot', reason: 'invalid_receipt' } });
       expect(store.getRevision(scope)).toBeNull();
       expect(createShareBindingOutbox(db).list()).toEqual([]);
       return;
@@ -224,6 +224,7 @@ it.each([
 });
 
 it('S9-R: explicit stopped-link resume returns the original receipt without uploading a second version', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const root = await mkdtemp(join(tmpdir(), 'od-original-link-resume-'));
   const db = new Database(':memory:');
   migratePublicFilePublications(db); migrateCommentRelayOutbox(db);
@@ -252,9 +253,16 @@ it('S9-R: explicit stopped-link resume returns the original receipt without uplo
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const address = server.address(); if (!address || typeof address === 'string') throw new Error('no listener');
     const url = `http://127.0.0.1:${address.port}/api/projects/p/files/index.html/publish-public`;
-    const early = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'resume' }) });
+    const early = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-od-request-id': 'resume-guard-test' }, body: JSON.stringify({ mode: 'resume' }) });
     expect(early.status).toBe(409);
     expect(commands).toEqual([]);
+    expect(warn).toHaveBeenCalledWith('[od] public share diagnostic', expect.any(String));
+    const guardLog = warn.mock.calls.find(([label]) => label === '[od] public share diagnostic');
+    expect(JSON.parse(String(guardLog?.[1]))).toMatchObject({
+      operation: 'resume', stage: 'resume_guard', status: 409,
+      errorCode: 'SHARE_RESUME_NOT_STOPPED', requestId: 'resume-guard-test',
+    });
+    expect(String(guardLog?.[1])).not.toMatch(/index.html|owner|version-1/);
     const first = await (await fetch(url, { method: 'POST' })).json(); assertJsonObject(first);
     expect(first).toMatchObject({ status: 'published', receipt: { version: 1, versionId: 'version-1', slug: fixtureShareSlug } });
     expect((await fetch(url, { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: fixtureShareSlug }) })).status).toBe(200);
@@ -338,7 +346,15 @@ it('S9-R: explicit stopped-link resume returns the original receipt without uplo
     expect(await staleResumeResponse.json()).toMatchObject({ status: 'published', receipt: first.receipt });
     expect(uploads).toBe(1);
     expect(store.get(scope)?.slug).toBe(fixtureShareSlug);
+    const diagnostics = warn.mock.calls.filter(([label]) => label === '[od] public share diagnostic')
+      .map(([, value]) => JSON.parse(String(value)));
+    expect(diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ stage: 'resume_command', errorCode: 'PUBLIC_SHARE_RESUME_UNAVAILABLE' }),
+      expect.objectContaining({ stage: 'resume_record', errorCode: 'PUBLIC_SHARE_RESUME_RECORD_UNAVAILABLE' }),
+      expect.objectContaining({ stage: 'resume_record', errorCode: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED' }),
+    ]));
   } finally {
+    warn.mockRestore();
     server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()));
     runtime.dispose(); db.close(); await rm(root, { recursive: true, force: true });
   }
