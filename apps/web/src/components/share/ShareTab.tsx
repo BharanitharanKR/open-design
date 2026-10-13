@@ -18,8 +18,6 @@ import { ShareErrorRow } from './ShareErrorRow';
 import { ShareProgressButton } from './ShareProgressButton';
 import { ShareConflictRow } from './ShareConflictRow';
 import styles from './ShareTab.module.css';
-export type ShareFreshnessReadStatus = 'idle' | 'checking' | 'ready' | 'error';
-
 export type SharePublishFailureKey =
   | PublicFilePublishFailureKey
   | 'fileViewer.publishFileTooLarge'
@@ -118,8 +116,6 @@ export function ShareTab({
   menuOrigin,
   publicationStatus = null,
   publicationFreshness = 'unknown',
-  freshnessReadStatus = 'idle',
-  retryFreshnessRead,
   updateCurrentFilePublic,
   canResumeUpdateAfterLogin = false,
   onUpdateLoginSuccess,
@@ -161,9 +157,6 @@ export function ShareTab({
   /** Exact file status from authoritative project share-state, not local URL presence. */
   publicationStatus?: 'active' | 'stopped' | null;
   publicationFreshness?: ShareContentFreshness;
-  /** Independent from upload preflight: this read checks the existing share's content. */
-  freshnessReadStatus?: ShareFreshnessReadStatus;
-  retryFreshnessRead?: () => void;
   updateCurrentFilePublic?: () => Promise<void>;
   canResumeUpdateAfterLogin?: boolean;
   onUpdateLoginSuccess?: () => void;
@@ -367,25 +360,6 @@ export function ShareTab({
                                 onLoginSuccess={onUpdateLoginSuccess} />
                             }
                           />
-                        ) : null}
-                        {freshnessReadStatus === 'checking' ? (
-                          <p className={styles.publishHint} role="status" aria-live="polite">
-                            {t('fileViewer.shareFreshnessChecking')}
-                          </p>
-                        ) : null}
-                        {freshnessReadStatus === 'error' ? (
-                          <div role="status" aria-live="polite">
-                            <ShareNoticeRow
-                              message={t('fileViewer.shareFreshnessFailed')}
-                              action={retryFreshnessRead ? (
-                                <Button variant="secondary" size="sm"
-                                  disabled={!canMutatePublicShare || viewerOnly || streaming || publishing}
-                                  onClick={retryFreshnessRead}>
-                                  {t('fileViewer.shareUpdateRetry')}
-                                </Button>
-                              ) : undefined}
-                            />
-                          </div>
                         ) : null}
                         {updateAvailable ? (
                           <ShareNoticeRow

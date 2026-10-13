@@ -3302,8 +3302,6 @@ export const hu: Dict = {
   'fileViewer.copyFixForAgent': "Javítás másolása az ügynöknek",
   'fileViewer.copyFixForAgentFailed': "A másolás nem sikerült. Jelöld ki az alábbi utasítást, és másold ki kézzel.",
   "fileViewer.shareUpdateHint": "A fájlban új módosítások vannak. A látogatók még az előző verziót látják.",
-  "fileViewer.shareFreshnessChecking": "Új módosítások ellenőrzése…",
-  "fileViewer.shareFreshnessFailed": "Nem sikerült ellenőrizni az új módosításokat. Próbáld újra.",
   "fileViewer.shareUpdateLink": "Hivatkozás frissítése",
   "fileViewer.signInToUpdate": "Bejelentkezés a frissítéshez",
   "fileViewer.signInToShare": "Bejelentkezés a megosztáshoz",

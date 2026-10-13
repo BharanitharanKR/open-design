@@ -3311,8 +3311,6 @@ export const fa: Dict = {
   'fileViewer.copyFixForAgent': "کپی راه‌حل برای عامل",
   'fileViewer.copyFixForAgentFailed': "کپی انجام نشد. دستورالعمل زیر را انتخاب کرده و دستی کپی کنید.",
   "fileViewer.shareUpdateHint": "فایل تغییرات جدیدی دارد. بازدیدکنندگان هنوز نسخهٔ قبلی را می‌بینند.",
-  "fileViewer.shareFreshnessChecking": "در حال بررسی تغییرات جدید…",
-  "fileViewer.shareFreshnessFailed": "بررسی تغییرات جدید ممکن نشد. دوباره تلاش کنید.",
   "fileViewer.shareUpdateLink": "به‌روزرسانی پیوند",
   "fileViewer.signInToUpdate": "ورود برای به‌روزرسانی",
   "fileViewer.signInToShare": "ورود برای اشتراک‌گذاری",

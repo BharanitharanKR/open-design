@@ -3311,8 +3311,6 @@ export const ar: Dict = {
   'fileViewer.copyFixForAgent': "نسخ الإصلاح للوكيل",
   'fileViewer.copyFixForAgentFailed': "تعذّر النسخ. حدّد التعليمات أدناه وانسخها يدويًا.",
   "fileViewer.shareUpdateHint": "يحتوي الملف على تغييرات جديدة. لا يزال الزوار يرون الإصدار السابق.",
-  "fileViewer.shareFreshnessChecking": "جارٍ التحقق من تغييرات جديدة…",
-  "fileViewer.shareFreshnessFailed": "تعذر التحقق من تغييرات جديدة. حاول مرة أخرى.",
   "fileViewer.shareUpdateLink": "تحديث الرابط",
   "fileViewer.signInToUpdate": "سجّل الدخول للتحديث",
   "fileViewer.signInToShare": "سجّل الدخول للمشاركة",

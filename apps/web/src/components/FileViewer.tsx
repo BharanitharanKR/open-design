@@ -4,7 +4,7 @@ import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-de
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { ArtifactExportFormat } from '../runtime/chat/artifact-export';
 import { useSharePlan } from './share/useSharePlan';
-import { boundedPublishProgress, ShareTab, type ShareFreshnessReadStatus, type SharePublishFailureKey } from './share/ShareTab';
+import { boundedPublishProgress, ShareTab, type SharePublishFailureKey } from './share/ShareTab';
 import type { ObservedPublicShareLink, ObservedShareUpdateRequest } from './share/observed-public-share-link';
 import { shareLoginReturnMatches, type ShareLoginReturn } from './share/share-login-return';
 
@@ -7739,8 +7739,6 @@ function HtmlViewer({
   // Details for `fileViewer.publishFileEntryIndexConflict`; read only while that key is set.
   const [publishConflict, setPublishConflict] = useState<EntryIndexConflictDetails | null>(null);
   const [fileShareFreshness, setFileShareFreshness] = useState<ShareContentFreshness>('unknown');
-  const [shareFreshnessReadStatus, setShareFreshnessReadStatus] = useState<ShareFreshnessReadStatus>('idle');
-  const [shareFreshnessRetryKey, setShareFreshnessRetryKey] = useState(0);
   const [fileShareStatus, setFileShareStatus] = useState<ShareStatus | null>(null);
   const [updateToast, setUpdateToast] = useState<'success' | 'failure' | 'uncertain' | null>(null);
   const sharePanelOpen = deployMenuOpen && unifiedActionTab === 'share';
@@ -7922,8 +7920,6 @@ function HtmlViewer({
   function applyPublicShareStateRead(state: ProjectFilePublicShareResponse) {
     setFileShareStatus(state.status ?? null);
     setFileShareFreshness(state.freshness ?? 'unknown');
-    setShareFreshnessReadStatus(state.status === 'active' && (!state.freshness || state.freshness === 'unknown')
-      ? 'error' : 'ready');
     const knownLink = publicFileShareLinkFromRead(state);
     // Missing local metadata is not proof a live remote link was stopped.
     if (state.status === 'stopped') {
@@ -7967,7 +7963,6 @@ function HtmlViewer({
     setPublishLinkFeedback(null);
     setPublishFailureKey(null);
     setFileShareFreshness('unknown');
-    setShareFreshnessReadStatus('idle');
     if (!preserveKnownLink) setFileShareStatus(null);
     setUpdateToast(null);
     updateInFlightRef.current = false;
@@ -7980,7 +7975,6 @@ function HtmlViewer({
     // failing (Batch A §4.4). `viewerOnly` fails closed while ownership is
     // still unknown, and this effect re-runs when it flips writable.
     if (viewerOnly) return;
-    setShareFreshnessReadStatus('checking');
     void fetchProjectFilePublicShareState(projectId, file.name, workspaceContext)
       .then((state) => {
         const current = publicFileIdentityRef.current;
@@ -7989,10 +7983,7 @@ function HtmlViewer({
         applyPublicShareStateRead(state);
       })
       .catch(() => {
-        if (!cancelled && publicFileRequestSeqRef.current === requestSeq) {
-          setFileShareFreshness('unknown');
-          setShareFreshnessReadStatus('error');
-        }
+        if (!cancelled && publicFileRequestSeqRef.current === requestSeq) setFileShareFreshness('unknown');
       });
     return () => { cancelled = true; };
     // A workspace context loads asynchronously; re-read when its identity resolves.
@@ -8007,7 +7998,6 @@ function HtmlViewer({
       || streaming || publishingPublicFile || updateInFlightRef.current) return;
     const requestSeq = ++publicFileRequestSeqRef.current;
     setFileShareFreshness('unknown');
-    setShareFreshnessReadStatus('checking');
     void fetchProjectFilePublicShareState(projectId, file.name, workspaceContext)
       .then((state) => {
         const current = publicFileIdentityRef.current;
@@ -8016,19 +8006,9 @@ function HtmlViewer({
         applyPublicShareStateRead(state);
       })
       .catch(() => {
-        if (requestSeq === publicFileRequestSeqRef.current) {
-          setFileShareFreshness('unknown');
-          setShareFreshnessReadStatus('error');
-        }
+        if (requestSeq === publicFileRequestSeqRef.current) setFileShareFreshness('unknown');
       });
-  }, [deployMenuOpen, unifiedActionTab, sourceSnapshotRefreshKey, liveHtml, streaming, projectId, file.name, workspaceActive, canPublishPublic, viewerOnly, sourceAuthorizationScopeKey, shareFreshnessRetryKey]);
-
-  function retryShareFreshnessRead() {
-    if (shareFreshnessReadStatus !== 'error' || !sharePanelOpen || !workspaceActive || !canPublishPublic
-      || viewerOnly || streaming || publishingPublicFile || updateInFlightRef.current) return;
-    // Read only: retry the same fenced state GET, never a publish/update intent.
-    setShareFreshnessRetryKey(value => value + 1);
-  }
+  }, [deployMenuOpen, unifiedActionTab, sourceSnapshotRefreshKey, liveHtml, streaming, projectId, file.name, workspaceActive, canPublishPublic, viewerOnly, sourceAuthorizationScopeKey]);
 
   // Shared identity fields for the publish-flow events (HtmlViewer copy).
   // `artifactKindToTracking` only recognises HTML through the renderer id — an HTML
@@ -8094,7 +8074,6 @@ function HtmlViewer({
     outcome: { status: 'stopped' } | { status: 'active'; link: WebPublicFileShareLink },
     requestSeq: number,
   ): Promise<void> {
-    setShareFreshnessReadStatus('ready');
     if (outcome.status === 'stopped') {
       setFileShareStatus('stopped');
       setFileShareFreshness('unknown');
@@ -8137,7 +8116,6 @@ function HtmlViewer({
         boundedPublishProgress(performance.now() - publishStarted, false)));
     }, 250);
     setPublishingPublicFile(true);
-    setShareFreshnessReadStatus('idle');
     setPublishLinkFeedback(null);
     setPublishFailureKey(null);
     try {
@@ -8243,7 +8221,6 @@ function HtmlViewer({
     const requestSeq = ++publicFileRequestSeqRef.current;
     updateInFlightRef.current = true;
     setPublishingPublicFile(true);
-    setShareFreshnessReadStatus('idle');
     setUpdateToast(null);
     const started = performance.now();
     const requestId = analytics.newRequestId();
@@ -8261,7 +8238,6 @@ function HtmlViewer({
       setPublishedFileUrl(response.url ?? '');
       setPublishedFileSlug(response.slug);
       setFileShareFreshness('unknown');
-      setShareFreshnessReadStatus('checking');
       setUpdateToast('success');
       // The source may change again during upload. Only the daemon's COMPLETE
       // publish-plan fingerprint comparison can claim the new link is current.
@@ -8270,8 +8246,6 @@ function HtmlViewer({
           if (requestSeq !== publicFileRequestSeqRef.current) return;
           setFileShareStatus(state.status ?? null);
           setFileShareFreshness(state.freshness ?? 'unknown');
-          setShareFreshnessReadStatus(state.status === 'active' && (!state.freshness || state.freshness === 'unknown')
-            ? 'error' : 'ready');
           const knownLink = publicFileShareLinkFromRead(state);
           if (knownLink) {
             setPublishedFileUrl(knownLink.url ?? '');
@@ -8279,10 +8253,7 @@ function HtmlViewer({
           }
         })
         .catch(() => {
-          if (requestSeq === publicFileRequestSeqRef.current) {
-            setFileShareFreshness('unknown');
-            setShareFreshnessReadStatus('error');
-          }
+          if (requestSeq === publicFileRequestSeqRef.current) setFileShareFreshness('unknown');
         });
       // Updating a live alias NEVER auto-copies. The person may still copy it
       // through the existing independent action above.
@@ -8376,7 +8347,6 @@ function HtmlViewer({
     const unpublishStarted = performance.now();
     const unpublishRequestId = analytics.newRequestId();
     setPublishingPublicFile(true);
-    setShareFreshnessReadStatus('idle');
     setPublishLinkFeedback(null);
     setPublishFailureKey(null);
     try {
@@ -9283,7 +9253,6 @@ function HtmlViewer({
     lastGoodSourceForRoutingRef.current = null;
     prevSourceBeforeReloadRef.current = null;
     publicFileRequestSeqRef.current += 1;
-    setShareFreshnessReadStatus('idle');
     if (!retainKnownPublicUrl) {
       setPublishedFileUrl('');
       setPublishedFileSlug('');
@@ -17533,8 +17502,6 @@ function HtmlViewer({
                         sharePlanState={sharePlanState}
                         publicationStatus={fileShareStatus === 'active' || fileShareStatus === 'stopped' ? fileShareStatus : (projectShareHistory?.publications.find(publication => publication.sourceFilePath === file.name)?.status ?? null)}
                         publicationFreshness={fileShareFreshness}
-                        freshnessReadStatus={shareFreshnessReadStatus}
-                        retryFreshnessRead={retryShareFreshnessRead}
                         updateCurrentFilePublic={updateCurrentFilePublic}
                         canResumeUpdateAfterLogin={Boolean(retainedShareWasOutdatedRef.current && retainedShareAuthorizationScopeKeyRef.current && fileShareStatus === 'active' && publishedFileUrl)}
                         onSignInSuccess={() => {

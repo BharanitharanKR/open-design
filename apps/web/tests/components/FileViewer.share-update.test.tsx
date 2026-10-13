@@ -44,7 +44,6 @@ function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown
   let readFails = false;
   let deferReads = false;
   let resolveDeferredRead: ((response: Response) => void) | null = null;
-  const deferredReads: Array<(response: Response) => void> = [];
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith('/api/integrations/vela/status')) return new Response(JSON.stringify({ loggedIn: Boolean(options.amrAuthenticated), loginInFlight: false, profile: 'prod', user: options.amrAuthenticated ? { id: 'owner' } : null, configPath: '/x' }), { status: 200 });
@@ -61,10 +60,7 @@ function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown
       }
       if (readFails) return new Response(JSON.stringify({ error: 'SHARE_STATE_UNAVAILABLE' }), { status: 503 });
       if (options.noPublication) return new Response(JSON.stringify({ publication: null, status: 'none', freshness: 'unknown' }), { status: 200 });
-      if (deferReads) return await new Promise<Response>(resolve => {
-        resolveDeferredRead = resolve;
-        deferredReads.push(resolve);
-      });
+      if (deferReads) return await new Promise<Response>(resolve => { resolveDeferredRead = resolve; });
       return new Response(JSON.stringify({ publication, status: fileStatus, freshness }), { status: 200 });
     }
     if (url.includes('/social-share')) return new Response('{}', { status: 503 });
@@ -78,11 +74,6 @@ function publishedRoute(options: { freshness?: 'outdated' | 'current' | 'unknown
     setFileStatus: (next: typeof fileStatus) => { fileStatus = next; },
     setReadDeferred: (next: boolean) => { deferReads = next; },
     resolveDeferredRead: () => resolveDeferredRead?.(new Response(JSON.stringify({ publication, status: 'active', freshness }), { status: 200 })),
-    resolveReadAt: (index: number, nextFreshness: typeof freshness) => {
-      const resolve = deferredReads[index];
-      if (!resolve) throw new Error(`No deferred share read ${index}`);
-      resolve(new Response(JSON.stringify({ publication, status: 'active', freshness: nextFreshness }), { status: 200 }));
-    },
   };
 }
 function posts(fetch: ReturnType<typeof vi.fn>) {
@@ -396,76 +387,6 @@ it('S5 responds to filesRefreshKey with unchanged mtime while the panel stays op
   await waitFor(() => expect(fetch.mock.calls.filter(([url, init]) => String(url).includes('publish-public') && !init?.method).length).toBeGreaterThan(before));
   await waitFor(() => expect(screen.getByRole('button', { name: /update link/i })).toBeEnabled());
   expect(posts(fetch)).toHaveLength(0);
-});
-
-it('OPEND-3791 shows checking feedback while a resource-only refresh waits, then updates without reopening', async () => {
-  const route = publishedRoute({ freshness: 'current' });
-  const view = await openShare();
-  await waitFor(() => expect(screen.queryByRole('button', { name: /update link/i })).toBeNull());
-  route.setReadDeferred(true);
-  route.setFreshness('outdated');
-  view.rerender(<CollabProvider value={collab}><FileViewer {...props} filesRefreshKey={7} /></CollabProvider>);
-  await screen.findByText('Checking for new changes…');
-  expect(screen.getByRole('button', { name: /copy share link/i })).toBeEnabled();
-  expect(screen.queryByRole('button', { name: /update link/i })).toBeNull();
-  expect(posts(route.fetch)).toHaveLength(0);
-  await act(async () => { route.resolveDeferredRead(); });
-  await waitFor(() => expect(screen.getByRole('button', { name: /update link/i })).toBeEnabled());
-  expect(screen.queryByText('Checking for new changes…')).toBeNull();
-  expect(posts(route.fetch)).toHaveLength(0);
-});
-
-it('OPEND-3791 retries a failed freshness read without closing the panel or publishing', async () => {
-  const route = publishedRoute({ freshness: 'current' });
-  const view = await openShare();
-  route.setReadFails(true);
-  view.rerender(<CollabProvider value={collab}><FileViewer {...props} filesRefreshKey={8} /></CollabProvider>);
-  await screen.findByText('Could not check for new changes. Try again.');
-  expect(screen.getByRole('button', { name: /copy share link/i })).toBeEnabled();
-  expect(screen.queryByRole('button', { name: /update link/i })).toBeNull();
-  route.setReadFails(false);
-  route.setReadDeferred(true);
-  route.setFreshness('outdated');
-  fireEvent.click(screen.getByRole('button', { name: /^retry$/i }));
-  await screen.findByText('Checking for new changes…');
-  expect(posts(route.fetch)).toHaveLength(0);
-  await act(async () => { route.resolveDeferredRead(); });
-  await waitFor(() => expect(screen.getByRole('button', { name: /update link/i })).toBeEnabled());
-  expect(screen.queryByText('Could not check for new changes. Try again.')).toBeNull();
-  expect(posts(route.fetch)).toHaveLength(0);
-});
-
-it('OPEND-3791 checks edits made while the panel is closed as soon as it opens', async () => {
-  const route = publishedRoute({ freshness: 'current' });
-  const view = await openShare();
-  fireEvent.click(screen.getByRole('button', { name: /^share$/i }));
-  const readsBefore = route.fetch.mock.calls.filter(([url, init]) => String(url).includes('publish-public') && !init?.method).length;
-  route.setFreshness('outdated');
-  route.setReadDeferred(true);
-  view.rerender(<CollabProvider value={collab}><FileViewer {...props} file={{ ...props.file, mtime: 2 }} /></CollabProvider>);
-  expect(route.fetch.mock.calls.filter(([url, init]) => String(url).includes('publish-public') && !init?.method)).toHaveLength(readsBefore);
-  fireEvent.click(screen.getByRole('button', { name: /^share$/i }));
-  await screen.findByText('Checking for new changes…');
-  await act(async () => { route.resolveDeferredRead(); });
-  await waitFor(() => expect(screen.getByRole('button', { name: /update link/i })).toBeEnabled());
-  expect(posts(route.fetch)).toHaveLength(0);
-});
-
-it('OPEND-3791 ignores obsolete freshness results and ends checking only for the latest file revision', async () => {
-  const route = publishedRoute({ freshness: 'current' });
-  const view = await openShare();
-  route.setReadDeferred(true);
-  view.rerender(<CollabProvider value={collab}><FileViewer {...props} filesRefreshKey={7} /></CollabProvider>);
-  view.rerender(<CollabProvider value={collab}><FileViewer {...props} filesRefreshKey={8} /></CollabProvider>);
-  await act(async () => { route.resolveReadAt(0, 'unknown'); });
-  expect(screen.getByText('Checking for new changes…')).toBeVisible();
-  expect(screen.queryByText('Could not check for new changes. Try again.')).toBeNull();
-  expect(screen.queryByRole('button', { name: /update link/i })).toBeNull();
-  await act(async () => { route.resolveReadAt(1, 'current'); });
-  expect(screen.queryByText('Checking for new changes…')).toBeNull();
-  expect(screen.queryByRole('button', { name: /update link/i })).toBeNull();
-  expect(screen.getByRole('button', { name: /copy share link/i })).toBeEnabled();
-  expect(posts(route.fetch)).toHaveLength(0);
 });
 
 it('S5 trusts one coherent per-file status/freshness result over a stale project history', async () => {
