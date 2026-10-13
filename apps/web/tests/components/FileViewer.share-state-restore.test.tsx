@@ -141,3 +141,48 @@ it('re-entering a retained file performs a fresh binding check rather than reusi
   expect(screen.queryByText(publication.url)).toBeNull();
   expect(mutations(request)).toHaveLength(0);
 });
+
+// OPEND-3638 / IM-13: observe actual provider URLs, not only cleared labels.
+it.each([false, true])('publishes only B after switching from shared A (B rejected: %s)', async rejected => {
+  const b = { ...props, file: { ...props.file, name: 'other.html', path: 'other.html',
+    artifactManifest: { ...props.file.artifactManifest!, entry: 'other.html' } } };
+  const bUrl = 'https://viewer.example.test/artifact/proj/b-only';
+  const writes: string[] = [];
+  let bPublished = false;
+  const copy = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } });
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const isB = url.includes('/files/other.html/');
+    if (url.includes('/share-plan')) return Response.json({ fileCount: 1, totalBytes: 123, exceedsSizeLimit: false, exclusions: [] });
+    if (url.includes('/publish-public')) {
+      if (init?.method === 'POST') {
+        writes.push(url);
+        if (rejected) return Response.json({ error: 'FILE_UNAVAILABLE' }, { status: 400 });
+        bPublished = true;
+        return Response.json({ status: 'published', url: bUrl,
+          receipt: { filePath: 'other.html', slug: 'b-only', publishedAt: 1, version: 1, versionId: 'b-v1' } });
+      }
+      return Response.json(isB
+        ? { publication: bPublished ? { url: bUrl, slug: 'b-only', fileName: 'other.html' } : null,
+          status: bPublished ? 'active' : 'none', freshness: 'current' }
+        : { publication, status: 'active', freshness: 'current' });
+    }
+    if (url.includes('/share-state')) return Response.json({ projectId: 'proj', hasEverShared: true, bindingExists: true,
+      publications: [{ sourceFilePath: 'index.html', slug: publication.slug, status: 'active' }] });
+    if (url.includes('/social-share')) return new Response('{}', { status: 503 });
+    return Response.json({ deployments: [] });
+  }));
+  const view = await open();
+  expect(await screen.findByText(publication.url)).toBeVisible();
+  view.rerender(tree(b));
+  const generate = await screen.findByRole('menuitem', { name: /generate and copy link/i });
+  expect(screen.queryByText(publication.url)).toBeNull();
+  await act(async () => fireEvent.click(generate));
+  await waitFor(() => expect(writes).toEqual(['/api/projects/proj/files/other.html/publish-public']));
+  if (!rejected) await waitFor(() => expect(copy).toHaveBeenCalledWith(bUrl));
+  else expect(copy).not.toHaveBeenCalled();
+  view.rerender(tree());
+  expect(await screen.findByText(publication.url)).toBeVisible();
+  expect(writes).toHaveLength(1);
+});

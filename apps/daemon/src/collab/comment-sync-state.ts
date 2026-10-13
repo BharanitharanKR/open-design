@@ -40,8 +40,8 @@ export function createCommentSyncStateService(db: Database.Database,
     const available = await sessionAvailable(scope);
     if (available === null) return null;
     // Query after the session await, not a stale count from before a send finished.
-    const rows = db.prepare(`SELECT last_error FROM comment_relay_outbox
-      WHERE project_id=? AND workspace_id=? AND workspace_member_id=? ORDER BY updated_at DESC`).all(...identity) as Array<{ last_error: string | null }>;
+    const rows = db.prepare(`SELECT last_error, file_path FROM comment_relay_outbox
+      WHERE project_id=? AND workspace_id=? AND workspace_member_id=? ORDER BY updated_at DESC`).all(...identity) as Array<{ last_error: string | null; file_path: string }>;
     const align = diagnostics?.readAlign?.(scope);
     const backfill = readPublishedCommentBackfill(db, scope);
     // Stop removes the local publication row. Only the validated remote project
@@ -59,7 +59,9 @@ export function createCommentSyncStateService(db: Database.Database,
         }
       } catch { /* Remote errors can contain credentials. Preserve unknown without logging. */ }
     }
-    return { ...(align ? { align } : {}), ...(backfill ? { backfill } : {}), pending: rows.length,
+    const payloadTooLarge = scope.filePath !== undefined
+      && rows.some(row => row.file_path === scope.filePath && row.last_error === 'PAYLOAD_TOO_LARGE');
+    return { ...(payloadTooLarge ? { payloadTooLarge: true } : {}), ...(align ? { align } : {}), ...(backfill ? { backfill } : {}), pending: rows.length,
       // Arbitrary transport messages can contain credentials or other private data.
       lastError: (rows.some(row => Boolean(row.last_error)) || db.prepare('SELECT 1 FROM comment_relay_sync_failures WHERE project_id=? AND workspace_id=? AND workspace_member_id=?').get(...identity)) ? 'COMMENT_SYNC_DELIVERY_FAILED' : null,
       sessionMissing: rows.length > 0 && !available, shareStopped };

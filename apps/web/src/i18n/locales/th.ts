@@ -234,6 +234,7 @@ export const th: Dict = {
   'libraryPicker.add': 'นำเข้า',
   'libraryPicker.loading': 'กำลังโหลด…',
   'common.save': 'บันทึก',
+  'fileViewer.commentSync.payloadTooLarge': "ความคิดเห็นบางรายการมีขนาดเกินขีดจำกัดการซิงค์ จึงหยุดลองใหม่อัตโนมัติชั่วคราว โปรดย่อหรือลบความคิดเห็นเหล่านี้เพื่อซิงค์ต่อ",
   'fileViewer.commentSync.sessionMissing': "ยังไม่ได้เข้าสู่ระบบ การซิงค์ความคิดเห็นหยุดชั่วคราว จึงยังไม่เห็นความคิดเห็นใหม่ของผู้เข้าชม",
   'fileViewer.commentSync.shareStoppedPersonal': "ลิงก์ถูกปิดใช้งาน การซิงค์ความคิดเห็นไปยังหน้าที่แชร์หยุดชั่วคราว",
   'fileViewer.commentSync.shareStoppedTeam': "ลิงก์ถูกปิดใช้งาน",

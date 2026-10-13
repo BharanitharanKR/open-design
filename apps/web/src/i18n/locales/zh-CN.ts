@@ -242,6 +242,7 @@ export const zhCN: Dict = {
   "libraryPicker.add": "导入",
   "libraryPicker.loading": "加载中…",
   "common.save": "保存",
+  'fileViewer.commentSync.payloadTooLarge': "部分评论超过同步大小限制，已暂停自动重试。请缩短或删除这些评论后继续同步。",
   'fileViewer.commentSync.sessionMissing': "未登录，评论暂停同步，访客的新评论暂时看不到。",
   'fileViewer.commentSync.shareStoppedPersonal': "链接已停用，评论暂停同步到分享页。",
   'fileViewer.commentSync.shareStoppedTeam': "链接已停用。",

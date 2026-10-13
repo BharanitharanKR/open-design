@@ -14,6 +14,7 @@ import { createPublicFilePublicationRecorder } from '../src/collab/public-file-p
 import { createSqlitePublicFilePublicationStore, migratePublicFilePublications } from '../src/collab/public-file-publication-store.js';
 import http from 'node:http';
 import {
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
@@ -2475,6 +2476,39 @@ describe('collab sync routes', () => {
     expect(unpublish.body.error).toBe('WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE');
     expect(resolveProjectDir).not.toHaveBeenCalled();
     expect(runVelaResourceCommand).not.toHaveBeenCalled();
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('OPEND-3644 refuses unreadable dependencies before cloud writes and preserves the old publication', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'od-unreadable-share-'));
+    tempDirs.push(dir);
+    await writeFile(path.join(dir, 'index.html'), '<link rel="stylesheet" href="style.css"><h1>A</h1>');
+    await writeFile(path.join(dir, 'style.css'), 'body { color: green }');
+    vi.mocked(runVelaResourceCommand).mockResolvedValue(JSON.stringify({ id: 'v1', version: 1 }));
+    const fixture = await publicShareFixture();
+    const api = await startSyncServer(fixedShareContextProvider(true), {
+      ...fixture, resolveProjectDir: () => dir, resolveSharedProject: async () => null,
+    });
+    const endpoint = '/api/projects/p1/files/index.html/';
+    const first = await api.json(endpoint + 'publish-public', { method: 'POST' });
+    expect(first.status).toBe(200);
+    const before = await api.json(endpoint + 'publish-public');
+    vi.mocked(runVelaResourceCommand).mockClear();
+    vi.mocked(publishReservedVelaShareVersion).mockClear();
+    await writeFile(path.join(dir, 'index.html'), '<link rel="stylesheet" href="style.css"><h1>B</h1>');
+    await chmod(path.join(dir, 'style.css'), 0);
+    try {
+      for (const action of ['share-plan', 'publish-public']) {
+        const refused = await api.json(endpoint + action, { method: 'POST' });
+        expect(refused.status).toBe(400);
+        expect(refused.body).toEqual({ error: 'FILE_UNAVAILABLE' });
+      }
+      expect(runVelaResourceCommand).not.toHaveBeenCalled();
+      expect(publishReservedVelaShareVersion).not.toHaveBeenCalled();
+      const after = await api.json(endpoint + 'publish-public');
+      expect(after.body.publication).toEqual(before.body.publication);
+    } finally { await chmod(path.join(dir, 'style.css'), 0o644); }
+    expect((await api.json(endpoint + 'share-plan', { method: 'POST' })).body.fileCount).toBe(2);
+    expect((await api.json(endpoint + 'publish-public', { method: 'POST' })).status).toBe(200);
   });
 
   it('does not upload when Viewer preparation fails', async () => {

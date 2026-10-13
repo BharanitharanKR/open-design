@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, chmod } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -49,4 +49,21 @@ it('keeps standalone deploy root URLs and CSS bytes unchanged', async () => {
   expect(contents.get('index.html')).toContain('href="/assets/site.css?v=1#sheet"');
   expect(contents.get('assets/site.css')).toContain('url(/images/bg.png?css#two)');
   expect(contents.get('assets/nested/theme.css')).toContain('url(/fonts/a.woff2?v=2#face)');
+});
+
+// OPEND-3644: an existing unreadable dependency is not a missing-reference warning.
+it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('refuses unreadable nested CSS and rescans it after permissions recover', async () => {
+  const root = await fixture();
+  const css = path.join(root, 'p1/assets/nested/theme.css');
+  await chmod(css, 0);
+  try {
+    await expect(buildDeployFilePlan(root, 'p1', 'pages/entry.html', {
+      hookScriptUrl: '', assetUrlPolicy: 'share-relative',
+    })).rejects.toMatchObject({ code: 'EACCES' });
+  } finally { await chmod(css, 0o644); }
+  const plan = await buildDeployFilePlan(root, 'p1', 'pages/entry.html', {
+    hookScriptUrl: '', assetUrlPolicy: 'share-relative',
+  });
+  expect(plan.files.map(file => file.file)).toContain('assets/nested/theme.css');
+  expect(plan.files.map(file => file.file)).toContain('fonts/a.woff2');
 });

@@ -234,6 +234,7 @@ export const fa: Dict = {
   'libraryPicker.add': 'وارد کردن',
   'libraryPicker.loading': 'در حال بارگذاری…',
   'common.save': 'ذخیره',
+  'fileViewer.commentSync.payloadTooLarge': "برخی نظرها از حد مجاز اندازه همگام‌سازی بزرگ‌ترند. تلاش مجدد خودکار متوقف شده است. برای ادامه، این نظرها را کوتاه یا حذف کنید.",
   'fileViewer.commentSync.sessionMissing': "وارد حساب نشده‌اید. همگام‌سازی نظرها موقتاً متوقف است؛ نظرهای جدید بازدیدکنندگان فعلاً نمایش داده نمی‌شوند.",
   'fileViewer.commentSync.shareStoppedPersonal': "پیوند غیرفعال است. همگام‌سازی نظرها با صفحهٔ اشتراکی متوقف شده است.",
   'fileViewer.commentSync.shareStoppedTeam': "پیوند غیرفعال است.",

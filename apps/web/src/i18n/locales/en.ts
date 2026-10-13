@@ -234,6 +234,7 @@ export const en: Dict = {
   'libraryPicker.add': 'Import',
   'libraryPicker.loading': 'Loading…',
   'common.save': 'Save',
+  'fileViewer.commentSync.payloadTooLarge': "Some comments exceed the sync size limit. Automatic retry is paused. Shorten or delete them to resume syncing.",
   'fileViewer.commentSync.sessionMissing': "Signed out. Comment sync is paused; new visitor comments are temporarily unavailable.",
   'fileViewer.commentSync.shareStoppedPersonal': "The link is disabled. Comment sync to the shared page is paused.",
   'fileViewer.commentSync.shareStoppedTeam': "The link is disabled.",

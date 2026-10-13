@@ -242,6 +242,7 @@ export const zhTW: Dict = {
   "libraryPicker.add": "匯入",
   "libraryPicker.loading": "載入中…",
   "common.save": "儲存",
+  'fileViewer.commentSync.payloadTooLarge': "部分評論超過同步大小限制，已暫停自動重試。請縮短或刪除這些評論後繼續同步。",
   'fileViewer.commentSync.sessionMissing': "尚未登入，評論暫停同步，暫時看不到訪客的新評論。",
   'fileViewer.commentSync.shareStoppedPersonal': "連結已停用，評論暫停同步到分享頁。",
   'fileViewer.commentSync.shareStoppedTeam': "連結已停用。",

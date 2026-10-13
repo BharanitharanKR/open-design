@@ -234,6 +234,7 @@ export const fr: Dict = {
   'libraryPicker.add': 'Importer',
   'libraryPicker.loading': 'Chargement…',
   'common.save': 'Enregistrer',
+  'fileViewer.commentSync.payloadTooLarge': "Certains commentaires dépassent la taille limite de synchronisation. Les tentatives automatiques sont suspendues. Raccourcissez-les ou supprimez-les pour reprendre.",
   'fileViewer.commentSync.sessionMissing': "Vous êtes déconnecté. La synchronisation des commentaires est suspendue ; les nouveaux commentaires des visiteurs sont temporairement invisibles.",
   'fileViewer.commentSync.shareStoppedPersonal': "Le lien est désactivé. La synchronisation des commentaires avec la page partagée est suspendue.",
   'fileViewer.commentSync.shareStoppedTeam': "Le lien est désactivé.",

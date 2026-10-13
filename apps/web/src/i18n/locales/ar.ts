@@ -234,6 +234,7 @@ export const ar: Dict = {
   'libraryPicker.add': 'استيراد',
   'libraryPicker.loading': 'جارٍ التحميل…',
   'common.save': 'حفظ',
+  'fileViewer.commentSync.payloadTooLarge': "تتجاوز بعض التعليقات الحد الأقصى لحجم المزامنة. تم إيقاف إعادة المحاولة التلقائية مؤقتًا. اختصر هذه التعليقات أو احذفها لاستئناف المزامنة.",
   'fileViewer.commentSync.sessionMissing': "لم تسجّل الدخول. مزامنة التعليقات متوقفة مؤقتًا؛ تعليقات الزوار الجديدة غير ظاهرة حاليًا.",
   'fileViewer.commentSync.shareStoppedPersonal': "الرابط معطّل. مزامنة التعليقات مع الصفحة المشتركة متوقفة مؤقتًا.",
   'fileViewer.commentSync.shareStoppedTeam': "الرابط معطّل.",

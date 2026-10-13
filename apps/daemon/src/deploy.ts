@@ -410,6 +410,11 @@ async function walkReferencedFiles(
         missing.push(safePath);
         continue;
       }
+      // A real I/O failure cannot produce a complete new share snapshot. Keep
+      // missing/unsafe references advisory, but never silently drop unreadable
+      // existing resources. The route maps this error without exposing disk paths.
+      if (ctx.shareRewrite && isErrnoException(err)
+        && ['EACCES', 'EPERM', 'EIO', 'EBUSY', 'EMFILE', 'ENFILE'].includes(err.code ?? '')) throw err;
       invalid.push(safePath);
       continue;
     }

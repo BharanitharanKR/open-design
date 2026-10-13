@@ -1,3 +1,4 @@
+import { jsonBodyByteLength } from '../../http/json-body-size.js';
 import type { Express, Request } from 'express';
 import type { CommentSyncStateService } from '../../collab/comment-sync-state.js';
 import type {
@@ -388,7 +389,7 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
   }
 
   function sendCommentPayloadTooLarge(res: any): void {
-    const message = `comment body exceeds ${SHARE_COMMENT_MAX_BYTES} bytes`;
+    const message = `comment request exceeds ${SHARE_COMMENT_MAX_BYTES} bytes`;
     if (ctx.sendApiError) {
       ctx.sendApiError(res, 413, 'PAYLOAD_TOO_LARGE', message);
       return;
@@ -603,10 +604,7 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       // This is a transport anti-abuse ceiling, not a product character limit.
       // Keep it server-side: CLI and UI must send the body unchanged and let the
       // route reject a pathological UTF-8 payload without creating a row.
-      if (
-        typeof body.note === 'string'
-        && Buffer.byteLength(body.note, 'utf8') > SHARE_COMMENT_MAX_BYTES
-      ) {
+      if (jsonBodyByteLength(req) > SHARE_COMMENT_MAX_BYTES) {
         return sendCommentPayloadTooLarge(res);
       }
       const authorMemberId = await resolveCaller(req, workspaceContext);
