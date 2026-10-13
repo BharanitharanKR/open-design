@@ -25,6 +25,7 @@ script or font CDN is needed.
 ## Art direction
 - White `#FFFFFF`, blue `#1F70F3`, ink `#111111`, a light board `#FBFBFB` and near-black `#060606`.
 - Fonts (SIL OFL, bundled): Inter Regular and SemiBold for headlines and UI, Fraunces Bold for the wordmark, Instrument Serif Italic for the accent words, JetBrains Mono for labels and the HUD.
+- The mascot is a girl with two buns, a rounded bob, fringe locks and a hair clip; she nods and hops on the beat, blinks, follows what appears, and hops with a squash on each reveal.
 - The mascot and the product objects are drawn in grey at quarter resolution and ordered-dithered into a halftone, one `halftone()` pass per layer.
 - HUD: the chapter label top left, the brand and a 60 fps timecode top right; hidden on the end card.
 

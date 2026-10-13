@@ -41,7 +41,7 @@ fictional Pennyflow. Every soundtrack is original.
 | --- | --- | --- |
 | Motion Designer Showreel | 15 s | Signs as OPEN DESIGN with its mark in the Open Design palette; fonts are the closest open equivalents |
 | One-Shape UI Motion | 14 s | 1440×1440 square kept at scale on a 1920×1080 stage |
-| Product Promo | 15 s | Fictional brand Pennyflow; product art is simplified isometric halftone |
+| Product Promo | 15 s | Fictional brand Pennyflow; the mascot is a girl instead of the original's boy; product art is simplified isometric halftone |
 | Visual Lesson | 20 s | 20 s cut of the 28 s square original framed in 16:9; Open Design buddy; simpler card art |
 | The Future Is Already Here | 20 s | 20 s highlight cut of the 62 s original, in English |
 

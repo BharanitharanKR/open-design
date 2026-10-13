@@ -118,48 +118,83 @@ function halftone(draw, ink = [17, 17, 17], paper = [255, 255, 255], alpha = 1) 
 const grey = v => `rgb(${v},${v},${v})`;
 function shade(g, x, y, r, stops, ox = -0.35, oy = -0.4) { const gr = g.createRadialGradient(x + ox * r, y + oy * r, r * 0.05, x, y, r); stops.forEach(([k, v]) => gr.addColorStop(k, grey(v))); return gr; }
 
-/* ---------- the mascot (grey values; the halftone pass turns them into dots) ---------- */
-const CURLS = [[-0.86, -0.3, 0.27], [-0.72, -0.6, 0.3], [-0.46, -0.82, 0.32], [-0.13, -0.93, 0.33], [0.2, -0.9, 0.33], [0.5, -0.78, 0.31], [0.75, -0.56, 0.29], [0.9, -0.28, 0.24],
-  [-0.56, -0.46, 0.27], [-0.26, -0.62, 0.3], [0.07, -0.64, 0.3], [0.38, -0.58, 0.28], [0.64, -0.38, 0.24], [-0.36, -0.36, 0.2], [0.0, -0.42, 0.22], [0.3, -0.38, 0.2]];
+/* ---------- the mascot: a girl with a bob and bangs (grey values; the halftone pass turns them into dots) ---------- */
+// o: x, y (head centre), r, look/lookY (gaze), smile 0–1, open 0–1 (mouth), eyes 'open'|'happy', wink, blink 0–1,
+//    tilt (head), sway (hair lag), hop (px up), squash (>1 flattens), body (false = head only)
 function mascot(g, o) {
-  const r = o.r, lx = (o.look || 0) * 0.13 * r, ly = (o.lookY || 0) * 0.07 * r, s = o.smile ?? 0.6;
-  g.save(); g.translate(o.x, o.y); g.rotate(o.tilt || 0);
+  const r = o.r, lx = (o.look || 0) * 0.13 * r, ly = (o.lookY || 0) * 0.07 * r, s = o.smile ?? 0.7, sw = o.sway || 0;
+  const sq = o.squash || 1;
+  g.save(); g.translate(o.x, o.y - (o.hop || 0));
   if (o.body !== false) {
-    g.fillStyle = shade(g, 0.05 * r, 2.45 * r, 1.9 * r, [[0, 205], [0.55, 150], [1, 70]], -0.45, -0.55);
-    g.beginPath(); g.ellipse(0.05 * r, 2.45 * r, 1.85 * r, 1.38 * r, 0, 0, TAU); g.fill();
-    g.strokeStyle = grey(25); g.lineWidth = 0.065 * r; rr(g, 0.6 * r, 1.82 * r, 0.4 * r, 0.4 * r, 0.05 * r); g.stroke();
-    g.fillStyle = grey(30); g.beginPath(); g.ellipse(0, 1.0 * r, 0.44 * r, 0.22 * r, 0, 0, TAU); g.fill();
+    // sweater, then a round white collar
+    g.save(); g.translate(0, 2.4 * r); g.scale(1 / Math.sqrt(sq), sq); g.translate(0, -2.4 * r);
+    g.fillStyle = shade(g, 0.05 * r, 2.45 * r, 1.9 * r, [[0, 196], [0.55, 138], [1, 70]], -0.45, -0.55);
+    g.beginPath(); g.ellipse(0.05 * r, 2.5 * r, 1.45 * r, 1.4 * r, 0, 0, TAU); g.fill();
+    g.fillStyle = grey(36); g.beginPath(); g.ellipse(0, 1.02 * r, 0.36 * r, 0.2 * r, 0, 0, TAU); g.fill();
+    for (const sx of [-1, 1]) { g.fillStyle = shade(g, sx * 0.24 * r, 1.22 * r, 0.3 * r, [[0, 255], [1, 214]]); g.beginPath(); g.ellipse(sx * 0.24 * r, 1.2 * r, 0.3 * r, 0.17 * r, sx * 0.35, 0, TAU); g.fill(); }
+    g.strokeStyle = grey(30); g.lineWidth = 0.06 * r; rr(g, 0.5 * r, 1.88 * r, 0.34 * r, 0.34 * r, 0.05 * r); g.stroke();
+    g.restore();
   }
-  for (const sx of [-1, 1]) { g.fillStyle = shade(g, sx * 0.97 * r + lx * 0.3, 0.14 * r, 0.18 * r, [[0, 250], [1, 150]]); g.beginPath(); g.arc(sx * 0.97 * r + lx * 0.3, 0.14 * r, 0.18 * r, 0, TAU); g.fill(); }
-  g.fillStyle = shade(g, 0, 0, 1.05 * r, [[0, 255], [0.5, 238], [0.82, 182], [1, 125]]);
-  g.beginPath(); g.ellipse(0, 0, r, 0.96 * r, 0, 0, TAU); g.fill();
-  for (const [cx, cy, cr] of CURLS) { const x = cx * r + lx * 0.25, y = cy * r, rad = cr * r; g.fillStyle = shade(g, x, y, rad, [[0, 140], [0.5, 72], [1, 22]]); g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill(); }
-  // blush and nose
-  g.fillStyle = grey(212); for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 0.52 * r + lx * 0.6, 0.34 * r + ly, 0.14 * r, 0.09 * r, 0, 0, TAU); g.fill(); }
-  g.fillStyle = shade(g, lx * 1.15, 0.23 * r + ly, 0.1 * r, [[0, 255], [1, 196]]); g.beginPath(); g.arc(lx * 1.15, 0.23 * r + ly, 0.1 * r, 0, TAU); g.fill();
-  // brows
-  g.fillStyle = grey(8); for (const sx of [-1, 1]) { rr(g, sx * 0.3 * r + lx - 0.13 * r, -0.21 * r - (o.brow || 0) * 0.06 * r, 0.26 * r, 0.075 * r, 0.03 * r); g.fill(); }
-  // eyes
+  g.rotate(o.tilt || 0); g.scale(1 / Math.sqrt(sq), sq);
+  // two buns and a rounded bob behind the face, swinging a little behind the head's motion
+  g.save(); g.rotate(sw * 0.5);
+  for (const sx of [-1, 1]) { const bx = sx * 0.66 * r - sw * 0.2 * r, by = -0.9 * r; g.fillStyle = shade(g, bx, by, 0.32 * r, [[0, 128], [0.5, 62], [1, 22]]); g.beginPath(); g.arc(bx, by, 0.32 * r, 0, TAU); g.fill(); }
+  g.fillStyle = shade(g, 0, -0.1 * r, 1.15 * r, [[0, 118], [0.45, 58], [1, 20]], -0.3, -0.5);
+  g.beginPath(); g.ellipse(0, -0.1 * r, 1.04 * r, 0.98 * r, 0, Math.PI * 0.94, Math.PI * 2.06);
+  g.lineTo(1.0 * r, 0.5 * r); g.quadraticCurveTo(1.02 * r, 0.84 * r, 0.72 * r, 0.76 * r); g.lineTo(-0.72 * r, 0.76 * r); g.quadraticCurveTo(-1.02 * r, 0.84 * r, -1.0 * r, 0.5 * r); g.closePath(); g.fill();
+  g.restore();
+  // face
+  g.fillStyle = shade(g, 0, 0, 1.0 * r, [[0, 255], [0.55, 240], [0.85, 192], [1, 140]]);
+  g.beginPath(); g.ellipse(0, 0.04 * r, 0.92 * r, 0.9 * r, 0, 0, TAU); g.fill();
+  // bangs with a scalloped edge, and a white clip
+  g.save(); g.rotate(sw * 0.25);
+  g.fillStyle = shade(g, 0, -0.6 * r, 1.0 * r, [[0, 130], [0.5, 66], [1, 24]], -0.25, -0.6);
+  // fringe: rounded locks between temple and temple
+  const locks = [0.9, 0.6, 0.3, 0, -0.3, -0.6, -0.9];
+  g.beginPath(); g.moveTo(-0.92 * r, 0.06 * r); g.quadraticCurveTo(-0.98 * r, -1.0 * r, 0, -1.04 * r); g.quadraticCurveTo(0.98 * r, -1.0 * r, 0.92 * r, 0.06 * r);
+  g.quadraticCurveTo(0.92 * r, -0.3 * r, locks[0] * r, -0.36 * r);
+  for (let k = 0; k < locks.length - 1; k++) { const a = locks[k] * r, b = locks[k + 1] * r; g.quadraticCurveTo((a + b) / 2, -0.12 * r - (k % 2) * 0.05 * r, b, -0.36 * r); }
+  g.quadraticCurveTo(-0.92 * r, -0.3 * r, -0.92 * r, 0.06 * r); g.fill();
+  g.fillStyle = grey(246); g.save(); g.translate(0.5 * r, -0.5 * r); g.rotate(-0.5); rr(g, -0.17 * r, -0.05 * r, 0.34 * r, 0.1 * r, 0.05 * r); g.fill(); g.restore();
+  g.restore();
+  // blush
+  g.fillStyle = grey(160); for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(sx * 0.5 * r + lx * 0.6, 0.36 * r + ly, 0.16 * r, 0.1 * r, 0, 0, TAU); g.fill(); }
+  // eyes with lashes
   const blink = o.blink || 0;
   for (const sx of [-1, 1]) {
-    const ex = sx * 0.28 * r + lx, ey = 0.08 * r + ly, mode = (o.wink && sx === 1) ? 'happy' : (o.eyes || 'open');
+    const ex = sx * 0.3 * r + lx, ey = 0.1 * r + ly, mode = (o.wink && sx === 1) ? 'happy' : (o.eyes || 'open');
+    g.strokeStyle = grey(0); g.lineCap = 'round';
     if (mode === 'happy' || blink > 0.85) {
-      g.strokeStyle = grey(0); g.lineWidth = 0.06 * r; g.lineCap = 'round'; g.beginPath(); g.arc(ex, ey + 0.06 * r, 0.11 * r, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+      g.lineWidth = 0.06 * r; g.beginPath(); g.arc(ex, ey + 0.07 * r, 0.12 * r, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
     } else {
-      g.fillStyle = grey(0); g.beginPath(); g.ellipse(ex, ey, 0.12 * r, 0.165 * r * (1 - blink), 0, 0, TAU); g.fill();
-      g.fillStyle = grey(255); g.beginPath(); g.arc(ex - 0.035 * r, ey - 0.06 * r * (1 - blink), 0.04 * r, 0, TAU); g.fill();
+      const h = 0.19 * r * (1 - blink);
+      g.fillStyle = grey(0); g.beginPath(); g.ellipse(ex, ey, 0.135 * r, h, 0, 0, TAU); g.fill();
+      g.fillStyle = grey(255); g.beginPath(); g.arc(ex - 0.04 * r, ey - 0.07 * r * (1 - blink), 0.05 * r, 0, TAU); g.fill();
+      g.beginPath(); g.arc(ex + 0.04 * r, ey + 0.06 * r * (1 - blink), 0.022 * r, 0, TAU); g.fill();
+      g.lineWidth = 0.035 * r; g.beginPath(); g.moveTo(ex + sx * 0.1 * r, ey - h * 0.7); g.lineTo(ex + sx * 0.2 * r, ey - h * 0.95); g.stroke();
     }
   }
-  // mouth: a smile line, or an open mouth
-  const open = o.open || 0, mx = lx * 0.9, my = 0.43 * r + ly;
+  // mouth: a small smile, or an open mouth with a tongue
+  const open = o.open || 0, mx = lx * 0.9, my = 0.47 * r + ly;
   if (open > 0.05) {
-    g.fillStyle = grey(0); g.beginPath(); g.ellipse(mx, my - 0.02 * r, 0.16 * r * (0.75 + open * 0.25), 0.14 * r * open + 0.03 * r, 0, 0, Math.PI); g.fill();
-    g.fillStyle = grey(250); g.fillRect(mx - 0.1 * r, my - 0.02 * r, 0.2 * r, 0.04 * r * open);
+    g.fillStyle = grey(0); g.beginPath(); g.ellipse(mx, my - 0.02 * r, 0.13 * r * (0.8 + open * 0.2), 0.12 * r * open + 0.03 * r, 0, 0, Math.PI); g.fill();
+    g.fillStyle = grey(150); g.beginPath(); g.ellipse(mx, my + 0.06 * r * open, 0.07 * r, 0.04 * r * open, 0, 0, Math.PI); g.fill();
   } else {
-    g.strokeStyle = grey(0); g.lineWidth = 0.05 * r; g.lineCap = 'round'; g.beginPath(); g.arc(mx, my - 0.2 * r * s, 0.2 * r, Math.PI * (0.5 - 0.3 * s), Math.PI * (0.5 + 0.3 * s)); g.stroke();
+    g.strokeStyle = grey(0); g.lineWidth = 0.045 * r; g.lineCap = 'round'; g.beginPath(); g.arc(mx, my - 0.16 * r * s, 0.15 * r, Math.PI * (0.5 - 0.3 * s), Math.PI * (0.5 + 0.3 * s)); g.stroke();
   }
   g.restore();
 }
+// The life in the original's character: a nod and a small hop on every beat, a lazy tilt, regular blinks,
+// and a squash on landing. Returns mascot options for time t; `extra` overrides per scene.
+const BEAT = 0.5;
+function alive(t, extra = {}) {
+  const ph = (t % BEAT) / BEAT, k = Math.sin(ph * Math.PI);
+  const blinkAt = [0.85, 2.3, 3.6, 5.1, 5.95, 7.7, 9.3, 10.4, 12.2, 13.0, 14.6].some(b => t > b && t < b + 0.09);
+  return Object.assign({ hop: k * 7, tilt: Math.sin(t * Math.PI * 0.9) * 0.05, sway: -Math.cos(t * Math.PI * 0.9) * 0.05, squash: 1 + (1 - k) * 0.012, blink: blinkAt ? 1 : 0 }, extra);
+}
+// an extra hop with a squash on landing, starting at `at`
+function jump(t, at, h = 36) { const u = seg(t, at, at + 0.42); if (u <= 0 || u >= 1) return { hop: 0, squash: 1 }; return { hop: Math.sin(u * Math.PI) * h, squash: u > 0.8 ? 1 + (1 - Math.abs(u - 0.9) * 10) * 0.08 : 1 - Math.sin(u * Math.PI) * 0.05 }; }
+function merge(a, b) { return Object.assign({}, a, { hop: (a.hop || 0) + b.hop, squash: (a.squash || 1) * b.squash }); }
 
 /* ---------- product objects (isometric, grey) ---------- */
 function iso(g, x, y, w, d, h, top, left, right) {
@@ -206,7 +241,10 @@ function hook(t) {
   ctx.fillStyle = CFG.white; ctx.fillRect(0, 0, CFG.w, CFG.h);
   const x = t < 0.4 ? lerp(2060, 1374, EZ.o3(seg(t, 0, 0.4))) : lerp(1374, 1470, EZ.io3(seg(t, 0.4, 2.2)));
   const talk = t > 0.62 && t < 1.38 ? Math.abs(Math.sin((t - 0.62) * 22)) : 0;
-  halftone(g => mascot(g, { x, y: 510 + Math.sin(t * 3) * 6, r: 265, look: t < 0.5 ? -0.7 : -0.35, open: talk * 0.8 + (t > 1.2 && t < 1.4 ? 0.6 : 0), smile: 0.7, blink: t > 0.95 && t < 1.05 ? 1 : 0, tilt: -0.05 * EZ.io3(seg(t, 1.8, 2.2)), brow: t > 1.1 && t < 1.5 ? 1 : 0 }));
+  const land = seg(t, 0.36, 0.62), landing = { hop: 0, squash: 1 + Math.sin(land * Math.PI) * 0.09 * (1 - land) };
+  const curious = EZ.io3(seg(t, 1.1, 1.35)) * (1 - EZ.io3(seg(t, 1.85, 2.05)));
+  const look = t < 0.55 ? -0.7 : t < 1.1 ? -0.3 : -0.6;
+  halftone(g => mascot(g, merge(merge(alive(t, { x, y: 515, r: 265, look, lookY: -0.25 * curious, open: talk * 0.8 + (t > 1.2 && t < 1.4 ? 0.6 : 0), smile: t > 2.0 ? 1 : 0.75, eyes: t > 2.05 && t < 2.4 ? 'happy' : 'open', tilt: -0.14 * curious + 0.08 * EZ.o3(seg(t, 2.0, 2.2)) }), landing), jump(t, 2.02, 30))));
   // the whispered bubble
   const bub = EZ.back(seg(t, 0.55, 0.75)) * (1 - seg(t, 1.4, 1.55));
   if (bub > 0) {
@@ -249,7 +287,8 @@ function cards(t) {
   const up = EZ.o3(seg(t, 2.4, 2.8));
   const pops = [2.95, 3.45, 3.95].map(a => seg(t, a, a + 0.28));
   const gaze = pops.reduce((n, p, i) => p > 0 ? i : n, -1);
-  halftone(g => mascot(g, { x: 372, y: lerp(1260, 560, up) + Math.sin(t * 2.6) * 5, r: 220, look: 0.75 + gaze * 0.08, lookY: -0.2, smile: 0.75, blink: t > 3.62 && t < 3.7 ? 1 : 0, eyes: t > 4.05 && t < 4.3 ? 'happy' : 'open' }), [17, 17, 17], [255, 255, 255]);
+  const latest = Math.max(0, gaze), hopNow = gaze >= 0 ? jump(t, [2.95, 3.45, 3.95][latest], 26) : { hop: 0, squash: 1 };
+  halftone(g => mascot(g, merge(alive(t, { x: 372, y: lerp(1260, 560, up), r: 220, look: 0.55 + latest * 0.2, lookY: -0.25 + latest * 0.1, smile: 0.85, eyes: t > 4.05 && t < 4.35 ? 'happy' : 'open', open: t > 4.05 && t < 4.35 ? 0.5 : 0 }), hopNow)), [17, 17, 17], [255, 255, 255]);
   pops.forEach((p, i) => { if (p > 0) productCard(i, CARD.x0 + i * (CARD.w + CARD.gap), CARD.y + (1 - EZ.o3(p)) * 60, lerp(0.62, 1, EZ.back(p)), clamp(p * 3), (1 - EZ.o3(p)) * 0.08); });
   hud(t, t < 2.6 ? '01 — hook' : '02 — anything', 'rgba(255,255,255,.6)');
 }
@@ -309,7 +348,7 @@ function store(t) {
   const mp = EZ.back(seg(t, 6.25, 6.45));
   if (mp > 0) { ctx.save(); ctx.translate(100 + tw('in ', 130, F.sans, 600), 680); ctx.scale(mp, mp); txt('minutes.', 0, 0, 190, F.ital, CFG.blue); ctx.restore(); }
   const up = EZ.o3(seg(t, 4.6, 4.95)), happy = t > 6.78 && t < 7.1;
-  halftone(g => mascot(g, { x: 1020, y: lerp(1240, 800, up) + Math.sin(t * 2.4) * 5, r: 170, look: 0.65, lookY: -0.45, smile: 0.85, open: happy ? 0.7 : 0, eyes: happy ? 'happy' : 'open', blink: t > 5.9 && t < 5.98 ? 1 : 0 }));
+  halftone(g => mascot(g, merge(alive(t, { x: 1020, y: lerp(1240, 800, up), r: 170, look: 0.7, lookY: -0.5, smile: 0.9, open: happy ? 0.75 : 0, eyes: happy ? 'happy' : 'open', tilt: happy ? 0.12 : undefined }), jump(t, 6.78, 40))));
   phone(t);
   hud(t, '03 — store', '#A8A8A8');
 }
@@ -353,7 +392,7 @@ function bento(t) {
   card(mx, 90, mw, 430, 'on air', fade(1), () => {
     dot(mx + 32, 125, 6, CFG.blue);
     ctx.save(); rr(ctx, mx + 2, 92, mw - 4, 426, 20); ctx.clip();
-    halftone(g => mascot(g, { x: mx + mw / 2, y: 330, r: 120, look: Math.sin(t * 1.3) * 0.4, smile: 0.8, open: Math.max(0, Math.sin(t * 13)) * 0.45 * (t < 9.9 ? 1 : 0), blink: (t % 2.1) > 2.0 ? 1 : 0, wink: t > 10.75 && t < 11.0 }));
+    halftone(g => mascot(g, alive(t, { x: mx + mw / 2, y: 330, r: 120, look: Math.sin(t * 1.3) * 0.5, smile: 0.85, open: Math.max(0, Math.sin(t * 13)) * 0.45 * (t < 9.9 ? 1 : 0), wink: t > 10.75 && t < 11.05 })));
     ctx.restore();
   });
   // middle — upsells
@@ -412,7 +451,7 @@ function bento(t) {
 function flow(t) {
   ctx.fillStyle = CFG.black; ctx.fillRect(0, 0, CFG.w, CFG.h);
   const grin = t > 12.85;
-  halftone(g => mascot(g, { x: 1650, y: 560 + Math.sin(t * 2.2) * 5, r: 185, look: -0.55, smile: 0.85, wink: t < 11.45, open: grin ? 0.75 : 0, blink: t > 12.2 && t < 12.28 ? 1 : 0 }), [6, 6, 6], [255, 255, 255]);
+  halftone(g => mascot(g, merge(alive(t, { x: 1650, y: 560, r: 185, look: -0.6, smile: 0.9, wink: t < 11.5, open: grin ? 0.75 : 0, eyes: grin ? 'happy' : 'open' }), jump(t, 12.85, 34))), [6, 6, 6], [255, 255, 255]);
   rise('You', 140, 520, 160, F.sans, '#fff', seg(t, 11.3, 11.55), 600);
   const cp = EZ.o3(seg(t, 11.75, 12.0));
   if (cp > 0) txt('create.', 140 + tw('You ', 160, F.sans, 600) + (1 - cp) * 60, 520, 190, F.ital, '#fff', 'left', cp);
@@ -433,7 +472,7 @@ function endCard(t) {
   const full = tw(CFG.brand, WORD.size, F.serif), x0 = 960 - full / 2, stem = CFG.brand.slice(0, -4);
   // "flow." arrives first, in the italic of the line before, then becomes the wordmark's tail
   const head = EZ.back(seg(t, 13.9, 14.2));
-  if (head > 0) halftone(g => mascot(g, { x: 1105, y: lerp(640, 382, head), r: 150, body: false, look: 0.1, smile: 0.9, wink: t > 14.45 && t < 14.75 }));
+  if (head > 0) halftone(g => mascot(g, alive(t, { x: 1105, y: lerp(640, 382, head), r: 150, body: false, look: 0.15, smile: 1, wink: t > 14.45 && t < 14.8, tilt: 0.1 * Math.sin(seg(t, 14.2, 15) * Math.PI) })));
   const fl = EZ.o3(seg(t, 13.36, 13.5)), morph = EZ.io3(seg(t, 13.48, 13.6));
   const tailX = x0 + tw(stem, WORD.size, F.serif);
   if (morph < 1) txt('flow.', lerp(1104, tailX, morph), lerp(640, WORD.y, morph), lerp(150, WORD.size, morph), F.ital, CFG.blue, 'left', fl * (1 - morph));
