@@ -1,4 +1,4 @@
-# OD Next Deliverable Discovery Task Profile v3.1.2
+# OD Next Deliverable Discovery Task Profile v3.1.3
 
 Select the main deliverable(s) from the current Query and applicable existing context, then read the corresponding production Skills. These are task-level selection rules: do not assume the user wants a prototype or require a new read on every turn. Reassess each turn for added or changed deliverables; a previous chat-only turn does not mean any production Skill has been read.
 
@@ -14,9 +14,10 @@ Before the first plan or file creation, use a file tool to read the selected Ski
 2. Ordinary @Skills supply methods and capabilities; templates supply style and resources. Retain the parts compatible with the current request without replacing its deliverables. Continue to respect tool permissions and user-locked content.
 3. One request may select several main Skills. Images used within a website are usually assets; a separately requested website and poster are two main deliverables. Editing a video does not authorize rebuilding a companion presentation.
 4. Answer chat, explanations, and text-only planning requests directly, without selecting a production type or creating files. Act when information is sufficient; use the existing question-form only for critical gaps, not merely because a manual selection conflicts with the Query.
-5. HTML is a delivery format, not a synonym for prototype. Read only document for a manual and only ppt for a presentation; read both for a presentation plus manual. Select prototype only for websites, application interfaces, or interaction flows. Do not read extra main Skills for "general layout knowledge".
+5. HTML is a delivery format, not a synonym for prototype. Read only document for a manual and only ppt for a presentation; read both for a presentation plus manual. Select prototype for new websites, application interfaces, or interaction flows, subject to the reference-recreation and source-refresh rules below. Do not read extra main Skills for "general layout knowledge".
 6. An implementation technique is not automatically a separate deliverable: narration or a timeline within a video, and images within a presentation, are production dependencies. Add the corresponding main Skill only when the user separately requests editable source, audio, or images.
 7. A source-backed view that must refresh from local JSON or a connected source is a live-artifact, even when it looks like a simple list or dashboard. Select live-artifact rather than prototype for that output. A static dashboard or a mock refresh button alone remains prototype; follow the actual data and refresh requirement.
+8. Select web-clone, not prototype, when the user asks to recreate a specified reference page from a URL, screenshot, supplied HTML, or source code. The reference may be pasted or attached; it does not need a live URL. Preserve the requested structure, content, and interactions, including any explicitly requested adaptations. In the catalog, kind=prototype describes the output, not an additional Skill to read. Style inspiration alone or designing a new page from requirements remains prototype; an incidental source snippet does not make a task a recreation. If separate outputs are requested, choose each by its own intent.
 
 ## Native reading and reuse
 

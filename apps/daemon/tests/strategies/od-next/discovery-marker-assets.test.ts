@@ -45,3 +45,19 @@ it('ships ten loadable main Skills without restoring the retired machine protoco
     expect(await readFile(path.join(cwd, '.od-frames/iphone.html'), 'utf8')).toContain('data-phone-shell');
   } finally { await rm(cwd, { recursive: true, force: true }); }
 });
+
+// Prompt wiring regression; semantic routing is validated by frozen live evals.
+it('exposes source-based recreation and fresh-design boundaries in the loaded Discovery prompt', async () => {
+  const resolved = await resolvePluginFolder({ folder, folderId: 'od-next-strategy', sourceKind: 'bundled', source: folder, trust: 'bundled' });
+  if (!resolved.ok) throw Error(resolved.errors.join(';'));
+  const binding = createBundledStrategyBindingV2({ plugin: resolved.record, taskType: 'discovery' });
+  const { taskSkill } = loadBundledStrategyPromptAssetsV2({ plugin: resolved.record, binding });
+  const cloneEntry = taskSkill.split('\n').find(line => line.startsWith('- web-clone ('))!;
+  const prototypeEntry = taskSkill.split('\n').find(line => line.startsWith('- prototype ('))!;
+  expect(cloneEntry).toMatch(/HTML|source code/);
+  expect(prototypeEntry).toContain('reference-page recreation');
+  expect(taskSkill).toContain('Select web-clone, not prototype, when');
+  expect(taskSkill).toContain('kind=prototype describes the output');
+  expect(taskSkill).toContain('Style inspiration alone');
+  expect(taskSkill).toContain('already in context');
+});
