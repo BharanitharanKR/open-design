@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { promises as dns } from 'node:dns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { imageSize, stockSearch, StockSearchServiceError } from '../src/media/stock-search.js';
 import { searchVelaStockPhotos, type StockSearchServiceReport } from '../src/media/vela-stock-search.js';
@@ -65,6 +66,16 @@ describe('company stock search and authorized local downloads', () => {
       expect(result.slots[0]?.status).toBe('error');
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it('bounds DNS pre-validation by the same image-download timeout', async () => {
+    const lookup = vi.spyOn(dns, 'lookup').mockImplementation(() => new Promise(() => {}));
+    const fetcher = vi.fn(fetchImage());
+    try {
+      const result = await stockSearch({ cwd, slots: [{ id: 'hero', query: 'dog' }], search: async () => report(), fetch: fetcher, requestTimeoutMs: 5 });
+      expect(result.slots[0]).toMatchObject({ status: 'error', error: 'stock image download timed out' });
+      expect(fetcher).not.toHaveBeenCalled();
+    } finally { lookup.mockRestore(); }
   });
 
   it('bounds the whole acquisition and retains server results after the budget expires', async () => {

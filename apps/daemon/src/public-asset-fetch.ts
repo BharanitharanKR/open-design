@@ -30,7 +30,8 @@ function isIpLiteral(host: string): boolean {
  * Throw unless `url` is an http(s) URL whose host is a public address — checked
  * both as the literal host and, for a hostname, against every DNS answer.
  */
-export async function assertPublicAssetUrl(url: string): Promise<void> {
+export async function assertPublicAssetUrl(url: string, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -47,8 +48,15 @@ export async function assertPublicAssetUrl(url: string): Promise<void> {
   if (!isIpLiteral(host)) {
     let addresses: Array<{ address: string }>;
     try {
-      addresses = await dnsPromises.lookup(host, { all: true });
+      // Validation itself must obey the acquisition deadline, including a slow
+      // resolver. The connection-time lookup below still pins the actual socket.
+      addresses = await new Promise<Array<{ address: string }>>((resolve, reject) => {
+        const abort = () => { signal?.removeEventListener('abort', abort); reject(signal?.reason); };
+        signal?.addEventListener('abort', abort, { once: true });
+        dnsPromises.lookup(host, { all: true }).then(resolve, reject).finally(() => signal?.removeEventListener('abort', abort));
+      });
     } catch {
+      signal?.throwIfAborted();
       // Let the actual fetch surface a resolution failure rather than masking it.
       return;
     }
@@ -131,7 +139,7 @@ export async function fetchPublicAsset(
     // pre-check (protocol, literal private IPs, redirect target).
     const parsed = new URL(target);
     if (options.httpsOnly && (parsed.protocol !== 'https:' || parsed.port || parsed.username || parsed.password)) throw new Error('invalid public image URL');
-    await assertPublicAssetUrl(target);
+    await assertPublicAssetUrl(target, init.signal ?? undefined);
     const res = await (options.fetch ?? fetch)(target, {
       ...init,
       redirect: 'manual',

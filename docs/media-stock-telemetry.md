@@ -144,3 +144,7 @@ Validation includes generic third-channel parsing/download/telemetry, priority
 reversal, redirect refusal, existing brand DNS-rebinding coverage and failures
 returning to AI. Supplier/CDN responses are fixtures, not live-provider quality
 or deployment evidence.
+
+DNS pre-validation obeys the same download abort signal. A stalled resolver
+reproduced `still_pending_after_deadline` before the fix and `TimeoutError`
+after it; the permanent stock regression preserves timely AI fallback.
