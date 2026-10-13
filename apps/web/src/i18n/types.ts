@@ -4234,6 +4234,8 @@ export interface Dict {
   'fileViewer.publishFileRequiresWorkspace': string;
   'fileViewer.publishFileFailed': string;
   'fileViewer.shareUpdateHint': string;
+  'fileViewer.shareFreshnessChecking': string;
+  'fileViewer.shareFreshnessFailed': string;
   'fileViewer.shareUpdateLink': string;
   'fileViewer.signInToUpdate': string;
   'fileViewer.signInToShare': string;

@@ -3302,6 +3302,8 @@ export const ko: Dict = {
   'fileViewer.copyFixForAgent': "에이전트용 수정 지침 복사",
   'fileViewer.copyFixForAgentFailed': "복사하지 못했습니다. 아래 지침을 선택해 직접 복사하세요.",
   "fileViewer.shareUpdateHint": "파일에 새 변경 사항이 있습니다. 방문자에게는 아직 이전 버전이 보입니다.",
+  "fileViewer.shareFreshnessChecking": "새 변경 사항 확인 중…",
+  "fileViewer.shareFreshnessFailed": "새 변경 사항을 확인할 수 없습니다. 다시 시도하세요.",
   "fileViewer.shareUpdateLink": "링크 업데이트",
   "fileViewer.signInToUpdate": "로그인 후 업데이트",
   "fileViewer.signInToShare": "로그인 후 공유",
