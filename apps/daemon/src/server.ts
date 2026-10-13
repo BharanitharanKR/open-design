@@ -16412,8 +16412,8 @@ export async function startServer({
         ));
         return finishWithRetryDecision('failed', 0, signal);
       }
-      // ACP agents that don't shut down on stdin.end() (e.g. Devin for
-      // Terminal) are forced to exit via SIGTERM from attachAcpSession after
+      // Native agents that don't shut down on stdin.end() (e.g. Devin or Pi)
+      // are forced to exit via SIGTERM after
       // a clean prompt completion. Without an override, the chat run would
       // be marked `failed` because `code === 0` fails (code is null on a
       // signal exit). `completedSuccessfully()` reports whether the ACP
@@ -16434,7 +16434,10 @@ export async function startServer({
         code,
         signal,
         acpCleanCompletion,
-        acpCompletionShutdownRequested,
+        acpCompletionShutdownRequested: acpCompletionShutdownRequested || (
+          typeof acpSession?.completionShutdownRequested === 'function' &&
+          acpSession.completionShutdownRequested()
+        ),
         artifactQuietShutdownRequested,
         turnCompletedCleanly: !!run.turnCompletedCleanly,
         artifactProducedThisRun:
