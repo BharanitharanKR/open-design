@@ -115,6 +115,11 @@ record them in the Design Spec:
   and disabled states wherever the declared flow needs them.
 - Modals, menus, drawers, and page transitions have explicit enter, exit, and
   return paths.
+- Prefer a native `<dialog>` with `showModal()` for modal forms. Place initial
+  focus after the dialog is visible, not while an entrance animation hides it.
+  On every close path, return focus to a live control: after rebuilding a list,
+  find the new trigger by its stable item ID; if that item is no longer visible,
+  focus the primary action rather than a detached node.
 - Use semantic controls, visible keyboard focus, accessible names, useful alt
   text, non-color status cues, and reduced-motion behavior.
 - Motion exists only to explain state change, hierarchy, or the result of an
