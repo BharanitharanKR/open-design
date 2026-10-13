@@ -23,22 +23,25 @@ Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
 ## Art direction
-- Cut-paper shapes with jagged edges and brush grain: night blues `#252C6E` / `#2E3784`, wall `#4A3A8A`, yellow `#F4C443`, curtain `#EE8E96`, paper `#FBF6EC`, pen blue `#3B62B5`, red `#D8443A`.
-- The Open Design buddy: the dark rounded logo tile `#26251E` with a white ring, a face inside the ring and a cursor badge.
+- Cut paper throughout: every colour block has a torn white rim. Large grounds (sky, walls, card backgrounds) carry only faint short brush strokes and paper tooth, almost flat from afar; objects carry dry gouache strokes and crayon grain. Night blues `#262D70` / `#30398A`, wall `#4A3A8A`, yellow `#F4C443`, curtain `#EE8E96`, paper `#FFFCF3`, pen blue `#3B62B5`, red `#D8443A`.
+- Printed paper on objects: newsprint on book pages, the boat, clouds and planes; handwriting on the bread, the wall and the heart scene; music staves and contour lines on the houses.
+- The Open Design buddy: the dark rounded logo tile `#26251E` with a white ring, a face inside the ring and a cursor badge. In every card it is inside the picture: in the book, in the boat, hugging the bread, on the planet, wrapped by the octopus.
+- The girl wears a knit green sweater with a pointed white collar.
 - Font (SIL OFL, bundled): Short Stack for the hand lettering.
-- The square story sits centred in 16:9; backdrops extend to the sides.
+- The square story sits centred in 16:9; the sides continue the scene (the house wall with vines and a neighbour's window, the town, the night sky).
 
 ## Beat map (20s)
 - 0–2.2s the town at night sends the buddy requests; the girl at her window gets an idea.
 - 2.2–5.5s she writes "what do you love?", folds it into a paper plane and throws it.
 - 5.5–8.0s the plane crosses the night sky; the buddy reads it: curious, thinking, a spark, delight.
 - 8.0–12.0s the things it loves, one per beat: words, music, the sea, trees, dogs, bread, rain, math, the stars, an octopus.
-- 12.0–14.0s everything it loves gathers around a heart.
+- 12.0–14.0s everything it loves is collaged around a heart, with the buddy in the middle.
 - 14.0–18.0s the buddy folds the note and sends it back; she opens it to a circled "you" and beams.
 - 18.0–20s the whole town lights up; she waves to the buddy.
 
 ## Adapting the template
-- Swap `CFG.question`, the card list and the palette; keep the story beats on the 120 BPM grid.
+- Swap `CFG.question`, the cards (`LIST` for the labels, `S` for the illustrations) and the palette; keep the story beats on the 120 BPM grid.
+- A new card follows the existing ones: a `back` sheet, the buddy drawn live, then a `front` sheet that tucks the buddy into the picture.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the
@@ -46,6 +49,9 @@ script or font CDN is needed.
   palette and timing so the film can be re-themed in one place.
 - Every visible value is a pure function of `t` (eases, springs or keyframes
   evaluated from time). No state carries between frames.
+- Textures (brush, grain, newsprint, handwriting, knit) and every cut-paper
+  backdrop and card sheet are painted once into offscreen canvases at load;
+  each frame only composites them and draws the few moving parts.
 
 ## Preview and video export
 Keep the stage edge to edge in both gallery and MP4 capture. Playback controls
