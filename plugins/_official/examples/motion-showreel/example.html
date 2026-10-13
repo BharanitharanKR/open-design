@@ -13,7 +13,7 @@
 @font-face{font-family:InstrumentI;src:url('assets/instrument-serif-italic.ttf') format('truetype');font-display:block}
 @font-face{font-family:JBMono;src:url('assets/jetbrains-mono-medium.ttf') format('truetype');font-display:block}
 @font-face{font-family:JBMonoB;src:url('assets/jetbrains-mono-bold.ttf') format('truetype');font-display:block}
-:root{--bg:#0F0F11;--ink:#F2EEE6;--accent:#FF5A37}
+:root{--bg:#202020;--ink:#FAFAFA;--accent:#87EA5C}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#000;overflow:hidden}
 #viewport{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
@@ -53,7 +53,7 @@ html.od-export #main{left:0!important;top:0!important;transform:none!important}
 const CFG = {
   duration: 15, w: 1920, h: 1080, bpm: 128, reducedAt: 14.6,
   brand: 'OPEN DESIGN', role: 'motion designer', year: '2026',
-  dark: '#0F0F11', ink: '#111111', orange: '#FF5A37', cream: '#F2EEE6', blue: '#2D3BFE', lime: '#E2FF3E',
+  dark: '#202020', ink: '#26251E', green: '#87EA5C', paper: '#FAFAFA', deep: '#007106', pale: '#D0FFB5',
   footer: ['SHOWREEL 2026', '15 SECONDS', 'EVERY FRAME WRITTEN IN CODE', 'AVAILABLE FOR NEW PROJECTS']
 };
 const BEAT = 60 / CFG.bpm;
@@ -111,7 +111,7 @@ const dotGrid = (() => { const c = document.createElement('canvas'); c.width = C
 
 /* ---------- chapters ---------- */
 // [start, label, background, hud ink]
-const CH = [[0, '01 — IDENTITY', CFG.dark, CFG.cream], [2.0, '01 — IDENTITY', CFG.orange, CFG.ink], [3.5, '02 — EASING', CFG.cream, CFG.ink], [5.5, '03 — MORPHING', CFG.blue, CFG.cream], [7.45, '04 — SYSTEMS', CFG.dark, CFG.cream], [9.75, '05 — DEPTH', CFG.dark, CFG.cream], [11.2, '06 — KINETIC TYPE', CFG.dark, CFG.cream], [13.1, '07 — END', CFG.orange, CFG.ink]];
+const CH = [[0, '01 — IDENTITY', CFG.dark, CFG.paper], [2.0, '01 — IDENTITY', CFG.green, CFG.ink], [3.5, '02 — EASING', CFG.paper, CFG.ink], [5.5, '03 — MORPHING', CFG.deep, CFG.paper], [7.45, '04 — SYSTEMS', CFG.dark, CFG.paper], [9.75, '05 — DEPTH', CFG.dark, CFG.paper], [11.2, '06 — KINETIC TYPE', CFG.dark, CFG.paper], [13.1, '07 — END', CFG.green, CFG.ink]];
 
 /* 01 — identity: a dot, a ring, a starburst with orbiting type */
 function identity(t) {
@@ -119,71 +119,77 @@ function identity(t) {
   const cx = 960, cy = 540;
   // the opening ring and dot
   const r0 = lerp(90, 180, EZ.o3(seg(t, 0.1, 0.5)));
-  ring(cx, cy, r0, 'rgba(242,238,230,.35)', 2, 1 - seg(t, 0.9, 1.2));
+  ring(cx, cy, r0, 'rgba(250,250,250,.35)', 2, 1 - seg(t, 0.9, 1.2));
   const big = EZ.expo(seg(t, 0.45, 0.8));
-  ring(cx, cy, lerp(200, 430, big), 'rgba(242,238,230,.18)', 6, big * (1 - seg(t, 1.0, 1.3)));
-  ring(cx, cy, 760, 'rgba(242,238,230,.12)', 2, seg(t, 0.8, 1.0) * (1 - seg(t, 1.5, 1.7)));
+  ring(cx, cy, lerp(200, 430, big), 'rgba(250,250,250,.18)', 6, big * (1 - seg(t, 1.0, 1.3)));
+  ring(cx, cy, 760, 'rgba(250,250,250,.12)', 2, seg(t, 0.8, 1.0) * (1 - seg(t, 1.5, 1.7)));
   // the mark: it pops out of the dot, breathes and turns, then collapses
   const burst = EZ.back(seg(t, 0.45, 0.95)), collapse = EZ.i3(seg(t, 1.55, 1.82));
   const turn = Math.sin(t * 2.2) * 0.12 * (1 - collapse) + EZ.io3(seg(t, 1.5, 1.8)) * 2.4;
-  if (burst > 0 && collapse < 1) odMark(cx, cy, 440 * burst * (1 - collapse * 0.85) * (1 + 0.03 * Math.sin(t * 9)), CFG.orange, turn);
-  circle(cx, cy, lerp(15, 26, EZ.back(seg(t, 0.15, 0.45))) * Math.max(0, 1 - seg(t, 0.45, 0.6)) * (1 - collapse), CFG.orange);
+  if (burst > 0 && collapse < 1) odMark(cx, cy, 440 * burst * (1 - collapse * 0.85) * (1 + 0.03 * Math.sin(t * 9)), CFG.green, turn);
+  circle(cx, cy, lerp(15, 26, EZ.back(seg(t, 0.15, 0.45))) * Math.max(0, 1 - seg(t, 0.45, 0.6)) * (1 - collapse), CFG.green);
   // orbiting type ring
   const tr = EZ.o3(seg(t, 0.95, 1.2)) * (1 - seg(t, 1.5, 1.65));
   if (tr > 0) {
-    ring(cx, cy, 420, 'rgba(255,90,55,.55)', 2, tr);
+    ring(cx, cy, 420, 'rgba(135,234,92,.55)', 2, tr);
     const label = ` ${CFG.brand} · MOTION REEL · ${CFG.year} · SHOWREEL ·`.repeat(2);
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-t * 0.5); ctx.font = fnt(22, F.mono); ctx.fillStyle = CFG.cream; ctx.globalAlpha = tr * 0.85; ctx.textAlign = 'center';
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-t * 0.5); ctx.font = fnt(22, F.mono); ctx.fillStyle = CFG.paper; ctx.globalAlpha = tr * 0.85; ctx.textAlign = 'center';
     [...label].forEach((ch, i) => { ctx.save(); ctx.rotate(i / label.length * TAU); ctx.fillText(ch, 0, -340); ctx.restore(); });
     ctx.restore();
   }
   // the cream circle that wipes into the title
   const wipe = EZ.i3(seg(t, 1.82, 2.0));
-  if (wipe > 0) { const R = 40 + wipe * 1300; circle(cx, cy, R + 14, 'rgba(110,60,200,.55)'); circle(cx, cy, R + 6, 'rgba(60,90,255,.45)'); circle(cx, cy, R, CFG.cream); }
+  if (wipe > 0) { const R = 40 + wipe * 1300; circle(cx, cy, R + 14, 'rgba(0,113,6,.55)'); circle(cx, cy, R + 6, 'rgba(135,234,92,.45)'); circle(cx, cy, R, CFG.paper); }
 }
 
 /* 01b — the brand title on orange */
 function title(t) {
   const cx = 960, cy = 540;
   const grow = EZ.o3(seg(t, 0, 0.25)); // the orange disc opens inside the cream ring
-  if (grow < 1) { ctx.fillStyle = CFG.cream; ctx.fillRect(0, 0, CFG.w, CFG.h); circle(cx, cy, 1300 * grow, CFG.orange); }
+  if (grow < 1) { ctx.fillStyle = CFG.paper; ctx.fillRect(0, 0, CFG.w, CFG.h); circle(cx, cy, 1300 * grow, CFG.green); }
   const ln = EZ.expo(seg(t, 0.15, 0.6));
   ctx.fillStyle = CFG.ink; ctx.globalAlpha = 0.85; ctx.fillRect(144, 228, (1776 - 144) * ln, 3); ctx.globalAlpha = 1;
   text('N° 01', 144, 270, 22, F.mono, CFG.ink, 'left', seg(t, 0.4, 0.6));
   text('SHOWREEL — ' + CFG.year, 1776, 270, 22, F.mono, CFG.ink, 'right', seg(t, 0.4, 0.6));
   // letters slide in from the left, squeeze and stretch, then settle wide
-  const letters = CFG.brand;
-  word(letters, cx, 640, fitSize(letters, F.wide, 300, 1600), F.wide, CFG.ink, (i) => {
-    const s = seg(t, 0.02 + i * 0.035, 0.32 + i * 0.035), e = EZ.expo(s);
-    const squeeze = Math.sin(seg(t, 0.4, 0.95) * Math.PI) * (i === 1 ? 0.45 : i % 2 ? 0.12 : -0.08);
-    const out = EZ.i3(seg(t, 1.3, 1.55));
-    return { dx: (1 - e) * -900 + out * -260, sx: 1 - squeeze, sy: 1, a: s > 0 ? 1 : 0, blur: [(1 - s) * 220 + out * 260, 0] };
-  }, -6);
+  // one display line per word, each as large as the original's single word
+  const lines = CFG.brand.split(' '), size = Math.min(270, ...lines.map(l => fitSize(l, F.wide, 300, 1600)));
+  const base = lines.length > 1 ? [520, 520 + size * 0.95] : [640];
+  let n = 0;
+  lines.forEach((line, k) => {
+    const i0 = n; n += line.length;
+    word(line, cx, base[k], size, F.wide, CFG.ink, (j) => {
+      const i = i0 + j, s = seg(t, 0.02 + i * 0.035, 0.32 + i * 0.035), e = EZ.expo(s);
+      const squeeze = Math.sin(seg(t, 0.4, 0.95) * Math.PI) * (i === 1 ? 0.45 : i % 2 ? 0.12 : -0.08);
+      const out = EZ.i3(seg(t, 1.3, 1.55));
+      return { dx: (1 - e) * -900 + out * -260, sx: 1 - squeeze, sy: 1, a: s > 0 ? 1 : 0, blur: [(1 - s) * 220 + out * 260, 0] };
+    }, -6);
+  });
   const sub = EZ.o3(seg(t, 0.85, 1.15));
-  text(CFG.role, cx, 820 + (1 - sub) * 30, 104, F.serif, CFG.cream, 'center', sub * (1 - seg(t, 1.3, 1.45)));
+  text(CFG.role, cx, base[base.length - 1] + 130 + (1 - sub) * 30, 104, F.serif, CFG.ink, 'center', sub * (1 - seg(t, 1.3, 1.45)));
 }
 
 /* 02 — easing: six ways to get from A to B */
-const EASES = [['linear', EZ.lin, CFG.ink], ['ease-in-out', EZ.io3, CFG.blue], ['expo-out', EZ.expo, CFG.orange], ['back-out', E('back.out(2.2)'), CFG.ink], ['elastic', EZ.el, CFG.blue], ['bounce', EZ.bounce, CFG.orange]];
+const EASES = [['linear', EZ.lin, CFG.ink], ['ease-in-out', EZ.io3, CFG.deep], ['expo-out', EZ.expo, CFG.green], ['back-out', E('back.out(2.2)'), CFG.ink], ['elastic', EZ.el, CFG.deep], ['bounce', EZ.bounce, CFG.green]];
 function easing(t) {
   // diagonal wipe from orange plus flying ink blots on the way in
   const wipe = EZ.io3(seg(t, 0, 0.25));
   if (wipe < 1) {
-    ctx.fillStyle = CFG.orange; ctx.beginPath(); const k = wipe * 3200; ctx.moveTo(0, 0); ctx.lineTo(Math.max(0, 1920 * 1.6 - k), 0); ctx.lineTo(0, Math.max(0, 1080 * 1.6 - k)); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = CFG.green; ctx.beginPath(); const k = wipe * 3200; ctx.moveTo(0, 0); ctx.lineTo(Math.max(0, 1920 * 1.6 - k), 0); ctx.lineTo(0, Math.max(0, 1080 * 1.6 - k)); ctx.closePath(); ctx.fill();
     for (let i = 0; i < 6; i++) { const x = 360 + i * 260 + wipe * 300, y = 700 - i * 40 + (1 - wipe) * 80; ctx.save(); ctx.translate(x, y); ctx.rotate(-0.6); ctx.scale(1.8, 1); circle(0, 0, 22, CFG.ink); ctx.restore(); }
   }
   const out = EZ.i3(seg(t, 1.88, 2.05)), enter = seg(t, 0.15, 0.45);
   ctx.save(); ctx.globalAlpha = 1 - out;
   text('Six ways to get from A to B.', 144, 192, 70, F.serif, CFG.ink, 'left', EZ.o3(enter));
-  text('SAME DISTANCE · SAME DURATION (0.8s)', 1340, 192, 18, F.mono, 'rgba(17,17,17,.55)', 'left', EZ.o3(enter));
+  text('SAME DISTANCE · SAME DURATION (0.8s)', 1340, 192, 18, F.mono, 'rgba(38,37,30,.55)', 'left', EZ.o3(enter));
   const x0 = 658, x1 = 1700;
   text('A', x0, 280, 18, F.mono, CFG.ink, 'center', enter); text('B', x1, 280, 18, F.mono, CFG.ink, 'center', enter);
   EASES.forEach(([name, ez, colr], i) => {
     const y = 330 + i * 92, e = EZ.o3(seg(t, 0.2 + i * 0.04, 0.5 + i * 0.04));
-    text(String(i + 1).padStart(2, '0'), 150, y + 8, 18, F.mono, CFG.orange, 'left', e);
+    text(String(i + 1).padStart(2, '0'), 150, y + 8, 18, F.mono, CFG.green, 'left', e);
     text(name, 196, y + 8, 22, F.mono, CFG.ink, 'left', e);
     // curve icon
-    ctx.save(); ctx.globalAlpha = e; ctx.strokeStyle = 'rgba(17,17,17,.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(456, y - 26, 64, 52);
+    ctx.save(); ctx.globalAlpha = e; ctx.strokeStyle = 'rgba(38,37,30,.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(456, y - 26, 64, 52);
     ctx.strokeStyle = colr === CFG.ink ? CFG.ink : colr; ctx.lineWidth = 3; ctx.beginPath();
     for (let s = 0; s <= 32; s++) { const q = s / 32, yy = y + 18 - ez(q) * 40; s ? ctx.lineTo(460 + q * 56, yy) : ctx.moveTo(460, yy); } ctx.stroke(); ctx.restore();
     // track with ticks
@@ -241,22 +247,22 @@ function shapePath(form, R, rot) {
 function morphing(t) {
   const cx = 960, cy = 540, appear = EZ.back(seg(t, 0.05, 0.35)), out = EZ.i3(seg(t, 1.85, 1.95));
   // guide lines and readouts
-  ctx.save(); ctx.globalAlpha = 0.18 * appear; ctx.fillStyle = CFG.cream; ctx.fillRect(220, cy, 1480, 1); ctx.fillRect(cx, 120, 1, 840); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.18 * appear; ctx.fillStyle = CFG.paper; ctx.fillRect(220, cy, 1480, 1); ctx.fillRect(cx, 120, 1, 840); ctx.restore();
   const f = formAt(t), names = { circle: 'CIRCLE', tri: 'TRIANGLE', star: 'STAR', square: 'SQUIRCLE' };
-  text(`MORPH · ${names[f.a]} → ${names[FORMS[Math.min(FORMS.findIndex(x => x[0] === f.a) + 1, 3)][0]]}`, 270, 512, 18, F.mono, 'rgba(242,238,230,.75)', 'left', appear);
-  text(`r 1.00 · ROT ${String((t * 120 % 360).toFixed(1)).padStart(5, '0')}°`, 1650, 512, 18, F.mono, 'rgba(242,238,230,.75)', 'right', appear);
-  text('STEPS ' + (Math.min(3, Math.floor(t / 0.5)) + 1) + '/4', 1650, 540, 18, F.mono, 'rgba(242,238,230,.5)', 'right', appear);
-  text('270', 230, 528, 16, F.mono, 'rgba(242,238,230,.45)', 'left', appear); text('90', 1690, 528, 16, F.mono, 'rgba(242,238,230,.45)', 'right', appear);
+  text(`MORPH · ${names[f.a]} → ${names[FORMS[Math.min(FORMS.findIndex(x => x[0] === f.a) + 1, 3)][0]]}`, 270, 512, 18, F.mono, 'rgba(250,250,250,.75)', 'left', appear);
+  text(`r 1.00 · ROT ${String((t * 120 % 360).toFixed(1)).padStart(5, '0')}°`, 1650, 512, 18, F.mono, 'rgba(250,250,250,.75)', 'right', appear);
+  text('STEPS ' + (Math.min(3, Math.floor(t / 0.5)) + 1) + '/4', 1650, 540, 18, F.mono, 'rgba(250,250,250,.5)', 'right', appear);
+  text('270', 230, 528, 16, F.mono, 'rgba(250,250,250,.45)', 'left', appear); text('90', 1690, 528, 16, F.mono, 'rgba(250,250,250,.45)', 'right', appear);
   const R = 200 * appear * (1 - out) + 0.001, rot = 0.25 * Math.sin(t * 3) * f.p;
   // orange echo outlines trail the rotation
-  ctx.save(); ctx.translate(cx, cy); ctx.strokeStyle = 'rgba(255,90,55,.65)'; ctx.lineWidth = 2;
-  ctx.strokeStyle = '#FF6A4A'; ctx.lineWidth = 2.5;
+  ctx.save(); ctx.translate(cx, cy); ctx.strokeStyle = 'rgba(135,234,92,.65)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#9CF078'; ctx.lineWidth = 2.5;
   for (let k = 1; k <= 7; k++) { const ff = formAt(Math.max(0, t - k * 0.03)); ctx.globalAlpha = 0.85 - k * 0.08; shapePath(ff, R * (1 + k * 0.03), (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.13 * (ff.a === 'circle' && ff.p === 0 ? 0 : 1)); ctx.stroke(); }
-  ctx.globalAlpha = 1; ctx.fillStyle = CFG.cream; shapePath(f, R, rot); ctx.fill(); ctx.restore();
+  ctx.globalAlpha = 1; ctx.fillStyle = CFG.paper; shapePath(f, R, rot); ctx.fill(); ctx.restore();
   // orbit: twelve satellites echo the current form
   for (let i = 0; i < 12; i++) {
     const a = i / 12 * TAU - t * 0.5, rr = 380 * EZ.back(seg(t, 0.15 + i * 0.01, 0.45 + i * 0.01)) * (1 - out);
-    ctx.save(); ctx.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); ctx.rotate(a + t); ctx.fillStyle = CFG.cream; shapePath(f, 22, 0); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); ctx.rotate(a + t); ctx.fillStyle = CFG.paper; shapePath(f, 22, 0); ctx.fill(); ctx.restore();
   }
 }
 
@@ -275,7 +281,7 @@ function truchet(t, appearAt, fadeCenter) {
     const turn = EZ.back(clamp(((t - 0.6) * 9 - i) / 1.2)) + EZ.back(clamp(((t - 1.3) * 9 - (COLS - i)) / 1.2));
     const orange = Math.max(w1, w2);
     ctx.save(); ctx.translate(x + CELL / 2, y + CELL / 2); ctx.rotate(((rnd(i * 31 + j * 7) > 0.5 ? 1 : 0) + turn) * Math.PI / 2); ctx.scale(show * (1 - hide), show * (1 - hide));
-    ctx.strokeStyle = orange > 0.05 ? `rgb(${Math.round(lerp(242, 255, orange))},${Math.round(lerp(238, 90, orange))},${Math.round(lerp(230, 55, orange))})` : CFG.cream;
+    ctx.strokeStyle = orange > 0.05 ? `rgb(${Math.round(lerp(250, 135, orange))},${Math.round(lerp(250, 234, orange))},${Math.round(lerp(250, 92, orange))})` : CFG.paper;
     ctx.lineWidth = 28; ctx.beginPath(); ctx.arc(-CELL / 2, -CELL / 2, CELL / 2, 0, Math.PI / 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(CELL / 2, CELL / 2, CELL / 2, Math.PI, Math.PI * 1.5); ctx.stroke(); ctx.restore();
   }
@@ -284,16 +290,16 @@ function systems(t) {
   ctx.drawImage(dotGrid, 0, 0);
   // the morph ends as a cream tile that splits into the grid
   const tile = EZ.o3(seg(t, 0, 0.15)) * (1 - seg(t, 0.2, 0.35));
-  if (tile > 0) { ctx.fillStyle = CFG.cream; const s = 180 * tile; ctx.fillRect(960 - s, 540 - s, s * 2, s * 2); ctx.strokeStyle = CFG.dark; ctx.lineWidth = 3; for (let k = -1; k <= 1; k += 2) { ctx.beginPath(); ctx.moveTo(960 + k * s / 3, 540 - s); ctx.lineTo(960 + k * s / 3, 540 + s); ctx.moveTo(960 - s, 540 + k * s / 3); ctx.lineTo(960 + s, 540 + k * s / 3); ctx.stroke(); } }
+  if (tile > 0) { ctx.fillStyle = CFG.paper; const s = 180 * tile; ctx.fillRect(960 - s, 540 - s, s * 2, s * 2); ctx.strokeStyle = CFG.dark; ctx.lineWidth = 3; for (let k = -1; k <= 1; k += 2) { ctx.beginPath(); ctx.moveTo(960 + k * s / 3, 540 - s); ctx.lineTo(960 + k * s / 3, 540 + s); ctx.moveTo(960 - s, 540 + k * s / 3); ctx.lineTo(960 + s, 540 + k * s / 3); ctx.stroke(); } }
   truchet(t, 0.18, t > 2.05 ? (t - 2.05) * 3 : 0);
   const lab = seg(t, 0.5, 0.7) * (1 - seg(t, 2.0, 2.2));
-  if (lab > 0) { ctx.fillStyle = CFG.dark; ctx.globalAlpha = lab; ctx.fillRect(700, 930, 520, 44); ctx.globalAlpha = 1; text('TRUCHET · 170 TILES · SEED 0x2A', 960, 960, 18, F.mono, CFG.cream, 'center', lab); }
+  if (lab > 0) { ctx.fillStyle = CFG.dark; ctx.globalAlpha = lab; ctx.fillRect(700, 930, 520, 44); ctx.globalAlpha = 1; text('TRUCHET · 170 TILES · SEED 0x2A', 960, 960, 18, F.mono, CFG.paper, 'center', lab); }
 }
 
 /* 05 — depth: a field of points folds into a lantern, then a torus */
 function depth(t) {
   ctx.drawImage(dotGrid, 0, 0);
-  const plane = 1 - EZ.io3(seg(t, 0.2, 0.55)), torus = EZ.io3(seg(t, 0.75, 1.1));
+  const plane = 1 - EZ.io3(seg(t, 0.05, 0.4)), torus = EZ.io3(seg(t, 0.7, 1.05));
   const U = 30, V = 18, ry = -0.6 + t * 1.6, rx = lerp(1.05, 0.35, EZ.o3(seg(t, 0, 0.5))) + torus * 0.5;
   const out = EZ.i3(seg(t, 1.35, 1.45));
   for (let u = 0; u < U; u++) for (let v = 0; v <= V; v++) {
@@ -309,22 +315,22 @@ function depth(t) {
     const accent = (u * 7 + v * 3) % 11 === 0, front = z3 < 60;
     ctx.globalAlpha = (front ? 0.95 : 0.35) * (1 - out);
     // dashes follow the motion direction, dots when still
-    ctx.fillStyle = accent ? CFG.orange : CFG.cream; const len = 4 + 10 * torus;
+    ctx.fillStyle = accent ? CFG.green : CFG.paper; const len = 4 + 10 * torus;
     ctx.save(); ctx.translate(X, Y); ctx.rotate(a + ry); ctx.fillRect(-len * s, -2 * s, len * 2 * s, 4 * s); ctx.restore();
   }
   ctx.globalAlpha = 1;
-  text(`WIREFRAME · FOCAL 1200 · ROT Y ${(((ry * 57.3) % 360) + 360) % 360 | 0}.${(t * 10 | 0) % 10}°`, 960, 860, 18, F.mono, 'rgba(242,238,230,.6)', 'center', seg(t, 0.3, 0.5) * (1 - out));
+  text(`WIREFRAME · FOCAL 1200 · ROT Y ${(((ry * 57.3) % 360) + 360) % 360 | 0}.${(t * 10 | 0) % 10}°`, 960, 860, 18, F.mono, 'rgba(250,250,250,.6)', 'center', seg(t, 0.3, 0.5) * (1 - out));
 }
 
 /* 06 — kinetic type: EASE IN. EASE OUT. NEVER LINEAR. */
 const KT = [ // [start, word, bg, ink, family, cap height, target width (0 = natural), entrance]
-  [0.05, 'EASE', CFG.orange, CFG.ink, F.wide, 264, 1730, 'L'],
-  [0.28, 'IN.', CFG.dark, CFG.cream, F.wide, 336, 0, 'U'],
-  [0.53, 'EASE', CFG.cream, CFG.blue, F.cond, 768, 1680, 'D'],
-  [0.78, 'OUT.', CFG.blue, CFG.cream, F.wide, 336, 0, 'R'],
-  [1.03, 'NEVER', CFG.lime, CFG.ink, F.wide, 192, 1730, 'W'],
-  [1.28, '~NEVER', CFG.lime, CFG.ink, F.wide, 110, 0, 'M'],
-  [1.43, 'LINEAR.', CFG.dark, CFG.cream, F.bold, 216, 0, 'L']
+  [0.05, 'EASE', CFG.green, CFG.ink, F.wide, 264, 1730, 'L'],
+  [0.28, 'IN.', CFG.dark, CFG.paper, F.wide, 336, 0, 'U'],
+  [0.53, 'EASE', CFG.paper, CFG.deep, F.cond, 768, 1680, 'D'],
+  [0.78, 'OUT.', CFG.deep, CFG.paper, F.wide, 336, 0, 'R'],
+  [1.03, 'NEVER', CFG.pale, CFG.ink, F.wide, 192, 1730, 'W'],
+  [1.28, '~NEVER', CFG.pale, CFG.ink, F.wide, 110, 0, 'M'],
+  [1.43, 'LINEAR.', CFG.dark, CFG.paper, F.bold, 216, 0, 'L']
 ];
 function kinetic(t) {
   let k = -1; KT.forEach((c, i) => { if (t >= c[0]) k = i; });
@@ -354,7 +360,7 @@ function kinetic(t) {
   }, size * -0.02);
   if (w.endsWith('.')) { // the orange full stop lands a beat later
     ctx.font = fnt(size, fam); const dotX = 960 + total / 2 + size * 0.06, dp = EZ.back(seg(lt, 0.08, 0.2));
-    circle(dotX - exit * 1500, cy - size * 0.07, size * 0.075 * dp, CFG.orange);
+    circle(dotX - exit * 1500, cy - size * 0.07, size * 0.075 * dp, CFG.green);
   }
   ctx.restore();
 }
@@ -363,9 +369,9 @@ function kinetic(t) {
 function endCard(t) {
   const cx = 960, cy = 540;
   const open = EZ.o3(seg(t, 0, 0.18));
-  if (open < 1) { ctx.fillStyle = CFG.dark; ctx.fillRect(0, 0, CFG.w, CFG.h); circle(cx - 300, cy, 2400 * open, CFG.orange); ring(cx, cy, 700 * open + 200, 'rgba(242,238,230,.7)', 10, 1 - open); }
+  if (open < 1) { ctx.fillStyle = CFG.dark; ctx.fillRect(0, 0, CFG.w, CFG.h); circle(cx - 300, cy, 2400 * open, CFG.green); ring(cx, cy, 700 * open + 200, 'rgba(250,250,250,.7)', 10, 1 - open); }
   // confetti in four inks
-  const pc = [CFG.ink, CFG.cream, CFG.blue, CFG.ink];
+  const pc = [CFG.ink, CFG.paper, CFG.deep, CFG.ink];
   for (let i = 0; i < 60; i++) {
     const a = rnd(i) * TAU, sp = 200 + rnd(i + 5) * 700, life = seg(t, 0.1, 1.6), r = sp * EZ.o3(life);
     const x = cx + Math.cos(a) * r - 300 * EZ.io3(seg(t, 0.45, 0.85)), y = cy + Math.sin(a) * r * 0.75 + 120 * life * life;
@@ -373,25 +379,30 @@ function endCard(t) {
   }
   ctx.globalAlpha = 1;
   // the mark spins in the centre, then slides left and settles upright
-  const slide = EZ.io3(seg(t, 0.45, 0.85)), mx = lerp(cx, 336, slide), my = lerp(cy, 480, slide), ms = lerp(1, 0.48, slide);
+  const slide = EZ.io3(seg(t, 0.45, 0.85)), mx = lerp(cx, 336, slide), my = lerp(cy, 430, slide), ms = lerp(1, 0.48, slide);
   const burst = EZ.back(seg(t, 0.05, 0.3));
   odMark(mx, my, 380 * burst * ms, CFG.ink, (1 - slide) * (t * 2.2 + 0.3));
-  // brand letters streak in from the right
-  const bs = fitSize(CFG.brand, F.wide, 216, 1250);
-  ctx.font = fnt(bs, F.wide); const bw = ctx.measureText(CFG.brand).width - 4 * (CFG.brand.length - 1);
-  word(CFG.brand, 504 + bw / 2, 566, bs, F.wide, CFG.ink, (i) => { const s = seg(t, 0.55 + i * 0.03, 0.8 + i * 0.03), e = EZ.expo(s); return { dx: (1 - e) * 600, a: s > 0 ? 1 : 0, blur: [(1 - s) * -300, 0] }; }, -4);
+  // brand letters streak in from the right, one line per word
+  const lines = CFG.brand.split(' '), bs = Math.min(216, ...lines.map(l => fitSize(l, F.wide, 216, 1250)));
+  const rows = lines.map((_, k) => 456 + k * bs * 0.85), last = rows[rows.length - 1];
+  let n = 0;
+  lines.forEach((line, k) => {
+    const i0 = n; n += line.length;
+    ctx.font = fnt(bs, F.wide); const bw = ctx.measureText(line).width - 4 * (line.length - 1);
+    word(line, 504 + bw / 2, rows[k], bs, F.wide, CFG.ink, (j) => { const s = seg(t, 0.55 + (i0 + j) * 0.03, 0.8 + (i0 + j) * 0.03), e = EZ.expo(s); return { dx: (1 - e) * 600, a: s > 0 ? 1 : 0, blur: [(1 - s) * -300, 0] }; }, -4);
+  });
   const sub = EZ.o3(seg(t, 0.85, 1.15));
-  text(CFG.role, 518, 676 + (1 - sub) * 20, 104, F.serif, CFG.ink, 'left', sub);
-  const ln = EZ.expo(seg(t, 1.0, 1.4)); ctx.fillStyle = CFG.ink; ctx.fillRect(518, 720, 1140 * ln, 2);
+  text(CFG.role, 518, last + 128 + (1 - sub) * 20, 104, F.serif, CFG.ink, 'left', sub);
+  const ly = last + 170, ln = EZ.expo(seg(t, 1.0, 1.4)); ctx.fillStyle = CFG.ink; ctx.fillRect(518, ly, 1140 * ln, 2);
   const ft = EZ.o3(seg(t, 1.15, 1.45));
-  let fx = 518; CFG.footer.forEach((s, i) => { if (i) { if (i === 3) circle(fx + 14, 748, 6, CFG.ink); text(i === 3 ? '' : '·', fx + 10, 754, 18, F.mono, CFG.ink, 'left', ft); fx += 36; } text(s, fx, 754, 18, F.mono, CFG.ink, 'left', ft, 1); ctx.font = fnt(18, F.mono); fx += ctx.measureText(s).width + s.length * 1; });
+  let fx = 518; CFG.footer.forEach((s, i) => { if (i) { if (i === 3) circle(fx + 14, ly + 28, 6, CFG.ink); text(i === 3 ? '' : '·', fx + 10, ly + 34, 18, F.mono, CFG.ink, 'left', ft); fx += 36; } text(s, fx, ly + 34, 18, F.mono, CFG.ink, 'left', ft, 1); ctx.font = fnt(18, F.mono); fx += ctx.measureText(s).width + s.length * 1; });
 }
 
 const DRAW = [identity, title, easing, morphing, systems, depth, kinetic, endCard];
 
 /* ---------- frame chrome ---------- */
 function hud(t, ink) {
-  const k = CH.reduce((n, c, i) => t >= c[0] ? i : n, 0), dim = ink === CFG.ink ? 'rgba(17,17,17,.55)' : 'rgba(242,238,230,.55)';
+  const k = CH.reduce((n, c, i) => t >= c[0] ? i : n, 0), dim = ink === CFG.ink ? 'rgba(38,37,30,.55)' : 'rgba(250,250,250,.55)';
   const a = seg(t, 0.25, 0.5), sz = 14, tr = 2;
   text(CFG.brand, 80, 80, sz, F.monoB, ink, 'left', a, tr); ctx.font = fnt(sz, F.monoB);
   text('MOTION REEL — ' + CFG.year, 80 + ctx.measureText(CFG.brand).width + CFG.brand.length * tr + 24, 80, sz, F.mono, dim, 'left', a, tr);
@@ -416,7 +427,7 @@ function render(t) {
   ctx.fillStyle = CH[k][2]; ctx.fillRect(0, 0, CFG.w, CFG.h);
   DRAW[k](Math.max(0, t - CH[k][0]));
   let ink = CH[k][3];
-  if (k === 6) { const kk = KT.reduce((n, c, i) => t - CH[6][0] >= c[0] ? i : n, -1); if (kk >= 0) ink = KT[kk][2] === CFG.dark || KT[kk][2] === CFG.blue ? CFG.cream : CFG.ink; }
+  if (k === 6) { const kk = KT.reduce((n, c, i) => t - CH[6][0] >= c[0] ? i : n, -1); if (kk >= 0) ink = KT[kk][2] === CFG.dark || KT[kk][2] === CFG.deep ? CFG.paper : CFG.ink; }
   hud(t, ink);
 }
 

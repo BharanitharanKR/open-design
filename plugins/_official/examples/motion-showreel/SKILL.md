@@ -1,6 +1,6 @@
 ---
 name: motion-showreel
-description: "Motion Designer Showreel — motion design template. A 15-second motion designer showreel at 128 BPM, rebuilt from the viral original: a starburst opener, a stretching wordmark, six easing curves, a morphing shape, a truchet field, a 3D point cloud, kinetic type and an end card."
+description: "Motion Designer Showreel — motion design template. A 15-second motion designer showreel at 128 BPM, rebuilt from the viral original: an Open Design mark opener, a stretching wordmark, six easing curves, a morphing shape, a truchet field, a 3D point cloud, kinetic type and an end card."
 od:
   mode: video
   scenario: video
@@ -11,7 +11,7 @@ od:
 
 # Motion Designer Showreel
 
-A 15-second motion designer showreel at 128 BPM, rebuilt from the viral original: a starburst opener, a stretching wordmark, six easing curves, a morphing shape, a truchet field, a 3D point cloud, kinetic type and an end card. `example.html` is the finished reference — start from it.
+A 15-second motion designer showreel at 128 BPM, rebuilt from the viral original: an Open Design mark opener, a stretching wordmark, six easing curves, a morphing shape, a truchet field, a 3D point cloud, kinetic type and an end card. `example.html` is the finished reference — start from it.
 
 ## Source
 A remake of a viral post by @stephanlivera: https://x.com/stephanlivera/status/2103315922098470926 (2.25M views · 17K likes · 13K bookmarks on X (as of 2026-10-05)). The composition is
@@ -23,19 +23,19 @@ Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
 ## Art direction
-- Hard colour cuts between near-black `#0F0F11`, orange `#FF5A37`, cream `#F2EEE6`, blue `#2D3BFE` and lime `#E2FF3E`; ink `#111111`.
+- Hard colour cuts in the Open Design palette: near-black `#202020`, Open Design green `#87EA5C`, paper `#FAFAFA`, deep green `#007106` and pale green `#D0FFB5`; ink `#26251E`.
 - Fonts (SIL OFL, bundled): Archivo Expanded Black and Condensed Black for display type, Archivo ExtraBold, Instrument Serif Italic for the role line, JetBrains Mono for the HUD.
 - HUD on every frame: corner marks, brand and "MOTION REEL — 2026", chapter label, timecode, 60 FPS, 128 BPM with four beat squares, BAR n/8 and a progress line.
 
 ## Beat map (15s)
-- 0–2.0s IDENTITY: a dot in a ring, a 12-ray starburst with orbiting type, a cream circle wipe.
-- 2.0–3.5s the wordmark slides in, squeezes and settles; "motion designer" in serif italic.
+- 0–2.0s IDENTITY: a dot in a ring, the Open Design mark with orbiting type, a paper circle wipe.
+- 2.0–3.5s the wordmark slides in on two lines, squeezes and settles; "motion designer" in serif italic.
 - 3.5–5.5s EASING: "Six ways to get from A to B." — linear, ease-in-out, expo-out, back-out, elastic, bounce.
-- 5.5–7.45s MORPHING: circle → triangle → star → squircle with orange echoes and twelve satellites.
-- 7.45–9.75s SYSTEMS: a cream tile splits into a truchet field crossed by an orange wave.
+- 5.5–7.45s MORPHING: circle → triangle → star → squircle with green echoes and twelve satellites.
+- 7.45–9.75s SYSTEMS: a paper tile splits into a truchet field crossed by a green wave.
 - 9.75–11.2s DEPTH: a point plane folds into a lantern, then a torus.
 - 11.2–13.1s KINETIC TYPE: EASE / IN. / EASE / OUT. / NEVER / LINEAR.
-- 13.1–15s END: a black burst with confetti becomes the mark beside the wordmark, role line and footer.
+- 13.1–15s END: the spinning Open Design mark with confetti settles beside the stacked wordmark, role line and footer.
 
 ## Adapting the template
 - Swap `CFG.brand`, `CFG.role`, footer copy and palette to the brief; keep the seven chapters on the 128 BPM grid.
