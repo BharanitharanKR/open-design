@@ -31,7 +31,7 @@ const brokenDeckStageHtml = `<!doctype html>
 </html>`;
 
 describe('buildSrcdoc', () => {
-  it.each(['', 'index.html'])('keeps a native entry %s base fragment-free for scripts and descendant nodes (OPEND-3782)', (entry) => {
+  it.each(['', 'index.html'])('keeps a native entry %s base fragment-free for scripts and descendant nodes', (entry) => {
     const href = '/api/projects/project-1/preview/scope-1/pages/';
     const dom = new JSDOM(`<html><head>${buildPreviewBaseHrefBridge({ href, expiresAt: 123, documentUrl: href + entry })}</head><body><img></body></html>`, {
       url: `http://open-design.local${href}${entry}?theme=dark#/home`, runScripts: 'dangerously',
@@ -44,7 +44,7 @@ describe('buildSrcdoc', () => {
     dom.window.close();
   });
 
-  it('keeps legacy baseURI concatenation working when the scope is replaced (OPEND-3782)', () => {
+  it('keeps legacy baseURI concatenation working when the scope is replaced', () => {
     const doc = buildSrcdoc(
       '<!doctype html><html><head></head><body><main>Preview</main></body></html>',
       { baseHref: 'od://app/api/projects/project-1/preview/scope-1/pages/' },

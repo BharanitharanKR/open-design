@@ -17680,7 +17680,7 @@ function HtmlViewer({
                       )}
                       <iframe
                         key={usesPersistentSrcDocTransport
-                          ? `${srcDocPreviewFrameName}:persistent:${nativeSrcDocTransportUrl ?? "blob"}:${srcDocTransportResetKey}`
+                          ? `${srcDocPreviewFrameName}:persistent:${nativeSrcDocTransportUrl ?? 'blob'}:${srcDocTransportResetKey}`
                           : srcDocTransportResetKey}
                         ref={setSrcDocPreviewIframe}
                         name={srcDocPreviewFrameName}

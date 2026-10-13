@@ -94,7 +94,7 @@ describe('project preview containment routes', () => {
   }
 
   it.each(['index.html', 'board.html', 'screens/start.html'])(
-    'keeps hash navigation on the previewed document %s (OPEND-3782)',
+    'keeps hash navigation on the previewed document %s',
     async (file) => {
       const projectId = await createProject();
       await writeProjectFile(projectId, file, '<!doctype html><html><head></head><body><script>if (!location.hash) location.replace("#/home");</script><h1>Home</h1></body></html>');
@@ -120,7 +120,7 @@ describe('project preview containment routes', () => {
     },
   );
 
-  it('binds each directory preview to its own HTML, including same-directory files (OPEND-3782)', async () => {
+  it('binds each directory preview to its own HTML, including same-directory files', async () => {
     const projectId = await createProject();
     const scopes: string[] = [];
     for (const file of ['index.html', 'board.html', 'screens/index.html', 'screens/board.html']) {

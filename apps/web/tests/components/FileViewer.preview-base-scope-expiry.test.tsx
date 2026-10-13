@@ -437,6 +437,73 @@ it('retries initial native scope acquisition and activates the complete document
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
+it.each(['Code', 'file tab'] as const)('retains and updates the native document across %s switches', async (surface) => {
+  const source = (label: string) => `<!doctype html><html><body><h1>${label}</h1><script>localStorage.getItem("preview"); if (!location.hash) location.replace("#/home")</script></body></html>`;
+  let currentHtml = source('Version 1');
+  const fetchState = stubFetch(() => currentHtml);
+  const viewer = (active: boolean, version: number) => (
+    <FileViewer projectId="project-1" projectKind="prototype"
+      file={htmlFile({ mtime: version })} liveHtml={source(`Version ${version}`)} workspaceActive={active} />
+  );
+  const { rerender } = render(viewer(true, 1));
+  const frame = await waitFor(() => {
+    const current = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    expect(current.getAttribute('data-od-render-mode')).toBe('srcdoc');
+    expect(current.src).toContain('/preview/scope-0001/deck.html');
+    return current;
+  });
+  const originalUrl = frame.src;
+  const announceReady = () => window.dispatchEvent(new MessageEvent('message', {
+    source: frame.contentWindow, data: { type: 'od:srcdoc-transport-ready' },
+  }));
+  const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation((message) => {
+    // The persistent bootstrap echoes shell probes even after document.write.
+    if (message.type === 'od:srcdoc-transport-shell-probe') queueMicrotask(announceReady);
+  });
+  await act(async () => {
+    fireEvent.load(frame);
+    announceReady();
+  });
+  const activations = () => postMessage.mock.calls
+    .map(([message]) => message as { type?: string; html?: string; generation?: string })
+    .filter(message => message.type === 'od:srcdoc-transport-activate');
+  await waitFor(() => expect(activations().at(-1)?.html).toContain('Version 1'));
+
+  if (surface === 'Code') fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
+  else rerender(viewer(false, 1));
+  expect(frame.isConnected).toBe(true);
+  expect(frame).toHaveAttribute('aria-hidden', 'true');
+  currentHtml = source('Version 2');
+  rerender(viewer(surface === 'Code', 2));
+  await act(async () => { await Promise.resolve(); });
+  await waitFor(() => expect(activations().at(-1)?.html).toContain('Version 2'));
+  expect(activations().at(-1)?.html).not.toContain('Version 1');
+  const activationCount = activations().length;
+
+  if (surface === 'Code') fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+  else rerender(viewer(true, 2));
+  expect(screen.getByTestId('artifact-preview-frame')).toBe(frame);
+  expect(frame.src).toBe(originalUrl);
+  expect(frame.hasAttribute('srcdoc')).toBe(false);
+  expect(activations()).toHaveLength(activationCount);
+  expect(fetchState.mintCount).toBe(1);
+
+  // Verify the latest generation so a stale witness cannot trigger a delayed
+  // recovery after the viewer becomes active again.
+  fireEvent.load(frame);
+  const probe = postMessage.mock.calls.map(([message]) => message as {
+    type?: string; generation?: string; probeId?: string;
+  }).filter(message => message.type === 'od:srcdoc-transport-ready-probe').at(-1);
+  expect(probe?.generation).toBe(activations().at(-1)?.generation);
+  expect(probe?.probeId).toBeTruthy();
+  act(() => window.dispatchEvent(new MessageEvent('message', {
+    source: frame.contentWindow,
+    data: { ...probe, type: 'od:srcdoc-transport-activated', bodyComplete: true },
+  })));
+  await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+  expect(screen.getByTestId('artifact-preview-frame')).toBe(frame);
+});
+
 it('cancels a pending native scope retry when the viewer unmounts', async () => {
   stubFetch(() => '<!doctype html><html><body><script>location.replace("#/home")</script></body></html>');
   const delegate = globalThis.fetch;

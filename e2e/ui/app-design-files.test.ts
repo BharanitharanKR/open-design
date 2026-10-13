@@ -956,7 +956,7 @@ test('[P1] design files batch download posts selected names to the archive endpo
 });
 
 for (const srcdoc of [false, true]) {
-  test(`[P1] OPEND-3782 hash initialization preserves the HTML preview (${srcdoc ? 'srcDoc' : 'URL-load'})`, async ({ page }, testInfo) => {
+  test(`[P1] hash initialization preserves the HTML preview (${srcdoc ? 'srcDoc' : 'URL-load'})`, async ({ page }, testInfo) => {
     await routeMockAgents(page);
     const projectId = await createProjectViaApi(page, 'Hash preview regression');
     await seedProjectFile(page, projectId, 'styles.css', 'h1 { color: rgb(0, 128, 0); }');
@@ -1473,7 +1473,7 @@ function criticalDesignFileScenarioTag(entry: UiScenario): string {
 
 
 for (const hashNavigation of [false, true]) {
-  test(`[P1] OPEND-3782 edit bridge survives ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
+  test(`[P1] edit bridge survives ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
     await routeMockAgents(page);
     const projectId = await createProjectViaApi(page, 'Review preview edit');
     await seedHtmlArtifact(page, projectId, 'index.html', `<!doctype html><html><head></head><body>
@@ -1516,7 +1516,7 @@ for (const hashNavigation of [false, true]) {
 }
 
 for (const hashNavigation of [false, true]) {
-  test(`[P1] OPEND-3782 remote resources survive ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
+  test(`[P1] remote resources survive ${hashNavigation ? 'hash initialization' : 'ordinary HTML control'}`, async ({ page }, testInfo) => {
     await routeMockAgents(page);
     const errors: string[] = [];
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
