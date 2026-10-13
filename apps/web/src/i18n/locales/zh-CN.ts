@@ -3474,6 +3474,8 @@ export const zhCN: Dict = {
     "fileViewer.copyFixForAgent": "复制给 Agent",
     "fileViewer.copyFixForAgentFailed": "复制失败。请手动选中下方指令并复制。",
   "fileViewer.shareUpdateHint": "文件有新改动，访问者看到的还是上一版。",
+  "fileViewer.shareFreshnessChecking": "正在检查新改动…",
+  "fileViewer.shareFreshnessFailed": "暂时无法检查新改动。请重试。",
   "fileViewer.shareUpdateLink": "更新链接",
   "fileViewer.signInToUpdate": "登录后更新",
   "fileViewer.signInToShare": "登录后分享",
