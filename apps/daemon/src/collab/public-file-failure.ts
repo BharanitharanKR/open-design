@@ -57,6 +57,27 @@ export function classifyVelaCommandFailure(
   return { stage, reason: 'unknown' };
 }
 
+export type PublicShareDiagnosticStage =
+  | 'remote_state' | 'resume_guard' | 'resume_command' | 'resume_record' | 'resume_prepare';
+
+/** Bounded share lifecycle failures only: never include command output, identities or URLs. */
+export function logPublicShareDiagnostic(entry: {
+  operation: 'state_read' | 'resume';
+  stage: PublicShareDiagnosticStage;
+  status: number;
+  errorCode: string;
+  requestId: string | undefined;
+  startedAt: number;
+  staleFallback?: boolean;
+}): void {
+  console.warn('[od] public share diagnostic', JSON.stringify({
+    operation: entry.operation, stage: entry.stage, status: entry.status, errorCode: entry.errorCode,
+    ...(entry.requestId ? { requestId: entry.requestId } : {}),
+    ...(entry.staleFallback !== undefined ? { staleFallback: entry.staleFallback } : {}),
+    durationMs: Math.max(0, Date.now() - entry.startedAt),
+  }));
+}
+
 /**
  * One structured, text-free line per failed publish/unpublish, next to the
  * existing free-form warning. It lands in the daemon log, which automatic
