@@ -731,6 +731,34 @@ process.exit(127);
     expect(settled.runs).toHaveLength(2);
   });
 
+  it.each(['identical', 'conflicting', 'malformed'] as const)(
+    'produces once despite %s repeated retired runtime-state blocks', async mode => {
+      const fixture = await createPublicRolloutFixture(`marker-duplicate-state-${mode}`, 'design');
+      started = fixture.started; binDir = fixture.binDir;
+      process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
+      const created = await postRun(started.url, publicRunRequest(fixture,
+        'Create a landing page from the plan.', `duplicate-state-${mode}`));
+      const request = await waitForRunTerminal(started.url, created.runId as string);
+      expect(request.status, JSON.stringify(request)).toBe('succeeded');
+      const task = await waitForTask(created.strategyTask!.taskExecutionId, 'completed');
+      expect(task.runs.map(run => run.inputStage)).toEqual(['request', 'production']);
+      expect(task.planContract).toBeUndefined();
+      const production = await waitForRunTerminal(started.url, task.latestRunId);
+      expect(production.status, JSON.stringify(production)).toBe('succeeded');
+      const calls = await readProjectInvocations(fixture.logPath, fixture.projectId);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]!.argv).toContain('resume');
+      expect(calls[1]!.stdin).toContain('This is the production turn');
+      expect(await readFile(path.join(calls[1]!.cwd, 'landing.html'), 'utf8')).toContain('Landing');
+      const response = await fetch(`${started.url}/api/projects/${fixture.projectId}/conversations/${fixture.conversationId}/messages`);
+      const history = await response.json() as { messages: Array<{ content: string }> };
+      expect(response.status).toBe(200);
+      expect(history.messages.some(message => message.content.includes('Plan: create a blue landing page.'))).toBe(true);
+      expect(JSON.stringify(history)).not.toContain('open-design-runtime-state');
+      expect(JSON.stringify(history)).not.toContain('od-production-ready');
+    }, 45_000,
+  );
+
   it('does not cold-replay production after a tool ran before resume failure', async () => {
     const fixture = await createPublicRolloutFixture('marker-expired-side-effect', 'design');
     started = fixture.started; binDir = fixture.binDir;
@@ -2944,7 +2972,26 @@ process.stdin.on('end', () => {
     return;
   }
   let text = 'Ordinary public run completed.';
-  if (${JSON.stringify(label)} === 'marker-handoff') {
+  if (${JSON.stringify(label)}.startsWith('marker-duplicate-state-')) {
+    const mode = ${JSON.stringify(label)}.slice('marker-duplicate-state-'.length);
+    if (stdin.includes('This is the production turn')) {
+      fs.writeFileSync('landing.html', '<!doctype html><html><body>Landing</body></html>');
+      text = 'Wrote landing.html.';
+    } else {
+      const key = /<od-production-ready key="([a-f0-9]+)"/.exec(stdin)?.[1];
+      if (!key) throw new Error('Current host marker key was not injected');
+      const state = {
+        schema: 'open-design.strategy-state/v2', route: 'full_plan', inputStage: 'request',
+        outcome: 'plan_ready', executionMode: 'simple', executionIntent: 'produce', reasonCodes: [],
+      };
+      const bodies = mode === 'malformed' ? ['{broken}', '{also broken}']
+        : [JSON.stringify(state), JSON.stringify(mode === 'conflicting'
+          ? { ...state, executionMode: null, executionIntent: 'plan_only' } : state)];
+      text = 'Plan: create a blue landing page.\\n'
+        + bodies.map(body => '<open-design-runtime-state>\\n' + body + '\\n</open-design-runtime-state>').join('\\n')
+        + '\\n<od-production-ready key="' + key + '" />';
+    }
+  } else if (${JSON.stringify(label)} === 'marker-handoff') {
     if (stdin.includes('Historical task context.')) {
       fs.writeFileSync('index.html', '<!doctype html><html><body>Dog battle</body></html>');
       text = 'Delivered index.html.';

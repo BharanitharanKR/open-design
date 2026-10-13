@@ -66,7 +66,8 @@ function renderReply(message: ChatMessage, nextUserContent?: string) {
 }
 
 function expectRemainingWork() {
-  expect(screen.getByText('Stopped with unfinished work')).toBeInTheDocument();
+  expect(screen.getByText('Task not finished yet')).toBeInTheDocument();
+  expect(screen.getByTestId('assistant-footer')).toHaveAttribute('data-unfinished', 'true');
   expect(screen.getByTestId('assistant-continue-remaining')).toBeInTheDocument();
 }
 
@@ -87,7 +88,7 @@ describe('OPEND-3740 completion belongs to the final physical Run', () => {
     cleanup();
 
     renderReply(foldedReply(rows));
-    expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+    expect(screen.queryByText('Task not finished yet')).toBeNull();
     expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
   });
 
@@ -149,7 +150,7 @@ describe('OPEND-3740 completion belongs to the final physical Run', () => {
       strategyTaskPrefixEventCount: planning.events!.length,
     });
     if (completed) {
-      expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+      expect(screen.queryByText('Task not finished yet')).toBeNull();
       expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
     } else {
       expectRemainingWork();
@@ -170,7 +171,7 @@ describe('OPEND-3740 completion belongs to the final physical Run', () => {
     };
     renderReply(foldedReply([...rows, final]));
     if (completed) {
-      expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+      expect(screen.queryByText('Task not finished yet')).toBeNull();
       expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
     } else {
       expectRemainingWork();
@@ -186,7 +187,7 @@ describe('OPEND-3740 completion belongs to the final physical Run', () => {
 
   it('waits for the current production question instead of offering generic continuation', () => {
     renderReply(foldedReply(taskRuns(QUESTION_FORM)));
-    expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+    expect(screen.queryByText('Task not finished yet')).toBeNull();
     expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
   });
 
