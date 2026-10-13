@@ -84,6 +84,13 @@ function odMark(x, y, size, color, rot = 0) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot); const k = size / 82; ctx.scale(k, k); ctx.translate(-41, -41.7266);
   ctx.fillStyle = color; ctx.fill(OD_MARK); ctx.restore();
 }
+// The mark's outline drawn up to `p` (0 → 1) of its length, for the opener's draw-on.
+function odMarkStroke(x, y, size, color, rot, p, lw) {
+  if (size <= 0 || p <= 0) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); const k = size / 82; ctx.scale(k, k); ctx.translate(-41, -41.7266);
+  ctx.strokeStyle = color; ctx.lineWidth = lw / k; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.setLineDash([340 * p, 340]); ctx.stroke(OD_MARK); ctx.restore();
+}
 // Largest size up to `max` at which `s` fits `width` in family `fam`.
 function fitSize(s, fam, max, width) { ctx.font = fnt(max, fam); return Math.min(max, max * width / ctx.measureText(s).width); }
 function word(s, cx, y, size, fam, color, fx, track = 0) {
@@ -123,10 +130,27 @@ function identity(t) {
   const big = EZ.expo(seg(t, 0.45, 0.8));
   ring(cx, cy, lerp(200, 430, big), 'rgba(250,250,250,.18)', 6, big * (1 - seg(t, 1.0, 1.3)));
   ring(cx, cy, 760, 'rgba(250,250,250,.12)', 2, seg(t, 0.8, 1.0) * (1 - seg(t, 1.5, 1.7)));
-  // the mark: it pops out of the dot, breathes and turns, then collapses
-  const burst = EZ.back(seg(t, 0.45, 0.95)), collapse = EZ.i3(seg(t, 1.55, 1.82));
-  const turn = Math.sin(t * 2.2) * 0.12 * (1 - collapse) + EZ.io3(seg(t, 1.5, 1.8)) * 2.4;
-  if (burst > 0 && collapse < 1) odMark(cx, cy, 440 * burst * (1 - collapse * 0.85) * (1 + 0.03 * Math.sin(t * 9)), CFG.green, turn);
+  // rays burst from the dot, thicken and spin, then draw back behind the mark
+  const burst = EZ.expo(seg(t, 0.4, 0.85)), thick = EZ.o3(seg(t, 0.6, 0.95)), retract = EZ.i3(seg(t, 1.05, 1.4)), collapse = EZ.i3(seg(t, 1.55, 1.82));
+  const clear = EZ.o3(seg(t, 0.95, 1.05));
+  if (burst > 0 && retract < 1) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 1.4); ctx.strokeStyle = CFG.green; ctx.lineCap = 'round';
+    for (let i = 0; i < 16; i++) {
+      const a = i / 16 * TAU, len = (i % 2 ? 300 : 380) * burst * (1 - retract * 0.45) * (1 + 0.05 * Math.sin(t * 9 + i)), r0 = lerp(30, 250, clear) + 120 * retract;
+      ctx.globalAlpha = 1 - retract; ctx.lineWidth = lerp(3, 16, thick) * (1 - retract * 0.6); ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * Math.max(r0, len), Math.sin(a) * Math.max(r0, len)); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // the mark draws on, fills with a flash, breathes, then collapses
+  const draw = EZ.io3(seg(t, 0.62, 1.05)), fill = EZ.back(seg(t, 1.0, 1.2));
+  const turn = Math.sin(t * 2.2) * 0.1 * (1 - collapse) + EZ.io3(seg(t, 1.5, 1.8)) * 2.4, size = 440 * (1 - collapse * 0.85) * (1 + 0.03 * Math.sin(t * 9));
+  if (collapse < 1) {
+    const handover = seg(t, 1.0, 1.08);
+    if (handover < 1) { ctx.save(); ctx.globalAlpha = 1 - handover; odMarkStroke(cx, cy, size, CFG.green, turn, draw, 10); ctx.restore(); }
+    if (fill > 0) odMark(cx, cy, size * lerp(1.12, 1, fill), CFG.green, turn);
+    const flash = seg(t, 1.0, 1.35);
+    if (flash > 0 && flash < 1) ring(cx, cy, 240 + flash * 360, `rgba(250,250,250,${(0.8 * (1 - flash)).toFixed(3)})`, 6 * (1 - flash) + 1, 1);
+  }
   circle(cx, cy, lerp(15, 26, EZ.back(seg(t, 0.15, 0.45))) * Math.max(0, 1 - seg(t, 0.45, 0.6)) * (1 - collapse), CFG.green);
   // orbiting type ring
   const tr = EZ.o3(seg(t, 0.95, 1.2)) * (1 - seg(t, 1.5, 1.65));
@@ -185,7 +209,7 @@ function easing(t) {
   const x0 = 658, x1 = 1700;
   text('A', x0, 280, 18, F.mono, CFG.ink, 'center', enter); text('B', x1, 280, 18, F.mono, CFG.ink, 'center', enter);
   EASES.forEach(([name, ez, colr], i) => {
-    const y = 330 + i * 92, e = EZ.o3(seg(t, 0.2 + i * 0.04, 0.5 + i * 0.04));
+    const y = 330 + i * 92, e = EZ.o3(seg(t, 0.08 + i * 0.02, 0.28 + i * 0.02));
     text(String(i + 1).padStart(2, '0'), 150, y + 8, 18, F.mono, CFG.green, 'left', e);
     text(name, 196, y + 8, 22, F.mono, CFG.ink, 'left', e);
     // curve icon
@@ -272,14 +296,15 @@ function truchet(t, appearAt, fadeCenter) {
   ctx.lineCap = 'butt';
   for (let j = 0; j < ROWS; j++) for (let i = 0; i < COLS; i++) {
     const x = OX + i * CELL, y = OY + j * CELL, dc = Math.max(Math.abs(i - (COLS - 1) / 2), Math.abs(j - (ROWS - 1) / 2));
-    const show = EZ.o3(seg(t, appearAt + dc * 0.035, appearAt + dc * 0.035 + 0.12));
+    const show = EZ.o3(seg(t, appearAt + dc * 0.02, appearAt + dc * 0.02 + 0.1));
     const hide = fadeCenter ? seg(fadeCenter - dc * 0.04, 0, 0.12) : 0;
     if (show <= 0 || hide >= 1) continue;
     // the orange wave travels left → right twice, flipping tiles as it passes
     const w1 = clamp(1 - Math.abs((t - 0.6) * 9 - i) / 3), w2 = clamp(1 - Math.abs((t - 1.3) * 9 - (COLS - i)) / 3);
     const flip = (rnd(i * 31 + j * 7) > 0.5 ? 1 : 0) + (t > 0.6 + i / 9 ? 1 : 0) + (t > 1.3 + (COLS - i) / 9 ? 1 : 0);
     const turn = EZ.back(clamp(((t - 0.6) * 9 - i) / 1.2)) + EZ.back(clamp(((t - 1.3) * 9 - (COLS - i)) / 1.2));
-    const orange = Math.max(w1, w2);
+    const stay = clamp(((t - 0.6) * 9 - i) / 2) * (1 - clamp(((t - 1.3) * 9 - (COLS - i)) / 2));
+    const orange = Math.max(w1, w2, stay * 0.85);
     ctx.save(); ctx.translate(x + CELL / 2, y + CELL / 2); ctx.rotate(((rnd(i * 31 + j * 7) > 0.5 ? 1 : 0) + turn) * Math.PI / 2); ctx.scale(show * (1 - hide), show * (1 - hide));
     ctx.strokeStyle = orange > 0.05 ? `rgb(${Math.round(lerp(250, 135, orange))},${Math.round(lerp(250, 234, orange))},${Math.round(lerp(250, 92, orange))})` : CFG.paper;
     ctx.lineWidth = 28; ctx.beginPath(); ctx.arc(-CELL / 2, -CELL / 2, CELL / 2, 0, Math.PI / 2); ctx.stroke();
@@ -289,9 +314,9 @@ function truchet(t, appearAt, fadeCenter) {
 function systems(t) {
   ctx.drawImage(dotGrid, 0, 0);
   // the morph ends as a cream tile that splits into the grid
-  const tile = EZ.o3(seg(t, 0, 0.15)) * (1 - seg(t, 0.2, 0.35));
+  const tile = EZ.o3(seg(t, 0, 0.1)) * (1 - seg(t, 0.12, 0.24));
   if (tile > 0) { ctx.fillStyle = CFG.paper; const s = 180 * tile; ctx.fillRect(960 - s, 540 - s, s * 2, s * 2); ctx.strokeStyle = CFG.dark; ctx.lineWidth = 3; for (let k = -1; k <= 1; k += 2) { ctx.beginPath(); ctx.moveTo(960 + k * s / 3, 540 - s); ctx.lineTo(960 + k * s / 3, 540 + s); ctx.moveTo(960 - s, 540 + k * s / 3); ctx.lineTo(960 + s, 540 + k * s / 3); ctx.stroke(); } }
-  truchet(t, 0.18, t > 2.05 ? (t - 2.05) * 3 : 0);
+  truchet(t, 0.08, t > 2.05 ? (t - 2.05) * 3 : 0);
   const lab = seg(t, 0.5, 0.7) * (1 - seg(t, 2.0, 2.2));
   if (lab > 0) { ctx.fillStyle = CFG.dark; ctx.globalAlpha = lab; ctx.fillRect(700, 930, 520, 44); ctx.globalAlpha = 1; text('TRUCHET · 170 TILES · SEED 0x2A', 960, 960, 18, F.mono, CFG.paper, 'center', lab); }
 }
@@ -307,15 +332,15 @@ function depth(t) {
     // lantern: a sphere pinched at the poles
     const lr = 300 * Math.pow(Math.sin(b), 0.6), lx = Math.cos(a) * lr, ly = Math.cos(b) * 300, lz = Math.sin(a) * lr;
     const tx = (260 + 110 * Math.cos(bb)) * Math.cos(a), ty = 110 * Math.sin(bb), tz = (260 + 110 * Math.cos(bb)) * Math.sin(a);
-    const px = (u / U - 0.5) * 1700, pz = (v / V - 0.5) * 900, py = 40 * Math.sin(u * 0.5 + t * 4) * Math.cos(v * 0.4);
+    const px = (u / U - 0.5) * 2700, pz = (v / V - 0.5) * 1500, py = 40 * Math.sin(u * 0.5 + t * 4) * Math.cos(v * 0.4);
     let x = lerp(lerp(lx, tx, torus), px, plane), y = lerp(lerp(ly, ty, torus), py, plane), z = lerp(lerp(lz, tz, torus), pz, plane);
     const x2 = x * Math.cos(ry) + z * Math.sin(ry), z2 = -x * Math.sin(ry) + z * Math.cos(ry);
     const y2 = y * Math.cos(rx) - z2 * Math.sin(rx), z3 = y * Math.sin(rx) + z2 * Math.cos(rx);
     const s = 1200 / (1200 + z3 + 400 * plane), X = 960 + x2 * s, Y = 520 + y2 * s;
     const accent = (u * 7 + v * 3) % 11 === 0, front = z3 < 60;
-    ctx.globalAlpha = (front ? 0.95 : 0.35) * (1 - out);
+    ctx.globalAlpha = (front || plane > 0.5 ? 0.95 : 0.35) * (1 - out);
     // dashes follow the motion direction, dots when still
-    ctx.fillStyle = accent ? CFG.green : CFG.paper; const len = 4 + 10 * torus;
+    ctx.fillStyle = accent ? CFG.green : CFG.paper; const len = 4 + 10 * torus + 3 * plane;
     ctx.save(); ctx.translate(X, Y); ctx.rotate(a + ry); ctx.fillRect(-len * s, -2 * s, len * 2 * s, 4 * s); ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -355,7 +380,7 @@ function kinetic(t) {
   ctx.save(); ctx.translate(960, 0); ctx.scale(sx, 1); ctx.translate(-960, 0);
   const total = word(w.replace('~', ''), 960, cy, size, fam, col, (i) => {
     const s = seg(lt, i * 0.015, 0.1 + i * 0.015), ee = EZ.expo(s);
-    const wave = mode === 'W' ? Math.sin(i * 0.9 + lt * 18) * 90 * (1 - seg(lt, 0, 0.13)) : 0;
+    const wave = mode === 'W' ? -(i - 2) * 95 * (1 - EZ.io3(seg(lt, 0.06, 0.18))) : 0;
     return { dx: (1 - ee) * 260 * d[0] + exit * -1500, dy: (1 - ee) * 500 * d[1] + wave, a: s > 0 ? 1 : 0, blur: [(1 - s) * 220 * d[0] - exit * 500, (1 - s) * 200 * d[1]] };
   }, size * -0.02);
   if (w.endsWith('.')) { // the orange full stop lands a beat later
@@ -370,6 +395,8 @@ function endCard(t) {
   const cx = 960, cy = 540;
   const open = EZ.o3(seg(t, 0, 0.18));
   if (open < 1) { ctx.fillStyle = CFG.dark; ctx.fillRect(0, 0, CFG.w, CFG.h); circle(cx - 300, cy, 2400 * open, CFG.green); ring(cx, cy, 700 * open + 200, 'rgba(250,250,250,.7)', 10, 1 - open); }
+  const halo = seg(t, 0.06, 0.7);
+  if (halo > 0 && halo < 1) ring(cx, cy, 320 + EZ.o3(halo) * 900, `rgba(250,250,250,${(0.75 * (1 - halo)).toFixed(3)})`, 8 * (1 - halo) + 2, 1);
   // confetti in four inks
   const pc = [CFG.ink, CFG.paper, CFG.deep, CFG.ink];
   for (let i = 0; i < 60; i++) {
