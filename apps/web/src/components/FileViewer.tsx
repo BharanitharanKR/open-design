@@ -6930,6 +6930,16 @@ function ReactComponentViewer({
                         <>
                         {/* The "?" lives on the section label, not inside the publish
                             menuitem — see the HtmlViewer copy for why. */}
+                        <div className="share-menu-section-label share-menu-section-label--help" role="presentation">
+                          <span>{t('fileViewer.shareMenuPublishViaOd')}</span>
+                          <button type="button" className="share-menu-help od-tooltip"
+                            aria-label={t('fileViewer.publishSingleFileDescription')}
+                            data-tooltip={t('fileViewer.publishSingleFileDescription')}
+                            data-tooltip-placement="bottom"
+                            onClick={(event) => event.stopPropagation()}>
+                            <RemixIcon name="question-line" size={14} />
+                          </button>
+                        </div>
                         {filePublished ? (
                           <div className="chrome-publish-plain">
                             <div className="chrome-publish-url" title={publishedFileUrl}>
@@ -14555,11 +14565,11 @@ function HtmlViewer({
       }}
       onSaveDraft={() => {
         void (async () => {
-          if (!(await saveManualEditPanelDraft(false))) return;
+          if (!(await saveManualEditPanelDraft(manualEditDocked))) return;
           setManualEditHistory([]);
           setManualEditUndone([]);
           setManualEditDraftDirty(false);
-          if (selectedManualEditTarget) {
+          if (!manualEditDocked && selectedManualEditTarget) {
             manualEditSelectionDraftRef.current = {
               id: selectedManualEditTarget.id,
               draft: manualEditDraftForTarget(selectedManualEditTarget, sourceRef.current ?? ''),
@@ -15495,6 +15505,16 @@ function HtmlViewer({
                           nesting it in the row would make that gesture publish a
                           public link (no hover-only path exists on touch). Same
                           structure as the workspace-access help above. */}
+                      <div className="share-menu-section-label share-menu-section-label--help" role="presentation">
+                        <span>{t('fileViewer.shareMenuPublishViaOd')}</span>
+                        <button type="button" className="share-menu-help od-tooltip"
+                          aria-label={t('fileViewer.publishSingleFileDescription')}
+                          data-tooltip={t('fileViewer.publishSingleFileDescription')}
+                          data-tooltip-placement="bottom"
+                          onClick={(event) => event.stopPropagation()}>
+                          <RemixIcon name="question-line" size={14} />
+                        </button>
+                      </div>
                       {filePublished ? (
                         <div className="chrome-publish-plain">
                           <div className="chrome-publish-url" title={publishedFileUrl}>
@@ -15575,6 +15595,9 @@ function HtmlViewer({
                         </>
                       ) : null}
                       <div className="share-menu-divider" />
+                      <div className="share-menu-section-label" role="presentation">
+                        {t('fileViewer.shareMenuPublishOnline')}
+                      </div>
                       {DEPLOY_PROVIDER_OPTIONS.map((option) => (
                         <button
                           key={option.id}

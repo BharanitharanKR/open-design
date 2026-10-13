@@ -906,7 +906,7 @@ describe('FileViewer preview scale', () => {
 
   it('keeps the preview viewport trigger flat, and down to its glyph', () => {
     const css = readExpandedIndexCss();
-    const rules = Array.from(css.matchAll(/\.viewer-viewport-trigger\s*\{[^}]+\}/g), (match) => match[0]);
+    const rules = Array.from(css.matchAll(/\.viewer-viewport-trigger(?:\s*,\s*\.viewer-share-trigger)?\s*\{[^}]+\}/g), (match) => match[0]);
 
     // Flat = no chip. Transparent fill + transparent border + no shadow; the
     // resting state must not read as a raised control sitting on the bar.

@@ -19,6 +19,11 @@ import '../src/components/ProjectRecentRail.module.css';
 import '../src/components/entry-nav-rail/RailRecentSection.module.css';
 import '../src/components/entry-nav-rail/RailConversationTree.module.css';
 import '../src/components/MessageCenter.module.css';
+import '../src/components/ManualEditColorPopover.module.css';
+import '../src/components/AnimatedNumberInput.module.css';
+import '../src/components/AnimateDigits.module.css';
+import '../src/components/ExportFilenameField.module.css';
+import '../src/components/FileViewerPresentationTools.module.css';
 
 export const metadata: Metadata = {
   title: 'Open Design',

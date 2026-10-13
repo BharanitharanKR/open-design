@@ -9856,9 +9856,8 @@ export function ProjectView({
     workspacePanelMinWidth === 0
       ? 'minmax(0, 1fr)'
       : `minmax(${workspacePanelMinWidth}px, 1fr)`;
-  // The comment panel floats over the workspace now, so opening it must not
-  // touch the split at all: the chat column keeps the width the user set.
-  // (It used to take over this column at COMMENT_INSPECTOR_PANEL_WIDTH.)
+  // Inspectors share the workspace's right dock; the chat column keeps the
+  // width the user set when either comments or editing is opened.
   const splitLeftPanelWidth = chatPanelWidthRef.current;
   const chatPanelAriaMinWidth = Math.min(MIN_CHAT_PANEL_WIDTH, chatPanelMaxWidth);
   const projectActionsToastInChatPane =
@@ -11321,8 +11320,8 @@ export function ProjectView({
           designSystemEditRequest={designSystemEditRequest}
           onConnectRepo={handleConnectRepo}
           githubConnected={githubConnected}
-          commentPortalId={commentInspectorPortalId}
           onCommentModeChange={setCommentInspectorActive}
+          commentPortalId={commentInspectorPortalId}
           fileActionsBefore={projectCollab.enabled ? (
             <PresenceBar
               members={projectCollab.present}

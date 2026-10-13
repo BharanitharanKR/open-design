@@ -30,14 +30,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
-  'workspace.resizePanel': string;
-  'manualEdit.colorSaturation': string;
-  'manualEdit.colorFormat': string;
-  'manualEdit.pickColor': string;
-  'manualEdit.colorBrightness': string;
-  'manualEdit.nextStep': string;
-  'manualEdit.colorHue': string;
-  'manualEdit.previousStep': string;
 
   "workspace.copyProject": string;
   "workspace.shareToTeam": string;
@@ -3654,6 +3646,7 @@ export interface Dict {
   // Workspace / file viewer / design files panel
   'workspace.designFiles': string;
   'workspace.focusMode': string;
+  'workspace.resizePanel': string;
   'workspace.showChat': string;
   'workspace.closeTab': string;
   'workspace.deleteFileConfirm': string;
@@ -3988,6 +3981,8 @@ export interface Dict {
   'manualEdit.invalidAttributes': string;
   'manualEdit.changes': string;
   'manualEdit.undo': string;
+  'manualEdit.previousStep': string;
+  'manualEdit.nextStep': string;
   'manualEdit.redo': string;
   'manualEdit.noChanges': string;
   'manualEdit.imageUrl': string;
@@ -4023,6 +4018,11 @@ export interface Dict {
   'manualEdit.deleteElement': string;
   'manualEdit.deleteElementConfirm': string;
   'manualEdit.alignCenter': string;
+  'manualEdit.pickColor': string;
+  'manualEdit.colorHue': string;
+  'manualEdit.colorSaturation': string;
+  'manualEdit.colorBrightness': string;
+  'manualEdit.colorFormat': string;
   'manualEdit.opacity': string;
   'manualEdit.uploadImage': string;
   'manualEdit.uploadingImage': string;
@@ -4082,8 +4082,8 @@ export interface Dict {
   'fileViewer.previewAssetBlockedTitle': string;
   'fileViewer.previewAssetBlockedDetail': string;
   'fileViewer.presenterReset': string;
-  'fileViewer.presentOptions': string;
   'fileViewer.present': string;
+  'fileViewer.presentOptions': string;
   'fileViewer.presentInTab': string;
   'fileViewer.presentFullscreen': string;
   'fileViewer.presentNewTab': string;

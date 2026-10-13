@@ -10,7 +10,9 @@ export function CanvasDockIndicator({ target }: { target: string | null }) {
     const dock = pill?.parentElement;
     if (!pill || !dock) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reduced = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
     const measure = (element: HTMLElement) => {
       const outer = dock.getBoundingClientRect();
       const rect = element.getBoundingClientRect();
@@ -33,7 +35,7 @@ export function CanvasDockIndicator({ target }: { target: string | null }) {
     const destination = measure(button);
     const previousButton = previous.current
       ? dock.querySelector<HTMLElement>(`[data-testid="${previous.current}"]`) : null;
-    if (previousButton && previous.current !== target && !reduced.matches) {
+    if (previousButton && previous.current !== target && !reduced?.matches) {
       // Read the live shape so rapid switches continue from the current animation.
       // A safe edit-mode exit can temporarily clear selection; retain its origin.
       const from = pill.hidden ? measure(previousButton) : measure(pill);
@@ -55,26 +57,26 @@ export function CanvasDockIndicator({ target }: { target: string | null }) {
     };
     // Skip the initial observer delivery, which would cancel the stretch.
     let initial = true;
-    const resizeObserver = new ResizeObserver(() => {
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
       if (initial) { initial = false; return; }
       const next = measure(button);
-      if (!reduced.matches && pill.dataset.phase === 'stretch') {
+      if (!reduced?.matches && pill.dataset.phase === 'stretch') {
         const current = measure(pill);
         const left = Math.min(current.x, next.x);
         const right = Math.max(current.x + current.width, next.x + next.width);
         place({ ...next, x: left, width: right - left }, 'stretch');
       } else {
-        place(next, reduced.matches ? 'idle' : pill.dataset.phase ?? 'idle');
+        place(next, reduced?.matches ? 'idle' : pill.dataset.phase ?? 'idle');
       }
-    });
-    resizeObserver.observe(dock);
-    resizeObserver.observe(button);
-    reduced.addEventListener('change', sync);
+    }) : null;
+    resizeObserver?.observe(dock);
+    resizeObserver?.observe(button);
+    reduced?.addEventListener('change', sync);
     return () => {
       if (timer) clearTimeout(timer);
       delete button.dataset.dockSelected;
-      resizeObserver.disconnect();
-      reduced.removeEventListener('change', sync);
+      resizeObserver?.disconnect();
+      reduced?.removeEventListener('change', sync);
     };
   }, [target]);
 

@@ -43,6 +43,7 @@ export function ManualEditPanel({
   canRedo,
   onUndo,
   onRedo,
+  onCancelDraft,
   onSaveDraft,
   onResetDraft,
   onExit,
@@ -327,6 +328,10 @@ export function ManualEditPanel({
               </button>
             </div>
             <div className="manual-edit-footer-right">
+              <button type="button" className="manual-edit-footer-btn subtle"
+                disabled={busy} onClick={onCancelDraft}>
+                {t('common.cancel')}
+              </button>
               <button type="button" className="manual-edit-footer-btn subtle"
                 disabled={busy || !resetAvailable} onClick={onResetDraft}>
                 {t('ds.reset')}
