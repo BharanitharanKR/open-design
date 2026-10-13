@@ -63,7 +63,7 @@ button.primary.transparentBusy[aria-busy="true"]:disabled {
    mid-poll would drop focus from the button. */
 button.primary:global(.is-signing) { cursor: default; background: var(--share-ink-busy); }
 
-/* ---- soft — 88px/32px blue (updateButton / signInSecondaryAction / plain retry) ---- */
+/* ---- soft — shared 88px/32px geometry; blue sign-in / plain retry ---- */
 button.soft {
   box-sizing: border-box;
   display: inline-flex;
@@ -97,6 +97,24 @@ button.soft:global(.is-signing) { cursor: default; }
    that ever dimmed while disabled; updateButton/signInSecondaryAction never
    declared this and keep the shared Button's own disabled treatment. */
 button.soft.dimDisabled:disabled { opacity: 0.6; cursor: default; }
+
+/* Update inherits soft geometry, but none of its blue interaction colors.
+   Disabled/loading retain the same readable green pair; :not(:disabled)
+   prevents hover/active from painting over those states. */
+button.update,
+button.update:disabled {
+  background: var(--share-update-bg);
+  color: var(--share-update-fg);
+}
+button.update:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--share-update-fg) 18%, var(--share-white));
+  color: var(--share-update-fg);
+}
+button.update:active:not(:disabled) {
+  background: color-mix(in srgb, var(--share-update-fg) 24%, var(--share-white));
+  color: var(--share-update-fg);
+}
+button.update:focus-visible { outline-color: var(--share-update-fg); }
 
 /* ---- soft-error — CommentSyncBanner's reopened-K5 retry (red) ---- */
 button.softError {

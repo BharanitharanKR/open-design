@@ -378,7 +378,7 @@ export function ShareTab({
                             message={t('fileViewer.shareUpdateHint')}
                             action={
                               <ShareButton
-                                variant="soft"
+                                variant="update"
                                 disabled={!canMutatePublicShare || viewerOnly || streaming || publishing || preflightFailed || planTooLarge || planBlocked}
                                 aria-busy={publishing || undefined}
                                 onClick={() => { if (canMutatePublicShare && !viewerOnly) void planState.run(() => updateCurrentFilePublic?.() ?? Promise.resolve()); }}
