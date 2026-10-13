@@ -1820,32 +1820,25 @@ export function registerCollabSyncRoutes(
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
     }
     const scope = publicFilePublicationScope(projectId, filePath, principal);
-    const readProjectShareState = deps.readProjectShareState;
-    if (!readProjectShareState) {
+    // Advisory freshness must use exactly the same planner as upload, including
+    // rewritten entry and dependencies. Unavailable bytes never mean no share.
+    let freshness: import('@open-design/contracts').ShareContentFreshness = 'unknown';
+    if (deps.shareContentFingerprints && resolveProjectDir) {
+      try {
+        const plan = await buildSharePlan(
+          await resolveProjectDir(projectId), filePath, projectStore?.get?.(projectId)?.metadata,
+        );
+        // A blocked plan is not what would be published; do not compare it.
+        if (!plan.summary.blockers?.length) freshness = deps.shareContentFingerprints.compare(scope, plan.files);
+      } catch {
+        // Keep publication visibility independent from failed comparison.
+      }
+    }
+    if (!deps.readProjectShareState) {
       logPublicShareDiagnostic({ operation: 'state_read', stage: 'remote_state', status: 503,
         errorCode: 'SHARE_STATE_UNAVAILABLE', requestId, startedAt });
       return res.status(503).json({ error: 'SHARE_STATE_UNAVAILABLE' });
     }
-    // After authorization, local payload comparison and remote lifecycle are
-    // independent reads of this exact scope. Neither should delay starting the
-    // other; settle both before presenting a coherent status/freshness result.
-    const historyRead = Promise.resolve().then(() => readProjectShareState(scope)).catch(() => null);
-    const readCurrentFreshness = async (): Promise<import('@open-design/contracts').ShareContentFreshness> => {
-      // Use exactly the upload planner, including rewritten entry/dependencies.
-      // Unavailable or blocked bytes never mean no share or current content.
-      if (deps.shareContentFingerprints && resolveProjectDir) {
-        try {
-          const plan = await buildSharePlan(
-            await resolveProjectDir(projectId), filePath, projectStore?.get?.(projectId)?.metadata,
-          );
-          if (!plan.summary.blockers?.length) return deps.shareContentFingerprints.compare(scope, plan.files);
-        } catch {
-          // Keep publication visibility independent from failed comparison.
-        }
-      }
-      return 'unknown';
-    };
-    const [freshness, history] = await Promise.all([readCurrentFreshness(), historyRead]);
     type FilePublicShareResponse = import('@open-design/contracts').ProjectFilePublicShareResponse;
     // A stored `url` is the last AMR address; it only ever reaches a response
     // through the link rule, which re-verifies it (a legacy console URL fails).
@@ -1855,7 +1848,10 @@ export function registerCollabSyncRoutes(
         ? { publication: { ...record, url: link.url } }
         : { publication: null, link: { status: 'unavailable', code: link.code }, slug: record.slug };
     };
-    if (!history) {
+    let history: Awaited<ReturnType<ReadProjectShareState>>;
+    try {
+      history = await deps.readProjectShareState(scope);
+    } catch {
       // The lifecycle source did not answer (offline, signed out, AMR down).
       // A persisted publication is still the best-known link: show it, marked
       // stale, so the panel keeps working offline. Without one there is

@@ -3302,8 +3302,6 @@ export const ru: Dict = {
   'fileViewer.copyFixForAgent': "Скопировать исправление для агента",
   'fileViewer.copyFixForAgentFailed': "Не удалось скопировать. Выделите инструкцию ниже и скопируйте её вручную.",
   "fileViewer.shareUpdateHint": "В файле есть новые изменения. Посетители пока видят предыдущую версию.",
-  "fileViewer.shareFreshnessChecking": "Проверка новых изменений…",
-  "fileViewer.shareFreshnessFailed": "Не удалось проверить новые изменения. Попробуйте ещё раз.",
   "fileViewer.shareUpdateLink": "Обновить ссылку",
   "fileViewer.signInToUpdate": "Войти и обновить",
   "fileViewer.signInToShare": "Войти и поделиться",

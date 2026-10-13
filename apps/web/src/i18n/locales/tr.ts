@@ -3302,8 +3302,6 @@ export const tr: Dict = {
   'fileViewer.copyFixForAgent': "Düzeltmeyi ajan için kopyala",
   'fileViewer.copyFixForAgentFailed': "Kopyalanamadı. Aşağıdaki talimatı seçip elle kopyalayın.",
   "fileViewer.shareUpdateHint": "Dosyada yeni değişiklikler var. Ziyaretçiler hâlâ önceki sürümü görüyor.",
-  "fileViewer.shareFreshnessChecking": "Yeni değişiklikler kontrol ediliyor…",
-  "fileViewer.shareFreshnessFailed": "Yeni değişiklikler kontrol edilemedi. Tekrar deneyin.",
   "fileViewer.shareUpdateLink": "Bağlantıyı güncelle",
   "fileViewer.signInToUpdate": "Giriş yapıp güncelle",
   "fileViewer.signInToShare": "Giriş yapıp paylaş",

@@ -3302,8 +3302,6 @@ export const id: Dict = {
   'fileViewer.copyFixForAgent': "Salin perbaikan untuk agen",
   'fileViewer.copyFixForAgentFailed': "Gagal menyalin. Pilih instruksi di bawah dan salin secara manual.",
   "fileViewer.shareUpdateHint": "File memiliki perubahan baru. Pengunjung masih melihat versi sebelumnya.",
-  "fileViewer.shareFreshnessChecking": "Memeriksa perubahan baru…",
-  "fileViewer.shareFreshnessFailed": "Tidak dapat memeriksa perubahan baru. Coba lagi.",
   "fileViewer.shareUpdateLink": "Perbarui tautan",
   "fileViewer.signInToUpdate": "Masuk untuk memperbarui",
   "fileViewer.signInToShare": "Masuk untuk berbagi",
