@@ -101,7 +101,7 @@
           {
             "taskType": "discovery",
             "path": "./assets/task-profiles/discovery.md",
-            "version": "3.1.4",
+            "version": "3.1.5",
             "rollout": "active",
             "projectKinds": [
               "generic"
@@ -141,7 +141,7 @@
               },
               {
                 "path": "./assets/task-profiles/video.md",
-                "version": "3.1.1"
+                "version": "3.1.2"
               },
               {
                 "path": "./assets/task-profiles/audio.md",

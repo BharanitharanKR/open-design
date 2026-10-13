@@ -63,3 +63,18 @@ it('exposes source-based recreation and fresh-design boundaries in the loaded Di
   expect(taskSkill).toContain('Complete reference source is artifact input, not a loaded Skill');
   expect(taskSkill).toContain('Copying, translating, or saving that reference as a new output does not waive the read');
 });
+
+// These assertions cover prompt delivery; frozen evals separately assess adherence.
+it('keeps output selection independent of shared HTML implementation and exposes video failure boundaries', async () => {
+  const resolved = await resolvePluginFolder({ folder, folderId: 'od-next-strategy', sourceKind: 'bundled', source: folder, trust: 'bundled' });
+  if (!resolved.ok) throw Error(resolved.errors.join(';'));
+  const binding = createBundledStrategyBindingV2({ plugin: resolved.record, taskType: 'discovery' });
+  const { taskSkill } = loadBundledStrategyPromptAssetsV2({ plugin: resolved.record, binding });
+  expect(taskSkill).toContain('Choose the smallest set of production Skills that covers the independently requested outputs before issuing any Skill reads');
+  expect(taskSkill).toContain('An HTML presentation, including its layout and navigation, is one ppt output');
+  expect(taskSkill).toContain('A separately requested website still needs prototype');
+  const video = await readFile(path.join(folder, 'assets/task-profiles/video.md'), 'utf8');
+  expect(video).toContain('A failed render leaves the video undelivered');
+  expect(video).toContain('Do not substitute an ad-hoc shell or ffmpeg animation');
+  expect(video).toContain('A decodable container or successful encoder exit does not establish that the requested subject or motion is present');
+});

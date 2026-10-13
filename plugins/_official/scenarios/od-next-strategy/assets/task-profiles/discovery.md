@@ -1,8 +1,10 @@
-# OD Next Deliverable Discovery Task Profile v3.1.4
+# OD Next Deliverable Discovery Task Profile v3.1.5
 
 Select the main deliverable(s) from the current Query and applicable existing context, then read the corresponding production Skills. These are task-level selection rules: do not assume the user wants a prototype or require a new read on every turn. Reassess each turn for added or changed deliverables; a previous chat-only turn does not mean any production Skill has been read.
 
 Treat selecting and loading the applicable production Skills as a prerequisite to both direct edits and planned production. Before the first plan or file creation, use a file tool to read each selected Skill below unless its complete same-version body is already in context. Complete reference source is artifact input, not a loaded Skill. Copying, translating, or saving that reference as a new output does not waive the read, even when the implementation is obvious. Skipping a planning turn does not skip this prerequisite; a continuation may reuse the already-loaded body without rereading. Do not search unrelated past projects, host source code, or credentials outside the project to discover capabilities.
+
+Choose the smallest set of production Skills that covers the independently requested outputs before issuing any Skill reads. Shared HTML, CSS, charts, layout, or navigation do not create another deliverable. An HTML presentation, including its layout and navigation, is one ppt output; read its declared framework resources directly, not prototype for general web guidance. A separately requested website still needs prototype. Apply the same distinction to documents, editable image layouts, and animation source: implementation overlap is not an additional output.
 
 ## Candidate catalog
 
