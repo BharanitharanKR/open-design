@@ -806,7 +806,7 @@ export async function exportProjectAsPdf(opts: {
     if (!resp.ok) throw new Error(`desktop PDF export unavailable (${resp.status})`);
     const body = await resp.json().catch(() => ({}));
     if (body?.canceled === true) return 'cancelled';
-    if (body && body.ok === false) throw new Error(body.error || 'desktop PDF export failed');
+    if (body?.ok !== true) throw new Error(body?.error || 'desktop PDF export failed');
     return 'desktop';
   } catch (err) {
     console.warn('[exportProjectAsPdf] falling back to programmatic PDF:', err);

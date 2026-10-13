@@ -13,10 +13,11 @@ import { resetWorkspaceAccountGeneration } from "../../src/collab/workspace-iden
 import { FileViewer } from "../../src/components/FileViewer";
 import type { ProjectFile } from "../../src/types";
 
-const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), guideInput: vi.fn() }));
+const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), fallbackPdf: vi.fn(), guideInput: vi.fn() }));
 vi.mock("../../src/runtime/exports", async () => ({
 	...(await vi.importActual("../../src/runtime/exports")),
 	exportProjectAsHtml: seam.exportHtml,
+	exportAsPdf: seam.fallbackPdf,
 }));
 // Observe the input but run the real guide hook and its account-scoped storage/clock.
 vi.mock("../../src/components/share/useAfterExportShareGuide", async () => {
@@ -75,6 +76,8 @@ beforeEach(() => {
 			return Response.json(account);
 		if (url === "/api/projects/project-guide/share-state")
 			return Response.json(history);
+		if (url === "/api/projects/project-guide/export/pdf")
+			return Response.json({ ok: true });
 		return Response.json({ deployments: [] });
 	});
 	vi.stubGlobal("fetch", request);
@@ -88,13 +91,14 @@ afterEach(() => {
 	resetWorkspaceAccountGeneration();
 });
 
-async function readyViewer() {
+async function readyViewer(fromArtifactCard = false) {
 	const view = render(
 		<FileViewer
 			projectId="project-guide"
 			projectKind="prototype"
 			file={file}
 			liveHtml="<html><body>Hello</body></html>"
+			downloadRequest={fromArtifactCard ? { nonce: 1 } : null}
 		/>,
 	);
 	await waitFor(() =>
@@ -108,15 +112,52 @@ async function readyViewer() {
 	);
 	return view;
 }
-async function exportHtml() {
+async function exportHtml(format: 'html' | 'pdf' = 'html') {
 	fireEvent.click(await screen.findByRole("button", { name: /^Export$/ }));
 	fireEvent.click(
-		await screen.findByRole("menuitem", { name: /Export as standalone HTML/i }),
+		await screen.findByRole("menuitem", { name: format === 'pdf' ? /Export as PDF/i : /Export as standalone HTML/i }),
 	);
 }
 
 describe("Owner P1 real FileViewer export-to-share chain", () => {
-	it("offers no guide until the real daemon HTML export downloads, then opens the Share tab", async () => {
+	it.each(['toolbar', 'artifact-card'] as const)("retains a saved PDF completion from %s while focus refreshes sharing history", async entry => {
+		await readyViewer(entry === 'artifact-card');
+		let finishSave!: (response: Response) => void;
+		let finishHistory!: (response: Response) => void;
+		const regularRequest = request.getMockImplementation()!;
+		request.mockImplementation((input, init) => {
+			if (String(input) === "/api/projects/project-guide/export/pdf") {
+				return new Promise<Response>(resolve => { finishSave = resolve; });
+			}
+			if (String(input) === "/api/projects/project-guide/share-state") {
+				return new Promise<Response>(resolve => { finishHistory = resolve; });
+			}
+			return regularRequest(input, init);
+		});
+		if (entry === 'toolbar') fireEvent.click(screen.getByRole("button", { name: /^Export$/ }));
+		fireEvent.click(await screen.findByRole("menuitem", { name: /Export as PDF/i }));
+		await waitFor(() => expect(finishSave).toBeTypeOf("function"));
+		fireEvent(window, new Event("focus"));
+		await waitFor(() => expect(seam.guideInput).toHaveBeenLastCalledWith(expect.objectContaining({ hasEverShared: null })));
+		await act(async () => { finishSave(Response.json({ ok: true })); });
+		expect(screen.queryByRole("status", { name: "Share the link, invite feedback" })).toBeNull();
+		await act(async () => { finishHistory(Response.json(history)); });
+		expect(await screen.findByRole("status", { name: "Share the link, invite feedback" })).toBeVisible();
+	});
+	it.each([{ ok: true, canceled: true }, { ok: false, error: 'save failed' }, {}])("does not offer a guide for native PDF result %j", async body => {
+		const regularRequest = request.getMockImplementation()!;
+		request.mockImplementation((input, init) => String(input) === '/api/projects/project-guide/export/pdf'
+			? Promise.resolve(Response.json(body)) : regularRequest(input, init));
+		await readyViewer();
+		await exportHtml('pdf');
+		await waitFor(() => expect(screen.queryByText(/Exporting/i)).toBeNull());
+		expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+		if ('canceled' in body) {
+			expect(seam.fallbackPdf).not.toHaveBeenCalled();
+			expect(screen.queryByText('Export complete')).toBeNull();
+		} else expect(seam.fallbackPdf).toHaveBeenCalledOnce();
+	});
+	it("does not equate HTML download initiation with saving, then opens Share after a saved PDF", async () => {
 		const actual = await vi.importActual<
 			typeof import("../../src/runtime/exports")
 		>("../../src/runtime/exports");
@@ -166,6 +207,8 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 				}),
 			);
 		});
+		expect(screen.queryByRole("status", { name: "Share the link, invite feedback" })).toBeNull();
+		await exportHtml('pdf');
 		const guide = await screen.findByRole("status", {
 			name: "Share the link, invite feedback",
 		});
@@ -182,16 +225,15 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 	});
 
 	it("dismisses only this guide, offers it after the next success, then persists Never show again", async () => {
-		seam.exportHtml.mockResolvedValue(undefined);
 		const view = await readyViewer();
-		await exportHtml();
+		await exportHtml('pdf');
 		const first = await screen.findByRole("status", {
 			name: "Share the link, invite feedback",
 		});
 		// Guide close is time-driven; clicking its Share action dismisses only this instance.
 		fireEvent.click(within(first).getByRole("button", { name: "Try sharing" }));
 		fireEvent.click(screen.getByRole("button", { name: "Close" }));
-		await exportHtml();
+		await exportHtml('pdf');
 		const again = await screen.findByRole("status", {
 			name: "Share the link, invite feedback",
 		});
@@ -206,7 +248,7 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 		).toBe("1");
 		view.unmount();
 		await readyViewer();
-		await exportHtml();
+		await exportHtml('pdf');
 		await act(async () => {
 			await Promise.resolve();
 		});
@@ -216,13 +258,12 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 	});
 
 	it("automatically closes only the current guide after ten seconds and reoffers after a new success", async () => {
-		seam.exportHtml.mockResolvedValue(undefined);
 		await readyViewer();
 		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 		fireEvent.click(screen.getByRole("button", { name: /^Export$/ }));
 		await act(async () => {
 			fireEvent.click(
-				screen.getByRole("menuitem", { name: /Export as standalone HTML/i }),
+				screen.getByRole("menuitem", { name: /Export as PDF/i }),
 			);
 			await Promise.resolve();
 		});
@@ -236,7 +277,7 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 			screen.queryByRole("status", { name: "Share the link, invite feedback" }),
 		).toBeNull();
 		vi.useRealTimers();
-		await exportHtml();
+		await exportHtml('pdf');
 		expect(
 			await screen.findByRole("status", { name: "Share the link, invite feedback" }),
 		).toBeVisible();
