@@ -1,0 +1,123 @@
+{
+  "$schema": "https://open-design.ai/schemas/plugin.v1.json",
+  "specVersion": "1.0.0",
+  "name": "example-motion-visual-lesson",
+  "title": "Visual Lesson",
+  "title_i18n": {
+    "en": "Visual Lesson",
+    "id": "Pelajaran Visual",
+    "de": "Visuelle Lektion",
+    "zh-CN": "可视化教学",
+    "zh-TW": "視覺化教學",
+    "pt-BR": "Lição visual",
+    "es-ES": "Lección visual",
+    "ru": "Визуальный урок",
+    "fa": "درس تصویری",
+    "ar": "درس مرئي",
+    "ja": "ビジュアルレッスン",
+    "ko": "비주얼 레슨",
+    "pl": "Lekcja wizualna",
+    "hu": "Vizuális lecke",
+    "fr": "Leçon visuelle",
+    "uk": "Візуальний урок",
+    "tr": "Görsel Ders",
+    "th": "บทเรียนภาพ",
+    "it": "Lezione visiva"
+  },
+  "version": "0.1.0",
+  "publishedAt": "2026-10-09T00:00:00Z",
+  "description": "A 20-second paper-cutout short rebuilt from the viral original: a girl sends \"what do you love?\" on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up.",
+  "description_i18n": {
+    "en": "A 20-second paper-cutout short rebuilt from the viral original: a girl sends \"what do you love?\" on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up.",
+    "id": "Animasi pendek gaya potongan kertas 20 detik yang dibuat ulang dari versi viralnya: seorang gadis mengirim \"what do you love?\" lewat pesawat kertas, si teman Open Design menjawab dengan sepuluh kartu bergambar yang berkumpul menjadi hati, lalu kota menyala.",
+    "de": "Ein 20-sekündiger Papierschnitt-Kurzfilm nach dem viralen Original: Ein Mädchen schickt „what do you love?“ per Papierflieger, der Open-Design-Buddy antwortet mit zehn illustrierten Karten, die sich zu einem Herz fügen, und die Stadt leuchtet auf.",
+    "zh-CN": "按爆款原片复刻的 20 秒剪纸风短片：小女孩用纸飞机寄出「what do you love?」，Open Design 小伙伴用十张手绘卡片回答，卡片拼成一颗心，整座小镇亮起灯来。",
+    "zh-TW": "依爆紅原片復刻的 20 秒剪紙風短片：小女孩用紙飛機寄出「what do you love?」，Open Design 小夥伴用十張手繪卡片回答，卡片拼成一顆心，整座小鎮亮起燈來。",
+    "pt-BR": "Um curta de 20 segundos em estilo recorte de papel recriado do original viral: uma menina envia \"what do you love?\" num avião de papel, o amigo do Open Design responde com dez cards ilustrados que formam um coração e a cidade se ilumina.",
+    "es-ES": "Un corto de 20 segundos en estilo papel recortado recreado a partir del original viral: una niña envía \"what do you love?\" en un avión de papel, el compañero de Open Design responde con diez tarjetas ilustradas que forman un corazón y el pueblo se ilumina.",
+    "ru": "20-секундный мультфильм в стиле бумажной аппликации по вирусному оригиналу: девочка отправляет «what do you love?» бумажным самолётиком, друг Open Design отвечает десятью рисованными карточками, которые складываются в сердце, и город загорается огнями.",
+    "fa": "یک انیمیشن کوتاه ۲۰ ثانیه‌ای به سبک کاغذبُری که از نسخهٔ پربازدید اصلی بازسازی شده است: دختری با هواپیمای کاغذی «what do you love?» را می‌فرستد، دوست Open Design با ده کارت مصور پاسخ می‌دهد که به شکل قلب کنار هم می‌نشینند و شهر روشن می‌شود.",
+    "ar": "فيلم قصير مدته 20 ثانية بأسلوب قصاصات الورق أُعيد بناؤه من الأصل الرائج: فتاة ترسل \"what do you love?\" بطائرة ورقية، فيجيب صديق Open Design بعشر بطاقات مرسومة تتجمع في شكل قلب، ثم تضيء البلدة.",
+    "ja": "バズった原作を再現した 20 秒の切り絵風ショート。女の子が紙飛行機で「what do you love?」を送り、Open Design の相棒が 10 枚のイラストカードで答え、カードがハートになって、町に明かりがともります。",
+    "ko": "화제가 된 원작을 재현한 20초 종이 오리기 스타일 단편. 소녀가 종이비행기로 \"what do you love?\"를 보내면 Open Design 친구가 열 장의 그림 카드로 답하고, 카드들이 하트로 모이며 마을에 불이 켜집니다.",
+    "pl": "20-sekundowa krótka animacja w stylu wycinanki odtworzona z viralowego oryginału: dziewczynka wysyła papierowym samolotem „what do you love?”, kumpel Open Design odpowiada dziesięcioma ilustrowanymi kartami, które układają się w serce, a miasteczko się rozświetla.",
+    "hu": "Egy 20 másodperces papírkivágás-stílusú kisfilm a virális eredeti alapján: egy kislány papírrepülőn elküldi a „what do you love?” kérdést, az Open Design-pajtás tíz illusztrált kártyával válaszol, amelyek szívvé állnak össze, és kigyúlnak a város fényei.",
+    "fr": "Un court métrage de 20 secondes en papier découpé recréé à partir de l’original viral : une fillette envoie « what do you love? » sur un avion en papier, le compagnon Open Design répond avec dix cartes illustrées qui forment un cœur, et la ville s’illumine.",
+    "uk": "20-секундний мультфільм у стилі паперової аплікації за вірусним оригіналом: дівчинка надсилає «what do you love?» паперовим літачком, друг Open Design відповідає десятьма мальованими картками, що складаються в серце, і містечко засвічується вогнями.",
+    "tr": "Viral orijinalinden yeniden yapılan 20 saniyelik kâğıt kesme tarzı kısa film: bir kız kâğıt uçakla \"what do you love?\" sorusunu gönderiyor, Open Design arkadaşı on resimli kartla yanıt veriyor, kartlar bir kalpte birleşiyor ve kasabanın ışıkları yanıyor.",
+    "th": "แอนิเมชันสั้นสไตล์กระดาษตัด 20 วินาทีที่สร้างใหม่จากต้นฉบับไวรัล: เด็กผู้หญิงส่งคำถาม \"what do you love?\" ไปกับเครื่องบินกระดาษ เพื่อน Open Design ตอบด้วยการ์ดภาพวาดสิบใบที่รวมกันเป็นรูปหัวใจ แล้วทั้งเมืองก็เปิดไฟสว่าง",
+    "it": "Un corto di 20 secondi in stile carta ritagliata ricreato dall’originale virale: una bambina invia \"what do you love?\" con un aeroplanino di carta, l’amico di Open Design risponde con dieci schede illustrate che formano un cuore e il paese si illumina."
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Open Design",
+    "url": "https://github.com/nexu-io/open-design"
+  },
+  "homepage": "https://github.com/nexu-io/open-design",
+  "tags": [
+    "example",
+    "first-party",
+    "video",
+    "motion-design",
+    "paper-cutout",
+    "storytelling",
+    "illustration",
+    "viral-remake"
+  ],
+  "od": {
+    "kind": "scenario",
+    "taskKind": "new-generation",
+    "mode": "video",
+    "scenario": "video",
+    "surface": "video",
+    "preview": {
+      "type": "html",
+      "entry": "./example.html"
+    },
+    "useCase": {
+      "query": {
+        "en": "Make a 20-second paper-cutout animated short. In a town at night, a girl at her window writes \"what do you love?\", folds the page into a paper plane and throws it into the sky. It reaches the Open Design buddy, who reads it, thinks and answers with hand-drawn cards — words, music, the sea, trees, dogs, bread, rain, math, the stars, an octopus — that gather into a heart. The plane flies back, she finds \"you\" circled, beams, and the town lights up.",
+        "id": "Buat animasi pendek gaya potongan kertas berdurasi 20 detik. Di sebuah kota pada malam hari, seorang gadis di jendela menulis \"what do you love?\", melipat kertasnya menjadi pesawat kertas, lalu melemparkannya ke langit. Pesawat itu sampai ke si teman Open Design, yang membacanya, berpikir, lalu menjawab dengan kartu-kartu gambar tangan — kata-kata, musik, laut, pepohonan, anjing, roti, hujan, matematika, bintang, gurita — yang berkumpul menjadi hati. Pesawat terbang kembali, gadis itu menemukan kata \"you\" dilingkari, tersenyum lebar, dan kota pun menyala.",
+        "de": "Mach einen 20-sekündigen animierten Kurzfilm im Papierschnitt-Stil. In einer Stadt bei Nacht schreibt ein Mädchen am Fenster „what do you love?“, faltet das Blatt zu einem Papierflieger und wirft ihn in den Himmel. Er erreicht den Open-Design-Buddy, der ihn liest, nachdenkt und mit handgezeichneten Karten antwortet — Wörter, Musik, das Meer, Bäume, Hunde, Brot, Regen, Mathe, die Sterne, ein Oktopus —, die sich zu einem Herz fügen. Der Flieger kehrt zurück, sie findet „you“ eingekreist, strahlt, und die Stadt leuchtet auf.",
+        "zh-CN": "做一支 20 秒的剪纸风动画短片。夜晚的小镇里，窗边的小女孩写下「what do you love?」，把纸折成纸飞机扔向天空。纸飞机飞到 Open Design 小伙伴那里，它读完、想了想，用一张张手绘卡片回答：文字、音乐、大海、树、狗、面包、雨、数学、星星、章鱼，卡片拼成一颗心。纸飞机飞回去，小女孩打开看到「you」被圈了起来，笑开了花，整座小镇亮起灯来。",
+        "zh-TW": "做一支 20 秒的剪紙風動畫短片。夜晚的小鎮裡，窗邊的小女孩寫下「what do you love?」，把紙摺成紙飛機丟向天空。紙飛機飛到 Open Design 小夥伴那裡，它讀完、想了想，用一張張手繪卡片回答：文字、音樂、大海、樹、狗、麵包、雨、數學、星星、章魚，卡片拼成一顆心。紙飛機飛回去，小女孩打開看到「you」被圈了起來，笑開了花，整座小鎮亮起燈來。",
+        "pt-BR": "Faça um curta animado de 20 segundos em estilo recorte de papel. Numa cidade à noite, uma menina na janela escreve \"what do you love?\", dobra a folha num avião de papel e o lança ao céu. Ele chega ao amigo do Open Design, que lê, pensa e responde com cards desenhados à mão — palavras, música, o mar, árvores, cachorros, pão, chuva, matemática, as estrelas, um polvo — que se juntam num coração. O avião volta, ela encontra \"you\" circulado, abre um sorriso e a cidade se ilumina.",
+        "es-ES": "Haz un corto animado de 20 segundos en estilo papel recortado. En un pueblo de noche, una niña en su ventana escribe \"what do you love?\", dobla la hoja en un avión de papel y lo lanza al cielo. Llega hasta el compañero de Open Design, que lo lee, piensa y responde con tarjetas dibujadas a mano — palabras, música, el mar, árboles, perros, pan, lluvia, matemáticas, las estrellas, un pulpo — que se juntan en un corazón. El avión vuelve, ella encuentra \"you\" rodeado con un círculo, sonríe y el pueblo se ilumina.",
+        "ru": "Сделай 20-секундный анимационный короткометражный фильм в стиле бумажной аппликации. В ночном городке девочка у окна пишет «what do you love?», складывает лист в бумажный самолётик и запускает его в небо. Он долетает до друга Open Design, который читает, задумывается и отвечает нарисованными от руки карточками — слова, музыка, море, деревья, собаки, хлеб, дождь, математика, звёзды, осьминог, — и они складываются в сердце. Самолётик возвращается, девочка видит обведённое «you», сияет, и городок загорается огнями.",
+        "fa": "یک انیمیشن کوتاه ۲۰ ثانیه‌ای به سبک کاغذبُری بساز. در شهری در شب، دختری کنار پنجره می‌نویسد «what do you love?»، کاغذ را به شکل هواپیمای کاغذی تا می‌کند و به آسمان پرتاب می‌کند. هواپیما به دوست Open Design می‌رسد که آن را می‌خواند، فکر می‌کند و با کارت‌هایی که با دست کشیده شده‌اند پاسخ می‌دهد: کلمه‌ها، موسیقی، دریا، درخت‌ها، سگ‌ها، نان، باران، ریاضی، ستاره‌ها، یک اختاپوس؛ کارت‌ها به شکل قلب کنار هم می‌نشینند. هواپیما برمی‌گردد، دختر می‌بیند دور «you» خط کشیده شده، لبخند می‌زند و شهر روشن می‌شود.",
+        "ar": "اصنع فيلمًا قصيرًا متحركًا مدته 20 ثانية بأسلوب قصاصات الورق. في بلدة ليلًا، تكتب فتاة عند نافذتها \"what do you love?\"، وتطوي الورقة على شكل طائرة ورقية وترميها نحو السماء. تصل إلى صديق Open Design، فيقرؤها ويفكر ثم يجيب ببطاقات مرسومة باليد — كلمات، موسيقى، البحر، أشجار، كلاب، خبز، مطر، رياضيات، النجوم، أخطبوط — تتجمع في شكل قلب. تعود الطائرة، فتجد الفتاة كلمة \"you\" محاطة بدائرة، فتبتسم وتضيء البلدة.",
+        "ja": "20 秒の切り絵風アニメーションのショートを作って。夜の町で、窓辺の女の子が「what do you love?」と書き、その紙を紙飛行機に折って空へ投げる。紙飛行機は Open Design の相棒に届き、相棒は読んで考え、手描きのカード（言葉、音楽、海、木、犬、パン、雨、数学、星、タコ）で答え、カードがハートの形に集まる。紙飛行機が戻り、女の子が開くと「you」に丸がついていて、満面の笑みになり、町に明かりがともる。",
+        "ko": "20초짜리 종이 오리기 스타일 애니메이션 단편을 만들어 줘. 밤의 작은 마을에서 창가의 소녀가 \"what do you love?\"라고 쓰고, 그 종이를 종이비행기로 접어 하늘로 날린다. 종이비행기는 Open Design 친구에게 닿고, 친구는 읽고 생각한 뒤 손그림 카드로 답한다. 단어, 음악, 바다, 나무, 강아지, 빵, 비, 수학, 별, 문어 카드가 하트 모양으로 모인다. 종이비행기가 돌아오고, 소녀는 \"you\"에 동그라미가 쳐진 걸 보고 활짝 웃고, 마을에 불이 켜진다.",
+        "pl": "Zrób 20-sekundową animację w stylu wycinanki. W nocnym miasteczku dziewczynka w oknie pisze „what do you love?”, składa kartkę w papierowy samolot i rzuca go w niebo. Samolot dolatuje do kumpla Open Design, który czyta, zastanawia się i odpowiada ręcznie rysowanymi kartami — słowa, muzyka, morze, drzewa, psy, chleb, deszcz, matematyka, gwiazdy, ośmiornica — które układają się w serce. Samolot wraca, dziewczynka widzi zakreślone „you”, promienieje, a miasteczko się rozświetla.",
+        "hu": "Készíts egy 20 másodperces, papírkivágás-stílusú animációs kisfilmet. Egy éjszakai kisvárosban az ablaknál ülő kislány felírja: „what do you love?”, a lapot papírrepülővé hajtja, és feldobja az égbe. A repülő eljut az Open Design-pajtáshoz, aki elolvassa, elgondolkodik, és kézzel rajzolt kártyákkal válaszol — szavak, zene, a tenger, fák, kutyák, kenyér, eső, matek, a csillagok, egy polip —, amelyek szívvé állnak össze. A repülő visszaszáll, a kislány bekarikázva látja a „you” szót, felragyog, és kigyúlnak a város fényei.",
+        "fr": "Fais un court métrage animé de 20 secondes en papier découpé. Dans une petite ville la nuit, une fillette à sa fenêtre écrit « what do you love? », plie la feuille en avion en papier et le lance dans le ciel. Il arrive jusqu’au compagnon Open Design, qui le lit, réfléchit et répond avec des cartes dessinées à la main — les mots, la musique, la mer, les arbres, les chiens, le pain, la pluie, les maths, les étoiles, une pieuvre — qui se rassemblent en cœur. L’avion revient, elle découvre « you » entouré, rayonne, et la ville s’illumine.",
+        "uk": "Зроби 20-секундний анімаційний короткометражний фільм у стилі паперової аплікації. У нічному містечку дівчинка біля вікна пише «what do you love?», складає аркуш у паперовий літачок і запускає його в небо. Він долітає до друга Open Design, який читає, замислюється й відповідає намальованими від руки картками — слова, музика, море, дерева, собаки, хліб, дощ, математика, зорі, восьминіг, — що складаються в серце. Літачок повертається, дівчинка бачить обведене «you», сяє, і містечко засвічується вогнями.",
+        "tr": "20 saniyelik kâğıt kesme tarzında animasyon kısa film yap. Gece bir kasabada pencere kenarındaki kız \"what do you love?\" yazıyor, kâğıdı kâğıt uçak yapıp gökyüzüne atıyor. Uçak Open Design arkadaşına ulaşıyor; o okuyor, düşünüyor ve elle çizilmiş kartlarla yanıt veriyor: kelimeler, müzik, deniz, ağaçlar, köpekler, ekmek, yağmur, matematik, yıldızlar, bir ahtapot. Kartlar bir kalpte birleşiyor. Uçak geri dönüyor, kız \"you\" kelimesinin daire içine alındığını görüyor, gülümsüyor ve kasabanın ışıkları yanıyor.",
+        "th": "ทำแอนิเมชันสั้นสไตล์กระดาษตัดความยาว 20 วินาที ในเมืองเล็ก ๆ ยามค่ำคืน เด็กผู้หญิงที่ริมหน้าต่างเขียนว่า \"what do you love?\" พับกระดาษเป็นเครื่องบินแล้วโยนขึ้นฟ้า เครื่องบินไปถึงเพื่อน Open Design ซึ่งอ่าน คิด แล้วตอบด้วยการ์ดวาดมือ ได้แก่ คำ ดนตรี ทะเล ต้นไม้ สุนัข ขนมปัง ฝน คณิตศาสตร์ ดวงดาว และปลาหมึก การ์ดรวมกันเป็นรูปหัวใจ เครื่องบินบินกลับ เธอพบว่าคำว่า \"you\" ถูกวงไว้ ยิ้มกว้าง แล้วทั้งเมืองก็เปิดไฟสว่าง",
+        "it": "Crea un corto animato di 20 secondi in stile carta ritagliata. In un paese di notte, una bambina alla finestra scrive \"what do you love?\", piega il foglio in un aeroplanino di carta e lo lancia in cielo. L’aeroplanino raggiunge l’amico di Open Design, che lo legge, ci pensa e risponde con schede disegnate a mano — parole, musica, il mare, alberi, cani, pane, pioggia, matematica, le stelle, un polpo — che si uniscono in un cuore. L’aeroplanino torna indietro, lei trova \"you\" cerchiato, si illumina in un sorriso e il paese si accende di luci."
+      },
+      "exampleOutputs": [
+        {
+          "path": "./example.html",
+          "title": "Visual Lesson"
+        }
+      ]
+    },
+    "context": {
+      "skills": [
+        {
+          "path": "./SKILL.md"
+        },
+        {
+          "ref": "motion-design"
+        }
+      ],
+      "assets": [
+        "./example.html"
+      ]
+    },
+    "capabilities": [
+      "prompt:inject"
+    ]
+  }
+}

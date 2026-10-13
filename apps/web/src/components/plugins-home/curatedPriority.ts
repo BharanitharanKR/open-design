@@ -131,8 +131,8 @@ export const CURATED_MOTION_DESIGN_PLUGIN_IDS = [
   'example-motion-future',
   'example-motion-showreel',
   'example-motion-ui-morph',
-  'example-motion-pixel-wizard',
-  'example-motion-energy-reel',
+  'example-motion-product-promo',
+  'example-motion-visual-lesson',
 ] as const;
 
 export const CURATED_PLUGIN_IDS_BY_CHIP = {

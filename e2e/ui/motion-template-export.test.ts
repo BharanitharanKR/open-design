@@ -1,6 +1,6 @@
 import { expect, test } from '@/playwright/suite';
 
-for (const name of ['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'future']) {
+for (const name of ['showreel', 'ui-morph', 'future', 'product-promo', 'visual-lesson']) {
   test(`[P1] motion-${name} gallery capture contains only the composition`, async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(`/api/plugins/example-motion-${name}/preview`);

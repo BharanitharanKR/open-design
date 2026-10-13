@@ -1,6 +1,6 @@
 ---
-name: motion-energy-reel
-description: "High-Energy Motion Reel — motion design template. A 15-second high-energy motion reel, rebuilt from the viral original: kinetic words on hard color cuts, a breathing grid of shapes, extruded 3D type, rhythm stripes, a frame counter and an end card."
+name: motion-product-promo
+description: "Product Promo — motion design template. A 15-second product promo rebuilt from the viral original with a fictional brand: a halftone mascot asks 'Got something to sell?', product cards pop onto blue, a phone store fills in, a checkout board is stamped 'Handled.' and the wordmark closes it."
 od:
   mode: video
   scenario: video
@@ -9,35 +9,35 @@ od:
     entry: example.html
 ---
 
-# High-Energy Motion Reel
+# Product Promo
 
-A 15-second high-energy motion reel, rebuilt from the viral original: kinetic words on hard color cuts, a breathing grid of shapes, extruded 3D type, rhythm stripes, a frame counter and an end card. `example.html` is the finished reference — start from it.
+A 15-second product promo rebuilt from the viral original with a fictional brand: a halftone mascot asks "Got something to sell?", product cards pop onto blue, a phone store fills in, a checkout board is stamped "Handled." and the wordmark closes it. `example.html` is the finished reference — start from it.
 
 ## Source
-A remake of a viral post by @crvdesign0: https://x.com/crvdesign0/status/2103817034618339682 (1.09M views · 2.8K likes · 6.2K bookmarks on X (as of 2026-10-05)). The composition is
-rebuilt in code from the published piece; the soundtrack is original.
+A remake of a viral post by @achxvi: https://x.com/achxvi/status/2103918792845963545 (1.14M views · 9.1K likes · 8.2K bookmarks on X (as of 2026-10-13)). The composition is
+rebuilt in code from the published piece; the soundtrack is original. The original promotes a real company; this remake uses the fictional brand Pennyflow.
 
 ## Reference files
-Copy `example.html`, `assets/gsap.min.js`, `assets/ibm-plex-sans-OFL.txt`, `assets/ibm-plex-sans-bold.ttf`, `assets/ibm-plex-sans-regular.ttf`, `assets/jetbrains-mono-OFL.txt`, `assets/jetbrains-mono-medium.ttf`, `assets/soundtrack.mp3` into the composition, preserving the `assets/` path.
+Copy `example.html`, `assets/fraunces-OFL.txt`, `assets/fraunces-bold.ttf`, `assets/gsap.min.js`, `assets/instrument-serif-OFL.txt`, `assets/instrument-serif-italic.ttf`, `assets/inter-OFL.txt`, `assets/inter-regular.ttf`, `assets/inter-semibold.ttf`, `assets/jetbrains-mono-OFL.txt`, `assets/jetbrains-mono-regular.ttf`, `assets/soundtrack.mp3` into the composition, preserving the `assets/` path.
 Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
 ## Art direction
-- Near-black `#0C0B0E`, orange `#FF5814`, cream `#F4EEE6`, blue `#2C4AFF`; a soft vignette on every frame.
-- Fonts (SIL OFL, bundled): IBM Plex Sans Bold and Regular, JetBrains Mono for the HUD.
-- The original's copy was Arabic; this reference sets the same layout in English.
+- White `#FFFFFF`, blue `#1F70F3`, ink `#111111`, a light board `#FBFBFB` and near-black `#060606`.
+- Fonts (SIL OFL, bundled): Inter Regular and SemiBold for headlines and UI, Fraunces Bold for the wordmark, Instrument Serif Italic for the accent words, JetBrains Mono for labels and the HUD.
+- The mascot and the product objects are drawn in grey at quarter resolution and ordered-dithered into a halftone, one `halftone()` pass per layer.
+- HUD: the chapter label top left, the brand and a 60 fps timecode top right; hidden on the end card.
 
 ## Beat map (15s)
-- 0–2.0s a dot stretches into two rules around "Showreel" and "15 seconds of pure motion".
-- 2.0–4.0s one word per half-second cut: Ideas / that move / with rhythm / unforgettable.
-- 4.0–6.5s a grid of dots blooms, turns into coloured squares that breathe, and collapses.
-- 6.5–8.5s "Depth" with an orange-to-blue extrusion over a perspective floor.
-- 8.5–10.45s diagonal rhythm stripes of Motion · Rhythm · Story · Design with a spinning 04 badge.
-- 10.45–12.9s a colour blob and a frame counter climbing to 900.
-- 12.9–15s a ring wave, then "Claude", "Motion designer" and "Design, in motion.".
+- 0–2.45s HOOK: the mascot slides in and whispers "psst…"; "Got something / to sell?" with a blue underline; the question's dot swells into blue.
+- 2.45–4.45s ANYTHING: the mascot rises; course, ebook and app cards pop in one by one.
+- 4.45–6.95s STORE: a whip to white; "Pennyflow turns it into / a store / in minutes."; a phone store fills in (address, LIVE, avatar, products); the cursor clicks Get it now.
+- 6.95–11.2s HANDLED: the camera pulls out of the express-pay button onto a checkout bento: the card number is typed, $9 / month, the workbook upsell, VAT, payouts counting up, Paid, check badges and the "Handled." stamp.
+- 11.2–13.3s FLOW: on black, "You create." / "We handle the", the mascot winking and grinning.
+- 13.3–15s END: a dithered wipe; "flow." becomes the wordmark's tail, the letters drop in, the head pops up behind it; tagline, Start selling and the footer.
 
 ## Adapting the template
-- Swap the words in `CFG`, the brand and palette; keep one idea per cut and the half-second rhythm.
+- Swap `CFG.brand`, `CFG.domain`, `CFG.store`, the card, product and checkout copy, prices and palette; keep the six chapters on their timing.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the

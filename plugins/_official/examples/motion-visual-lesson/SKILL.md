@@ -1,6 +1,6 @@
 ---
-name: motion-pixel-wizard
-description: "Pixel Art Wizard — motion design template. An 11-second pixel art loop, rebuilt from the viral original: a wizard on a moonlit stone wall charges his staff, casts a burst of magic and settles back, at a crisp 128×96 resolution."
+name: motion-visual-lesson
+description: "Visual Lesson — motion design template. A 20-second paper-cutout short rebuilt from the viral original: a girl sends 'what do you love?' on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up."
 od:
   mode: video
   scenario: video
@@ -9,29 +9,36 @@ od:
     entry: example.html
 ---
 
-# Pixel Art Wizard
+# Visual Lesson
 
-An 11-second pixel art loop, rebuilt from the viral original: a wizard on a moonlit stone wall charges his staff, casts a burst of magic and settles back, at a crisp 128×96 resolution. `example.html` is the finished reference — start from it.
+A 20-second paper-cutout short rebuilt from the viral original: a girl sends "what do you love?" on a paper plane, the Open Design buddy answers with ten illustrated cards that gather into a heart, and the town lights up. `example.html` is the finished reference — start from it.
 
 ## Source
-A remake of a viral post by @majidmanzarpour: https://x.com/majidmanzarpour/status/2102476258948927543 (453K views · 2.6K likes · 2.7K bookmarks on X (as of 2026-10-05)). The composition is
-rebuilt in code from the published piece; the soundtrack is original.
+A remake of a viral post by @kevin_t_ngo: https://x.com/kevin_t_ngo/status/2102437977435893771 (665K views · 6.2K likes · 3.0K bookmarks on X (as of 2026-10-13)). The composition is
+rebuilt in code from the published piece; the soundtrack is original. The original is a 28-second square film; this is a 20-second cut framed in 16:9, and its character is the Open Design buddy built from the logo mark.
 
 ## Reference files
-Copy `example.html`, `assets/gsap.min.js`, `assets/soundtrack.mp3` into the composition, preserving the `assets/` path.
+Copy `example.html`, `assets/gsap.min.js`, `assets/short-stack-OFL.txt`, `assets/short-stack-regular.ttf`, `assets/soundtrack.mp3` into the composition, preserving the `assets/` path.
 Font licenses travel with their fonts. Use these frozen local bytes; no runtime
 script or font CDN is needed.
 
 ## Art direction
-- A 128×96 logical canvas blitted at an integer scale with smoothing off; every pixel comes from a fixed palette of about 24 colours.
-- Night sky in dithered bands, twinkling stars, a cratered moon and a stone wall; a wizard with a bent hat, long beard, two-tone robe and a gem staff.
+- Cut-paper shapes with jagged edges and brush grain: night blues `#252C6E` / `#2E3784`, wall `#4A3A8A`, yellow `#F4C443`, curtain `#EE8E96`, paper `#FBF6EC`, pen blue `#3B62B5`, red `#D8443A`.
+- The Open Design buddy: the dark rounded logo tile `#26251E` with a white ring, a face inside the ring and a cursor badge.
+- Font (SIL OFL, bundled): Short Stack for the hand lettering.
+- The square story sits centred in 16:9; backdrops extend to the sides.
 
-## Beat map (11.28s)
-- Two 5.64s cycles: IDLE (two-frame bob) → CHARGE (staff raised, sparks spiral into the gem, floor glow) → CAST (white-hot burst, sparks thrown forward, 1px screen shake) → RECOVER.
-- The pose steps at about 10 fps for a hand-made sprite feel.
+## Beat map (20s)
+- 0–2.2s the town at night sends the buddy requests; the girl at her window gets an idea.
+- 2.2–5.5s she writes "what do you love?", folds it into a paper plane and throws it.
+- 5.5–8.0s the plane crosses the night sky; the buddy reads it: curious, thinking, a spark, delight.
+- 8.0–12.0s the things it loves, one per beat: words, music, the sea, trees, dogs, bread, rain, math, the stars, an octopus.
+- 12.0–14.0s everything it loves gathers around a heart.
+- 14.0–18.0s the buddy folds the note and sends it back; she opens it to a circled "you" and beams.
+- 18.0–20s the whole town lights up; she waves to the buddy.
 
 ## Adapting the template
-- Swap the character map in `BODY`, the palette and the spell colours; keep integer-snapped pixels and the four-state loop.
+- Swap `CFG.question`, the card list and the palette; keep the story beats on the 120 BPM grid.
 
 ## How the reference is built
 - One composition root with canvas layers. A single `render(t)` draws the
@@ -57,11 +64,10 @@ Avoid large canvas gradients and per-pixel noise: they make every captured
 frame expensive and slow the MP4 export.
 
 ## Sound
-`assets/soundtrack.mp3` is an original 11.28-second score made for this template
-and timed to its beats; no audio from the source video is used. The source
-video is silent; this 8-bit score is an addition. The music is part of the
-look being remade. These rules replace the general sound guidance for this
-remake; apply the first one that matches the brief:
+`assets/soundtrack.mp3` is an original 20-second score made for this template
+and timed to its beats; no audio from the source video is used.
+The music is part of the look being remade. These rules replace the general
+sound guidance for this remake; apply the first one that matches the brief:
 
 1. The user asks for no music: remove the `<audio>` element, do not copy the
    file, and freeze `motionDelivery.audio` as `silent`.

@@ -13,7 +13,7 @@ import {
 
 const examples = fileURLToPath(new URL('../../../plugins/_official/examples/', import.meta.url));
 
-test.each(['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'future'])(
+test.each(['showreel', 'ui-morph', 'future', 'product-promo', 'visual-lesson'])(
   '[P1] motion-%s carries its offline scripts, font and license through the frozen reference package',
   async (name) => {
     const source = path.join(examples, `motion-${name}`);
@@ -38,9 +38,8 @@ test.each(['showreel', 'energy-reel', 'ui-morph', 'pixel-wizard', 'future'])(
         expect(await readFile(path.join(reference, relative))).toEqual(await readFile(path.join(source, relative)));
       }
       // Rendering must retain the same font when the reference is copied offline.
-      // The pixel-art wizard draws no text; every other template ships its fonts.
       const fonts = [...html.matchAll(/url\(["']?(assets\/[^)"']+\.(?:ttf|woff2?))["']?\)/g)];
-      if (name !== 'pixel-wizard') expect(fonts.length).toBeGreaterThan(0);
+      expect(fonts.length).toBeGreaterThan(0);
       for (const [, font] of fonts) {
         expect(await readFile(path.join(reference, font!))).toEqual(await readFile(path.join(source, font!)));
         // Each bundled font travels with its SIL Open Font License.
