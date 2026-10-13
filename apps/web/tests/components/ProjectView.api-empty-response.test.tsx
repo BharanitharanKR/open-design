@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useLayoutEffect, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +15,7 @@ import {
   fetchProjectFiles,
   patchPreviewCommentStatus,
   writeProjectTextFile,
+  uploadProjectFiles,
 } from '../../src/providers/registry';
 import { listMessages, saveMessage } from '../../src/state/projects';
 import { playSound } from '../../src/utils/notifications';
@@ -33,10 +34,16 @@ import type {
 } from '../../src/types';
 
 const chatPaneMockState = vi.hoisted(() => ({
+  boardSend: null as null | ((comments: ChatCommentAttachment[], images?: File[]) => Promise<{ status: string; commentIds: string[] }>),
+  track: vi.fn(),
   attachments: [] as ChatAttachment[],
   commentAttachments: [] as ChatCommentAttachment[],
   fireResizeObserverOnFocusedLayout: false,
   resizeObserverCallbacks: [] as ResizeObserverCallback[],
+}));
+
+vi.mock('../../src/analytics/provider', () => ({
+  useAnalytics: () => ({ track: chatPaneMockState.track }),
 }));
 
 vi.mock('../../src/router', () => ({
@@ -85,6 +92,7 @@ vi.mock('../../src/providers/registry', async () => {
     fetchProjectFiles: vi.fn().mockResolvedValue([]),
     fetchSkill: vi.fn().mockResolvedValue(null),
     patchPreviewCommentStatus: vi.fn(),
+    uploadProjectFiles: vi.fn(),
     upsertPreviewComment: vi.fn(),
     writeProjectTextFile: vi.fn(),
   };
@@ -131,12 +139,15 @@ vi.mock('../../src/components/FileWorkspace', () => ({
     focusMode = false,
     onFocusModeChange,
     previewComments = [],
+    onSendBoardCommentAttachments,
   }: {
+    onSendBoardCommentAttachments: NonNullable<typeof chatPaneMockState.boardSend>;
     previewComments?: PreviewComment[];
     openRequest?: { name: string; nonce: number } | null;
     focusMode?: boolean;
     onFocusModeChange?: (focused: boolean) => void;
   }) => {
+    chatPaneMockState.boardSend = onSendBoardCommentAttachments;
     useLayoutEffect(() => {
       if (!focusMode || !chatPaneMockState.fireResizeObserverOnFocusedLayout) return;
       for (const callback of chatPaneMockState.resizeObserverCallbacks) {
@@ -321,6 +332,9 @@ function renderProjectView(
 
 describe('ProjectView API empty response handling', () => {
   beforeEach(() => {
+    localStorage.clear();
+    chatPaneMockState.track.mockReset();
+    chatPaneMockState.boardSend = null;
     chatPaneMockState.attachments = [];
     chatPaneMockState.commentAttachments = [];
     chatPaneMockState.fireResizeObserverOnFocusedLayout = false;
@@ -332,6 +346,7 @@ describe('ProjectView API empty response handling', () => {
     mockedFetchProjectFilePreview.mockResolvedValue(null);
     mockedFetchProjectFileText.mockResolvedValue(null);
     mockedFetchProjectFiles.mockResolvedValue([]);
+    vi.mocked(uploadProjectFiles).mockReset();
     mockedWriteProjectTextFile.mockResolvedValue({
       name: 'landing-page.html',
       path: 'landing-page.html',
@@ -353,6 +368,85 @@ describe('ProjectView API empty response handling', () => {
     cleanup();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it.each(['noop', 'recording', 'throwing', 'pending'] as const)('observes board comment queue without changing it with %s measurement', async (measurement) => {
+    const events: Array<Record<string, unknown>> = [];
+    chatPaneMockState.track.mockImplementation((event, props) => {
+      if (event !== 'project_comment_send_result') return;
+      if (measurement !== 'noop') events.push(props);
+      if (measurement === 'throwing') throw new Error('measurement only');
+      if (measurement === 'pending') return new Promise(() => {});
+    });
+    renderProjectView();
+    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    const attachment = (id: string, source?: ChatCommentAttachment['source']) => ({
+      id, source, order: 1, filePath: 'index.html', elementId: 'hero', selector: '#hero',
+      label: 'hero', comment: `note-${id}`, currentText: 'hero',
+      pagePosition: { x: 0, y: 0, width: 100, height: 24 }, htmlHint: '<h1>hero</h1>',
+    });
+    const input = [attachment('saved', 'saved-comment'), attachment('board', 'board-batch'), attachment('legacy'), attachment('saved', 'saved-comment')];
+    let result: { status: string; commentIds: string[] } | undefined;
+    await act(async () => { result = await chatPaneMockState.boardSend!(input); });
+    expect(result).toEqual({ status: 'queued', commentIds: ['saved', 'board', 'legacy', 'saved'] });
+    // Four independent tasks still enter the normal queue, with no measurement request options.
+    await waitFor(() => expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(1));
+    expect(mockedStreamViaDaemon.mock.calls[0]![0].commentAttachments?.[0]?.id).toBe('saved');
+    const queue = JSON.parse(localStorage.getItem('od:chat-queued-sends:project-1:v1') ?? '[]');
+    expect(queue.map((item: { commentAttachments: ChatCommentAttachment[] }) => item.commentAttachments[0]?.id)).toEqual(['board', 'legacy', 'saved']);
+    expect(queue.map((item: { prompt: string }) => item.prompt)).toEqual(['note-board', 'note-legacy', 'note-saved']);
+    expect(mockedDeletePreviewComment).not.toHaveBeenCalled();
+    if (measurement !== 'noop') expect(events).toEqual([expect.objectContaining({
+      page_name: 'artifact', area: 'comment_popover', project_id: project.id,
+      result: 'queued', submitted_comment_ids: ['saved'], comment_ids: ['saved'],
+    })]);
+    await act(async () => { result = await chatPaneMockState.boardSend!([]); });
+    expect(result).toEqual({ status: 'rejected', commentIds: [] });
+    if (measurement !== 'noop') expect(events.at(-1)).toMatchObject({ result: 'rejected', submitted_comment_ids: [], comment_ids: [] });
+  });
+
+  it('reports only the accepted saved subset when preflight invalidates the rest of a batch', async () => {
+    renderProjectView();
+    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    const first = {
+      id: 'first', source: 'saved-comment', order: 1, filePath: 'index.html', elementId: 'hero',
+      selector: '#hero', label: 'hero', comment: 'first note', currentText: 'hero',
+      pagePosition: { x: 0, y: 0, width: 100, height: 24 }, htmlHint: '<h1>hero</h1>',
+    } as ChatCommentAttachment;
+    const originalKey = config.apiKey;
+    // Controlled request-state invalidation at the next task boundary: the
+    // first task is durable, then the real BYOK preflight refuses task two.
+    const second = { ...first, id: 'second', get comment() { config.apiKey = ''; return 'second note'; } };
+    let result;
+    try {
+      await act(async () => { result = await chatPaneMockState.boardSend!([first, second]); });
+    } finally {
+      config.apiKey = originalKey;
+    }
+    expect(result).toEqual({ status: 'rejected', commentIds: ['first'] });
+    expect(chatPaneMockState.track).toHaveBeenCalledWith('project_comment_send_result', expect.objectContaining({
+      result: 'rejected', submitted_comment_ids: ['first', 'second'], comment_ids: ['first'],
+    }), undefined);
+    const queue = JSON.parse(localStorage.getItem('od:chat-queued-sends:project-1:v1') ?? '[]');
+    expect(queue.flatMap((item: { commentAttachments: ChatCommentAttachment[] }) => item.commentAttachments.map((comment) => comment.id))).not.toContain('second');
+  });
+
+  it('leaves upload rejection and original upload throws unchanged', async () => {
+    renderProjectView();
+    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    const image = new File(['image'], 'image.png', { type: 'image/png' });
+    vi.mocked(uploadProjectFiles).mockResolvedValue({ uploaded: [], failed: [] } as never);
+    let result;
+    await act(async () => { result = await chatPaneMockState.boardSend!([], [image]); });
+    expect(result).toEqual({ status: 'rejected', commentIds: [] });
+    expect(uploadProjectFiles).toHaveBeenCalledWith(project.id, [image], undefined, null);
+    expect(mockedStreamViaDaemon).not.toHaveBeenCalled();
+    const eventsBeforeThrow = chatPaneMockState.track.mock.calls.filter(([event]) => event === 'project_comment_send_result').length;
+    const originalError = new Error('business upload failure');
+    vi.mocked(uploadProjectFiles).mockRejectedValue(originalError);
+    await act(async () => { await expect(chatPaneMockState.boardSend!([], [image])).rejects.toBe(originalError); });
+    expect(chatPaneMockState.track.mock.calls.filter(([event]) => event === 'project_comment_send_result')).toHaveLength(eventsBeforeThrow);
+    expect(mockedStreamViaDaemon).not.toHaveBeenCalled();
   });
 
   it('marks an empty API completion as a soft no-output state instead of succeeded', async () => {

@@ -61,10 +61,12 @@ async function startServer({
   shared = true,
   team = false,
   metadata = { kind: 'prototype' },
+  measurement = 'recording',
 }: {
   shared?: boolean;
   team?: boolean;
   metadata?: Record<string, unknown>;
+  measurement?: 'noop' | 'recording' | 'throwing' | 'rejecting' | 'pending';
 } = {}) {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-comment-perms-'));
   const db = openDatabase(tempDir);
@@ -116,7 +118,11 @@ async function startServer({
     onCommentDeleted: (c) => { deleted.push(c.id); },
     telemetry: {
       captureProductEvent: (_req: unknown, eventName: string, properties: Record<string, unknown>) => {
+        if (measurement === 'noop') return;
         productEvents.push({ eventName, properties });
+        if (measurement === 'throwing') throw new Error('telemetry unavailable');
+        if (measurement === 'rejecting') return Promise.reject(new Error('telemetry unavailable'));
+        if (measurement === 'pending') return new Promise(() => {});
       },
     } as any,
   });
@@ -189,6 +195,29 @@ async function startServer({
 }
 
 describe('preview comment permission gating', () => {
+  it.each(['noop', 'recording', 'throwing', 'rejecting', 'pending'] as const)('keeps successful creation and storage unchanged with %s measurement', async (measurement) => {
+    const api = await startServer({ measurement });
+    const route = `/api/projects/${PROJECT}/conversations/${CONVERSATION}/comments`;
+    const response = await api.json(route, {
+      method: 'POST', member: OWNER, body: { target: api.commentTarget, note: 'saved note' },
+    });
+    expect(response.status).toBe(200);
+    const comment = response.body.comment;
+    expect(comment).toMatchObject({ note: 'saved note', status: 'open' });
+    expect(api.listComments()).toEqual([comment]);
+    expect(api.created).toEqual([comment.id]);
+    expect(api.updated).toEqual([]);
+    expect(api.deleted).toEqual([]);
+    if (measurement !== 'noop') expect(api.productEvents).toEqual([{
+      eventName: 'project_comment_create_result',
+      properties: expect.objectContaining({ comment_id: comment.id, project_id: PROJECT, result: 'success' }),
+    }]);
+    const edited = await api.json(route, {
+      method: 'POST', member: OWNER, body: { id: comment.id, target: api.commentTarget, note: 'edited' },
+    });
+    expect(edited.status).toBe(200);
+    expect(api.productEvents).toHaveLength(measurement === 'noop' ? 0 : 1);
+  });
   it.each([
     { team: false, caller: OWNER }, { team: false, caller: 'm-member' },
     { team: true, caller: OWNER }, { team: true, caller: 'm-member' },
