@@ -13,7 +13,10 @@ import { resetWorkspaceAccountGeneration } from "../../src/collab/workspace-iden
 import { FileViewer } from "../../src/components/FileViewer";
 import type { ProjectFile } from "../../src/types";
 
-const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), fallbackPdf: vi.fn(), guideInput: vi.fn() }));
+const seam = vi.hoisted(() => ({ exportHtml: vi.fn(), fallbackPdf: vi.fn(), guideInput: vi.fn(), track: vi.fn() }));
+vi.mock("../../src/analytics/provider", () => ({
+  useAnalytics: () => ({ track: seam.track, newRequestId: () => 'request-guide' }),
+}));
 vi.mock("../../src/runtime/exports", async () => ({
 	...(await vi.importActual("../../src/runtime/exports")),
 	exportProjectAsHtml: seam.exportHtml,
@@ -120,6 +123,30 @@ async function exportHtml(format: 'html' | 'pdf' = 'html') {
 }
 
 describe("Owner P1 real FileViewer export-to-share chain", () => {
+  it.each(['disabled', 'enabled', 'throws', 'pending'] as const)(
+    'observes the actual guide without changing export or preference behavior: %s', async mode => {
+      seam.track.mockImplementation((_event, props) => {
+        if (props.area !== 'share_guide') return;
+        if (mode === 'throws') throw new Error('measurement unavailable');
+        if (mode === 'pending') return new Promise<void>(() => {});
+      });
+      await readyViewer();
+      await exportHtml('pdf');
+      const guide = await screen.findByRole('status', { name: 'Share the link, invite feedback' });
+      fireEvent.click(within(guide).getByRole('button', { name: "Don't show again" }));
+      expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+      expect(window.localStorage.getItem('od:after-export-share-guide:v1:p1-account')).toBe('1');
+      const events = seam.track.mock.calls.filter(([, props]) => props.area === 'share_guide');
+      expect(events).toEqual([
+        ['surface_view', expect.objectContaining({ page_name: 'artifact', project_id: 'project-guide', project_kind: 'prototype' }), undefined],
+        ['ui_click', expect.objectContaining({ element: 'never_show_again', project_id: 'project-guide' }), undefined],
+      ]);
+      expect(events.every(([, props]) => typeof props.artifact_id === 'string')).toBe(true);
+      const nativeExports = request.mock.calls.filter(([input]) => String(input) === '/api/projects/project-guide/export/pdf');
+      expect(nativeExports).toHaveLength(1);
+      expect(nativeExports[0]?.[1]).toMatchObject({ method: 'POST' });
+    },
+  );
 	it.each(['toolbar', 'artifact-card'] as const)("retains a saved PDF completion from %s while focus refreshes sharing history", async entry => {
 		await readyViewer(entry === 'artifact-card');
 		let finishSave!: (response: Response) => void;

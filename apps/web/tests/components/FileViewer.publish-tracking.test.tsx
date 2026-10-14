@@ -236,6 +236,9 @@ describe('publish flow analytics', () => {
         expect.objectContaining({
           action: 'publish',
           result: 'success',
+          publish_id: 'slug-1',
+          share_version: 1,
+          published_at: 1,
           publish_duration_ms: expect.any(Number),
           artifact_kind: 'html',
         }),
@@ -248,10 +251,49 @@ describe('publish flow analytics', () => {
       expect.objectContaining({
         area: 'share_option_popover',
         element: 'copy_publish_link',
+        publish_id: 'slug-1',
         artifact_kind: 'html',
       }),
     );
   });
+
+  it.each(['disabled', 'enabled', 'throws', 'pending'] as const)(
+    'keeps publish/copy/stop business behavior when measurement is %s', async mode => {
+      const fetchMock = stubFetch();
+      const clipboard = vi.fn(async () => {});
+      vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: clipboard } });
+      const publishButton = await openPublishPanel();
+      analytics.track.mockImplementation(() => {
+        if (mode === 'throws') throw new Error('analytics failed');
+        if (mode === 'pending') return new Promise<void>(() => {});
+      });
+      if (mode === 'disabled') analytics.track.mockImplementation(() => undefined);
+      fireEvent.click(publishButton);
+      const copy = await screen.findByRole('button', { name: /copy share link/i });
+      await waitFor(() => expect(clipboard).toHaveBeenCalledWith('https://open-design.ai/p/slug-1'));
+      fireEvent.click(copy);
+      await waitFor(() => expect(clipboard).toHaveBeenCalledTimes(2));
+      fireEvent.click(screen.getByRole('switch', { name: UNPUBLISH_ROW }));
+      await waitFor(() => expect(screen.getByRole('switch', { name: UNPUBLISH_ROW })).not.toBeChecked());
+      const mutations = fetchMock.mock.calls.filter(([input, init]) =>
+        String(input).includes('publish-public') && ['POST', 'DELETE'].includes(init?.method ?? ''));
+      expect(mutations).toHaveLength(2);
+      expect(mutations[0]).toEqual([
+        '/api/projects/project-pub/files/index.html/publish-public',
+        expect.objectContaining({ method: 'POST' }),
+      ]);
+      expect(mutations[1]).toEqual([
+        '/api/projects/project-pub/files/index.html/publish-public',
+        expect.objectContaining({ method: 'DELETE' }),
+      ]);
+      expect(mutations.map(([, init]) => init?.body)).toEqual([undefined, JSON.stringify({ slug: 'slug-1' })]);
+      expect(mutations.map(([, init]) => init?.headers)).toEqual([
+        expect.objectContaining({ 'x-od-request-id': 'request-publish-1' }),
+        expect.objectContaining({ 'x-od-request-id': 'request-publish-1' }),
+      ]);
+      expect(trackedEvents('artifact_publish_result').some(props => props.result === 'failed')).toBe(false);
+    },
+  );
 
   it('reports a failed publish with the workspace-identity error code', async () => {
     stubFetch({ publishStatus: 403 });
@@ -285,6 +327,7 @@ describe('publish flow analytics', () => {
         expect.objectContaining({
           action: 'unpublish',
           result: 'success',
+          publish_id: 'slug-1',
           publish_duration_ms: expect.any(Number),
         }),
       );

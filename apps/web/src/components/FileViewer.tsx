@@ -69,6 +69,7 @@ import {
 import {
   anonymizeArtifactId,
   artifactKindToTracking,
+  savedCommentIds,
   type ArtifactPublishResultProps,
   type ArtifactEditResultProps,
   type TrackingArtifactEditKind,
@@ -107,8 +108,11 @@ import {
   trackDeckViewerClick,
   trackSpeakerNotesSaveResult,
   trackShareOptionPopoverClick,
+  trackShareGuideSurfaceView,
+  trackShareGuideClick,
 } from '../analytics/events';
 import { recordFirstLoopStep } from '../onboarding/first-loop';
+import { observeAnalytics } from '../analytics/observe';
 import { MarkdownRenderer, artifactRendererRegistry } from '../artifacts/renderer-registry';
 import { renderMarkdownToSafeHtml } from '../artifacts/markdown';
 import {
@@ -6688,7 +6692,7 @@ function ReactComponentViewer({
   workspaceActive?: boolean;
 }) {
   const t = useT();
-  const analytics = useAnalytics();
+  const _analytics = useAnalytics();
   // `FileWorkspace` keeps a non-active viewer mounted, so an in-flight publish
   // can settle after the user has switched away. The ref carries the LIVE value
   // into those continuations; the captured prop would still read the
@@ -7179,7 +7183,7 @@ function HtmlViewer({
   commentPortalId,
   onCommentModeChange,
   onObservedPublicShareLink,
-  observedPublicShareLink,
+  observedPublicShareLink: _observedPublicShareLink,
   loginUpdateRequest,
   onLoginUpdateRequestHandled,
   shareLoginReturnRef,
@@ -7610,17 +7614,21 @@ function HtmlViewer({
   };
   const fireCommentPopoverClick = (
     element: 'save_comment' | 'send_to_chat' | 'add_note',
+    submittedComments?: readonly Pick<PreviewComment, 'id'>[],
   ) => {
     if (!workspaceActive) return;
-    trackCommentPopoverClick(analytics.track, {
+    observeAnalytics(() => trackCommentPopoverClick(analytics.track, {
       page_name: 'artifact',
       area: 'comment_popover',
       element,
+      ...(element === 'send_to_chat' && submittedComments ? {
+        submitted_comment_ids: savedCommentIds(submittedComments.map(comment => ({ source: 'saved-comment', id: comment.id }))),
+      } : {}),
       artifact_id: anonymizeArtifactId({ projectId, fileName: file.name }),
       artifact_kind: artifactKindToTracking({ fileKind: file.kind ?? null }),
       project_id: projectId,
       project_kind: projectKind,
-    });
+    }));
   };
   const fireArtifactEditResult = (
     action: ArtifactEditResultProps['action'],
@@ -8060,12 +8068,13 @@ function HtmlViewer({
   // gated — the publish/unpublish calls themselves stay unconditional.
   const firePublishFlowClick = (element: 'publish_file' | 'copy_publish_link') => {
     if (!workspaceActive) return;
-    trackShareOptionPopoverClick(analytics.track, {
+    observeAnalytics(() => trackShareOptionPopoverClick(analytics.track, {
       page_name: 'artifact',
       area: 'share_option_popover',
       element,
+      ...(publishedFileSlug ? { publish_id: publishedFileSlug } : {}),
       ...publishTrackingIdentity(),
-    });
+    }));
   };
 
   const firePublishResult = (
@@ -8073,6 +8082,7 @@ function HtmlViewer({
       ArtifactPublishResultProps,
       | 'action' | 'result' | 'error_code' | 'publish_duration_ms' | 'daemon_error_code'
       | 'failed_stage' | 'failure_reason' | 'upstream_status' | 'upstream_error_code'
+      | 'publish_id' | 'share_version' | 'published_at'
     >,
     requestId?: string,
   ) => {
@@ -8080,12 +8090,13 @@ function HtmlViewer({
     // start while this viewer is active and settle after the user switches tabs,
     // and the in-flight continuation still holds the render-time `true`.
     if (!workspaceActiveRef.current) return;
-    trackArtifactPublishResult(analytics.track, {
+    observeAnalytics(() => trackArtifactPublishResult(analytics.track, {
       page_name: 'artifact',
       area: 'share_option_popover',
+      ...(publishedFileSlug ? { publish_id: publishedFileSlug } : {}),
       ...outcome,
       ...publishTrackingIdentity(),
-    }, requestId ? { requestId } : undefined);
+    }, requestId ? { requestId } : undefined));
   };
 
   /**
@@ -8158,6 +8169,8 @@ function HtmlViewer({
       firePublishResult({
         action: 'publish',
         result: 'success',
+        publish_id: response.slug,
+        ...response.publicationObservation,
         publish_duration_ms: Math.round(performance.now() - publishStarted),
       }, publishRequestId);
       // Project-wide, so announce it even if the viewer moved on meanwhile.
@@ -8258,6 +8271,8 @@ function HtmlViewer({
       const response = await publishProjectFilePublic(requestProjectId, requestFileName, workspaceContext, requestId);
       firePublishResult({
         action: 'publish', result: 'success',
+        publish_id: response.slug,
+        ...response.publicationObservation,
         publish_duration_ms: Math.round(performance.now() - started),
       }, requestId);
       const current = publicFileIdentityRef.current;
@@ -16648,7 +16663,16 @@ function HtmlViewer({
       }
       onClose={clearBoardComposer}
       onSaveComment={() => { fireCommentPopoverClick('save_comment'); return savePersistentComment(); }}
-      onSendBatch={() => { fireCommentPopoverClick('send_to_chat'); return sendBoardBatch(); }}
+      onSendBatch={() => {
+        observeAnalytics(() => {
+          const saved = currentActiveComposerComment();
+          // Observe the same saved-comment branch as sendBoardBatch, without changing its submission.
+          const unchanged = saved && queuedBoardNotes.length === 0 && boardImages.length === 0
+            && commentDraft.trim() === saved.note.trim();
+          fireCommentPopoverClick('send_to_chat', unchanged ? [saved] : undefined);
+        });
+        return sendBoardBatch();
+      }}
       images={boardImagePreviews}
       existingImages={
         activeComposerAttachments.map((attachment) => ({
@@ -16823,7 +16847,7 @@ function HtmlViewer({
           ),
         );
         if (selected.length === 0) return;
-        fireCommentPopoverClick('send_to_chat');
+        fireCommentPopoverClick('send_to_chat', selected);
         setSendingBoardBatch(true);
         try {
           const result = await onSendBoardCommentAttachments(
@@ -17464,6 +17488,17 @@ function HtmlViewer({
                         close: t('fileViewer.shareGuide.close'),
                         saveFailed: t('fileViewer.shareGuide.preferenceSaveFailed'),
                       }}
+                      onObserve={event => observeAnalytics(() => {
+                        const identity = {
+                          page_name: 'artifact' as const,
+                          area: 'share_guide' as const,
+                          project_id: projectId,
+                          project_kind: projectKind,
+                          artifact_id: anonymizeArtifactId({ projectId, fileName: file.name }),
+                        };
+                        if (event === 'view') trackShareGuideSurfaceView(analytics.track, identity);
+                        else trackShareGuideClick(analytics.track, { ...identity, element: event });
+                      })}
                       onDismiss={afterExportGuide.dismiss}
                       onNeverShow={afterExportGuide.neverShow}
                       onOpenShare={() => {

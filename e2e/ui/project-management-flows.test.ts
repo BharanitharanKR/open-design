@@ -1528,6 +1528,15 @@ async function createBoundTeamProject(
       },
     });
   });
+  // The deep-link detail and the authoritative Workspace catalog must agree
+  // about this bound row, independent of which read finishes first.
+  await page.route(`**/api/workspaces/${TEAM_RUN_CONTEXT.workspaceId}/projects?**`, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({ json: { projects: [bindProject(created.project)] } });
+  });
   await page.route(`**/api/projects/${created.project.id}`, async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fallback();
@@ -1684,7 +1693,22 @@ test('[P0] Team project balance gate ignores funded Personal wallet and blocks o
     events: false,
   });
 
+  // Settle the authoritative Team catalog before asserting the deep-link UI:
+  // an empty late-arriving all-view correctly invalidates the route snapshot.
+  const workspaceProjects = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'GET'
+      && url.pathname === `/api/workspaces/${TEAM_RUN_CONTEXT.workspaceId}/projects`
+      && url.searchParams.get('view') === 'all';
+  });
   await page.goto(`/projects/${projectId}/conversations/${conversationId}`);
+  const workspaceProjectsResponse = await workspaceProjects;
+  expect(workspaceProjectsResponse.ok()).toBe(true);
+  expect(await workspaceProjectsResponse.json()).toMatchObject({
+    projects: expect.arrayContaining([
+      expect.objectContaining({ id: projectId, workspaceId: TEAM_RUN_CONTEXT.workspaceId }),
+    ]),
+  });
   await expectWorkspaceReady(page);
   await expect.poll(() => scopeRequests).toBeGreaterThanOrEqual(2);
   expect(scopedReadHeaders?.['x-od-workspace-id']).toBe(TEAM_RUN_CONTEXT.workspaceId);
