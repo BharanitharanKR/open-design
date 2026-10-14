@@ -32,8 +32,10 @@ describe('Motion Design official skill and OD Next route', () => {
     expect(binding.selectedTaskProfile.taskType).toBe('motion-design');
     expect(() => assertOdNextPlanningBuildOnlyV2(loaded.taskSkill, 'motion-design')).not.toThrow();
     expect(loaded.coreStrategy).toContain('OD Next Core Strategy');
-    expect(loaded.generalOrchestration).toContain('Contracted media');
-    expect(loaded.coreStrategy).toContain('A contracted media render is production');
+    expect(loaded.generalOrchestration).toContain('bounded video-motion production exception');
+    expect(loaded.coreStrategy).toContain('only while producing an actual video-motion film requested');
+    expect(loaded.taskSkill).not.toContain('In the accepted Plan Contract');
+    expect(loaded.taskSkill).not.toContain('host freezes and enforces this contract');
     expect(loaded.taskSkill).toContain('media generate --project');
     expect(loaded.taskSkill).toContain('od-motion-output');
     expect(loaded.taskSkill).not.toContain('MP4 is a separate product export');

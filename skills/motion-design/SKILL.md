@@ -28,10 +28,12 @@ means viewers understand and remember the idea while wanting to watch it move.
 
 Follow the active host's task route, stage, capability, and delivery contract.
 This skill supplies motion craft; it does not create tool access or change the
-host's workflow. In OD Next, retain its Core, general orchestration, machine
-blocks, and ship-on-write boundary. Plan during planning; author during Build.
-Do not add a general quality-review phase. Only a frozen `motionDelivery.mode=video`
-contract permits the bounded video check below. For a video brief (a timed
+host's workflow. In OD Next, retain its Core, general orchestration, keyed
+production-ready marker, and ship-on-write default. Plan in ordinary language;
+author during production. Never emit Plan Contract or Runtime State blocks,
+request protocol repair, or claim a host-frozen delivery contract. Only actual
+user-requested video-motion production, when the host Core authorizes it,
+permits the bounded video check below. For a video brief (a timed
 film, promo, explainer or showreel), declare BOTH editable HTML source and MP4
 as required deliverables. Rendering the MP4 is Build production and must finish
 before delivery. For pointer/scroll-driven interaction or UI micro-animation,
@@ -268,8 +270,10 @@ by the destination (for example a silent ambient loop), and state that choice.
 This policy belongs to video motion; do not add sound to ordinary prototypes,
 documents, slides or interactive motion unless their brief calls for it.
 
-Freeze `motionDelivery.audio` as `required` for an audible film or `silent` for
-intentional silence. Old contracts without this field retain their behavior.
+Record the audio decision in the ordinary plan. Declare
+`<meta name="od-motion-audio" content="required">` for an audible film or
+`content="silent"` for intentional silence. This is composition metadata for
+the actual exporter, not a model-output planning contract.
 For `required`, author real local audio assets inside the composition directory:
 use supplied/licensed media, the host audio-generation tool when available, or
 an original synthesized instrumental/effect WAV. Do not invent an asset URL,
@@ -299,17 +303,17 @@ manually or run a second renderer. Plan declares `hyperframes-html` as the
 production route, editable source as canonical, and MP4 as a required derived
 output. For interactive briefs use `html` and source only.
 
-In the accepted Plan Contract, set `taskProfile.taskSpecific.motionDelivery` to
-`{"mode":"video","sourcePath":"motion-source/film/index.html","videoPath":"film.mp4","audio":"required"}`
-for a film, or `{"mode":"interactive","sourcePath":"index.html"}` for interactive
-motion. Use the actual planned paths. The host freezes and enforces this contract;
-HTML metadata is descriptive and cannot change the required output. Include a
-required `kind: "video"` deliverable with `derivesFrom` set to the canonical HTML
-id. Omit `derivesFrom` on the canonical source entry; never set it to null.
-A new film needs Full Plan; do not start it as a contract-free Direct Edit.
-This applies only when the user's requested deliverable is motion, including an
-explicit motion helper used in another task; adding hover/scroll animation to a
-prototype does not turn it into a video request.
+Keep source and MP4 paths in the readable plan and in the composition's MP4
+link. The exporter checks its actual output path and the declared audio policy;
+Open Design does not parse or freeze a model-authored plan. Do not add machine
+blocks or a contract-repair turn.
+
+Apply this delivery guidance only to the user's actual current video-motion
+request, including an explicit video-motion request in another project. A
+selected scenario or loaded helper alone does not authorize creating a film.
+Plan-only requests end with the plan; interactive motion and hover/scroll
+animation in a prototype remain runnable HTML. Follow-ups may directly edit an
+existing film; re-render only when the requested change affects the video.
 
 1. Scaffold a visible source directory with the native shell tool:
    `"$OD_NODE_BIN" "$OD_BIN" media scaffold --project "$OD_PROJECT_ID" --composition-dir "motion-source/film"`.
@@ -342,7 +346,8 @@ prototype does not turn it into a video request.
 
 If the host reports a renderer failure, preserve the editable source and report
 that blocker truthfully. Never fabricate a download or label HTML-only output
-as a finished video. Only the frozen video contract permits this bounded check:
+as a finished video. Only actual user-requested video-motion production, and
+only when the host Core authorizes it, permits this bounded check:
 
 - During planning, retain factual invariants and exact required copy in the
   existing Design Spec/beat map. An explainer must preserve the causal mechanism

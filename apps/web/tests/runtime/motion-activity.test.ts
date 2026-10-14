@@ -58,3 +58,18 @@ it('marks only live video srcdoc and leaves standalone, frozen and ordinary docu
     expect(buildSrcdoc(content,{motionPreview:true})).toBe(buildSrcdoc(content));
   }
 });
+
+
+it('pauses an inactive motion document without changing ordinary iframe prewarming', async () => {
+  const { element, post, request } = frame();
+  element.dataset.odMotionActive = 'false';
+  await Promise.resolve();
+  expect(element.dataset.odActive).toBe('true');
+  expect(post).toHaveBeenLastCalledWith({ type: MOTION_PREVIEW_ACTIVITY, active: false }, '*');
+  request('warm-hidden-document');
+  expect(post).toHaveBeenLastCalledWith({ type: MOTION_PREVIEW_ACTIVITY, id: 'warm-hidden-document', active: false }, '*');
+  element.dataset.odMotionActive = 'true';
+  await Promise.resolve();
+  request('warm-hidden-document');
+  expect(post).toHaveBeenLastCalledWith({ type: MOTION_PREVIEW_ACTIVITY, id: 'warm-hidden-document', active: true }, '*');
+});

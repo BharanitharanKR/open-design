@@ -1,6 +1,5 @@
 import type {
   DeliverableSyntaxMetrics,
-  MotionDeliveryContract,
   DeliverableSyntaxRepairState,
   ProjectMetadata,
 } from '@open-design/contracts';
@@ -30,11 +29,10 @@ export function deliverableSyntaxFinalizerEnabled(
 
 /**
  * Resolve the canonical output and run the syntax finalizer for every
- * successful physical Run. Only a frozen, explicit motion output contract adds paired video validation;
- * ordinary HTML delivery keeps its existing boundary.
+ * successful physical Run. Media export validity is owned by the exporter,
+ * independent of task orchestration and model-authored plans.
  */
 export async function finalizeSuccessfulRunDeliverable(input: {
-  motionDelivery?: MotionDeliveryContract;
   artifactCount: number;
   previousMetrics?: DeliverableSyntaxMetrics;
   processTreeQuiescent: boolean;
@@ -45,6 +43,7 @@ export async function finalizeSuccessfulRunDeliverable(input: {
   repairState?: DeliverableSyntaxRepairState;
   touchedPaths?: string[];
   baselineEntryFile?: string;
+  allowIndependentOutput?: boolean;
   syntaxFinalizerEnabled?: boolean;
 }): Promise<SuccessfulRunDeliverableFinalizationResult> {
   const deliverable = await validateRunDeliverable({
@@ -54,10 +53,10 @@ export async function finalizeSuccessfulRunDeliverable(input: {
       ? { projectMetadata: input.projectMetadata }
       : {}),
     runStatus: 'succeeded',
-    ...(input.motionDelivery ? { motionDelivery: input.motionDelivery } : {}),
     artifactCount: input.artifactCount,
     ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}),
     ...(input.baselineEntryFile ? { baselineEntryFile: input.baselineEntryFile } : {}),
+    ...(input.allowIndependentOutput ? { allowIndependentOutput: true } : {}),
   });
   if (
     !deliverable.valid

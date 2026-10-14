@@ -3263,12 +3263,14 @@ function isHtmlVersionableFile(file: ProjectFile): boolean {
 }
 
 function fileVersionSourceLabel(version: ProjectFileVersion, t: TranslateFn): string {
+  if (version.source === 'sync') return t('fileViewer.versions.sourceSync');
   if (version.source === 'manual') return t('fileViewer.versions.sourceManual');
   if (version.source === 'restore') return t('fileViewer.versions.sourceRestore');
   return t('fileViewer.versions.sourceAi');
 }
 
 function fileVersionSourceClassName(version: ProjectFileVersion): string {
+  if (version.source === 'sync') return 'sync';
   if (version.source === 'manual') return 'manual';
   if (version.source === 'restore') return 'restore';
   return 'ai';
@@ -3277,6 +3279,7 @@ function fileVersionSourceClassName(version: ProjectFileVersion): string {
 // Any unknown/legacy source value counts as 'ai', matching the label and
 // class-name fallbacks above.
 function fileVersionSourceToTracking(version: ProjectFileVersion): TrackingFileVersionSource {
+  if (version.source === 'sync') return 'sync';
   if (version.source === 'manual') return 'manual';
   if (version.source === 'restore') return 'restore';
   return 'ai';
@@ -17495,7 +17498,8 @@ function HtmlViewer({
                             ? (useUrlLoadPreview ? 'artifact-preview-frame' : 'artifact-preview-frame-url-load')
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
-                          data-od-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-motion-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -17541,7 +17545,8 @@ function HtmlViewer({
                             ? (useUrlLoadPreview ? 'artifact-preview-frame' : 'artifact-preview-frame-url-load')
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
-                          data-od-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-motion-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -17591,7 +17596,8 @@ function HtmlViewer({
                           ? (useUrlLoadPreview ? 'artifact-preview-frame-srcdoc' : 'artifact-preview-frame')
                           : `artifact-preview-frame-srcdoc-retained-${file.name}`}
                         data-od-render-mode="srcdoc"
-                        data-od-active={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
+                        data-od-active={mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
+                        data-od-motion-active={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
                         data-od-handoff-visible={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                         data-od-handoff-pending={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                         aria-hidden={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? undefined : true}

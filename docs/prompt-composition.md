@@ -94,7 +94,7 @@ to the **host**, not to either strategy — if a strategy is retired, these stay
 | `id="deck-stage"` | `srcdoc.ts:3145` `isFrameworkDeck` → stage style fix, disables click-nav | ✅ | ✅ |
 | `@media print` block | Share → PDF multi-page stitching | ✅ | ✅ |
 | `<question-form>` | `AssistantMessage.tsx` → `QuestionFormView`; `runAskedUserQuestion` analytics | ✅ `discovery.ts` | ✅ `od-next-strategy.ts:434` |
-| Frozen `taskSpecific.motionDelivery` | Exact source/MP4 paths and video vs interactive completion; HTML metadata cannot downgrade this plan | ✅ selected motion skill | ✅ motion task profile |
+| Motion video export | Actual source/MP4 linkage, local audio and encoded-output checks run inside the exporter; no model-plan gate | ✅ selected motion skill | ✅ motion task profile |
 | Shared motion source player | Composition-only preview controls and persisted playback; suppressed during frame capture | ✅ motion source | ✅ motion source |
 | Motion `data-poster-time` | Agent-selected seconds; daemon validates the linked MP4 and freezes its frame with the composition dimensions | ✅ selected motion skill | ✅ motion task profile |
 | `.od-frames/` device shells | prototype device frames | ❌ | ✅ OD Next only |

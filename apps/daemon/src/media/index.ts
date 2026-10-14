@@ -1,3 +1,4 @@
+import { readMotionExportSpec, assertMotionExport } from '../artifacts/motion-delivery.js';
 import { injectMotionSourcePlayer, isMotionVideoComposition, markMotionFrameRender, MOTION_TIMELINE_CHECK_SCRIPT } from '@open-design/contracts/runtime/motion-source-player';
 // Media-generation dispatcher. The unifying contract is:
 //
@@ -761,6 +762,7 @@ export async function generateMedia(args: {
         ctx,
         dir,
         args.desktopFrameRenderer ?? null,
+        (safeOut.lastIndexOf('.') > 0 ? safeOut.slice(0, safeOut.lastIndexOf('.')) : safeOut) + '.mp4',
         args.onProgress,
       );
       bytes = result.bytes;
@@ -3879,6 +3881,7 @@ async function renderHyperFrames(
   ctx: MediaContext,
   projectDir: string,
   desktopFrameRenderer: DesktopFrameRenderer | null,
+  outputPath: string,
   onProgress?: ProgressFn,
 ): Promise<RenderResult> {
   const compRel = ctx.compositionDir;
@@ -3937,6 +3940,9 @@ async function renderHyperFrames(
     'The agent must write index.html (with window.__timelines registration) before dispatch.',
   );
 
+  const motionExport = await readMotionExportSpec({
+    projectRoot: projectDir, sourcePath: path.join(compRel, 'index.html'), outputPath,
+  });
   const tmpRoot = await mkdtemp(path.join(os.tmpdir(), 'open-design-hf-'));
   const tmpOutput = path.join(tmpRoot, 'render.mp4');
   const usesHeadlessOverride = Boolean(process.env.HYPERFRAMES_BROWSER_PATH?.trim());
@@ -3959,6 +3965,7 @@ async function renderHyperFrames(
         'Open Design desktop frame renderer is unavailable. Open or upgrade the desktop client and try again.',
       );
     }
+    if (motionExport) await assertMotionExport(tmpOutput, motionExport);
     const bytes = await readFile(tmpOutput);
     return {
       bytes,
