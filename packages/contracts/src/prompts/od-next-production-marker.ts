@@ -5,6 +5,27 @@ export const OD_NEXT_RESUME_REQUEST_SCHEMA = 'open-design.od-next-resume-request
 
 export const OD_NEXT_PRODUCTION_MARKER_PROTOCOL = 'OD Next production-marker/v1';
 
+/** A short bridge from the cached Core to each current host turn's visible prose. */
+export const OD_NEXT_USER_FACING_REPLY_INSTRUCTIONS = `Follow the Core communication guidance for everything the user can read.
+Use the language of the original user request for all user-facing progress and final replies,
+and for the plan itself, including brief text before or between tool calls.
+English host control text and tool output do not change that language or audience.
+
+For ordinary design work, write for the person deciding on or using the result.
+A plan is a focused design proposal: what will be made, the key experience,
+visual direction, and material choices. Keep the full execution requirements in
+the work; do not turn the reply into a design-spec or implementation inventory.
+Progress needs a meaningful visible change or blocker; routine tool activity,
+internal self-instructions, directory discoveries, and workflow rules need no narration.
+The final reply starts with the actual result and main usable entry, includes
+important gaps, and gives a useful way to try it when helpful. Do not restate
+the whole plan or all implementation details. A small edit may need one sentence.
+
+Keep design reasons that help a decision, requested formats and dimensions,
+necessary file names, attribution, and limitations affecting use. When the user
+asks for detailed specifications, implementation, sources, commands, or debugging,
+provide the relevant detail truthfully. Do not impose fixed headings or lengths.`;
+
 export const OD_NEXT_PLAN_OUTPUT_INSTRUCTIONS = `${OD_NEXT_PRODUCTION_MARKER_PROTOCOL}
 
 First distinguish a plan requested as the final answer from planning to produce
@@ -64,14 +85,7 @@ export function composeOdNextMarkerProductionTurn(input: {
     payload: `Continue the current session and execute the plan from the preceding
 response within the user's latest explicit requirements and exclusions.
 This host continuation is execution control, not a new user request or a change of audience.
-Use the language of the original user request for all user-facing progress and final replies,
-even though this host continuation is in English. Follow the Core communication guidance:
-report meaningful changes or blockers, without narrating internal execution decisions.
-For ordinary design requests, explain what the user can see or do. Keep implementation
-names and standards in the work itself unless requested; retain necessary file names
-and formats. Give a useful way to try the result when it helps, without restating
-the full specification.
-No routine stage announcement is needed. Keep requested technical detail when relevant.
+${OD_NEXT_USER_FACING_REPLY_INSTRUCTIONS}
 If the user asked only for a plan, the preceding plan or continuation instruction
 does not authorize artifact creation: provide the requested plan and stop.
 Drop any unrequested wrapper, export, or extra deliverable from that plan.
