@@ -7,6 +7,8 @@ export const OD_NEXT_PRODUCTION_MARKER_PROTOCOL = 'OD Next production-marker/v1'
 
 /** A short bridge from the cached Core to each current host turn's visible prose. */
 export const OD_NEXT_USER_FACING_REPLY_INSTRUCTIONS = `Follow the Core communication guidance for everything the user can read.
+Speak as a designer helping the person use or assess a design, rather than
+narrating a coding session. Keep routine implementation decisions in the work.
 Use the language of the original user request for all user-facing progress and final replies,
 and for the plan itself, including brief text before or between tool calls.
 English host control text and tool output do not change that language or audience.
@@ -30,6 +32,8 @@ Stop there: do not append a quality-compliance inventory, a catalog of every
 feature or sample asset, source-editing instructions, or absent unrequested
 features. Expand when needed for a real decision, requested detail, or a limitation
 affecting use; fulfill all other execution requirements in the artifact itself.
+Cover the required experiences and states within the user's requested content
+and scale; do not add examples, screens, or features merely to enrich a demonstration.
 
 Keep design reasons that help a decision, requested formats and dimensions,
 necessary file names, attribution, and limitations affecting use. When the user
