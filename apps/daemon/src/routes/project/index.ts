@@ -43,6 +43,7 @@ import {
 } from '@open-design/contracts/runtime/preview-runtime-state';
 import {
   ANNOTATED_SELECTOR_HELPERS,
+  COMMENT_IDENTITY_HELPERS,
   automaticStrategyTaskProfileForProjectMetadata,
   defaultScenarioPluginIdForProjectMetadata,
   type ChatSessionMode,
@@ -898,6 +899,7 @@ const URL_PREVIEW_SELECTION_BRIDGE = `<script data-od-url-selection-bridge>
   }
   function active(){ return commentEnabled; }
 ${ANNOTATED_SELECTOR_HELPERS}
+${COMMENT_IDENTITY_HELPERS}
   function domSelectorFor(el){
     if (!el || !el.tagName || el === document.documentElement || el === document.body) return null;
     var parts = [];
@@ -974,8 +976,14 @@ ${ANNOTATED_SELECTOR_HELPERS}
   }
   function targetFrom(el, allowDomFallback, clickedEl, clickPoint){
     var id = annotatedElementIdFor(el);
-    if (allowDomFallback && id && generatedRootAnnotation(el, id)) return null;
     var selector = annotatedSelectorFor(el, esc);
+    if ((!clickedEl || clickedEl === el) && el && el.hasAttribute('data-od-comment-id')) {
+      var identity = ownCommentIdentity(el);
+      if (!identity) return null;
+      id = identity.elementId;
+      selector = identity.selector;
+    }
+    if (allowDomFallback && id && generatedRootAnnotation(el, id)) return null;
     if (!id && allowDomFallback && meaningfulDomFallbackTarget(el)) {
       selector = domSelectorFor(el);
       if (selector) id = 'dom:' + selector;
@@ -1012,7 +1020,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
   }
   function allTargets(){
     var includeDomFallback = commentEnabled && mode === 'picker';
-    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label]');
+    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id]');
     var items = [];
     var seen = Object.create(null);
     for (var i = 0; i < nodes.length; i++) {
@@ -1041,6 +1049,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     }, 120);
   }
   function findCommentTargetByIdentity(elementId, selector){
+    if (String(elementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(selector)) return strictCommentNode(elementId, selector);
     var el = null;
     if (selector) {
       try { el = document.querySelector(String(selector)); } catch (_) { el = null; }
@@ -1099,6 +1108,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     for (var i = 0; i < candidates.length; i++) {
       var clicked = candidates[i];
       var el = clicked;
+      if (clicked && clicked.hasAttribute('data-od-comment-id')) return { target: clicked, clicked: clicked };
       while (el && el !== document.documentElement) {
         if (allowDomFallback && meaningfulDomFallbackTarget(el)) return { target: el, clicked: clicked };
         if (el.getAttribute && (el.hasAttribute('data-od-id') || el.hasAttribute('data-screen-label'))) {
@@ -1338,6 +1348,18 @@ ${ANNOTATED_SELECTOR_HELPERS}
     if (data.type === 'od:comment-active-target') {
       activeCommentElementId = data.elementId ? String(data.elementId) : null;
       activeCommentSelector = data.selector ? String(data.selector) : null;
+      if ((String(activeCommentElementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(activeCommentSelector)) && data.locate && typeof data.requestId === 'string') {
+        var target = findCommentTargetByIdentity(activeCommentElementId, activeCommentSelector);
+        var payload = target && targetFrom(target, true);
+        if (payload) {
+          try { target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); } catch (_) {}
+          payload = targetFrom(target, true);
+        }
+        window.parent.postMessage(payload
+          ? Object.assign({}, payload, { type: 'od:comment-active-target-update', requestId: data.requestId })
+          : { type: 'od:comment-location-missing', requestId: data.requestId }, '*');
+        return;
+      }
       schedulePostActiveCommentTarget();
     }
   });
@@ -1345,7 +1367,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     if (!commentEnabled || mode !== 'picker') return;
     var result = closestTarget(ev);
     if (!result) return;
-    var payload = targetFrom(result.target, true);
+    var payload = targetFrom(result.target, true, result.clicked);
     if (!payload || payload.elementId === hoveredId) return;
     hoveredId = payload.elementId;
     window.parent.postMessage(Object.assign({}, payload, { type: 'od:comment-hover' }), '*');

@@ -115,4 +115,6 @@ export * from './observability/index.js';
 
 export * from './api/amr-continuation.js';
 export * from './runtime/comment-identity.js';
+export * from './runtime/comment-identity-helpers.js';
+export * from './runtime/comment-identity-selector.js';
 export * from './api/commentPreparation.js';

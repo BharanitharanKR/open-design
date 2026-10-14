@@ -1431,6 +1431,34 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     }
   });
 
+  it('URL served complete bridge strictly describes and locates persisted comment identities', async () => {
+    const response = await fetch(`${rawUrl('body.html')}?odPreviewBridge=selection`);
+    expect(response.status).toBe(200);
+    const bridge = load(await response.text())('script[data-od-url-selection-bridge]').text();
+    const uuid = '12345678-1234-4234-8234-123456789abc';
+    const dom = new JSDOM(`<body><h2 data-od-id="tool" data-od-comment-id="${uuid}">Target</h2></body>`, {
+      url: rawUrl('body.html'), runScripts: 'outside-only', pretendToBeVisual: true,
+    });
+    try {
+      dom.window.eval(`window.posted=[]; window.postMessage=data=>window.posted.push(data);
+        window.requestAnimationFrame=fn=>{ fn(); return 1; };
+        document.querySelector('h2').getBoundingClientRect=()=>new DOMRect(0,0,100,100);
+        document.querySelector('h2').scrollIntoView=()=>{window.scrolled=true;};`);
+      dom.window.eval(bridge);
+      const result = dom.window.eval(`(()=>{
+        window.dispatchEvent(new MessageEvent('message',{data:{type:'od:comment-mode',enabled:true,mode:'picker'}}));
+        document.querySelector('h2').dispatchEvent(new MouseEvent('click',{bubbles:true}));
+        var selected=window.posted.find(data=>data.type==='od:comment-target');
+        var duplicate=document.createElement('h2'); duplicate.hidden=true; duplicate.setAttribute('data-od-comment-id','${uuid}'); document.body.appendChild(duplicate);
+        window.posted=[];
+        window.dispatchEvent(new MessageEvent('message',{data:{type:'od:comment-active-target',elementId:'cmt:${uuid}',selector:'[data-od-comment-id="${uuid}"]',locate:true,requestId:'hidden-duplicate'}}));
+        return {selected,scrolled:!!window.scrolled,messages:window.posted};
+      })()`);
+      expect(result).toMatchObject({ selected: { elementId: `cmt:${uuid}`, selector: `[data-od-comment-id="${uuid}"]` }, scrolled: false,
+        messages: expect.arrayContaining([expect.objectContaining({type:'od:comment-location-missing',requestId:'hidden-duplicate'})]) });
+    } finally { dom.window.close(); }
+  });
+
   it('injects the URL preview snapshot bridge only when requested', async () => {
     const plain = await fetch(rawUrl('page.html'));
     expect(await plain.text()).toBe('<html/>');

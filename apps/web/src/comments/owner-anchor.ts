@@ -1,3 +1,4 @@
+import { commentSelectorClaimsIdentity } from '@open-design/contracts';
 import type { PreviewComment } from '../types';
 import { resolveCommentAnchor, type PreviewCommentSnapshot } from './anchor';
 
@@ -15,6 +16,7 @@ export function commentSelectorsMatch(left: string, right: string): boolean {
 /** Owner targets describe the current DOM. A matching structural selector takes priority
  * over an annotation id reused by a different element after publication. */
 export function resolveOwnerCommentAnchor(comment: PreviewComment, targets: Map<string, PreviewCommentSnapshot>, version?: number) {
+  if (comment.elementId.startsWith('cmt:') || commentSelectorClaimsIdentity(comment.selector)) return resolveCommentAnchor(comment, targets, version);
   const selector = comment.selector?.trim();
   // Attribute anchors keep the portable resolver's identity/drift semantics.
   if (!selector || !/^body\s*>/.test(selector)) return resolveCommentAnchor(comment, targets, version);
