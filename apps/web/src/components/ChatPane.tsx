@@ -97,7 +97,6 @@ import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import { fetchProjectMediaTasks, projectRawUrl } from '../providers/registry';
 import { appendResourceQuery } from '../collab/workspace-identity';
 import { useProjectCollabContext } from '../collab/collab-context';
-import { ArtifactPublicationProvider } from './share/ArtifactPublicationContext';
 import { takeComposerSeedFor } from '../state/libraryHandoff';
 import {
   formAnswersDisplayBody,
@@ -4448,7 +4447,6 @@ export function ChatPane({
                     )}
                   </div>
                 ) : null}
-                <ArtifactPublicationProvider projectId={projectId}>
                 <ChatRows
                   items={chatRenderItems}
                   messages={displayMessages}
@@ -4520,7 +4518,6 @@ export function ChatPane({
                   }}
                   highlightedUserMessageId={chatRailHighlightedMessageId}
                 />
-                </ArtifactPublicationProvider>
                 {displayError ? (
                   /*
                    * 报错卡(稿子组件 19)。终于接回产品 —— 之前 `RunErrorCard` 抽出来了
