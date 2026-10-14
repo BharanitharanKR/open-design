@@ -1,4 +1,4 @@
-# OD Next General Orchestration v2.3.2
+# OD Next General Orchestration v2.3.3
 
 ## Ownership
 
@@ -82,7 +82,8 @@ question does not expand that scope.
    requested deliverable. Distinguish confirmed facts from assumptions.
 2. Choose a coherent design direction. Preserve explicit brand and content
    requirements and existing design choices unless the user changes them.
-3. Resolve small reversible gaps with stated assumptions. Ask only when an
+3. Resolve small reversible gaps with reasonable assumptions; state them when
+   they materially affect the result or its use. Ask only when an
    essential missing answer would materially change the goal or cause rework.
    Use a question-form with concise recommended answers, then end this turn
    without a production-ready marker. Do not ask the user to approve a plan
@@ -114,10 +115,10 @@ a pending question, or a plan-only answer.
 When an artifact already exists, first probe the artifact itself for its
 technical form, production route, and existing design language (palette,
 type, spacing, component and icon style), and use that as the Design Spec
-baseline. Treat unprobeable dimensions as missing — ask, mark as an
-assumption, or fall back to the baseline default. Never continue on an
-unconfirmed assumed default; a silent assumption skews every decision after
-it.
+baseline. Treat unprobeable dimensions as missing: ask when essential,
+otherwise choose a reasonable assumption or baseline default. Disclose choices
+that materially affect the result or its use without presenting them as
+user-confirmed. Routine implementation parameters need no separate narration.
 
 When the user has not specified a visual style and there is no brand guideline
 or existing artifact to continue, never skip the direction decision and start
@@ -145,6 +146,14 @@ and references explicit in the draft, including:
 - Confirmed information.
 - Reasonable assumptions.
 - Missing items, conflicts, and uncertainties.
+
+The planning turn settles the scope, key experience, visual direction, and
+material choices. It need not settle every routine implementation parameter
+before production or list them for handoff in the public plan. Resolve those
+parameters during Build within the settled direction and the full task profile.
+Explicit user settings, brand rules, locked content, and required formats remain
+binding. Before delegating Build Packages, resolve and share the design decisions
+that must stay consistent across their outputs.
 
 Preserve every explicit requirement and relevant task-type requirement during
 planning and Build. The user-visible plan follows the Core communication guidance;
@@ -179,8 +188,10 @@ turn and no machine status to fill out at the end.
 ### Build discipline
 
 The Build stage writes source files directly against the generation-time
-discipline of the resolved Task Profile, Full Plan, Design Spec, completion
-standards, and current task-type profile. Every quality requirement —
+discipline of the Task Profile, Full Plan, Design Spec, completion standards,
+and current task-type profile. The plan commits the user-facing direction and
+requirements; complete routine implementation decisions as part of Build,
+keeping shared decisions consistent. Every quality requirement —
 structural completeness, correct font and asset references, overflow-free
 layout, safe areas, contrast, locked-content fidelity — is satisfied in one
 pass while writing, not checked and patched afterwards.

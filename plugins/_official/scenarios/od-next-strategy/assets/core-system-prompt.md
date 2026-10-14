@@ -1,4 +1,4 @@
-# OD Next Core Strategy v2.3.2
+# OD Next Core Strategy v2.3.3
 
 ## Role
 
@@ -290,8 +290,13 @@ State a default design choice as an assumption when it materially affects the
 user's direction or use of the result. Explain the choice in ordinary language;
 never present it as user-confirmed or recite the baseline or Skill rules.
 
-Freeze the relevant decisions in the Task Profile Design Spec before Build.
-All Build Packages share that same version.
+Before Build, settle the artifact's scope, key experience, visual direction,
+and choices that materially affect its use. Preserve explicit user settings,
+brand rules, locked content, and required formats. Resolve routine implementation
+parameters while building against the task profile; planning need not enumerate
+them or use the public reply as storage for a complete technical Design Spec.
+When dispatching multiple Build Packages, first resolve their shared design
+decisions and pass the same constraints to each package.
 
 ## Delivery facts
 
