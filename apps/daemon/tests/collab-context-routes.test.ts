@@ -129,15 +129,17 @@ describe('independent billing preflight', () => {
       modelCovered: false, funding: 'gateway' as const, fundingCheck: 'insufficient' as const,
       codingPlan: { workspaceId: 'wm-1', generatedAt: new Date().toISOString(), eligible: false, tier: null, windows: [] },
     };
-    const api = await startContextServer({ fetchBilling: display, fetchWorkspaceDirectory: display, fetchBillingPreflight: async () => preflight });
+    const legacy = vi.fn(async () => { throw new Error('early hints must not call legacy preflight'); });
+    const api = await startContextServer({ fetchBilling: display, fetchWorkspaceDirectory: display, fetchBillingPreflight: legacy, fetchBillingFundingCheck: async () => preflight });
     const response = await api.req('/api/workspace/billing/preflight?workspaceId=wm-1&modelId=model');
     expect(response.status).toBe(200);
     expect(response.body.preflight).toEqual(preflight);
     expect(display).not.toHaveBeenCalled();
+    expect(legacy).not.toHaveBeenCalled();
   });
   it('preserves upstream authorization failure and treats missing capability as unavailable', async () => {
     const read = vi.fn().mockRejectedValueOnce(new Error('API request failed with status 403: forbidden')).mockResolvedValueOnce(null);
-    const api = await startContextServer({ fetchBillingPreflight: read });
+    const api = await startContextServer({ fetchBillingFundingCheck: read });
     expect((await api.req('/api/workspace/billing/preflight?workspaceId=wm-1')).status).toBe(403);
     expect((await api.req('/api/workspace/billing/preflight?workspaceId=wm-1')).status).toBe(503);
     expect((await api.req('/api/workspace/billing/preflight')).status).toBe(400);

@@ -215,7 +215,7 @@ if (REQUIRE_LOGIN && !hasRuntimeKey()) {
   exit(1);
 }
 
-if (argv[2] === 'billing' && argv[3] === 'preflight') {
+if (argv[2] === 'billing' && ['preflight', 'funding-check'].includes(argv[3])) {
   const check = ${JSON.stringify(options.fundingCheck ?? null)};
   if (!check) exit(1);
   const workspaceId = argv[argv.indexOf('--workspace-id') + 1];
@@ -224,7 +224,7 @@ if (argv[2] === 'billing' && argv[3] === 'preflight') {
   stdout.write(JSON.stringify({
     schemaVersion: 1, workspaceId, workspaceMemberId: check.workspaceMemberId,
     modelId, generatedAt, balanceUsd: '0', modelCovered: false,
-    funding: 'gateway', fundingCheck: check.status,
+    funding: 'gateway', fundingCheck: argv[3] === 'funding-check' ? check.status : undefined,
     codingPlan: { workspaceId, generatedAt, eligible: false, tier: null, windows: [] },
   }));
   exit(0);

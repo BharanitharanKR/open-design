@@ -45,6 +45,7 @@ import {
   fetchBillingCheckoutUrl,
   fetchVelaBillingCatalog,
   fetchVelaBillingPreflight,
+  fetchVelaBillingFundingCheck,
   isVelaWorkspaceAuthorizationError,
   fetchVelaWorkspaceBillingProjection,
   fetchVelaBillingSummary,
@@ -148,6 +149,7 @@ export interface RegisterCollabContextRoutesDeps {
   createInvite?: (input: CreateWorkspaceInviteInput) => Promise<CreateInviteOutcome>;
   /** Injectable for tests; defaults to the vela billing CLI 收口. */
   fetchBilling?: () => Promise<WorkspaceBillingSummary | null>;
+  fetchBillingFundingCheck?: (workspaceId: string, modelId: string | null) => Promise<WorkspaceBillingPreflight | null>;
   fetchBillingPreflight?: (workspaceId: string, modelId: string | null) => Promise<WorkspaceBillingPreflight | null>;
   /** Capability and gap-free upstream health for the currently verified identity. */
   quotaRealtimeHealthy?: (workspaceId: string) => boolean;
@@ -882,8 +884,8 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
       return res.status(400).json({ error: 'invalid_billing_scope' });
     }
     try {
-      const preflight = await (deps.fetchBillingPreflight ?? ((id, model) =>
-        fetchVelaBillingPreflight(id, model, { configuredEnv: configuredEnv() })))(workspaceId, modelId);
+      const preflight = await (deps.fetchBillingFundingCheck ?? ((id, model) =>
+        fetchVelaBillingFundingCheck(id, model, { configuredEnv: configuredEnv() })))(workspaceId, modelId);
       if (!preflight || preflight.workspaceId !== workspaceId || preflight.modelId !== modelId) {
         return res.status(503).json({ error: 'billing_preflight_unavailable' });
       }
