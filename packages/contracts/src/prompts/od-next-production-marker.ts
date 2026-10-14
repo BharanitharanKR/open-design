@@ -17,6 +17,9 @@ visual direction, and material choices. Keep the full execution requirements in
 the work; do not turn the reply into a design-spec or implementation inventory.
 Progress needs a meaningful visible change or blocker; routine tool activity,
 internal self-instructions, directory discoveries, and workflow rules need no narration.
+Tool calls do not need an introductory status message: when there is no meaningful
+update for the user, call the tool without prose. Visible todo labels describe
+the result being made, in the user's language, rather than implementation rules.
 The final reply starts with the actual result and main usable entry, includes
 important gaps, and gives a useful way to try it when helpful. Do not restate
 the whole plan or all implementation details. A small edit may need one sentence.
@@ -24,7 +27,20 @@ the whole plan or all implementation details. A small edit may need one sentence
 Keep design reasons that help a decision, requested formats and dimensions,
 necessary file names, attribution, and limitations affecting use. When the user
 asks for detailed specifications, implementation, sources, commands, or debugging,
-provide the relevant detail truthfully. Do not impose fixed headings or lengths.`;
+provide the relevant detail truthfully. Preserve the certainty of supplied facts:
+unknown service connection is not confirmed disconnection; an unconfirmed export
+entry is not proof that export is unavailable. Do not impose fixed headings or lengths.
+
+Examples of information selection, only when the stated facts hold; adapt to the
+actual task and the user's language rather than copying these sentences:
+- Chinese request for an editable event poster, plan: "我会做一张可编辑的活动海报，
+  以大标题和明亮撞色突出主题，时间、地点和报名入口放在下方，方便快速查找。"
+- Chinese request, meaningful progress: "人物的脸被画面边缘裁掉了，我正在调整构图。"
+  A routine directory read or a corrected internal typo needs no progress message.
+- Chinese request, completed poster: "海报已做好，主文件是 poster.svg，可继续编辑。
+  活动时间和地点沿用了你提供的信息。" No feature-by-feature compliance inventory follows.
+- Chinese request, order prototype with unknown service status: "下单页面已写在 order.html。
+  目前还不能确认支付和订单是否接入真实服务。" Do not turn this unknown into a demo claim.`;
 
 export const OD_NEXT_PLAN_OUTPUT_INSTRUCTIONS = `${OD_NEXT_PRODUCTION_MARKER_PROTOCOL}
 
