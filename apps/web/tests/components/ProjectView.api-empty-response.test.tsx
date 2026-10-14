@@ -140,8 +140,10 @@ vi.mock('../../src/components/FileWorkspace', () => ({
     onFocusModeChange,
     previewComments = [],
     onSendBoardCommentAttachments,
+    commentSendDisabled,
   }: {
     onSendBoardCommentAttachments: NonNullable<typeof chatPaneMockState.boardSend>;
+    commentSendDisabled: boolean;
     previewComments?: PreviewComment[];
     openRequest?: { name: string; nonce: number } | null;
     focusMode?: boolean;
@@ -160,6 +162,7 @@ vi.mock('../../src/components/FileWorkspace', () => ({
         data-testid="file-workspace"
         data-open-request-name={openRequest?.name ?? ''}
         data-preview-comments={previewComments.map((comment) => `${comment.id}:${comment.status}`).join(',')}
+        data-comment-send-disabled={String(commentSendDisabled)}
       >
         {focusMode ? (
           <button
@@ -379,7 +382,7 @@ describe('ProjectView API empty response handling', () => {
       if (measurement === 'pending') return new Promise(() => {});
     });
     renderProjectView();
-    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    await waitForBoardSendReady();
     const attachment = (id: string, source?: ChatCommentAttachment['source']) => ({
       id, source, order: 1, filePath: 'index.html', elementId: 'hero', selector: '#hero',
       label: 'hero', comment: `note-${id}`, currentText: 'hero',
@@ -407,7 +410,7 @@ describe('ProjectView API empty response handling', () => {
 
   it('reports only the accepted saved subset when preflight invalidates the rest of a batch', async () => {
     renderProjectView();
-    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    await waitForBoardSendReady();
     const first = {
       id: 'first', source: 'saved-comment', order: 1, filePath: 'index.html', elementId: 'hero',
       selector: '#hero', label: 'hero', comment: 'first note', currentText: 'hero',
@@ -433,7 +436,7 @@ describe('ProjectView API empty response handling', () => {
 
   it('leaves upload rejection and original upload throws unchanged', async () => {
     renderProjectView();
-    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    await waitForBoardSendReady();
     const image = new File(['image'], 'image.png', { type: 'image/png' });
     vi.mocked(uploadProjectFiles).mockResolvedValue({ uploaded: [], failed: [] } as never);
     let result;
@@ -1255,6 +1258,14 @@ describe('ProjectView API empty response handling', () => {
     );
   });
 });
+
+async function waitForBoardSendReady() {
+  // Starting the transcript request is not acceptance readiness. Observe the
+  // real gate passed to FileWorkspace after transcript/authority settlement.
+  await waitFor(() => {
+    expect(screen.getByTestId('file-workspace').getAttribute('data-comment-send-disabled')).toBe('false');
+  });
+}
 
 async function sendTestPrompt() {
   await waitFor(() => {
