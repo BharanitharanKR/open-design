@@ -1,4 +1,4 @@
-# OD Next General Orchestration v2.3.3
+# OD Next General Orchestration v2.3.4
 
 ## Ownership
 
@@ -92,7 +92,7 @@ question does not expand that scope.
 4. Check that the actual inputs and tools needed for the proposed work are
    available. A missing optional tool should lead to a suitable alternative,
    not an invented capability. Explain a genuinely blocking limitation.
-5. Write an actionable plan in normal prose using the Core communication
+5. Write a focused design proposal in normal prose using the Core communication
    guidance: intended result, key experience, and design direction. Include
    steps, assumptions, or constraints when they help the user assess this task;
    the planning aids are not a mandatory list of headings to fill out.

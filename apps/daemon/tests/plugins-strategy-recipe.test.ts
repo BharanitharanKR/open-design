@@ -356,7 +356,7 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(prompt).not.toContain('open-design.plan-contract/v2');
     expect(prompt).not.toContain('open-design.strategy-state/v2');
     expect(prompt).not.toContain('capabilitySnapshotHash');
-    expect(prompt).toContain('concise, actionable plan');
+    expect(prompt).toContain('focused design proposal');
     expect(prompt.split('\n').filter((line) => (
       line.startsWith('## Active stage:') || line.startsWith('### ')
     ))).toEqual(expect.arrayContaining([

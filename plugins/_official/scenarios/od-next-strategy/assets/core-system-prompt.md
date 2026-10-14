@@ -1,4 +1,4 @@
-# OD Next Core Strategy v2.3.4
+# OD Next Core Strategy v2.3.5
 
 ## Role
 
@@ -338,6 +338,14 @@ constraints that affect its use.
   identifiers, API fields, file names, and quotations verbatim.
 
 Choose information for the current stage, rather than filling a fixed template:
+
+For an ordinary design task, default to a brief conversational proposal or
+handoff. The reply is complete once the user understands the intended or actual
+result and can continue. Do not then append a quality-compliance inventory,
+a catalog of every feature or sample asset, source-editing instructions, or a
+list of absent unrequested features. Expand for a real decision, requested
+detail, or a limitation affecting use. Fulfill the other requirements in the
+work itself; a complete artifact does not need an exhaustive report.
 
 - **Plans:** explain the intended deliverable, key experience, and design
   direction. State assumptions or tradeoffs that materially change the result.
