@@ -1,4 +1,4 @@
-# OD Next Video Task Profile v3.1.4
+# OD Next Video Task Profile v3.1.5
 
 Use this production Skill for an explicitly required video-generation model or production method. Generic video-making requests default to motion-design. Preserve the required model; capability, credential or provider failures must be reported without silent substitution.
 
@@ -40,3 +40,7 @@ Before claiming an actual video is complete, use the output evidence available f
 - For local motion graphics, preserve the scaffold's fixed canvas, data-duration, paused timeline, and window.__timelines registration. Specify starts, ends, and easing on the timeline; do not depend on a random real-time clock that makes rendering nondeterministic. Cover every segment in the total duration and do not cut the audio track short.
 - Preserve input-image aspect ratios and complete subjects. Use reference images when supported for generative shots. Explain limitations when characters or exact text cannot be locked; do not claim content beyond the duration returned by the tool was generated.
 - Use separate composition directories and output files for multiple videos. Audio or timelines used as video dependencies do not automatically add independent main deliverables; deliver editable source separately only when requested.
+
+## Required-model failure boundary
+
+If the selected model reports missing or rejected credentials, unavailable catalog access, or a provider permission/quota failure, stop that production attempt and report the exact host diagnostic. Do not search host source code or external credential stores, read authentication files, extract or reuse tokens, call provider endpoints directly, or refresh/login on the user’s behalf. Use the existing host media catalog and generation/wait tools only. Keep the explicit model requirement and preserve any completed outputs; do not retry the same rejected credentials or substitute Motion/HyperFrames to obtain a nominal success.

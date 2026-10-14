@@ -1,4 +1,4 @@
-export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.2.0';
+export const DELIVERABLE_SKILL_CATALOG_VERSION = '2.2.1';
 
 /** Main deliverable catalog. Describes outputs; never a machine-plan admission gate. */
 export const DELIVERABLE_SKILL_IDS = [
@@ -30,7 +30,7 @@ export const DELIVERABLE_SKILLS: readonly DeliverableSkillDefinition[] = [
   { id: 'hyperframes', title: 'HyperFrames', description: 'Independently requested editable timeline-animation HTML source, not an internal renderer composition for MP4; a request for both editable source and MP4 also selects video.', version: '3.1.0', routes: [{ id: 'hyperframes-html', kind: 'source', extensions: ['html'] }] },
   { id: 'webgl', title: 'WebGL', description: 'GPU, shaders, and interactive 3D delivered as real-time HTML.', version: '3.1.1', routes: [{ id: 'webgl-html', kind: 'interactive', extensions: ['html'] }] },
   { id: 'live-artifact', title: 'Live Artifact', description: 'Views that refresh from local JSON or connected data, including task lists and dashboards; register the actual source, then refresh the same artifact without rebuilding its template.', version: '3.1.4', routes: [{ id: 'live-artifact', kind: 'live', extensions: ['html'] }] },
-  { id: 'video', title: 'Video', description: 'Video made with the explicitly required video-generation model or production method; preserve that selection and report unavailable capabilities without substituting Motion. Unspecified video-making requests use motion-design.', version: '3.1.4', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
+  { id: 'video', title: 'Video', description: 'Video made with the explicitly required video-generation model or production method; preserve that selection and report unavailable capabilities without substituting Motion. Unspecified video-making requests use motion-design.', version: '3.1.5', routes: [{ id: 'media-video', kind: 'video', extensions: ['mp4'] }] },
   { id: 'audio', title: 'Audio', description: 'Narration, music, and sound effects delivered as actual audio files through media interfaces.', version: '3.1.2', routes: [{ id: 'media-audio', kind: 'audio', extensions: ['mp3', 'wav', 'm4a', 'ogg'] }] },
 ];
 
