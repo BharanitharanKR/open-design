@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { CommentPreparationError, prepareCommentIdentity } from '../../services/comment-preparation.js';
 import { ProjectPublicFileStopPendingError, type PublicFileDeleteTarget } from '../../collab/project-public-file-stop.js';
 import type { ProjectDeleteResponse } from '@open-design/contracts';
 import { publicFileMutationHandler } from '../public-file-mutation-handler.js';
@@ -5801,6 +5802,7 @@ export function registerProjectArtifactRoutes(app: Express, ctx: RegisterProject
 }
 
 export interface RegisterProjectFileRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'uploads' | 'node' | 'projectStore' | 'projectFiles' | 'documents' | 'artifacts' | 'projectPreviewScopes'> {
+  isProjectEditingBusy?: (projectId: string) => boolean;
   publicFileMutations?: PublicFileMutations;
   stopPublicFilesBeforeDelete?: (projectId: string, target?: PublicFileDeleteTarget) => Promise<void>;
   verifyWorkspaceRequestAuthority?: VerifyWorkspaceRequestAuthority;
@@ -7429,6 +7431,39 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST',
         String(err?.message || err),
       );
+    }
+  });
+
+  // Explicit authorized source mutation; preview/comment permissions never call this.
+  app.post(/^\/api\/projects\/([^/]+)\/files\/(.+)\/comment-identities\/prepare$/u, async (req, res) => {
+    try {
+      if (!req.get('x-od-workspace-id')?.trim() || !req.get('x-od-workspace-member-id')?.trim()) {
+        return sendApiError(res, 403, 'WORKSPACE_CONTEXT_REQUIRED', 'Authenticated workspace source-edit authority required');
+      }
+      const projectId = String(req.params[0] ?? '');
+      const fileName = String(req.params[1] ?? '');
+      if (rejectInternalVersionPath(res, fileName)) return;
+      const project = getProject(db, projectId);
+      if (!project) return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      const authority = await ctx.verifyWorkspaceRequestAuthority?.(req);
+      if (!authority) return sendApiError(res, 503, 'WORKSPACE_AUTHORITY_UNAVAILABLE', 'Source-edit authority could not be verified');
+      if (!authority.ok) return sendApiError(res, authority.status, authority.code, authority.message);
+      const verified = authority.context;
+      const resource = getWorkspaceProject(db, verified.workspaceId, project.id);
+      if (!resource || verified.workspaceId !== req.get('x-od-workspace-id')?.trim() ||
+          verified.workspaceMemberId !== req.get('x-od-workspace-member-id')?.trim() ||
+          !workspaceResourceAccess(resource, workspaceResourceContextFromVerified(verified)).canMutate) {
+        return sendApiError(res, 403, 'WORKSPACE_PROJECT_PERMISSION_DENIED', 'Verified source-write permission required');
+      }
+      if (!await enforceWorkspaceProjectMutation(
+        req, res, sendApiError, getWorkspaceProject, getWorkspaceProjectByProjectId,
+        db, project.id, 'writeFiles',
+      )) return;
+      const busy = () => ctx.isProjectEditingBusy?.(project.id) ?? true;
+      res.json(await prepareCommentIdentity(PROJECTS_DIR, project.id, fileName, req.body, project.metadata, busy));
+    } catch (err) {
+      if (err instanceof CommentPreparationError) return sendApiError(res, err.status, err.code, err.message);
+      sendApiError(res, 500, 'COMMENT_PREPARATION_FAILED', 'Source save or version verification failed; reload source before explicitly retrying. No rollback was attempted.');
     }
   });
 
