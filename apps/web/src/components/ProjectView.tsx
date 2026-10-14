@@ -113,11 +113,14 @@ import type {
   TrackingRunRecoveryActionType,
 } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
+import { savedCommentIds } from '@open-design/contracts/analytics';
+import { observeAnalytics } from '../analytics/observe';
 import {
   trackByokPreflightBlocked,
   trackComposerBarClick,
   trackConversationForkClick,
   trackConversationForkResult,
+  trackProjectCommentSendResult,
   trackDesignSystemApplyResult,
   trackDesignSystemEnrichClick,
   trackPageView,
@@ -11321,11 +11324,27 @@ export function ProjectView({
       commentAttachments: ChatCommentAttachment[],
       images: File[] = [],
     ): Promise<CommentSendResult> => {
+      const finish = (result: CommentSendResult): CommentSendResult => {
+        observeAnalytics(() => {
+          const submittedIds = savedCommentIds(commentAttachments) ?? [];
+          const returnedIds = new Set(result.commentIds);
+          trackProjectCommentSendResult(analytics.track, {
+            page_name: 'artifact',
+            area: 'comment_popover',
+            project_id: project.id,
+            project_kind: projectKindFromMetadataToTracking(project.metadata),
+            result: result.status,
+            submitted_comment_ids: submittedIds,
+            comment_ids: submittedIds.filter((id) => returnedIds.has(id)),
+          });
+        });
+        return result;
+      };
       if (currentConversationQueueDisabled) {
-        return { status: 'rejected', commentIds: [] };
+        return finish({ status: 'rejected', commentIds: [] });
       }
       if (commentAttachments.length === 0 && images.length === 0) {
-        return { status: 'rejected', commentIds: [] };
+        return finish({ status: 'rejected', commentIds: [] });
       }
       setWorkspaceFocused(false);
       setCommentInspectorActive(false);
@@ -11341,7 +11360,7 @@ export function ProjectView({
           projectRunWorkspaceContext,
         );
         if (result.uploaded.length !== images.length) {
-          return { status: 'rejected', commentIds: [] };
+          return finish({ status: 'rejected', commentIds: [] });
         }
         uploaded = result.uploaded;
       }
@@ -11349,10 +11368,10 @@ export function ProjectView({
         const queued = uploaded.length > 0
           ? await handleSend('', uploaded, [], { queueOnly: true, entryFrom: 'comment' })
           : false;
-        return {
+        return finish({
           status: queued ? 'queued' : 'rejected',
           commentIds: [],
-        };
+        });
       }
       const queuedCommentIds: string[] = [];
       for (let i = 0; i < commentAttachments.length; i++) {
@@ -11368,13 +11387,13 @@ export function ProjectView({
           { queueOnly: true, entryFrom: 'comment' },
         );
         if (!queued) {
-          return { status: 'rejected', commentIds: queuedCommentIds };
+          return finish({ status: 'rejected', commentIds: queuedCommentIds });
         }
         queuedCommentIds.push(commentAttachment.id);
       }
-      return { status: 'queued', commentIds: queuedCommentIds };
+      return finish({ status: 'queued', commentIds: queuedCommentIds });
     },
-    [handleSend, project.id, currentConversationQueueDisabled, projectRunWorkspaceContext],
+    [handleSend, project.id, project.metadata, analytics.track, currentConversationQueueDisabled, projectRunWorkspaceContext],
   );
   const commentQueueOnSend = currentConversationBusy && !currentConversationQueueDisabled;
 

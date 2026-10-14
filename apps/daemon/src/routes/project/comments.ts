@@ -689,32 +689,37 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
               : 'other'
             : 'unknown';
         const planId = workspaceContext?.planId?.trim().toLowerCase();
-        void ctx.telemetry?.captureProductEvent?.(
-          req,
-          'project_comment_create_result',
-          {
-            page_name: 'artifact',
-            area: 'comments',
-            result: 'success',
-            target_project_relation: targetProjectRelation,
-            comment_level: 'top_level',
-            project_id: req.params.id,
-            project_kind: projectKindFromMetadataToTrackingOrLegacyDefault(project?.metadata),
-            ...(workspaceContext
-              ? {
-                  workspace_key: workspaceContext.workspaceId,
-                  workspace_type: workspaceContext.workspaceType,
-                  workspace_role: workspaceContext.role,
-                  workspace_lifecycle: workspaceContext.lifecycleState,
-                  billing_state: workspaceContext.billingState,
-                  plan_bucket: !planId || planId === 'free' ? 'free' : 'paid',
-                  provider_mode: workspaceContext.providerMode,
-                  seat_state: workspaceContext.seatSummary.isSeatFull ? 'full' : 'available',
-                  $groups: { workspace: workspaceContext.workspaceId },
-                }
-              : {}),
-          },
-        );
+        try {
+          void Promise.resolve(ctx.telemetry?.captureProductEvent?.(
+            req,
+            'project_comment_create_result',
+            {
+              page_name: 'artifact',
+              area: 'comments',
+              result: 'success',
+              target_project_relation: targetProjectRelation,
+              comment_level: 'top_level',
+              project_id: req.params.id,
+              comment_id: comment.id,
+              project_kind: projectKindFromMetadataToTrackingOrLegacyDefault(project?.metadata),
+              ...(workspaceContext
+                ? {
+                    workspace_key: workspaceContext.workspaceId,
+                    workspace_type: workspaceContext.workspaceType,
+                    workspace_role: workspaceContext.role,
+                    workspace_lifecycle: workspaceContext.lifecycleState,
+                    billing_state: workspaceContext.billingState,
+                    plan_bucket: !planId || planId === 'free' ? 'free' : 'paid',
+                    provider_mode: workspaceContext.providerMode,
+                    seat_state: workspaceContext.seatSummary.isSeatFull ? 'full' : 'available',
+                    $groups: { workspace: workspaceContext.workspaceId },
+                  }
+                : {}),
+            },
+          )).catch(() => {});
+        } catch {
+          // Measurement cannot change the successful save or response.
+        }
       }
       res.json({ comment });
     } catch (err: any) {

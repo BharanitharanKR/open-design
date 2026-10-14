@@ -8,6 +8,7 @@ import {
   type SharePublishRequest,
 } from '@open-design/contracts';
 import { boundedRequestErrorCode } from '../analytics/workspace';
+import { publishReceiptObservation } from '@open-design/contracts/analytics';
 import type {
   ConnectorAuthConfigPrepareResponse,
   ConnectorDetail,
@@ -164,6 +165,8 @@ export interface WebPublicFileShareLink {
   url: string | null;
   /** Publish only: this publish made a private team-workspace project team-visible. */
   madeTeamVisible?: true;
+  /** Optional observation only; never determines publication or link readiness. */
+  publicationObservation?: { share_version?: number; published_at?: number };
 }
 
 function nonEmptyString(value: unknown): string | null {
@@ -173,13 +176,18 @@ function nonEmptyString(value: unknown): string | null {
 /** Normalize the POST publish-public body (`SharePublishResponse`). */
 function publicFileShareLinkFromPublish(payload: unknown): WebPublicFileShareLink {
   const body = (payload && typeof payload === 'object' ? payload : {}) as {
-    receipt?: { slug?: unknown };
+    receipt?: { slug?: unknown; version?: unknown; publishedAt?: unknown };
     url?: unknown;
     madeTeamVisible?: unknown;
   };
   const slug = nonEmptyString(body.receipt?.slug);
   if (!slug) throw new Error('Publish response is missing its receipt slug');
-  return { slug, url: nonEmptyString(body.url), ...(body.madeTeamVisible === true ? { madeTeamVisible: true as const } : {}) };
+  const observation = publishReceiptObservation(body.receipt);
+  return {
+    slug, url: nonEmptyString(body.url),
+    ...(body.madeTeamVisible === true ? { madeTeamVisible: true as const } : {}),
+    ...(Object.keys(observation).length > 0 ? { publicationObservation: observation } : {}),
+  };
 }
 
 /** Normalize the GET publish-public body (`ProjectFilePublicShareResponse`):
