@@ -719,7 +719,7 @@ function ExampleCard({
                       await exportAsZip(html, exportTitle);
                     } catch (error) {
                       console.warn('[ExamplesTab] ZIP export failed:', error);
-                      alert(t('fileViewer.exportFailed'));
+                      alert(`${t('fileViewer.exportFailedTitle')}\n${t('fileViewer.exportFailedDescription')}`);
                     }
                   }}
                 >

@@ -180,7 +180,7 @@ describe('ExamplesTab', () => {
       else resolveDownload(result);
     });
     if (result === 'interrupted') {
-      expect(alertSpy).toHaveBeenCalledExactlyOnceWith('Export failed. Please try again.');
+      expect(alertSpy).toHaveBeenCalledExactlyOnceWith('Export failed\nThis export did not complete. Please try again.');
     } else {
       expect(alertSpy).not.toHaveBeenCalled();
     }

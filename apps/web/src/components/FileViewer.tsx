@@ -286,6 +286,11 @@ import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
 import {
+  LocalizedExportError,
+  exportFailureToast,
+  genericExportFailedToast,
+} from './export-failure-toast';
+import {
   PreviewDrawOverlay,
   ANNOTATION_EVENT,
   type AnnotationEventDetail,
@@ -3332,12 +3337,14 @@ function isHtmlVersionableFile(file: ProjectFile): boolean {
 }
 
 function fileVersionSourceLabel(version: ProjectFileVersion, t: TranslateFn): string {
+  if (version.source === 'sync') return t('fileViewer.versions.sourceSync');
   if (version.source === 'manual') return t('fileViewer.versions.sourceManual');
   if (version.source === 'restore') return t('fileViewer.versions.sourceRestore');
   return t('fileViewer.versions.sourceAi');
 }
 
 function fileVersionSourceClassName(version: ProjectFileVersion): string {
+  if (version.source === 'sync') return 'sync';
   if (version.source === 'manual') return 'manual';
   if (version.source === 'restore') return 'restore';
   return 'ai';
@@ -3346,6 +3353,7 @@ function fileVersionSourceClassName(version: ProjectFileVersion): string {
 // Any unknown/legacy source value counts as 'ai', matching the label and
 // class-name fallbacks above.
 function fileVersionSourceToTracking(version: ProjectFileVersion): TrackingFileVersionSource {
+  if (version.source === 'sync') return 'sync';
   if (version.source === 'manual') return 'manual';
   if (version.source === 'restore') return 'restore';
   return 'ai';
@@ -3411,6 +3419,7 @@ type HtmlVersionExportContext = {
 
 type ExportToastState = {
   message: string;
+  details?: string | null;
   tone: 'default' | 'success' | 'error' | 'loading';
 };
 
@@ -3837,7 +3846,7 @@ function FileVersionManagerModal({
     setVersionExportToast({ message: t('fileViewer.exportingProgress'), tone: 'loading' });
     const content = await ensureVersionContent(version);
     if (!content) {
-      setVersionExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      setVersionExportToast(genericExportFailedToast(t));
       return;
     }
     try {
@@ -3855,8 +3864,7 @@ function FileVersionManagerModal({
       }
       setVersionExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
     } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
-      setVersionExportToast({ message, tone: 'error' });
+      setVersionExportToast(exportFailureToast(err, t));
     }
   }
 
@@ -3881,7 +3889,7 @@ function FileVersionManagerModal({
     setVersionExportToast({ message: t('fileViewer.exportingProgress'), tone: 'loading' });
     const content = await ensureVersionContent(version);
     if (!content) {
-      setVersionExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      setVersionExportToast(genericExportFailedToast(t));
       return;
     }
     const context: HtmlVersionExportContext = {
@@ -3901,7 +3909,7 @@ function FileVersionManagerModal({
     }
     await runVersionExport(version, async (_content, title) => {
       const snapshot = await captureVersionPreviewSnapshot({ full: true });
-      if (!snapshot) throw new Error(t('fileViewer.exportFailed'));
+      if (!snapshot) throw new Error('version PDF snapshot unavailable');
       await exportSnapshotAsPdf(snapshot, title);
     });
   }
@@ -3909,9 +3917,9 @@ function FileVersionManagerModal({
   async function exportVersionImage(version: ProjectFileVersion, format: ImageExportFormat) {
     await runVersionExport(version, async (_content, title) => {
       const snapshot = await captureVersionPreviewSnapshot({ full: true });
-      if (!snapshot) throw new Error(t('fileViewer.exportImageFailed'));
+      if (!snapshot) throw new LocalizedExportError(t('fileViewer.exportImageFailed'));
       const blob = await imageDataUrlToBlob(snapshot.dataUrl, format);
-      if (blob.size <= 0) throw new Error(t('fileViewer.exportImageFailed'));
+      if (blob.size <= 0) throw new LocalizedExportError(t('fileViewer.exportImageFailed'));
       const target = await prepareImageExportTarget(title, format, { useNativePicker: false });
       if (!target) return 'cancelled';
       if (target.method === 'download' && format === 'png') {
@@ -4405,6 +4413,7 @@ function FileVersionManagerModal({
         <Toast
           className="file-version-export-toast"
           message={visibleExportToast.message}
+          details={visibleExportToast.details}
           tone={visibleExportToast.tone}
           role={visibleExportToast.tone === 'error' ? 'alert' : 'status'}
           ttlMs={visibleExportToast.tone === 'loading' ? 60000 : 2200}
@@ -7455,8 +7464,7 @@ function HtmlViewer({
     }
     const failToast = (err?: unknown) => {
       stopTicker();
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
-      if (toastFormats.has(format)) setExportToast({ message, tone: 'error' });
+      if (toastFormats.has(format)) setExportToast(exportFailureToast(err, t));
     };
     try {
       const out = fn();
@@ -16133,8 +16141,7 @@ function HtmlViewer({
       });
     } catch (err) {
       console.warn('[exportAsImage] failed to save snapshot:', err);
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportImageFailed');
-      setExportToast({ message, tone: 'error' });
+      setExportToast(exportFailureToast(err, t));
       fireImageExportResult('failed', exportErrorCode(err));
     } finally {
       imageExportInFlightRef.current = false;
@@ -18108,6 +18115,7 @@ function HtmlViewer({
                 ? createPortal(
                     <TopStackedToast
                       message={exportToast.message}
+                      details={exportToast.details}
                       tone={exportToast.tone}
                       role={exportToast.tone === 'error' ? 'alert' : 'status'}
                       ttlMs={exportToast.tone === 'loading' ? 60000 : 2200}
@@ -18468,12 +18476,13 @@ function HtmlViewer({
                       // reach at all (transient, says nothing about support).
                       // Telling a user with a dead daemon that the feature is
                       // "not available here" sends them to the wrong problem.
-                      throw new Error(
-                        'error' in res
-                          ? res.error
-                          : res.reason === 'unreachable'
-                            ? t('fileViewer.exportDaemonUnreachable')
-                            : t('fileViewer.exportPptxNa'),
+                      // A raw renderer/daemon `error` string stays out of the UI
+                      // (generic S26a copy); the two localized reasons pass through.
+                      if ('error' in res) throw new Error(res.error);
+                      throw new LocalizedExportError(
+                        res.reason === 'unreachable'
+                          ? t('fileViewer.exportDaemonUnreachable')
+                          : t('fileViewer.exportPptxNa'),
                       );
                     }
                     return res.completion;

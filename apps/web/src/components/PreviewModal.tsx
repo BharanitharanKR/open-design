@@ -846,7 +846,7 @@ export function PreviewModal({
                                 await exportAsZip(activeHtml, exportTitle);
                               } catch (error) {
                                 console.warn('[PreviewModal] ZIP export failed:', error);
-                                alert(t('fileViewer.exportFailed'));
+                                alert(`${t('fileViewer.exportFailedTitle')}\n${t('fileViewer.exportFailedDescription')}`);
                               }
                             }}
                           >

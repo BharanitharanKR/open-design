@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { VisuallyHidden } from '@open-design/components';
 import { Icon } from './Icon';
 import { useI18n } from '../i18n';
 import { useCloudSignIn } from './use-cloud-sign-in';
+import { AmrActivationHintText } from './AmrActivationHintText';
 
 const DISMISSED_KEY = 'od.entry.cloudSignInTip.dismissed';
 
@@ -85,6 +87,9 @@ export function RailAccountRecoveryTip() {
   );
 }
 
+// How long a sign-in waits for the browser before offering to reopen it.
+const ACTIVATION_HINT_DELAY_MS = 5000;
+
 /**
  * The signed-out rail's bottom callout (#5517 "OpenDesign Cloud 版" card).
  * The demo's card jumps to a mock sign-in; the product card IS the sign-in:
@@ -101,12 +106,32 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
   const { state, status, begin, cancel } = useCloudSignIn({ onLoginSuccess });
   const signing = state === 'signing';
 
-  const headBadge = (
-    <div className="entry-local-mode-tip__head">
-      <span className="entry-local-mode-tip__login-badge">
-        <Icon name="log-in" size={14} />
-        {actionLabel ?? t('settings.amrLogin')}
-      </span>
+  // The "sign-in page didn't open?" line is a fallback: it waits a few
+  // seconds into the attempt (the browser usually opens on its own), unless
+  // the daemon already reports the browser failed to open. Same rule as the
+  // onboarding welcome screen.
+  const [activationHintDue, setActivationHintDue] = useState(false);
+  useEffect(() => {
+    if (!signing) {
+      setActivationHintDue(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setActivationHintDue(true), ACTIVATION_HINT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [signing]);
+
+  // The pitch and the call-to-action slot stay put across states, so the
+  // card neither jumps in height nor shows a second "Sign in" while one is
+  // already running: the button itself turns into the pending indicator.
+  const pitch = (
+    <div className="entry-local-mode-tip__pitch">
+      <strong className="entry-local-mode-tip__title">
+        <span className="entry-local-mode-tip__title-icon" aria-hidden>
+          <Icon name="sparkles" size={12} />
+        </span>
+        {t('entry.cloudCreditsTitle')}
+      </strong>
+      <p>{t('entry.cloudCreditsBody')}</p>
     </div>
   );
 
@@ -127,29 +152,43 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
       aria-label={actionLabel ?? t(sharePrompt ? 'settings.amrLogin' : 'entry.cloudCalloutTitle')}
       data-testid={sharePrompt ? 'share-cloud-signin' : 'entry-cloud-signin-tip'}
     >
+      {sharePrompt ? null : pitch}
+      {state === 'error' ? (
+        <p className="entry-local-mode-tip__error" role="alert">
+          {t('settings.amrLoginErrorCompact')}
+        </p>
+      ) : null}
+      <div className="entry-local-mode-tip__head">
+        <span
+          className={`entry-local-mode-tip__login-badge${signing ? ' is-pending' : ''}`}
+          role={signing ? 'status' : undefined}
+        >
+          <Icon name={signing ? 'spinner' : 'log-in'} size={14} />
+          <span>{signing ? t('settings.amrSigningIn') : actionLabel ?? t(sharePrompt ? 'settings.amrLogin' : 'entry.cloudCreditsCta')}</span>
+        </span>
+      </div>
       {signing ? (
         <>
-          {headBadge}
-          <p>{t('settings.amrSigningIn')}</p>
-          {status?.activationUrl ? (
-            <div className="amr-login-activation" role="group">
-              <span className="amr-login-activation__hint">
+          {status?.activationUrl && (activationHintDue || status.browserOpenFailed) ? (
+            <p className="entry-local-mode-tip__activation">
+              <span>
                 {status.browserOpenFailed
-                  ? t('settings.amrActivationBrowserFailed')
-                  : t('settings.amrActivationHint')}
+                  ? <AmrActivationHintText browserOpenFailed />
+                  : t('settings.onboardingActivationPrompt')}
               </span>
-              <div className="amr-login-activation__actions">
-                <a
-                  className="amr-login-activation__open"
-                  href={status.activationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {t('settings.amrActivationOpen')}
-                </a>
-              </div>
-            </div>
+              <a
+                className="entry-local-mode-tip__activation-link"
+                href={status.activationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {status.browserOpenFailed
+                  ? t('settings.amrActivationOpen')
+                  : t('settings.onboardingActivationReopen')}
+                <Icon name="external-link" size={11} />
+              </a>
+            </p>
           ) : null}
           <button
             type="button"
@@ -162,19 +201,7 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
             {t('settings.amrCancelSignIn')}
           </button>
         </>
-      ) : state === 'error' ? (
-        <>
-          {headBadge}
-          <p role="alert">{t('settings.amrLoginErrorCompact')}</p>
-        </>
-      ) : sharePrompt ? (
-        headBadge
-      ) : (
-        <>
-          <p>{t('entry.cloudCalloutBody')}</p>
-          {headBadge}
-        </>
-      )}
+      ) : null}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import { useT } from '../../i18n';
 import { useCloudSignIn } from '../use-cloud-sign-in';
+import { AmrActivationHintText } from '../AmrActivationHintText';
 import { ShareButton, type ShareButtonVariant } from './ShareButton';
 import styles from './ShareSignInButton.module.css';
 
@@ -49,9 +50,7 @@ export function ShareSignInButton({ variant, actionLabel, onLoginSuccess }: {
           {status?.activationUrl ? (
             <div className="amr-login-activation">
               <span className="amr-login-activation__hint">
-                {status.browserOpenFailed
-                  ? t('settings.amrActivationBrowserFailed')
-                  : t('settings.amrActivationHint')}
+                <AmrActivationHintText browserOpenFailed={Boolean(status.browserOpenFailed)} />
               </span>
               <div className="amr-login-activation__actions">
                 <a
