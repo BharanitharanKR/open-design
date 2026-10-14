@@ -8,6 +8,7 @@
 // only constructed when OD_COLLAB_CLOUD_URL is set (see createCollabCloudClientFromEnv),
 // so an unconfigured daemon never even reaches here.
 
+import { createHash } from "node:crypto";
 import { SHARE_COMMENT_TERMINAL_REJECTION } from "@open-design/contracts";
 import type {
 	CollabCloudComment,
@@ -320,6 +321,35 @@ export function previewCommentToCloud(
 	return cloud;
 }
 
+/** Deletion carries identity and ordering only; obsolete content must not block its delivery.
+ * Apply at delivery as well as creation so persisted legacy tombstones recover.
+ */
+function commentRelayPayload(comment: CollabCloudComment): CollabCloudComment {
+	if (!comment.deleted) return comment;
+	return {
+		id: comment.id,
+		projectId: comment.projectId,
+		conversationId: comment.conversationId,
+		memberId: comment.memberId,
+		filePath: comment.filePath,
+		seq: comment.seq,
+		status: comment.status,
+		createdAt: comment.createdAt,
+		updatedAt: comment.updatedAt,
+		deleted: true,
+		note: '',
+		elementId: '',
+		selector: '',
+		label: '',
+		text: '',
+		htmlHint: '',
+		position: { x: 0, y: 0, width: 0, height: 0 },
+		...(comment.publicationSlug !== undefined ? { publicationSlug: comment.publicationSlug } : {}),
+		...(comment.authorKind !== undefined ? { authorKind: comment.authorKind } : {}),
+		...(comment.authorAppUserId !== undefined ? { authorAppUserId: comment.authorAppUserId } : {}),
+	};
+}
+
 export interface CollabCloudService {
 	/** PUT the current member's directory entry (best-effort; no-op off-team). */
 	registerSelf(context?: WorkspaceCollabContext): Promise<void>;
@@ -602,7 +632,7 @@ export function createCollabCloudService(
 		// The tombstone's own event time — newer than the comment's last content
 		// edit so it can't be mistaken for a stale record on the relay/receiver.
 		cloud.updatedAt = Date.now();
-		await deps.client.pushComment(identity.teamId, comment.projectId, cloud);
+		await deps.client.pushComment(identity.teamId, comment.projectId, commentRelayPayload(cloud));
 	}
 
 	function queuedCloudComment(
@@ -635,7 +665,7 @@ export function createCollabCloudService(
 				relayScope: identity.relayScope,
 				projectId: comment.projectId,
 				expectedOwnerMemberId,
-				comment: cloud,
+				comment: commentRelayPayload(cloud),
 			});
 		} catch (error) {
 			deps.onError?.(error);
@@ -664,9 +694,13 @@ export function createCollabCloudService(
 	): void {
 		const attemptCount = record.attemptCount + 1;
 		const message = error instanceof Error ? error.message : String(error);
+		const payloadTooLarge = error instanceof CollabCloudError && error.status === 413;
 		deps.commentOutbox?.defer(record, {
-			nextAttemptAt: now() + Math.max(0, retryDelayMs(attemptCount)),
-			error: message,
+			// A 413 will not heal with time. Keep this exact revision durable and
+			// visible as failed; an edit/delete or explicit Retry makes it due again.
+			nextAttemptAt: payloadTooLarge
+				? Number.MAX_SAFE_INTEGER : now() + Math.max(0, retryDelayMs(attemptCount)),
+			error: payloadTooLarge ? "PAYLOAD_TOO_LARGE" : message,
 		});
 		deps.onError?.(error);
 	}
@@ -728,14 +762,19 @@ export function createCollabCloudService(
 			const result = await deps.client.pushComment(
 				identity.teamId,
 				record.projectId,
-				record.publication
+				commentRelayPayload(record.publication
 					? {
 							...record.comment,
 							filePath: record.publication.publicFilePath,
 							publicationSlug: record.publication.slug,
 						}
-					: record.comment,
-				record.eventKey,
+					: record.comment),
+				// Legacy full-content tombstones may already have a lost-ACK receipt.
+				// Use a stable new key for the compact wire format, avoiding a same-key
+				// different-payload conflict while keeping retries idempotent.
+				record.comment.deleted
+					? createHash("sha256").update(`compact-delete-v1:${record.eventKey}`).digest("hex")
+					: record.eventKey,
 				// Only the durable owner-mediated publication relay may request an
 				// original member. Vela independently verifies this owner, active
 				// publication and same-team directory before honoring the hint.

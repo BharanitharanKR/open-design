@@ -234,6 +234,7 @@ export const uk: Dict = {
   'libraryPicker.add': 'Імпортувати',
   'libraryPicker.loading': 'Завантаження…',
   'common.save': 'Зберегти',
+  'fileViewer.commentSync.payloadTooLarge': "Деякі коментарі перевищують допустимий розмір для синхронізації. Автоматичні повторні спроби призупинено. Скоротіть або видаліть ці коментарі, щоб продовжити.",
   'fileViewer.commentSync.sessionMissing': "Ви не ввійшли в обліковий запис. Синхронізацію коментарів призупинено; нові коментарі відвідувачів тимчасово не видно.",
   'fileViewer.commentSync.shareStoppedPersonal': "Посилання вимкнено. Синхронізацію коментарів зі спільною сторінкою призупинено.",
   'fileViewer.commentSync.shareStoppedTeam': "Посилання вимкнено.",

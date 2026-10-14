@@ -1,3 +1,4 @@
+import { captureJsonBodySize } from '../src/http/json-body-size.js';
 import { execFile, spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
@@ -111,7 +112,7 @@ async function startRouteServer() {
   ensureWorkspaceProject(db, { projectId: PROJECT, workspaceId: WORKSPACE, visibility: 'team', createdByWorkspaceMemberId: OWNER });
   const app = express();
   requestAudit = [];
-  app.use(express.json({ limit: '4mb' }));
+  app.use(express.json({ limit: '4mb', verify: captureJsonBodySize }));
   app.use((req, _res, next) => {
     requestAudit.push({ method: req.method, path: req.path, body: req.body });
     next();
@@ -241,24 +242,45 @@ describe('od comment CLI HTTP/SQLite route integration', () => {
     expect(getPreviewComment(db!, PROJECT, CONVERSATION, JSON.parse(fromStdin.stdout).comment.id)?.note).toBe(stdinNote);
   });
 
+  it('OPEND-3661 rejects a complete JSON body over 64 KiB before SQLite or relay writes', async () => {
+    const base = await startRouteServer();
+    const url = `${base}/api/projects/${PROJECT}/conversations/${CONVERSATION}/comments`;
+    const payload = { target, note: '中文😀\n' };
+    const emptyBytes = Buffer.byteLength(JSON.stringify(payload));
+    payload.note += 'x'.repeat(SHARE_COMMENT_MAX_BYTES - emptyBytes);
+    const send = (body: string) => fetch(url, { method: 'POST', headers: {
+      'Content-Type': 'application/json', 'x-od-workspace-id': WORKSPACE,
+      'x-od-workspace-member-id': OWNER,
+    }, body });
+    expect(Buffer.byteLength(JSON.stringify(payload))).toBe(SHARE_COMMENT_MAX_BYTES);
+    expect((await send(JSON.stringify(payload))).status).toBe(200);
+    const before = listPreviewComments(db!, PROJECT, CONVERSATION);
+    const rejected = await send(JSON.stringify({ ...payload, note: payload.note + 'x' }));
+    expect(rejected.status).toBe(413);
+    expect(await rejected.json()).toMatchObject({ error: { code: 'PAYLOAD_TOO_LARGE' } });
+    expect(listPreviewComments(db!, PROJECT, CONVERSATION)).toEqual(before);
+    // Whitespace is part of the transport ceiling even though parsing drops it.
+    expect((await send(JSON.stringify(payload) + ' ')).status).toBe(413);
+    expect(listPreviewComments(db!, PROJECT, CONVERSATION)).toEqual(before);
+  });
+
   it('accepts exactly the server byte ceiling and rejects one UTF-8 byte over it through CLI, HTTP, and SQLite', async () => {
     const base = await startRouteServer();
     const common = [...headers(OWNER), '--daemon-url', base, '--json'];
-    const exactNote = '评论'.repeat(Math.floor(SHARE_COMMENT_MAX_BYTES / Buffer.byteLength('评论', 'utf8')))
-      + 'a'.repeat(SHARE_COMMENT_MAX_BYTES % Buffer.byteLength('评论', 'utf8'));
-    const exactUpdateNote = '更新'.repeat(Math.floor(SHARE_COMMENT_MAX_BYTES / Buffer.byteLength('更新', 'utf8')))
-      + 'b'.repeat(SHARE_COMMENT_MAX_BYTES % Buffer.byteLength('更新', 'utf8'));
-    const oversizedNote = `${exactNote}b`;
-    expect(Buffer.byteLength(exactNote, 'utf8')).toBe(SHARE_COMMENT_MAX_BYTES);
-    expect(Buffer.byteLength(exactUpdateNote, 'utf8')).toBe(SHARE_COMMENT_MAX_BYTES);
-    expect(exactUpdateNote).not.toBe(exactNote);
-    expect(Buffer.byteLength(oversizedNote, 'utf8')).toBe(SHARE_COMMENT_MAX_BYTES + 1);
+    const sizedNote = (extra: Record<string, unknown>, prefix: string) => {
+      const overhead = Buffer.byteLength(JSON.stringify({ target, ...extra, note: prefix }));
+      return prefix + 'a'.repeat(SHARE_COMMENT_MAX_BYTES - overhead);
+    };
+    const exactNote = sizedNote({}, '评论😀\n');
+    // Updates include the persisted UUID in the request envelope.
+    const oversizedNote = exactNote + 'b';
+    expect(Buffer.byteLength(JSON.stringify({ target, note: exactNote }))).toBe(SHARE_COMMENT_MAX_BYTES);
+    expect(Buffer.byteLength(JSON.stringify({ target, note: oversizedNote }))).toBe(SHARE_COMMENT_MAX_BYTES + 1);
 
     const exactPath = join(tempRoot, 'exact-limit.txt');
     const exactUpdatePath = join(tempRoot, 'exact-update-limit.txt');
     const oversizedPath = join(tempRoot, 'one-byte-over-limit.txt');
     writeFileSync(exactPath, exactNote, 'utf8');
-    writeFileSync(exactUpdatePath, exactUpdateNote, 'utf8');
     writeFileSync(oversizedPath, oversizedNote, 'utf8');
 
     const create = await runCli(['comment', 'create', PROJECT, CONVERSATION, '--target', JSON.stringify(target), '--prompt-file', exactPath, ...common]);
@@ -285,6 +307,8 @@ describe('od comment CLI HTTP/SQLite route integration', () => {
     expect(listPreviewComments(db!, PROJECT, CONVERSATION)).toHaveLength(1);
     expect(getPreviewComment(db!, PROJECT, CONVERSATION, created.id)).toEqual(beforeRejectedCreate);
 
+    const exactUpdateNote = sizedNote({ id: created.id }, '更新😀\n');
+    writeFileSync(exactUpdatePath, exactUpdateNote, 'utf8');
     const update = await runCli(['comment', 'update', PROJECT, CONVERSATION, created.id, '--target', JSON.stringify(target), '--prompt-file', exactUpdatePath, ...common]);
     expect(update.code).toBe(0);
     const status = await runCli(['comment', 'status', PROJECT, CONVERSATION, created.id, '--status', 'resolved', ...common]);

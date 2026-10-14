@@ -234,6 +234,7 @@ export const esES: Dict = {
   'libraryPicker.add': 'Importar',
   'libraryPicker.loading': 'Cargando…',
   'common.save': 'Guardar',
+  'fileViewer.commentSync.payloadTooLarge': "Algunos comentarios superan el límite de tamaño de sincronización. Los reintentos automáticos están en pausa. Acórtalos o elimínalos para reanudarla.",
   'fileViewer.commentSync.sessionMissing': "Sesión cerrada. La sincronización de comentarios está pausada; los nuevos comentarios de visitantes no están disponibles temporalmente.",
   'fileViewer.commentSync.shareStoppedPersonal': "El enlace está desactivado. La sincronización de comentarios con la página compartida está en pausa.",
   'fileViewer.commentSync.shareStoppedTeam': "El enlace está desactivado.",

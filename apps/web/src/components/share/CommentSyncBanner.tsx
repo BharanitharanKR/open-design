@@ -105,6 +105,10 @@ export function CommentSyncBanner({ projectId, workspaceContext, filePath, inclu
     );
   }
 
+  if (state.payloadTooLarge) {
+    return <ShareErrorRow message={t('fileViewer.commentSync.payloadTooLarge')} role="alert" />;
+  }
+
   // Pending means the current publication's comments have not finished relay.
   // K1 (first publish) and K4 (verified reopen) are both drawn by ShareTab's
   // OWN primary button now — a progress bar for K1, a busy button for K4 —

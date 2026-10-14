@@ -234,6 +234,7 @@ export const pl: Dict = {
   'libraryPicker.add': 'Importuj',
   'libraryPicker.loading': 'Ładowanie…',
   'common.save': 'Zapisz',
+  'fileViewer.commentSync.payloadTooLarge': "Niektóre komentarze przekraczają limit rozmiaru synchronizacji. Automatyczne próby są wstrzymane. Skróć lub usuń te komentarze, aby wznowić synchronizację.",
   'fileViewer.commentSync.sessionMissing': "Nie zalogowano. Synchronizacja komentarzy jest wstrzymana; nowe komentarze odwiedzających są tymczasowo niewidoczne.",
   'fileViewer.commentSync.shareStoppedPersonal': "Link jest wyłączony. Synchronizacja komentarzy ze stroną udostępnioną jest wstrzymana.",
   'fileViewer.commentSync.shareStoppedTeam': "Link jest wyłączony.",

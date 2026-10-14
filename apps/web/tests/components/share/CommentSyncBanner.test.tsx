@@ -227,3 +227,9 @@ describe('CommentSyncBanner — restored branches', () => {
     expect(screen.queryByText('链接已停用，评论暂停同步到分享页。')).toBeNull();
   });
 });
+
+it('shows a recoverable size error instead of claiming automatic retry', async () => {
+  renderBanner({ ...base, pending: 1, payloadTooLarge: true });
+  expect(await screen.findByRole('alert')).toHaveTextContent('请缩短或删除这些评论');
+  expect(screen.queryByText(/正在自动重试/)).toBeNull();
+});

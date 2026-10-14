@@ -1,3 +1,4 @@
+import { createCommentSyncStateService } from '../src/collab/comment-sync-state.js';
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 
@@ -1179,6 +1180,62 @@ describe("durable Team comment relay outbox", () => {
 		service.dispose();
 	});
 
+	it("OPEND-3661 pauses an unchanged 413 revision and delivers deletion without its oversized content", async () => {
+		const db = seededDb();
+		const queuedContext = context("owner");
+		let clock = 100;
+		const outbox = createCommentRelayOutboxStore(db, () => clock);
+		const pushed: Array<{ note: string; deleted?: boolean }> = [];
+		const service = createCollabCloudService({
+			client: clientWithPush(async (_team, _project, payload) => {
+				pushed.push(payload);
+				if (Buffer.byteLength(JSON.stringify(payload)) > 65_536) {
+					throw new CollabCloudError(413, "PAYLOAD_TOO_LARGE", "too large");
+				}
+				return { seq: 1 };
+			}),
+			commentOutbox: outbox,
+			resolveLocalProjectRelayBinding: () => ({ workspaceId: "workspace-a", ownerMemberId: "project-owner" }),
+			resolveRemoteProjectOwnerMemberId: async () => "project-owner",
+			listProjectIds: () => [],
+			resolveProjectWorkspaceContext: async () => queuedContext,
+			resolveLocalConversationId: () => "conv-local",
+			mergeComment: () => "unchanged",
+			now: () => clock, retryDelayMs: () => 0,
+		});
+		try {
+			const large = comment({ authorMemberId: "member-owner", note: "x".repeat(66_000), htmlHint: "x".repeat(66_000) });
+			service.enqueueComment(large, queuedContext);
+			await service.flushPendingComments();
+			clock += 86_400_000;
+			await service.flushPendingComments();
+			expect.soft(pushed).toHaveLength(1);
+			expect(outbox.count()).toBe(1); // keep failed content recoverable
+			const sync = createCommentSyncStateService(db, async () => true);
+			const scope = { projectId: "p1", workspaceId: "workspace-a", workspaceMemberId: "member-owner" };
+			expect(await sync.read({ ...scope, filePath: "index.html" })).toMatchObject({ payloadTooLarge: true, pending: 1 });
+			expect(await sync.read({ ...scope, filePath: "other.html" })).not.toHaveProperty("payloadTooLarge");
+			// Reopening the store must not make a paused revision due again.
+			expect(createCommentRelayOutboxStore(db, () => clock).listDue(clock)).toHaveLength(0);
+
+			service.enqueueCommentDeletion(large, queuedContext);
+			await service.flushPendingComments();
+			expect.soft(pushed.at(-1)?.deleted).toBe(true);
+			expect.soft(pushed.at(-1)?.note.length).toBe(0);
+			expect(outbox.count()).toBe(0);
+			expect(await sync.read({ ...scope, filePath: "index.html" })).not.toHaveProperty("payloadTooLarge");
+			// Legacy persisted deletion rows must compact at delivery, too.
+			outbox.enqueue({ workspaceId: "workspace-a", workspaceMemberId: "member-owner", teamId: "team-a",
+				relayScope: "team", projectId: "p1", expectedOwnerMemberId: "project-owner",
+				comment: { ...previewCommentToCloud(large, "member-owner"), id: "legacy-delete", deleted: true } });
+			await service.flushPendingComments();
+			expect(outbox.count()).toBe(0);
+			service.enqueueComment(comment({ id: "valid", authorMemberId: "member-owner" }), queuedContext);
+			await service.flushPendingComments();
+			expect(outbox.count()).toBe(0);
+		} finally { service.dispose(); }
+	});
+
 	it("coalesces edits and delete tombstones without losing their latest state", async () => {
 		const db = seededDb();
 		const queuedContext = context("admin");
@@ -1219,7 +1276,7 @@ describe("durable Team comment relay outbox", () => {
 		await service.flushPendingComments();
 		expect(pushed).toEqual([
 			{ note: "edited note", deleted: false },
-			{ note: "edited note", deleted: true },
+			{ note: "", deleted: true },
 		]);
 		expect(outbox.count()).toBe(0);
 		service.dispose();

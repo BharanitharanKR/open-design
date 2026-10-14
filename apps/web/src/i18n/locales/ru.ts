@@ -234,6 +234,7 @@ export const ru: Dict = {
   'libraryPicker.add': 'Импорт',
   'libraryPicker.loading': 'Загрузка…',
   'common.save': 'Сохранить',
+  'fileViewer.commentSync.payloadTooLarge': "Некоторые комментарии превышают допустимый размер для синхронизации. Автоматические повторы приостановлены. Сократите или удалите эти комментарии, чтобы продолжить.",
   'fileViewer.commentSync.sessionMissing': "Вы не вошли в аккаунт. Синхронизация комментариев приостановлена; новые комментарии посетителей временно не видны.",
   'fileViewer.commentSync.shareStoppedPersonal': "Ссылка отключена. Синхронизация комментариев со страницей общего доступа приостановлена.",
   'fileViewer.commentSync.shareStoppedTeam': "Ссылка отключена.",

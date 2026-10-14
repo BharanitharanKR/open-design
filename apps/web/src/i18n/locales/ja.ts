@@ -234,6 +234,7 @@ export const ja: Dict = {
   'libraryPicker.add': 'インポート',
   'libraryPicker.loading': '読み込み中…',
   'common.save': '保存',
+  'fileViewer.commentSync.payloadTooLarge': "一部のコメントが同期のサイズ上限を超えています。自動再試行は停止しました。コメントを短くするか削除して同期を再開してください。",
   'fileViewer.commentSync.sessionMissing': "ログインしていないためコメントの同期が一時停止しています。訪問者の新しいコメントは一時的に表示されません。",
   'fileViewer.commentSync.shareStoppedPersonal': "リンクは無効です。共有ページへのコメント同期は一時停止しています。",
   'fileViewer.commentSync.shareStoppedTeam': "リンクは無効です。",

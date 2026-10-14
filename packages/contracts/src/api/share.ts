@@ -1925,6 +1925,8 @@ export interface ProjectCommentPullResponse {
  * part that is easy to get wrong.
  */
 export interface CommentSyncState {
+  /** A pending 413 revision for this requested file; editing/deleting can replace it. */
+  payloadTooLarge?: boolean;
   /** Outbox entries not yet sent. */
   pending: number;
   /** Last failure, sanitized for display. See the rules below. */

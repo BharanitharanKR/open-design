@@ -234,6 +234,7 @@ export const tr: Dict = {
   'libraryPicker.add': 'İçe aktar',
   'libraryPicker.loading': 'Yükleniyor…',
   'common.save': 'Kaydet',
+  'fileViewer.commentSync.payloadTooLarge': "Bazı yorumlar eşitleme boyut sınırını aşıyor. Otomatik yeniden deneme duraklatıldı. Eşitlemeye devam etmek için bu yorumları kısaltın veya silin.",
   'fileViewer.commentSync.sessionMissing': "Oturum kapalı. Yorum eşitlemesi duraklatıldı; ziyaretçilerin yeni yorumları geçici olarak görünmüyor.",
   'fileViewer.commentSync.shareStoppedPersonal': "Bağlantı devre dışı. Paylaşılan sayfaya yorum eşitlemesi duraklatıldı.",
   'fileViewer.commentSync.shareStoppedTeam': "Bağlantı devre dışı.",

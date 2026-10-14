@@ -234,6 +234,7 @@ export const de: Dict = {
   'libraryPicker.add': 'Importieren',
   'libraryPicker.loading': 'Wird geladen…',
   'common.save': 'Speichern',
+  'fileViewer.commentSync.payloadTooLarge': "Einige Kommentare überschreiten die Größenbegrenzung für die Synchronisierung. Automatische Wiederholungen sind pausiert. Kürzen oder löschen Sie diese Kommentare, um fortzufahren.",
   'fileViewer.commentSync.sessionMissing': "Nicht angemeldet. Die Kommentarsynchronisierung pausiert; neue Besucherkommentare sind vorübergehend nicht sichtbar.",
   'fileViewer.commentSync.shareStoppedPersonal': "Der Link ist deaktiviert. Die Kommentarsynchronisierung mit der geteilten Seite pausiert.",
   'fileViewer.commentSync.shareStoppedTeam': "Der Link ist deaktiviert.",

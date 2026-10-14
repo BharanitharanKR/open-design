@@ -234,6 +234,7 @@ export const ko: Dict = {
   'libraryPicker.add': '가져오기',
   'libraryPicker.loading': '불러오는 중…',
   'common.save': '저장',
+  'fileViewer.commentSync.payloadTooLarge': "일부 댓글이 동기화 크기 제한을 초과하여 자동 재시도가 일시 중지되었습니다. 댓글을 줄이거나 삭제하면 동기화를 재개할 수 있습니다.",
   'fileViewer.commentSync.sessionMissing': "로그아웃되어 댓글 동기화가 일시 중지되었습니다. 방문자의 새 댓글을 일시적으로 볼 수 없습니다.",
   'fileViewer.commentSync.shareStoppedPersonal': "링크가 비활성화되었습니다. 공유 페이지로의 댓글 동기화가 일시 중지되었습니다.",
   'fileViewer.commentSync.shareStoppedTeam': "링크가 비활성화되었습니다.",
