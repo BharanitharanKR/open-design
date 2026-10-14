@@ -74,6 +74,7 @@ describe('产物卡的封面', () => {
   });
 
   it('旧会话与更新后的源文件按实时画布缩放,收到尺寸后外框仍然不跳动', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200, headers: { 'x-od-motion-output': 'video' } })));
     const motionPreview = { width: 1920, height: 1080, duration: 15, posterTime: 13.5, sourcePath: 'index.html', videoPath: 'film.mp4' };
     const { rerender } = render(<FileOpsSummary entries={[entry('index.html'), entry('film.mp4')]} projectId="proj-1" />);
     const html = screen.getByTestId('artifact-card-index.html');
@@ -98,7 +99,21 @@ describe('产物卡的封面', () => {
     }]} />);
     const html = screen.getByTestId('artifact-card-index.html');
     expect(html.querySelector('img')?.getAttribute('src')).toBe('/frozen-cover.jpg');
-    expect(html.querySelector('img')?.getAttribute('data-preview-fit')).toBe('contain');
+    expect(html.querySelector('img')?.getAttribute('data-preview-fit')).toBeNull();
     expect(html.querySelector('iframe')).toBeNull();
+  });
+
+  it('普通 HTML 的实时封面不添加动效参数,实际文件优先于旧动效元数据', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200, headers: { 'x-od-motion-output': 'html' } })));
+    render(<FileOpsSummary entries={[entry('index.html')]} projectId="proj-1" artifactRefs={[{
+      label: 'index.html', displayPolicy: 'latest_with_static_preview', snapshotState: 'ready',
+      motionPreview: { width: 1920, height: 1080, duration: 15, posterTime: 1, sourcePath: 'index.html', videoPath: 'film.mp4' },
+    }]} />);
+    const card = screen.getByTestId('artifact-card-index.html');
+    await waitFor(() => expect(card.querySelector('iframe')).not.toBeNull());
+    const iframe = card.querySelector('iframe')!;
+    expect(iframe.getAttribute('src')).toBe('/api/projects/proj-1/raw/index.html');
+    expect(iframe.hasAttribute('data-od-active')).toBe(false);
+    expect(iframe.style.height).toBe('');
   });
 });

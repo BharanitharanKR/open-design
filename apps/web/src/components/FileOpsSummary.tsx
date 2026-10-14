@@ -20,7 +20,6 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { projectFileUrl } from '../providers/registry';
 import { useProjectCollabContext } from '../collab/collab-context';
-import { appendResourceQuery } from '../collab/workspace-identity';
 import { artifactKind, type ArtifactKind } from '../runtime/chat/format';
 import {
   countArtifactFileOps,
@@ -576,7 +575,7 @@ function ArtifactCard({
   // the card.
   const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
   const src = projectFileUrl(projectId, item.name, workspaceContext);
-  const liveUrl = appendResourceQuery(artifactCardLiveUrl(src, item.revision), 'odMotionPreview=1&odMotionThumbnail=1');
+  const liveUrl = artifactCardLiveUrl(src, item.revision);
   const [motionSize, setMotionSize] = useState<{ src: string; width: number; height: number }>();
   // Live HTML can have changed since this turn's snapshot. Its announced
   // canvas only controls the inner viewport; the card's outer frame is stable.
@@ -622,15 +621,14 @@ function ArtifactCard({
            * 那个样子。点击才去开工作区最新版本 —— 两者不一致是产品要的
            * (2026-09-02:「点击行为就是可能不一致的,预期内的」)。
            *
-           * 截图按 1440×900 抓。外框达到高度上限后可能不再是 16:10,
-           * 所以和 live iframe 一样完整缩放,不裁掉截图底部。
+           * Ordinary HTML snapshots retain their existing cover fit.
+           * Motion sources use the separate live, muted composition path below.
            */
           <img
             className="artifact-card-media"
             src={item.coverUrl}
             alt=""
             loading="lazy"
-            data-preview-fit="contain"
             onError={() => setFailedCoverUrl(item.coverUrl ?? null)}
           />
         ) : item.kind === 'html' ? (
