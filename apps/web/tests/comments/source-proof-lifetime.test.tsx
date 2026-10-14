@@ -30,6 +30,37 @@ it('verified prior source remains a fact after intentional loss, without re-prep
   expect(result.current.prior).toBe(true); expect(result.current.current).toBe(false);
   expect(readSourcePreparationProof).toHaveBeenCalledOnce();
 });
+it('explicit revalidation rereads established proof while retaining the prior fact on outage/unknown', async () => {
+  vi.mocked(readSourcePreparationProof).mockResolvedValueOnce({ prior: true, current: true, source: options.source })
+    .mockRejectedValueOnce(new Error('COMMENT_PREPARATION_PROOF_UNAVAILABLE'))
+    .mockResolvedValueOnce({ prior: false, current: false, source: 'unknown' })
+    .mockResolvedValue({ prior: true, current: true, source: '<h2>Edited B</h2>' });
+  const { result, rerender } = renderHook((props: typeof options) => useSourcePreparationProof(props), { initialProps: options });
+  await waitFor(() => expect(result.current.prior).toBe(true));
+  rerender({ ...options, source: '<h2>Edited B</h2>', inputKey: 'edited-b' });
+  await act(async () => { await expect(result.current.revalidate()).rejects.toThrow('COMMENT_PREPARATION_PROOF_UNAVAILABLE'); });
+  expect(result.current.prior).toBe(true); expect(result.current.current).toBe(false);
+  await act(async () => { expect((await result.current.revalidate()).prior).toBe(false); });
+  expect(result.current.prior).toBe(true); expect(result.current.current).toBe(false);
+  await act(async () => { expect((await result.current.revalidate()).source).toBe('<h2>Edited B</h2>'); });
+  expect(result.current.current).toBe(true);
+  expect(readSourcePreparationProof).toHaveBeenCalledTimes(4);
+});
+it.each(['file', 'account', 'unmount'])('explicit proof read cannot grant a stale %s result', async change => {
+  let release!: (value: { prior: boolean; current: boolean; source: string }) => void;
+  vi.mocked(readSourcePreparationProof).mockResolvedValueOnce({ prior: true, current: true, source: options.source })
+    .mockReturnValueOnce(new Promise(resolve => { release = resolve; })).mockReturnValue(new Promise(() => {}));
+  const { result, rerender, unmount } = renderHook((props: typeof options) => useSourcePreparationProof(props), { initialProps: options });
+  await waitFor(() => expect(result.current.prior).toBe(true));
+  let read!: Promise<unknown>;
+  await act(async () => { read = result.current.revalidate().catch(error => error.message); });
+  await waitFor(() => expect(readSourcePreparationProof).toHaveBeenCalledTimes(2));
+  if (change === 'unmount') unmount();
+  else if (change === 'account') advanceWorkspaceAccountGeneration('new-owner');
+  else rerender({ ...options, fileName: 'other.html' });
+  await act(async () => { release({ prior: true, current: true, source: 'old-result' }); expect(await read).toBe('COMMENT_PREPARATION_STALE'); });
+  if (change === 'file') expect(result.current.prior).toBe(false);
+});
 it('outage remains error and can retry read-only proof, never a ready/legacy shortcut', async () => {
   vi.mocked(readSourcePreparationProof).mockRejectedValueOnce(new Error('COMMENT_PREPARATION_PROOF_UNAVAILABLE')).mockResolvedValue({ prior: false, current: false, source: options.source });
   const { result } = renderHook(() => useSourcePreparationProof(options));

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PrepareCommentIdentityResponse, WorkspaceCollabContext } from '@open-design/contracts';
 import { prepareCommentSource, CommentPreparationClientError } from './preparation';
 import { workspaceIdentityCacheKey, currentWorkspaceAccountGeneration } from '../collab/workspace-identity';
+import type { SourcePreparationProof } from './source-preparation-proof';
 
-/** A saved receipt starts a one-way document transition. Only matching source
- * plus the real current-frame witness releases it; later intentional edits do
- * not restart it or authorize identity backfill. Live revisions also invalidate
+/** A saved receipt starts a one-way document transition. Matching source (or
+ * explicitly revalidated current source) plus its real frame witness releases
+ * it. Later intentional edits do not restart it or authorize identity backfill. Live revisions also invalidate
  * callbacks retained by a pending Share preflight.
  */
 export function useCommentPreparation(options: {
@@ -13,6 +14,7 @@ export function useCommentPreparation(options: {
   authorized: boolean; settled: boolean; inputKey: string;
   document?: { source: string | null; key: string; ready: boolean };
   verifiedDocument?: { source: string } | null;
+  readCurrentProof?: () => Promise<SourcePreparationProof>;
   confirm: () => boolean; apply: (result: PrepareCommentIdentityResponse) => void;
 }) {
   const accountGeneration = currentWorkspaceAccountGeneration();
@@ -22,7 +24,7 @@ export function useCommentPreparation(options: {
   const live = useRef({ key, scope, revision: 0 });
   if (live.current.key !== key) live.current = { key, scope, revision: live.current.revision + 1 };
   const renderRevision = live.current.revision;
-  const pending = useRef<{ scope: string; source: string; previousKey: string | null } | null>(null);
+  const pending = useRef<{ scope: string; source: string | null; previousKey: string | null } | null>(null);
   const adopted = useRef({ scope, done: false });
   if (adopted.current.scope !== scope) adopted.current = { scope, done: false };
   if (options.verifiedDocument && !adopted.current.done) {
@@ -33,13 +35,15 @@ export function useCommentPreparation(options: {
   useEffect(() => {
     const transition = pending.current;
     const document = options.document;
-    if (transition?.scope !== scope || !document?.ready || document.source === null) return;
+    if (transition?.scope !== scope || transition.source === null || !document?.ready || document.source === null) return;
     if (transition.previousKey !== null && transition.previousKey === document.key) return;
     if (document.source.replace(/^\uFEFF/, '') !== transition.source.replace(/^\uFEFF/, '')) return;
     pending.current = null;
     setDocumentRevision(value => value + 1);
   }); // Pending may be installed imperatively; check every commit, not just prop changes.
   const running = useRef(false);
+  const proofRead = useRef<{ revision: number } | null>(null);
+  const proofBusy = () => proofRead.current?.revision === live.current.revision;
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; live.current.revision++; }; }, []);
   const [busy, setBusy] = useState(false);
@@ -57,11 +61,11 @@ export function useCommentPreparation(options: {
   function validatePublication(requirePreparedDocument = true) {
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     if (!options.authorized || !options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
-    if (documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportBlocked('COMMENT_PREVIEW_NOT_READY'); return false; }
+    if (running.current || proofBusy() || documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportBlocked('COMMENT_PREVIEW_NOT_READY'); return false; }
     return true;
   }
   async function prepare() {
-    if (running.current || !alive.current) return false;
+    if (running.current || proofBusy() || !alive.current) return false;
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     if (!options.authorized || !options.context) { reportBlocked('WORKSPACE_CONTEXT_REQUIRED'); return false; }
     if (!options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
@@ -80,7 +84,37 @@ export function useCommentPreparation(options: {
       return false;
     } finally { running.current = false; if (alive.current) setBusy(false); }
   }
-  const canStartDocumentWitness = () => currentAttempt() && options.settled && !running.current;
-  return { prepare, validatePublication, validateLiveRevision, canStartDocumentWitness, documentPending, pendingDocument: pending.current?.scope === scope,
-    reportBlocked, busy, error: error?.scope === scope ? error.code : null, saved: saved?.key === scope ? saved.result : null };
+  async function revalidateDocument() {
+    if (running.current || proofBusy() || !alive.current) return false;
+    if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
+    if (!options.authorized || !options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
+    if (pending.current?.scope !== scope || !options.readCurrentProof) return false;
+    // Retire A's witness before reading B. Failure/staleness must not let an
+    // old A acknowledgment release this transition while retry is available.
+    pending.current = { scope, source: null, previousKey: null };
+    const request = { revision: renderRevision };
+    proofRead.current = request;
+    setDocumentRevision(value => value + 1); setError(null);
+    try {
+      const proof = await options.readCurrentProof();
+      if (proofRead.current !== request) return false;
+      if (!currentAttempt()) throw new Error('COMMENT_PREPARATION_STALE');
+      if (!proof.prior) throw new Error('COMMENT_PREPARATION_PROOF_UNCONFIRMED');
+      pending.current = { scope, source: proof.source, previousKey: null };
+      setError(null);
+      setDocumentRevision(value => value + 1);
+      return true;
+    } catch (failure) {
+      if (proofRead.current === request) reportBlocked(!currentAttempt() ? 'COMMENT_PREPARATION_STALE' : failure instanceof Error ? failure.message : 'COMMENT_PREPARATION_PROOF_UNAVAILABLE');
+      return false;
+    } finally {
+      if (proofRead.current === request) {
+        proofRead.current = null;
+        if (alive.current) setDocumentRevision(value => value + 1);
+      }
+    }
+  }
+  const canStartDocumentWitness = () => currentAttempt() && options.settled && !running.current && !proofBusy();
+  return { prepare, revalidateDocument, validatePublication, validateLiveRevision, canStartDocumentWitness, documentPending, pendingDocument: pending.current?.scope === scope,
+    reportBlocked, busy: busy || proofBusy(), revalidating: proofBusy(), error: error?.scope === scope ? error.code : null, saved: saved?.key === scope ? saved.result : null };
 }

@@ -8149,7 +8149,9 @@ function HtmlViewer({
 
   async function publishCurrentFilePublic(mode?: 'resume') {
     if (!commentPreparation.validateLiveRevision()) return;
-    if (streaming || viewerOnly || publishingPublicFile || commentPreparation.busy) return;
+    // Read-only source checking cannot gate restoration of an immutable share.
+    const preparationBusy = commentPreparation.busy && (mode !== 'resume' || !commentPreparation.revalidating);
+    if (streaming || viewerOnly || publishingPublicFile || preparationBusy) return;
     // Never backfill an identity deliberately lost by a later edit/history restore.
     // Resume restores the immutable publication and must not prepare current source.
     const firstSupportedExposure = canPrepareCommentSource && mode !== 'resume' && (!fileShareStatus || fileShareStatus === 'none');
@@ -8282,6 +8284,10 @@ function HtmlViewer({
     if (!commentPreparation.validateLiveRevision()) return;
     if (!canPublishPublic || streaming || viewerOnly || !publishedFileSlug || publishingPublicFile
       || updateInFlightRef.current || fileShareFreshness !== 'outdated' || fileShareStatus !== 'active') return;
+    if (canPrepareCommentSource && !commentPreparation.validatePublication(false)) {
+      beginPreparedDocumentWitness();
+      return;
+    }
     publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
@@ -12618,6 +12624,7 @@ function HtmlViewer({
     inputKey: commentPreparationInputKey,
     document: { source, key: commentTargetsKey, ready: commentIdentityFrameReady },
     verifiedDocument: sourcePreparationProof.verifiedDocument,
+    readCurrentProof: sourcePreparationProof.revalidate,
     confirm: () => window.confirm(t('fileViewer.commentIdentityConfirm')),
     apply: () => {
       // Reload through the ordinary lifecycle, never from preview serialization.
@@ -17840,7 +17847,13 @@ function HtmlViewer({
               {t('fileViewer.commentIdentityPrepare')}
             </Button>
           ) : null}
-          {commentPreparation.busy ? <span>{t('fileViewer.commentIdentitySaving')}</span> : null}
+          {canPrepareCommentSource && commentPreparation.pendingDocument ? (
+            <Button data-testid="comment-identity-revalidate" disabled={commentPreparation.busy || source === null}
+              onClick={() => { void commentPreparation.revalidateDocument().then(ok => { if (ok) beginPreparedDocumentWitness(); }); }}>
+              {t('fileViewer.retryLink')}
+            </Button>
+          ) : null}
+          {commentPreparation.busy ? <span>{t(commentPreparation.revalidating ? 'fileViewer.loading' : 'fileViewer.commentIdentitySaving')}</span> : null}
           {commentPreparation.error ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({commentPreparation.error})</span> : null}
           {sourcePreparationProof.error && !commentPreparation.saved ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({sourcePreparationProof.error})</span> : null}
           {commentPreparation.saved && (commentPreparation.pendingDocument || previewMatchesPreparedSource) ? <span>{t(preparedPreviewReady ? 'fileViewer.commentIdentitySaved' : 'fileViewer.commentIdentityWaiting', { version: commentPreparation.saved.version.version })}</span> : null}
