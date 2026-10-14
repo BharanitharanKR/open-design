@@ -14,7 +14,7 @@ import {
 
 import { DECK_PAGE_SIZE, DECK_PRINT_CSS, inferPageSize, waitForPrintableContent } from "./pdf-export.js";
 import { bgraBitmapHasPaint, freezePageForStaticCapture, type StaticCaptureFreeze } from "./static-capture.js";
-import { findRealElementRange, findRealTagEnd, findRealTagOffset, HTML_TAG_PATTERNS } from '@open-design/contracts/runtime/html-injection-points';
+import { findRealElementRange, findRealTagEnd, findRealTagOffset, HTML_TAG_PATTERNS, prependAfterDoctype } from '@open-design/contracts/runtime/html-injection-points';
 
 // Headless programmatic exporter for the `od export` CLI (PDF / image).
 // The on-screen web Download menu rasterizes client-side; this is the daemon →
@@ -318,7 +318,7 @@ function injectStyle(doc: string, css: string): string {
   if (headClose >= 0) return doc.slice(0, headClose) + tag + doc.slice(headClose);
   const headEnd = findRealTagEnd(doc, HTML_TAG_PATTERNS.headOpen);
   if (headEnd >= 0) return doc.slice(0, headEnd) + tag + doc.slice(headEnd);
-  return `${tag}${doc}`;
+  return prependAfterDoctype(doc, tag);
 }
 
 function escapeAttr(value: string): string {

@@ -30,11 +30,23 @@ function extractActivationScript(srcDoc: string): string {
 }
 
 interface RunShellResult {
+  documentId: string;
   documentWrites: string[];
   parentMessages: unknown[];
   runScheduledCallbacks: () => void;
   triggerMessage: (data: unknown, fromParent?: boolean) => void;
   triggerActivate: (html: string, generation?: string) => void;
+}
+
+function announcedDocumentId(messages: readonly unknown[], type: string): string {
+  const message = messages.find(value => (
+    typeof value === 'object' && value !== null && 'type' in value && value.type === type
+  ));
+  if (typeof message !== 'object' || message === null || !('documentId' in message)
+    || typeof message.documentId !== 'string' || !message.documentId) {
+    throw new Error(`${type} did not announce a document identity`);
+  }
+  return message.documentId;
 }
 
 function runShellInSandbox(shellHtml: string): RunShellResult {
@@ -82,7 +94,9 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
   };
   vm.createContext(sandbox);
   vm.runInContext(script, sandbox);
+  const documentId = announcedDocumentId(parentMessages, 'od:srcdoc-transport-ready');
   return {
+    documentId,
     documentWrites,
     parentMessages,
     runScheduledCallbacks: () => {
@@ -94,7 +108,7 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
     },
     triggerActivate: (html: string, generation = 'generation-1') => {
       for (const listener of messageListeners) {
-        listener({ source: parentMock, data: { type: 'od:srcdoc-transport-activate', html, generation } });
+        listener({ source: parentMock, data: { type: 'od:srcdoc-transport-activate', html, generation, documentId } });
       }
     },
   };
@@ -103,7 +117,7 @@ function runShellInSandbox(shellHtml: string): RunShellResult {
 describe('buildLazySrcdocTransport (#2253)', () => {
   it('rejects activation from a sibling or unrelated window', () => {
     const result = runShellInSandbox(buildLazySrcdocTransport());
-    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>foreign</p>', generation: 'foreign' }, false);
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>foreign</p>', generation: 'foreign', documentId: result.documentId }, false);
     expect(result.documentWrites).toEqual([]);
     result.triggerActivate('<p>host</p>');
     expect(result.documentWrites).toEqual(['<p>host</p>']);
@@ -118,8 +132,8 @@ describe('buildLazySrcdocTransport (#2253)', () => {
 
   it('posts od:srcdoc-transport-ready to parent on load', () => {
     const shell = buildLazySrcdocTransport();
-    const { parentMessages } = runShellInSandbox(shell);
-    expect(parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready' });
+    const { parentMessages, documentId } = runShellInSandbox(shell);
+    expect(parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready', documentId });
   });
 
   it('replies when the host probes after missing the initial ready message', () => {
@@ -127,9 +141,9 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     const result = runShellInSandbox(shell);
     result.parentMessages.length = 0;
 
-    result.triggerMessage({ type: 'od:srcdoc-transport-shell-probe' });
+    result.triggerMessage({ type: 'od:srcdoc-transport-shell-probe', probeId: 'host-challenge' });
 
-    expect(result.parentMessages).toEqual([{ type: 'od:srcdoc-transport-ready' }]);
+    expect(result.parentMessages).toEqual([{ type: 'od:srcdoc-transport-ready', documentId: result.documentId, probeId: 'host-challenge' }]);
   });
 
   it('reannounces ready until a late host activates the cached bootstrap', () => {
@@ -138,11 +152,11 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     result.parentMessages.length = 0;
 
     result.runScheduledCallbacks();
-    expect(result.parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready' });
+    expect(result.parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready', documentId: result.documentId });
 
     result.parentMessages.length = 0;
     result.runScheduledCallbacks();
-    expect(result.parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready' });
+    expect(result.parentMessages).toContainEqual({ type: 'od:srcdoc-transport-ready', documentId: result.documentId });
 
     result.triggerActivate('<html><body>activated</body></html>');
     result.parentMessages.length = 0;
@@ -157,6 +171,15 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     result.triggerActivate('<html><body>second</body></html>', 'generation-2');
 
     expect(result.documentWrites).toEqual(['<html><body>first</body></html>']);
+  });
+
+  it('rejects another document identity without consuming the live shell', () => {
+    const result = runShellInSandbox(buildLazySrcdocTransport());
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>old document</p>', generation: 'generation-1', documentId: 'retired-document' });
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>missing identity</p>', generation: 'generation-1' });
+    expect(result.documentWrites).toEqual([]);
+    result.triggerActivate('<p>live document</p>');
+    expect(result.documentWrites).toEqual(['<p>live document</p>']);
   });
 
   it('skips the ready post when window.parent equals window (top-level load)', () => {
@@ -187,12 +210,13 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     // (Re-running with our own probe to inspect document mock.)
     const script = extractShellScript(shell);
     const writes: string[] = [];
+    const parentMessages: unknown[] = [];
     const win: Record<string, unknown> = {
       addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
         (win as { __listener: typeof listener }).__listener = listener;
       },
     };
-    win.parent = { postMessage: () => {} };
+    win.parent = { postMessage: (message: unknown) => parentMessages.push(message) };
     const sandbox: Record<string, unknown> = {
       document: {
         open: () => {},
@@ -203,6 +227,7 @@ describe('buildLazySrcdocTransport (#2253)', () => {
     };
     vm.createContext(sandbox);
     vm.runInContext(script, sandbox);
+    const documentId = announcedDocumentId(parentMessages, 'od:srcdoc-transport-ready');
     const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
     listener({
       source: win.parent,
@@ -210,62 +235,31 @@ describe('buildLazySrcdocTransport (#2253)', () => {
         type: 'od:srcdoc-transport-activate',
         html: '<p>hi</p>',
         generation: 'generation-1',
+        documentId,
       },
     });
     expect(writes).toEqual(['<p>hi</p>']);
   });
 
   it('requires a generation on activate so the host can reject stale ready acks', () => {
-    const shell = buildLazySrcdocTransport();
-    const script = extractShellScript(shell);
-    const writes: string[] = [];
-    const win: Record<string, unknown> = {
-      addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
-        (win as { __listener: typeof listener }).__listener = listener;
-      },
-    };
-    win.parent = { postMessage: () => {} };
-    const sandbox: Record<string, unknown> = {
-      document: {
-        open: () => {},
-        write: (chunk: string) => writes.push(chunk),
-        close: () => {},
-      },
-      window: win,
-    };
-    vm.createContext(sandbox);
-    vm.runInContext(script, sandbox);
-    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
-    listener({ data: { type: 'od:srcdoc-transport-activate', html: '<p>stale</p>' } });
-    expect(writes).toEqual([]);
+    const result = runShellInSandbox(buildLazySrcdocTransport());
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>stale</p>', documentId: result.documentId });
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: '<p>empty generation</p>', generation: '', documentId: result.documentId });
+    expect(result.documentWrites).toEqual([]);
+    result.triggerActivate('<p>live generation</p>');
+    expect(result.documentWrites).toEqual(['<p>live generation</p>']);
   });
 
   it('ignores activate messages with missing or non-string html', () => {
-    const shell = buildLazySrcdocTransport();
-    const script = extractShellScript(shell);
-    const writes: string[] = [];
-    const win: Record<string, unknown> = {
-      addEventListener(_t: string, listener: (ev: { data: unknown; source?: unknown }) => void) {
-        (win as { __listener: typeof listener }).__listener = listener;
-      },
-    };
-    win.parent = { postMessage: () => {} };
-    const sandbox: Record<string, unknown> = {
-      document: {
-        open: () => {},
-        write: (chunk: string) => writes.push(chunk),
-        close: () => {},
-      },
-      window: win,
-    };
-    vm.createContext(sandbox);
-    vm.runInContext(script, sandbox);
-    const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
-    listener({ data: { type: 'od:srcdoc-transport-activate' } });
-    listener({ data: { type: 'od:srcdoc-transport-activate', html: 123 } });
-    listener({ data: null });
-    listener({ data: { type: 'unrelated' } });
-    expect(writes).toEqual([]);
+    const result = runShellInSandbox(buildLazySrcdocTransport());
+    const identity = { generation: 'generation-1', documentId: result.documentId };
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', ...identity });
+    result.triggerMessage({ type: 'od:srcdoc-transport-activate', html: 123, ...identity });
+    result.triggerMessage(null);
+    result.triggerMessage({ type: 'unrelated' });
+    expect(result.documentWrites).toEqual([]);
+    result.triggerActivate('<p>valid HTML</p>');
+    expect(result.documentWrites).toEqual(['<p>valid HTML</p>']);
   });
 });
 
@@ -310,6 +304,7 @@ describe('srcDoc transport activation witness', () => {
     };
     vm.createContext(sandbox);
     vm.runInContext(script, sandbox);
+    const documentId = announcedDocumentId(parentMessages, 'od:srcdoc-transport-activated');
     parentMessages.length = 0;
 
     const listener = (win as { __listener: (ev: { data: unknown; source?: unknown }) => void }).__listener;
@@ -319,6 +314,7 @@ describe('srcDoc transport activation witness', () => {
         type: 'od:srcdoc-transport-activate',
         html: '<html><body><script>const ITEMS = [];</script></body></html>',
         generation: 'generation-2',
+        documentId,
       },
     });
 
@@ -328,6 +324,7 @@ describe('srcDoc transport activation witness', () => {
     expect(parentMessages).toEqual([{
       type: 'od:srcdoc-transport-reset-required',
       generation: 'generation-2',
+      documentId,
     }]);
   });
 

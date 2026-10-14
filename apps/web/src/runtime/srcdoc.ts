@@ -40,6 +40,7 @@ import {
   PREVIEW_REDIRECT_GUARD_SELF_REFRESH_MIN_DELAY_MS,
   PREVIEW_REDIRECT_GUARD_WINDOW_MS,
   PREVIEW_REDIRECT_LOOP_MESSAGE,
+  buildPreviewTransportDocumentIdentityScript,
 } from '@open-design/contracts/runtime/preview-guards';
 
 import {
@@ -520,6 +521,7 @@ function injectSrcdocTransportActivationBridge(doc: string, generation: string):
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
   const script = `<script data-od-srcdoc-transport-activation>(function(){
+  ${buildPreviewTransportDocumentIdentityScript()}
   var generation = ${encodedGeneration};
   var bodyComplete = false;
   function containsCompletionMarker(node){
@@ -550,7 +552,7 @@ function injectSrcdocTransportActivationBridge(doc: string, generation: string):
     if (!generation) return;
     try {
       if (window.parent && window.parent !== window) {
-        var message = { type: 'od:srcdoc-transport-activated', generation: generation };
+        var message = { type: 'od:srcdoc-transport-activated', generation: generation, documentId: documentId };
         if (typeof probeId === 'string' && probeId) message.probeId = probeId;
         message.bodyComplete = bodyComplete;
         message.documentReadyState = document.readyState;
@@ -564,10 +566,12 @@ function injectSrcdocTransportActivationBridge(doc: string, generation: string):
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;
     if (data && data.type === 'od:srcdoc-transport-ready-probe') {
+      if (typeof data.documentId === 'string' && data.documentId !== documentId) return;
       if (data.generation === generation) announceReady(data.probeId);
       return;
     }
     if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string' || typeof data.generation !== 'string' || !data.generation) return;
+    if (typeof data.documentId === 'string' && data.documentId !== documentId) return;
     // document.open/write keeps the current Window realm. Re-running an
     // authored classic script there can fail before execution when it declares
     // a top-level let/const that the previous document already declared. Ask
@@ -577,7 +581,8 @@ function injectSrcdocTransportActivationBridge(doc: string, generation: string):
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({
           type: 'od:srcdoc-transport-reset-required',
-          generation: data.generation
+          generation: data.generation,
+          documentId: documentId
         }, '*');
       }
     } catch (_) { /* sandboxed parent — host recovery will remount on timeout */ }

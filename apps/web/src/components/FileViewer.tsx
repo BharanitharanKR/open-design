@@ -8334,6 +8334,8 @@ function HtmlViewer({
   const manualEditPersistedDocumentRef = useRef<{
     sourceFingerprint: string;
     reloadKey: number;
+    nativeDocumentUrl: string | null;
+    documentId: string | null;
   } | null>(null);
   // Source snapshot frozen while a non-edit annotation pass (Mark/Draw,
   // Comment, Inspect) is open. The file-watcher live-reload (chokidar →
@@ -8407,6 +8409,14 @@ function HtmlViewer({
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocShellReadyFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const srcDocDocumentIdentityRef = useRef<{
+    frame: HTMLIFrameElement;
+    documentId: string;
+    generation: string | null;
+  } | null>(null);
+  const srcDocRetiredDocumentIdsRef = useRef(new WeakMap<HTMLIFrameElement, Set<string>>());
+  const srcDocShellProbeRef = useRef<{ frame: HTMLIFrameElement; probeId: string; documentId: string } | null>(null);
+  const srcDocShellProbeSequenceRef = useRef(0);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
   const srcDocNavigationCommittedRef = useRef<{
     frame: HTMLIFrameElement;
@@ -9443,6 +9453,12 @@ function HtmlViewer({
     () => htmlPreviewSlideState.get(previewStateKey) ?? null,
   );
   const presenterWindowRef = useRef<Window | null>(null);
+  const presenterPreviewSourceRef = useRef<{
+    projectId: string;
+    fileName: string;
+    source: string;
+    count: number;
+  } | null>(null);
   const presentOverlayRef = useRef<HTMLDivElement | null>(null);
   const presentFullscreenRequestedRef = useRef(false);
   const [presentFullscreenPending, setPresentFullscreenPending] = useState(false);
@@ -9534,6 +9550,7 @@ function HtmlViewer({
       try { popup.close(); } catch { /* already gone */ }
     }
     presenterWindowRef.current = null;
+    presenterPreviewSourceRef.current = null;
   }, [workspaceActive]);
 
   useEffect(() => {
@@ -10253,6 +10270,8 @@ function HtmlViewer({
       if (frame && frame !== srcDocShellReadyFrameRef.current) {
         srcDocShellReadyFrameRef.current = null;
         activatedSrcDocTransportHtmlRef.current = null;
+        srcDocDocumentIdentityRef.current = null;
+        srcDocShellProbeRef.current = null;
       }
       srcDocNavigationCommittedRef.current = null;
       srcDocContentReadyRef.current = null;
@@ -10275,8 +10294,11 @@ function HtmlViewer({
     ),
     [currentSourceIdentity, routingHtmlSource, routingSourceIdentity],
   );
-  const needsNativePreviewDocument = authoredSrcDocBase === false && !needsPowered
-    && !passiveLargeHtmlPreview && previewHtmlNeedsNativeNavigation(routingHtmlSource ?? '');
+  const needsNativePreviewDocument = useMemo(
+    () => authoredSrcDocBase === false && !needsPowered && !passiveLargeHtmlPreview
+      && previewHtmlNeedsNativeNavigation(routingHtmlSource ?? ''),
+    [authoredSrcDocBase, needsPowered, passiveLargeHtmlPreview, routingHtmlSource],
+  );
   const nativeDocumentMode = previewHtmlUsesQuirksMode(routingHtmlSource ?? '')
     ? 'bootstrap-quirks' as const : 'bootstrap' as const;
   const effectiveScopedSrcDocPreviewBase = candidateScopedSrcDocPreviewBase
@@ -10295,13 +10317,18 @@ function HtmlViewer({
     nativePreviewLocationRef.current = nativePreviewScope?.documentUrl ?? null;
     if (!nativePreviewScope?.documentUrl) return;
     const expected = new URL(nativePreviewScope.documentUrl);
+    const expectedDirectory = new URL(nativePreviewScope.href);
     const receive = (event: MessageEvent) => {
       if (event.source !== srcDocPreviewIframeRef.current?.contentWindow
         || event.data?.type !== 'od:preview-base-scope'
         || typeof event.data.documentUrl !== 'string') return;
+      const documentIdentity = srcDocDocumentIdentityRef.current;
+      if (documentIdentity && event.data.documentId !== documentIdentity.documentId) return;
       try {
         const actual = new URL(event.data.documentUrl);
-        if (actual.origin === expected.origin && actual.pathname === expected.pathname) {
+        if (actual.origin === expected.origin
+          && (actual.pathname === expected.pathname
+            || (expectedDirectory.origin === expected.origin && actual.pathname === expectedDirectory.pathname))) {
           nativePreviewLocationRef.current = actual.href;
         }
       } catch { /* Ignore malformed document identities. */ }
@@ -10309,6 +10336,30 @@ function HtmlViewer({
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, [nativePreviewScope]);
+  const captureNativePreviewLocation = useCallback(async () => {
+    const identity = srcDocDocumentIdentityRef.current;
+    const frame = srcDocPreviewIframeRef.current;
+    if (!identity || identity.frame !== frame || !frame) return;
+    await new Promise<void>((resolve) => {
+      let timeout: ReturnType<typeof setTimeout>;
+      const finish = () => {
+        clearTimeout(timeout);
+        window.removeEventListener('message', receive);
+        resolve();
+      };
+      const receive = (event: MessageEvent) => {
+        if (event.source !== frame.contentWindow
+          || event.data?.type !== 'od:preview-base-scope'
+          || event.data.documentId !== identity.documentId
+          || srcDocDocumentIdentityRef.current?.documentId !== identity.documentId
+          || typeof event.data.documentUrl !== 'string') return;
+        finish();
+      };
+      window.addEventListener('message', receive);
+      timeout = setTimeout(finish, SRC_DOC_READY_PROBE_TIMEOUT_MS);
+      frame.contentWindow?.postMessage({ type: 'od:preview-base-scope-probe' }, '*');
+    });
+  }, []);
   const [previewScopeFailure, setPreviewScopeFailure] = useState<string | null>(null);
   useEffect(() => {
     if ((workspaceContext?.workspaceType !== 'team' && !needsNativePreviewDocument)
@@ -10389,7 +10440,7 @@ function HtmlViewer({
     frame?.contentWindow?.postMessage({ type: 'od:preview-base-scope-probe' }, '*');
     return () => window.removeEventListener('message', onMessage);
   }, [projectId, urlPreviewBaseIdentity, workspaceActive]);
-  const postPreviewBaseUpdate = useCallback((href: string, skipFrame?: HTMLIFrameElement | null) => {
+  const postPreviewBaseUpdate = useCallback((href: string, skipFrame?: HTMLIFrameElement | null, scope?: ProjectPreviewBaseScope) => {
     const requestId = `preview-base-${Date.now()}`;
     const message = { type: 'od:preview-base-update', requestId, href };
     const frames = viewerRootRef.current?.querySelectorAll('iframe') ?? [];
@@ -10399,12 +10450,33 @@ function HtmlViewer({
     const presenter = presenterWindowRef.current;
     if (presenter && !presenter.closed) {
       try {
-        for (const frame of presenter.document.querySelectorAll('iframe')) {
-          frame.contentWindow?.postMessage(message, '*');
+        const snapshot = presenterPreviewSourceRef.current;
+        if (!snapshot || snapshot.projectId !== projectId || snapshot.fileName !== file.name) return;
+        if (scope?.documentUrl) {
+          const previewHtmlBySlide = Array.from({ length: snapshot.count }, (_, initialSlideIndex) => buildSrcdoc(snapshot.source, {
+            deck: true,
+            nativeDocumentBase: { href: scope.href, expiresAt: scope.expiresAt, documentUrl: scope.documentUrl! },
+            transportActivationGeneration: 'auxiliary-preview',
+            initialSlideIndex,
+            hideDeckChrome: true,
+            previewFocusGuard: true,
+          }));
+          presenter.postMessage({
+            type: 'od:presenter-preview-update',
+            projectId: snapshot.projectId,
+            fileName: snapshot.fileName,
+            previewDocumentUrl: scope.documentUrl,
+            previewHtml: previewHtmlBySlide[0] ?? '',
+            previewHtmlBySlide,
+          }, '*');
+        } else {
+          for (const frame of presenter.document.querySelectorAll('iframe')) {
+            frame.contentWindow?.postMessage(message, '*');
+          }
         }
       } catch { /* presenter may already be closing */ }
     }
-  }, []);
+  }, [projectId, file.name]);
   useEffect(() => {
     let renewableScope: ProjectPreviewBaseScope | null = null;
     if (useUrlLoadPreview) {
@@ -10447,6 +10519,8 @@ function HtmlViewer({
 
       // A daemon restart or a suspended browser can invalidate the in-memory
       // capability. Update ordinary bases in place; native carriers must reload.
+      if (needsNativePreviewDocument && !useUrlLoadPreview) await captureNativePreviewLocation();
+      if (cancelled) return;
       const replacement = await fetchProjectPreviewBaseHref(projectId, file.name, undefined, {
         ...(useUrlLoadPreview ? {
           documentMode: 'url' as const, bridges: new URLSearchParams(previewBridgeQuery).getAll('odPreviewBridge'),
@@ -10471,7 +10545,7 @@ function HtmlViewer({
         setAuxiliarySrcDocPreviewBase({ identity, href: replacement.href });
         if (needsNativePreviewDocument) setScopedSrcDocPreviewBase({ identity, scope: replacement });
       }
-      postPreviewBaseUpdate(replacement.href, needsNativePreviewDocument && !useUrlLoadPreview ? srcDocPreviewIframeRef.current : null);
+      postPreviewBaseUpdate(replacement.href, needsNativePreviewDocument && !useUrlLoadPreview ? srcDocPreviewIframeRef.current : null, replacement);
       schedule(replacement);
     };
 
@@ -10490,6 +10564,7 @@ function HtmlViewer({
     file.name,
     mode,
     postPreviewBaseUpdate,
+    captureNativePreviewLocation,
     previewBridgeQuery,
     needsNativePreviewDocument,
     nativeDocumentMode,
@@ -10966,9 +11041,13 @@ function HtmlViewer({
   // the white flash reported after agent edits.
   const committedSrcDocTransportRef = useRef(candidateSrcDocTransport);
   const persistedManualEditCandidate = manualEditPersistedDocumentRef.current;
+  // Watcher echoes can retain live edits only in the document that received
+  // them. A reload or replacement scope needs the latest persisted source.
   const candidateRepresentsPersistedManualEditDocument =
     persistedManualEditCandidate?.reloadKey === reloadKey
-    && persistedManualEditCandidate.sourceFingerprint === candidateSrcDocTransport.sourceFingerprint;
+    && persistedManualEditCandidate.sourceFingerprint === candidateSrcDocTransport.sourceFingerprint
+    && persistedManualEditCandidate.nativeDocumentUrl === (nativePreviewScope?.documentUrl ?? null)
+    && persistedManualEditCandidate.documentId === (srcDocDocumentIdentityRef.current?.documentId ?? null);
   if (!candidateRepresentsPersistedManualEditDocument) {
     committedSrcDocTransportRef.current = candidateSrcDocTransport;
   }
@@ -11208,6 +11287,7 @@ function HtmlViewer({
   const usesPersistentSrcDocTransport = nativeSrcDocTransportUrl !== null || persistentSrcDocTransportUrl !== null;
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
   const [srcDocShellReady, setSrcDocShellReady] = useState(false);
+  const [srcDocDocumentEpoch, setSrcDocDocumentEpoch] = useState(0);
   const [srcDocRecoveryGeneration, setSrcDocRecoveryGeneration] = useState<string | null>(null);
   const recoverUnacknowledgedSrcDocTransport = useCallback((
     generation: string,
@@ -11332,6 +11412,8 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-ready-probe',
       generation,
       probeId,
+      documentId: usesPersistentSrcDocTransport && srcDocDocumentIdentityRef.current?.frame === frame
+        ? srcDocDocumentIdentityRef.current.documentId : undefined,
     }, '*');
     scheduleSrcDocTransportTimeout(() => {
       const pending = pendingSrcDocTransportProbeRef.current;
@@ -11352,6 +11434,7 @@ function HtmlViewer({
     clearSrcDocTransportTimeouts,
     recoverUnacknowledgedSrcDocTransport,
     scheduleSrcDocTransportTimeout,
+    usesPersistentSrcDocTransport,
   ]);
   const handleHostPreviewNavigationFailure = useCallback((
     failure: OpenDesignHostPreviewNavigationFailure,
@@ -11462,15 +11545,49 @@ function HtmlViewer({
   useEffect(() => {
     if (!workspaceActive) return;
     function onMessage(ev: MessageEvent) {
-      if (ev.source !== srcDocPreviewIframeRef.current?.contentWindow) return;
-      const data = ev.data as { type?: string } | null;
+      const frame = srcDocPreviewIframeRef.current;
+      if (!frame || ev.source !== frame.contentWindow) return;
+      const data = ev.data as { type?: string; documentId?: unknown; probeId?: unknown } | null;
       if (data?.type !== 'od:srcdoc-transport-ready') return;
-      srcDocShellReadyFrameRef.current = srcDocPreviewIframeRef.current;
+      if (typeof data.documentId === 'string' && data.documentId) {
+        const previous = srcDocDocumentIdentityRef.current;
+        if (previous?.frame !== frame || previous.documentId !== data.documentId) {
+          let retired = srcDocRetiredDocumentIdsRef.current.get(frame);
+          if (!retired) {
+            retired = new Set<string>();
+            srcDocRetiredDocumentIdsRef.current.set(frame, retired);
+          }
+          if (retired.has(data.documentId)) return;
+          const challenge = srcDocShellProbeRef.current;
+          if (!challenge || challenge.frame !== frame || challenge.probeId !== data.probeId) {
+            if (!challenge || challenge.frame !== frame || challenge.documentId !== data.documentId) {
+              const probeId = `srcdoc-shell-${++srcDocShellProbeSequenceRef.current}`;
+              srcDocShellProbeRef.current = { frame, probeId, documentId: data.documentId };
+              frame.contentWindow?.postMessage({ type: 'od:srcdoc-transport-shell-probe', probeId }, '*');
+            }
+            return;
+          }
+          srcDocShellProbeRef.current = null;
+          if (previous?.frame === frame) retired.add(previous.documentId);
+          srcDocDocumentIdentityRef.current = { frame, documentId: data.documentId, generation: null };
+          // WindowProxy and HTML can stay identical across real URL reloads.
+          // Only this challenged document instance owns the activation latch.
+          clearSrcDocTransportTimeouts();
+          pendingSrcDocTransportProbeRef.current = null;
+          verifiedSrcDocTransportRef.current = null;
+          readySrcDocTransportRef.current = null;
+          srcDocNavigationCommittedRef.current = null;
+          srcDocContentReadyRef.current = null;
+          activatedSrcDocTransportHtmlRef.current = null;
+          setSrcDocDocumentEpoch((epoch) => epoch + 1);
+        }
+      } else if (srcDocDocumentIdentityRef.current?.frame === frame) return;
+      srcDocShellReadyFrameRef.current = frame;
       setSrcDocShellReady(true);
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [workspaceActive]);
+  }, [clearSrcDocTransportTimeouts, workspaceActive]);
   // A frame `load` only proves that some document finished loading. It cannot
   // distinguish the lazy shell from the real artifact written into that shell,
   // and a prewarmed real artifact may have loaded before Edit is activated.
@@ -11483,6 +11600,7 @@ function HtmlViewer({
       const data = ev.data as {
         type?: unknown;
         generation?: unknown;
+        documentId?: unknown;
         id?: unknown;
         probeId?: unknown;
         bodyComplete?: unknown;
@@ -11491,6 +11609,51 @@ function HtmlViewer({
         bodyChildCount?: unknown;
         documentElementChildCount?: unknown;
       } | null;
+      if (data?.type === 'od:srcdoc-transport-activated'
+        || data?.type === 'od:srcdoc-transport-reset-required') {
+        const identity = srcDocDocumentIdentityRef.current;
+        if (identity?.frame === frame) {
+          if (typeof data.documentId === 'string' && data.documentId !== identity.documentId) {
+            // Direct srcdoc revisions establish their own document identity;
+            // a persistent carrier must instead complete its shell challenge.
+            const documentProbe = pendingSrcDocTransportProbeRef.current;
+            const challengedCurrentDocument = data.type === 'od:srcdoc-transport-activated'
+              && typeof data.probeId === 'string'
+              && documentProbe?.frame === frame
+              && documentProbe.generation === data.generation
+              && documentProbe.probeId === data.probeId;
+            if (usesPersistentSrcDocTransport || data.generation !== expectedSrcDocTransportGenerationRef.current
+              || (identity.generation === data.generation && !challengedCurrentDocument)
+              || srcDocRetiredDocumentIdsRef.current.get(frame)?.has(data.documentId)) return;
+            let retired = srcDocRetiredDocumentIdsRef.current.get(frame);
+            if (!retired) {
+              retired = new Set<string>();
+              srcDocRetiredDocumentIdsRef.current.set(frame, retired);
+            }
+            retired.add(identity.documentId);
+            srcDocDocumentIdentityRef.current = { frame, documentId: data.documentId, generation: String(data.generation) };
+            // A pending probe sent before this new owner announced itself may
+            // have reached the previous realm. Keep only the exact response
+            // that established this owner; its normal handler verifies below.
+            if (!challengedCurrentDocument) {
+              clearSrcDocTransportTimeouts();
+              pendingSrcDocTransportProbeRef.current = null;
+            }
+            verifiedSrcDocTransportRef.current = null;
+            readySrcDocTransportRef.current = null;
+            srcDocNavigationCommittedRef.current = null;
+            srcDocContentReadyRef.current = null;
+            setSrcDocDocumentEpoch((epoch) => epoch + 1);
+          } else if (data.documentId !== identity.documentId) return;
+        } else if (typeof data.documentId === 'string' && data.documentId
+          && data.generation === expectedSrcDocTransportGenerationRef.current) {
+          srcDocDocumentIdentityRef.current = { frame, documentId: data.documentId, generation: String(data.generation) };
+        }
+        if (srcDocDocumentIdentityRef.current?.frame === frame
+          && data.generation === expectedSrcDocTransportGenerationRef.current) {
+          srcDocDocumentIdentityRef.current.generation = String(data.generation);
+        }
+      }
       if (
         data?.type === 'od:preview-runtime-state-restore-ready'
         && typeof data.generation === 'string'
@@ -11650,6 +11813,7 @@ function HtmlViewer({
     recoverUnacknowledgedSrcDocTransport,
     replayPreviewBridgeModes,
     scheduleSrcDocTransportTimeout,
+    usesPersistentSrcDocTransport,
     workspaceActive,
   ]);
   useEffect(() => {
@@ -11914,6 +12078,8 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      documentId: srcDocDocumentIdentityRef.current?.frame === target
+        ? srcDocDocumentIdentityRef.current.documentId : undefined,
     }, '*');
     activatedSrcDocTransportHtmlRef.current = srcDocActivationContent;
     return true;
@@ -11921,6 +12087,7 @@ function HtmlViewer({
     boardMode,
     srcDocActivationContent,
     srcDocMaterialized,
+    srcDocDocumentEpoch,
     srcDocShellReady,
     srcDocTransportGeneration,
     useLazySrcDocTransport,
@@ -11928,6 +12095,7 @@ function HtmlViewer({
     usesPersistentSrcDocTransport,
   ]);
   const activateLoadedSrcDocTransport = useCallback((target: HTMLIFrameElement | null = srcDocPreviewIframeRef.current) => {
+    if (nativeSrcDocTransportUrl && (!srcDocShellReady || srcDocShellReadyFrameRef.current !== target)) return false;
     if (!canActivateSrcDocTransport({
       srcDoc: srcDocActivationContent,
       useUrlLoadPreview: useUrlLoadPreview && !srcDocMaterialized,
@@ -11941,12 +12109,16 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      documentId: srcDocDocumentIdentityRef.current?.frame === target
+        ? srcDocDocumentIdentityRef.current.documentId : undefined,
     }, '*');
     activatedSrcDocTransportHtmlRef.current = srcDocActivationContent;
     return true;
   }, [
     srcDocActivationContent,
+    nativeSrcDocTransportUrl,
     srcDocMaterialized,
+    srcDocShellReady,
     srcDocTransportGeneration,
     useLazySrcDocTransport,
     useUrlLoadPreview,
@@ -11959,6 +12131,8 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      documentId: srcDocDocumentIdentityRef.current?.frame === target
+        ? srcDocDocumentIdentityRef.current.documentId : undefined,
     }, '*');
     return true;
   }, [srcDocActivationContent, srcDocTransportGeneration]);
@@ -13307,6 +13481,8 @@ function HtmlViewer({
     manualEditPersistedDocumentRef.current = {
       sourceFingerprint: previewSourceFingerprint(savedSource),
       reloadKey,
+      nativeDocumentUrl: nativePreviewScope?.documentUrl ?? null,
+      documentId: srcDocDocumentIdentityRef.current?.documentId ?? null,
     };
   }
 
@@ -13839,6 +14015,7 @@ function HtmlViewer({
   function openPresenterWindow() {
     if (!deckVisualSource || typeof window === 'undefined') return;
     const count = Math.max(deckSlideCount, speakerNotes.length, 1);
+    presenterPreviewSourceRef.current = { projectId, fileName: file.name, source: deckVisualSource, count };
     const presenterPreviewHtmlBySlide = Array.from({ length: count }, (_, index) => buildSrcdoc(deckVisualSource, {
       deck: true,
       baseHref: nativeDocumentBase ? undefined : latestSrcDocPreviewBaseHref,
@@ -14267,6 +14444,7 @@ function HtmlViewer({
       try { popup.close(); } catch { /* already gone */ }
     }
     presenterWindowRef.current = null;
+    presenterPreviewSourceRef.current = null;
     if (typeof document !== 'undefined' && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
       document.exitFullscreen().catch(() => undefined);
     }
@@ -18091,6 +18269,7 @@ function HtmlViewer({
         >
           {effectiveDeck || !useUrlLoadPreview ? (
             <PreviewDocumentFrame
+              generation={effectiveDeck ? 'auxiliary-preview' : srcDocTransportGeneration}
               title="present"
               sandbox="allow-scripts allow-downloads"
               documentUrl={nativeDocumentBase?.documentUrl}

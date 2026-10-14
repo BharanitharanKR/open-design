@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron';
 import { buildPreviewBaseHrefBridge } from '@open-design/contracts/runtime/preview-observability';
-import { findRealTagEnd, HTML_TAG_PATTERNS } from '@open-design/contracts/runtime/html-injection-points';
+import { findRealTagEnd, HTML_TAG_PATTERNS, prependAfterDoctype } from '@open-design/contracts/runtime/html-injection-points';
 
 /** Activate the selected export snapshot at its bound file URL. Hash changes
  * stay in this document, including when exporting a historical version. */
@@ -17,7 +17,7 @@ export async function writePreviewDocument(
     ? html.slice(0, headEnd) + bridge + html.slice(headEnd)
     : htmlEnd >= 0
       ? html.slice(0, htmlEnd) + '<head>' + bridge + '</head>' + html.slice(htmlEnd)
-      : '<html><head>' + bridge + '</head><body>' + html + '</body></html>';
+      : prependAfterDoctype(html, bridge);
   // HTML is an IPC input, never executable interpolation. JSON encoding keeps
   // authored quotes/backticks inside the document.write string argument.
   await window.webContents.executeJavaScript(`new Promise(function(resolve, reject) {

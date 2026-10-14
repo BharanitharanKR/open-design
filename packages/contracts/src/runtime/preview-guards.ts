@@ -1,3 +1,5 @@
+import { decodeHtmlAttributeValue, htmlHasOpeningTag } from './html-injection-points.js';
+
 /**
  * Cross-runtime preview guard constants plus daemon-safe script builders.
  *
@@ -257,14 +259,56 @@ export function buildPreviewRedirectGuard(
 })();</script>`;
 }
 
-/** External scripts may contain navigation invisible to the HTML source scan. */
+// HTML's classic JavaScript MIME types, including supported legacy spellings.
+const JAVASCRIPT_SCRIPT_TYPES = new Set([
+  'application/ecmascript', 'application/javascript', 'application/x-ecmascript', 'application/x-javascript',
+  'text/ecmascript', 'text/javascript', 'text/javascript1.0', 'text/javascript1.1',
+  'text/javascript1.2', 'text/javascript1.3', 'text/javascript1.4', 'text/javascript1.5',
+  'text/jscript', 'text/livescript', 'text/x-ecmascript', 'text/x-javascript',
+]);
+
+/**
+ * A file-bound carrier must remain correct for indirect navigation too. Script
+ * aliases and imported modules cannot be classified by matching call syntax.
+ * Storage-only inline scripts can still use the immediate inline transport.
+ */
 export function previewHtmlNeedsNativeNavigation(source: string): boolean {
-  return previewHtmlHasLoadTimeLocationNavigation(source) || /<script\b[^>]*\bsrc\s*=/i.test(source);
+  const mayNavigate = (code: string) => /\blocation\b|\bimport\s*\(/.test(code);
+  const decision = htmlHasOpeningTag(source, ({ name, attrs, namespace, rawText }) => {
+    if (name === 'script') {
+      const authoredType = attrs.get('type') ?? (attrs.get('language') ? `text/${attrs.get('language')}` : '');
+      const type = decodeHtmlAttributeValue(authoredType).trim().toLowerCase();
+      if (!type || type === 'module' || JAVASCRIPT_SCRIPT_TYPES.has(type)) {
+        if (type === 'module' || attrs.has('src')
+          || (namespace === 'svg' && (attrs.has('href') || attrs.has('xlink:href')))
+          || mayNavigate(namespace === 'html' ? rawText : decodeHtmlAttributeValue(rawText))) return true;
+      }
+    }
+    for (const [key, rawValue] of attrs) {
+      const value = decodeHtmlAttributeValue(rawValue);
+      if (/^on[a-z]/.test(key) && mayNavigate(value)) return true;
+      if (/^(?:href|src|action|formaction|xlink:href)$/.test(key)
+        && /^\s*javascript:/i.test(value) && mayNavigate(value)) return true;
+    }
+    return false;
+  });
+  // The shared walker declines ambiguous HTML instead of guessing. Keep those
+  // pages conservative without interpreting inert examples in determinate HTML.
+  return decision ?? (mayNavigate(source) || /<script\b/i.test(source));
 }
 
 /** Match native navigation's document mode before any bridge is injected. */
 export function previewHtmlUsesQuirksMode(source: string): boolean {
   return !/^\s*(?:<!--[\s\S]*?-->\s*)*<!doctype\b/i.test(source);
+}
+
+/** Shared serialized identity setup for bootstrap, enhanced, and URL documents. */
+export function buildPreviewTransportDocumentIdentityScript(fresh = false): string {
+  return `var documentId = ${fresh ? "''" : "typeof window.__odSrcdocTransportDocumentId === 'string' ? window.__odSrcdocTransportDocumentId : ''"};
+  if (!documentId) {
+    documentId = 'od-document-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+    window.__odSrcdocTransportDocumentId = documentId;
+  }`;
 }
 
 export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {}): string {
@@ -274,6 +318,7 @@ export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {})
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script data-od-lazy-srcdoc-transport>(function(){
+      ${buildPreviewTransportDocumentIdentityScript(true)}
       var readyInterval = null;
       var readyAttempts = 0;
       function stopReadyAnnouncements(){
@@ -282,10 +327,12 @@ export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {})
         }
         readyInterval = null;
       }
-      function announceReady(){
+      function announceReady(probeId){
         try {
           if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'od:srcdoc-transport-ready' }, '*');
+            var message = { type: 'od:srcdoc-transport-ready', documentId: documentId };
+            if (typeof probeId === 'string' && probeId) message.probeId = probeId;
+            window.parent.postMessage(message, '*');
           }
         } catch (_) { /* sandboxed parent — host falls back to onLoad */ }
       }
@@ -293,15 +340,17 @@ export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {})
         if (ev.source !== window.parent) return;
         var data = ev && ev.data;
         if (data && data.type === 'od:srcdoc-transport-shell-probe') {
-          announceReady();
+          announceReady(data.probeId);
           return;
         }
         if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string' || typeof data.generation !== 'string' || !data.generation) return;
+        if (data.documentId !== documentId) return;
         stopReadyAnnouncements();
         if (typeof window.removeEventListener === 'function') {
           window.removeEventListener('message', handleTransportMessage);
         }
         document.open();
+        window.__odSrcdocTransportDocumentId = documentId;
         document.write(data.html);
         document.close();
       }

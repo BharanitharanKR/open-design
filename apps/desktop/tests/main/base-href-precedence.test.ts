@@ -97,8 +97,10 @@ const sourceHtml = `<!doctype html>
 
 type BaseResolution = {
   readonly baseURI: string;
+  readonly compatMode: string;
   readonly hash?: string;
   readonly heading?: string;
+  readonly headingColor?: string;
   readonly imageSrc: string;
   readonly stylesheetHref: string;
 };
@@ -109,6 +111,59 @@ afterEach(() => {
 });
 
 describe('scoped renderer base precedence', () => {
+  it.each(['image', 'deck-pdf', 'deck-capture'] as const)(
+    'preserves standards mode and authored CSS without explicit html/head tags in %s',
+    async (renderer) => {
+      const html = '<!doctype html><title>Historical snapshot</title>'
+        + '<style>.mixedcase { color: rgb(255, 0, 0); }</style>'
+        + '<link rel="stylesheet" href="styles/x.css">'
+        + '<body><h1 class="MixedCase">Historical snapshot</h1><img src="assets/hero.png">'
+        + '<script>if (!location.hash) location.replace("#/history")</script>';
+      await withNativePreviewServer(async (baseHref) => {
+        const input = { html, baseHref, documentUrl: baseHref + 'index.html', deck: true };
+        const result = renderer === 'deck-capture'
+          ? await renderDeckSlides(input)
+          : await exportArtifact({ ...input, format: renderer === 'deck-pdf' ? 'pdf' : 'image', title: 'History' });
+        try {
+          expect(rendererState.writes).toHaveLength(1);
+          const state = await probeLoadedDocument(singleLoadedUrl(), rendererState.writes[0]);
+          expect(state).toMatchObject({
+            baseURI: baseHref,
+            compatMode: 'CSS1Compat',
+            hash: '#/history',
+            heading: 'Historical snapshot',
+            // Class selectors are case sensitive in standards mode. A misplaced
+            // doctype switches Chromium to quirks mode and turns this text red.
+            headingColor: 'rgb(0, 0, 0)',
+          });
+          expect(state.imageSrc).toBe(baseHref + 'assets/hero.png');
+        } finally {
+          if ('path' in result && result.path) await rm(dirname(result.path), { force: true, recursive: true });
+        }
+      });
+    },
+    ELECTRON_PROBE_TEST_TIMEOUT_MS,
+  );
+
+  it.each([
+    ['html without head', '<!doctype html><html>', 'CSS1Compat'],
+    ['leading comment', '<!-- authored comment --><!doctype html>', 'CSS1Compat'],
+    ['XML prolog', '<?xml version="1.0"?><!doctype html>', 'CSS1Compat'],
+    ['fragment without doctype', '', 'BackCompat'],
+    ['legacy doctype', '<!doctype foo>', 'BackCompat'],
+  ] as const)('preserves the authored document mode for %s', async (_name, prefix, compatMode) => {
+    const html = prefix + '<title>History</title><link rel="stylesheet" href="styles/x.css">'
+      + '<body><h1>Historical snapshot</h1><img src="assets/hero.png">'
+      + '<script>if (!location.hash) location.replace("#/history")</script>';
+    await withNativePreviewServer(async (baseHref) => {
+      const result = await exportArtifact({ html, baseHref, documentUrl: baseHref + 'index.html', deck: false, format: 'image', title: 'History' });
+      try {
+        const state = await probeLoadedDocument(singleLoadedUrl(), rendererState.writes[0]);
+        expect(state).toMatchObject({ compatMode, hash: '#/history', heading: 'Historical snapshot' });
+      } finally { if (result.path) await rm(dirname(result.path), { force: true, recursive: true }); }
+    });
+  }, ELECTRON_PROBE_TEST_TIMEOUT_MS);
+
   it('keeps a hash-routed export on its selected historical snapshot in Electron', async () => {
     let documentRequests = 0;
     const server = createServer((request, response) => {
@@ -190,9 +245,24 @@ function singleLoadedUrl(): string {
 function expectedResolution(): BaseResolution {
   return {
     baseURI: scopedBaseHref,
+    compatMode: 'CSS1Compat',
     imageSrc: new URL('assets/hero.png', scopedBaseHref).href,
     stylesheetHref: new URL('styles/x.css', scopedBaseHref).href,
   };
+}
+
+async function withNativePreviewServer(run: (baseHref: string) => Promise<void>): Promise<void> {
+  const server = createServer((request, response) => {
+    if (request.url === '/api/projects/export/preview/scope/index.html') {
+      response.setHeader('Content-Type', 'text/html');
+      response.setHeader('Content-Security-Policy', "sandbox allow-scripts allow-downloads; base-uri 'none'; object-src 'none'; form-action 'none'");
+      response.end(buildLazySrcdocTransport());
+    } else { response.statusCode = 404; response.end('Not a document'); }
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  try { await run(`http://127.0.0.1:${port}/api/projects/export/preview/scope/`); }
+  finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 }
 
 async function probeLoadedDocument(url: string, activation = ''): Promise<BaseResolution> {
@@ -215,7 +285,9 @@ app.whenReady().then(async () => {
   if (activation) await window.webContents.executeJavaScript(activation);
   const result = await window.webContents.executeJavaScript(\`({
     baseURI: document.baseURI,
+    compatMode: document.compatMode,
     hash: location.hash, heading: document.querySelector('h1')?.textContent,
+    headingColor: document.querySelector('h1') ? getComputedStyle(document.querySelector('h1')).color : undefined,
     imageSrc: document.querySelector('img').src,
     stylesheetHref: document.querySelector('link[rel="stylesheet"]').href,
   })\`, true);
@@ -254,6 +326,8 @@ function parseBaseResolution(value: unknown): BaseResolution {
     || value === null
     || !('baseURI' in value)
     || typeof value.baseURI !== 'string'
+    || !('compatMode' in value)
+    || typeof value.compatMode !== 'string'
     || !('imageSrc' in value)
     || typeof value.imageSrc !== 'string'
     || !('stylesheetHref' in value)
@@ -263,7 +337,9 @@ function parseBaseResolution(value: unknown): BaseResolution {
   }
   return {
     baseURI: value.baseURI,
+    compatMode: value.compatMode,
     ...('heading' in value && typeof value.heading === 'string' ? { heading: value.heading, hash: 'hash' in value ? String(value.hash) : '' } : {}),
+    ...('headingColor' in value && typeof value.headingColor === 'string' ? { headingColor: value.headingColor } : {}),
     imageSrc: value.imageSrc,
     stylesheetHref: value.stylesheetHref,
   };

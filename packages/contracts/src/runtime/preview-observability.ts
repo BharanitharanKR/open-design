@@ -1,3 +1,5 @@
+import { buildPreviewTransportDocumentIdentityScript } from './preview-guards.js';
+
 /**
  * Cross-runtime protocol used by generated artifact previews to report
  * failures to the OpenDesign host. The bridge runs inside both srcDoc and
@@ -31,6 +33,7 @@ export interface PreviewBaseScopeMessage {
   expiresAt: number;
   /** Current native file URL, including its authored fragment. */
   documentUrl?: string;
+  documentId?: string;
 }
 
 export function buildPreviewBaseHrefBridge(
@@ -42,7 +45,17 @@ export function buildPreviewBaseHrefBridge(
   return `<script data-od-preview-base-bridge>(function(){
   if (window.__odPreviewBaseBridge) return;
   window.__odPreviewBaseBridge = true;
+  ${buildPreviewTransportDocumentIdentityScript()}
   var initialScope = ${initialScopeJson};
+  function isNativeEntryLocation(){
+    if (!initialScope) return false;
+    var current = new URL(location.href);
+    var entry = new URL(initialScope.documentUrl || initialScope.href, location.href);
+    var directory = new URL(initialScope.href, location.href);
+    return current.protocol === entry.protocol && current.host === entry.host
+      && current.protocol === directory.protocol && current.host === directory.host
+      && (current.pathname === entry.pathname || current.pathname === directory.pathname);
+  }
   // A native preview document has base-uri 'none', so adding a <base> would
   // violate its CSP. Expose the same fragment-free directory base to scripts
   // as the original raw preview, even after location.hash changes.
@@ -51,7 +64,7 @@ export function buildPreviewBaseHrefBridge(
       var nativeBase = Object.getOwnPropertyDescriptor(Node.prototype, 'baseURI');
       var entryBase = new URL(initialScope.href, location.href).href;
       var previewDocument = document;
-      if (nativeBase && nativeBase.get && new URL(location.href).pathname === new URL(initialScope.documentUrl || entryBase, location.href).pathname) {
+      if (nativeBase && nativeBase.get && isNativeEntryLocation()) {
         Object.defineProperty(Node.prototype, 'baseURI', {
           configurable: nativeBase.configurable,
           enumerable: nativeBase.enumerable,
@@ -70,6 +83,7 @@ export function buildPreviewBaseHrefBridge(
         type: '${PREVIEW_BASE_SCOPE_MESSAGE_TYPE}',
         href: initialScope.href,
         expiresAt: initialScope.expiresAt,
+        documentId: documentId,
         documentUrl: initialScope.documentUrl ? location.href : undefined
       }, '*');
     } catch (_) {}
@@ -98,7 +112,7 @@ export function buildPreviewBaseHrefBridge(
         // This is a native URL document under base-uri 'none'.
         // After daemon restart it cannot change its effective base in place;
         // recover on the new bound file, preserving the current hash.
-        if (initialScope && new URL(location.href).pathname === new URL(initialScope.documentUrl || initialScope.href, location.href).pathname) {
+        if (isNativeEntryLocation()) {
           var suffix = initialScope.documentUrl
             ? new URL(initialScope.documentUrl, location.href).pathname.slice(new URL(initialScope.href, location.href).pathname.length)
             : '';
@@ -114,6 +128,25 @@ export function buildPreviewBaseHrefBridge(
       }, '*');
     } catch (_) {}
   });
+  function reportHistoryChange(name){
+    try {
+      var original = window.history && window.history[name];
+      if (typeof original !== 'function' || original.__odPreviewLocationReporter) return;
+      var report = function(){
+        var previousHref = location.href;
+        var result = original.apply(this, arguments);
+        // The opaque-origin sandbox shim can swallow an invalid history URL.
+        // Publish only when a successful call actually changed the location.
+        if (location.href !== previousHref) announce();
+        return result;
+      };
+      report.__odPreviewLocationReporter = true;
+      window.history[name] = report;
+    } catch (_) {}
+  }
+  reportHistoryChange('pushState');
+  reportHistoryChange('replaceState');
+  window.addEventListener('popstate', announce);
   window.addEventListener('hashchange', announce);
   announce();
 })();</script>`;

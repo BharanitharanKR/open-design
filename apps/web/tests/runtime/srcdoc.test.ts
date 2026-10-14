@@ -254,6 +254,66 @@ describe('buildSrcdoc', () => {
     expect(srcdoc).toContain('message.bodyChildCount = document.body ? document.body.children.length : 0');
   });
 
+  it('reports query-only history changes and only acknowledges the current transport document', async () => {
+    const messages: Array<Record<string, unknown>> = [];
+    const parent = { postMessage: (message: Record<string, unknown>) => messages.push(message) };
+    const documentId = 'document-current';
+    const generation = 'generation-history';
+    const href = 'http://open-design.local/api/projects/project-1/preview/scope-1/';
+    const documentUrl = href + 'deck.html';
+    const dom = new JSDOM(buildSrcdoc('<!doctype html><html><head></head><body><main>Ready</main></body></html>', {
+      nativeDocumentBase: { href, documentUrl, expiresAt: 123 },
+      transportActivationGeneration: generation,
+    }), {
+      url: documentUrl + '#/home',
+      runScripts: 'dangerously',
+      pretendToBeVisual: true,
+      beforeParse(window) {
+        Object.defineProperty(window, 'parent', { value: parent });
+        Object.defineProperty(window, '__odSrcdocTransportDocumentId', { value: documentId, writable: true });
+      },
+    });
+    await new Promise<void>((resolve) => dom.window.addEventListener('load', () => resolve()));
+    messages.length = 0;
+    dom.window.history.replaceState({}, '', '?theme=dark#/home');
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: 'od:preview-base-scope', documentId, documentUrl: documentUrl + '?theme=dark#/home',
+    }));
+    dom.window.history.pushState({}, '', '?theme=light#/home');
+    expect(messages.at(-1)).toMatchObject({
+      type: 'od:preview-base-scope', documentId, documentUrl: documentUrl + '?theme=light#/home',
+    });
+    dom.window.dispatchEvent(new dom.window.PopStateEvent('popstate'));
+    expect(messages.at(-1)).toMatchObject({ type: 'od:preview-base-scope', documentId });
+    const messagesBeforeFailedHistory = messages.length;
+    dom.window.history.replaceState({}, '', 'https://other.example/');
+    expect(messages).toHaveLength(messagesBeforeFailedHistory);
+
+    messages.length = 0;
+    const probe = (id: string) => dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
+      source: dom.window.parent,
+      data: { type: 'od:srcdoc-transport-ready-probe', generation, documentId: id, probeId: 'probe-1' },
+    }));
+    probe('previous-document');
+    expect(messages).toEqual([]);
+    probe(documentId);
+    expect(messages).toContainEqual(expect.objectContaining({
+      type: 'od:srcdoc-transport-activated', generation, documentId, probeId: 'probe-1', bodyComplete: true,
+    }));
+    messages.length = 0;
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
+      source: dom.window.parent,
+      data: { type: 'od:srcdoc-transport-activate', generation: 'generation-next', documentId: 'previous-document', html: '<main>Stale</main>' },
+    }));
+    expect(messages).toEqual([]);
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
+      source: dom.window.parent,
+      data: { type: 'od:srcdoc-transport-activate', generation: 'generation-next', documentId, html: '<main>Next</main>' },
+    }));
+    expect(messages).toContainEqual(expect.objectContaining({ type: 'od:srcdoc-transport-reset-required', generation: 'generation-next', documentId }));
+    dom.window.close();
+  });
+
   it('keeps parser completion latched after authored code removes the completed body', async () => {
     const messages: Array<Record<string, unknown>> = [];
     const generation = 'generation-remove-body';
