@@ -32,6 +32,8 @@ import type {
 } from '../../src/components/EntryShell';
 import { I18nProvider } from '../../src/i18n';
 import { checkAmrBalanceGate } from '../../src/runtime/amr-balance-gate';
+import { checkAmrFundingFeedback, invalidateAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
+import { advanceWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 import type { AgentInfo, AppConfig } from '../../src/types';
 import { EntryShellWithGateHost } from '../helpers/entry-shell-gate-host';
 import { setHomeHeroPrompt } from '../helpers/home-hero-lexical';
@@ -221,6 +223,7 @@ describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
 
   afterEach(() => {
     cleanup();
+    invalidateAmrFundingFeedback();
     globalThis.fetch = originalFetch;
     globalThis.ResizeObserver = originalResizeObserver;
     mockedCheckAmrBalanceGate.mockReset();
@@ -338,6 +341,7 @@ describe('zero wallet never bypasses the ordinary scoped preflight hand-off', ()
 
   afterEach(() => {
     cleanup();
+    invalidateAmrFundingFeedback();
     globalThis.fetch = originalFetch;
     globalThis.ResizeObserver = originalResizeObserver;
     mockedCheckAmrBalanceGate.mockReset();
@@ -351,6 +355,66 @@ describe('zero wallet never bypasses the ordinary scoped preflight hand-off', ()
     await waitFor(() => expect(billingReads).toBeGreaterThan(0));
     await new Promise((resolve) => { setTimeout(resolve, 0); });
   }
+
+  async function primeHomeFunding() {
+    const h = harness('amr');
+    await waitForWalletInMemory();
+    const context = personalContext();
+    const original = globalThis.fetch;
+    let reads = 0;
+    let finishConfirmation!: (response: Response) => void;
+    const preflight = {
+      schemaVersion: 1, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+      modelId: 'default', generatedAt: new Date().toISOString(), balanceUsd: '0', fundingCheck: 'insufficient',
+    };
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/api/workspace/billing/preflight?')) {
+        reads++;
+        if (reads > 1) return new Promise<Response>((resolve) => { finishConfirmation = resolve; });
+        return jsonResponse({ preflight });
+      }
+      return original(input, init);
+    });
+    await checkAmrFundingFeedback(context, 'default');
+    return { ...h, confirm: (fundingCheck: string) => finishConfirmation(jsonResponse({ preflight: { ...preflight, fundingCheck } })) };
+  }
+
+  it('keeps a cached backend insufficient verdict on Home before any project hand-off', async () => {
+    const h = await primeHomeFunding();
+    await submitHome('Keep this draft on Home.');
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('amr-balance-dialog')).toBeTruthy();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-dismiss'));
+    await waitFor(() => expect(screen.queryByTestId('amr-balance-dialog')).toBeNull());
+    h.confirm('available');
+    await waitFor(() => expect(screen.getByTestId('home-hero-submit')).toBeEnabled());
+    expect(h.rollback).not.toHaveBeenCalled();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    expect(screen.getByTestId('home-hero-input')).toHaveTextContent('Keep this draft on Home.');
+  });
+
+  it.each(['available', 'unknown'])('releases a provisional cache block on %s confirmation', async (result) => {
+    const h = await primeHomeFunding();
+    await submitHome('Continue this draft.');
+    await screen.findByTestId('amr-balance-dialog');
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    h.confirm(result);
+    await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+    expect(h.calls).toEqual(['begin', 'gate', 'create']);
+    expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
+  });
+
+  it('does not continue an old send after the account changes during confirmation', async () => {
+    const h = await primeHomeFunding();
+    await submitHome('Keep the old account draft.');
+    await screen.findByTestId('amr-balance-dialog');
+    advanceWorkspaceAccountGeneration('new-home-account');
+    h.confirm('available');
+    await waitFor(() => expect(screen.queryByTestId('amr-balance-dialog')).toBeNull());
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+  });
 
   it('confirmed sign-out still rolls back the pending frame and preserves the draft', async () => {
     const h = harness('amr');
@@ -395,6 +459,7 @@ describe('OPEND-3300 · local Team authority on a $0 Home send', () => {
 
   afterEach(() => {
     cleanup();
+    invalidateAmrFundingFeedback();
     globalThis.fetch = originalFetch;
     globalThis.ResizeObserver = originalResizeObserver;
     mockedCheckAmrBalanceGate.mockReset();

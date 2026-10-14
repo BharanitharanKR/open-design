@@ -19,7 +19,8 @@ import { T } from '@/timeouts';
 /*
  * Home opens the project frame on the click tick. Workspace billing is display
  * data, so project creation and run admission must not wait for its response.
- * Link decides funding; confirmed sign-out retains its existing dialog.
+ * A fresh cached backend funding rejection holds Home for confirmation; a
+ * bare wallet amount cannot do so. Link owns final admission.
  */
 
 declare global {
@@ -302,4 +303,51 @@ test('[P1] local-agent send from Home still enters the pending frame within a fr
   create.release();
   await runRequests.expectCount(1);
   await expect(pending).toBeHidden({ timeout: T.medium });
+});
+
+test('[P0] cached backend insufficiency stays on Home and dismiss preserves the draft', async ({ page }, testInfo) => {
+  await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
+  const create = await holdProjectCreate(page);
+  const confirmation = deferred();
+  let hintReads = 0;
+  let sending = false;
+  const warmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?') && new URL(response.url()).searchParams.get('modelId') === 'glm-5' && response.ok());
+  await page.route('**/api/workspace/billing/preflight?**', async (route) => {
+    hintReads++;
+    const confirming = sending;
+    if (confirming) await confirmation.promise;
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: { preflight: {
+      schemaVersion: 1, workspaceId: url.searchParams.get('workspaceId'),
+      workspaceMemberId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceMemberId,
+      modelId: url.searchParams.get('modelId'), generatedAt: new Date().toISOString(), balanceUsd: '0',
+      fundingCheck: confirming ? 'available' : 'insufficient',
+    } } });
+  });
+  try {
+    await gotoEntryHome(page);
+    await warmed;
+    const prompt = 'Keep this unfunded draft on the homepage.';
+    const warmReads = hintReads;
+    sending = true;
+    await sendFromHome(page, prompt);
+    const dialog = page.getByTestId('amr-balance-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId('home-hero-input')).toBeVisible();
+    await expect(page.getByTestId('project-creation-pending-view')).toHaveCount(0);
+    expect(create.requested()).toBe(false);
+    await expect.poll(() => hintReads).toBe(warmReads + 1);
+    await testInfo.attach('home-cached-funding-block', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+    const confirmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+    confirmation.resolve();
+    await confirmed;
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId('home-hero-input')).toHaveText(prompt);
+    await expect(page.getByTestId('home-hero-submit')).toBeEnabled();
+    expect(create.requested()).toBe(false);
+  } finally {
+    confirmation.resolve();
+    create.release();
+  }
 });
