@@ -15,8 +15,48 @@ async function fixture(fn: (root: string) => Promise<void>) {
   finally { await rm(root, { recursive: true, force: true }); }
 }
 const request = { expectedSource: html, editingSettled: true as const };
+const stateDivergentRawText = [
+  '<noscript><script></noscript>',
+  '<script><!-- <script></script><style> --></script>',
+];
 afterEach(() => vi.restoreAllMocks());
 describe('explicit static comment preparation source boundary', () => {
+  it.each(stateDivergentRawText)('prepares the actual following p after raw-text state triggers: %s', async (rawText) => fixture(async (root) => {
+    const source = `${rawText}<p>A</p>`;
+    await writeProjectFile(root, 'p', 'index.html', Buffer.from(source));
+    const result = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: source });
+    expect(load(result.source)('p').text()).toBe('A');
+    expect(load(result.source)('p').attr('data-od-comment-id')).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result.source.replace(/ data-od-comment-id="[^"]+"/g, '')).toBe(source);
+    const retry = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: result.source });
+    expect(retry).toMatchObject({ changed: false, source: result.source, version: { id: result.version.id } });
+  }));
+  it.each(stateDivergentRawText.flatMap((rawText) => ['html', 'body'].map((tag) => ({ rawText, tag }))))('rejects ignored malformed $tag after $rawText even on unchanged retries', async ({ rawText, tag }) => fixture(async (root) => {
+    const source = '<html data-od-comment-id="12345678-1234-4234-8234-123456789abc"><body data-od-comment-id="34567890-1234-4234-8234-123456789abc">'
+      + rawText + '<p data-od-comment-id="23456789-1234-4234-8234-123456789abc">A</p>'
+      + `<${tag} data-od-comment-id="bad">`;
+    await writeProjectFile(root, 'p', 'index.html', Buffer.from(source));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: source })).rejects.toMatchObject({ code: 'COMMENT_IDENTITY_INVALID' });
+      expect(await readFile(path.join(root, 'p/index.html'), 'utf8')).toBe(source);
+      expect(await listProjectFileVersions(root, 'p', 'index.html')).toHaveLength(0);
+    }
+  }));
+  it.each(stateDivergentRawText)('preserves astral Unicode, CRLF, raw-text literal bytes and later tag offsets: %s', async (rawText) => fixture(async (root) => {
+    const decoratedRawText = rawText.replace('</noscript>', '🧭\r\n</noscript>').replace('<style>', '<style>🧭\r\n');
+    const source = '😀\r\n' + decoratedRawText + '<p title="🌍" data-od-id="tool">A🧪</p>\n';
+    await writeProjectFile(root, 'p', 'index.html', Buffer.from(source));
+    const result = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: source });
+    expect(Buffer.from(result.source.replace(/ data-od-comment-id="[^"]+"/g, ''))).toEqual(Buffer.from(source));
+    expect(await readFile(path.join(root, 'p/index.html'))).toEqual(Buffer.from(result.source));
+    const before = load(source); const after = load(result.source);
+    expect(after('noscript,script').text()).toBe(before('noscript,script').text());
+    expect(after('p').text()).toBe('A🧪');
+    expect(after('p').attr('title')).toBe('🌍');
+    expect(after('p').attr('data-od-id')).toBe('tool');
+    const retry = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: result.source });
+    expect(retry).toMatchObject({ changed: false, source: result.source, version: { id: result.version.id } });
+  }));
   it.each([
     '<x foo>Visible</x foo>',
     '<p title=a data-od-comment-id=b data-od-comment-id="12345678-1234-4234-8234-123456789abc">A</p>',

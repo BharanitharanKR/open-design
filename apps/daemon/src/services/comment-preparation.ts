@@ -24,6 +24,29 @@ function validatedParsedIds($: CheerioAPI): Set<string> {
   }
   return ids;
 }
+/** Mask only parse5-authored raw-text content in the secondary tokenizer input.
+ * Original tags/attributes remain visible. Preserve UTF-16 length and CR/LF so
+ * secondary token offsets still address the untouched source, including astral text.
+ */
+function authoredTokenizationInput(source: string, $: CheerioAPI): string {
+  const ranges = $('script,style,title,textarea,xmp,iframe,noembed,noframes,noscript,plaintext').contents().toArray().flatMap((node) => {
+    if (node.type !== 'text') return [];
+    const location = (node as typeof node & { sourceCodeLocation?: { startOffset: number; endOffset: number } }).sourceCodeLocation;
+    return location ? [location] : [];
+  });
+  const chunks: string[] = [];
+  let cursor = 0;
+  for (const range of ranges.sort((a, b) => a.startOffset - b.startOffset)) {
+    if (range.endOffset <= cursor) continue;
+    const start = Math.max(cursor, range.startOffset);
+    // Deliberately no Unicode regex flag: each surrogate is one source code unit.
+    chunks.push(source.slice(cursor, start), source.slice(start, range.endOffset).replace(/[^\r\n]/g, ' '));
+    cursor = range.endOffset;
+  }
+  chunks.push(source.slice(cursor));
+  return chunks.join('');
+}
+
 /** Validate every authored opening token, not only nodes surviving tree construction.
  * Public onattribute callbacks retain repetitions before attribute-map deduplication;
  * public name spans use HTML ASCII delimiters rather than JavaScript whitespace.
@@ -31,25 +54,17 @@ function validatedParsedIds($: CheerioAPI): Set<string> {
 function validatedAuthoredTags(source: string, $: CheerioAPI): { ids: Set<string>; nameEnds: Map<number, number> } {
   const ids = new Set<string>();
   const nameEnds = new Map<number, number>();
-  // htmlparser2 handles ordinary raw text. parse5's source ranges additionally
-  // exclude tokenizer-context differences such as double-escaped script data.
-  const rawTextRanges = $('script,style,title,textarea,xmp,iframe,noembed,noframes,noscript,plaintext').toArray().flatMap((node) => {
-    const location = (node as typeof node & { sourceCodeLocation?: { startOffset: number; endOffset: number } }).sourceCodeLocation;
-    return location ? [location] : [];
-  });
   let start = -1;
   let nameEnd = -1;
   let identitySeen = false;
-  let rawText = false;
   const parser = new Parser({
     onopentagname() {
       start = parser.startIndex;
       nameEnd = parser.endIndex;
       identitySeen = false;
-      rawText = rawTextRanges.some((range) => start > range.startOffset && start < range.endOffset);
     },
     onattribute(name, value) {
-      if (rawText || name !== COMMENT_ID_ATTRIBUTE) return;
+      if (name !== COMMENT_ID_ATTRIBUTE) return;
       if (identitySeen || !isCommentUuid(value) || ids.has(value)) {
         throw new CommentPreparationError('COMMENT_IDENTITY_INVALID', 'Malformed or duplicate authored comment identity');
       }
@@ -57,10 +72,12 @@ function validatedAuthoredTags(source: string, $: CheerioAPI): { ids: Set<string
       ids.add(value);
     },
     onopentag(_name, _attributes, implied) {
-      if (!implied && !rawText) nameEnds.set(start, nameEnd);
+      if (!implied) nameEnds.set(start, nameEnd);
     },
   }, { xmlMode: false, decodeEntities: true });
-  parser.end(source);
+  // Filtering callbacks is too late: apparent tags would already change lexer
+  // state and hide later real tags. Mask content before the tokenizer sees it.
+  parser.end(authoredTokenizationInput(source, $));
   return { ids, nameEnds };
 }
 
