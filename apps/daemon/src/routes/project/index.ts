@@ -932,6 +932,13 @@ ${COMMENT_IDENTITY_HELPERS}
     } catch (_) { return false; }
     return true;
   }
+  function visibleCommentTarget(el){
+    try {
+      var rect = el.getBoundingClientRect();
+      var cs = window.getComputedStyle(el);
+      return rect.width >= 1 && rect.height >= 1 && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) !== 0;
+    } catch (_) { return false; }
+  }
   function meaningfulDomFallbackTarget(el){
     if (!visibleTarget(el)) return false;
     var tag = el.tagName ? el.tagName.toLowerCase() : '';
@@ -988,7 +995,9 @@ ${COMMENT_IDENTITY_HELPERS}
       selector = domSelectorFor(el);
       if (selector) id = 'dom:' + selector;
     }
-    if (!id || !selector) return null;
+    // Identity uniqueness has already counted the whole document, including
+    // hidden duplicates. Visibility is a separate location/geometry gate.
+    if (!id || !selector || !visibleCommentTarget(el)) return null;
     var rect = el.getBoundingClientRect();
     var tag = el.tagName ? el.tagName.toLowerCase() : 'element';
     var cls = typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
@@ -7322,7 +7331,9 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       // one would only manufacture history that never existed, inside a
       // project the member is told they cannot modify. The read itself is
       // never refused: browsing history stays open (飞书 recvq56vFjQKfT).
-      if (workingFileContent !== null && versions.length === 0
+      // Passive preparation-proof reads must never manufacture history.
+      // Default history browsing retains the existing authorized bootstrap.
+      if (req.query.bootstrap !== '0' && workingFileContent !== null && versions.length === 0
         && await requestCanWriteWorkspaceProject(
           req,
           getWorkspaceProject,

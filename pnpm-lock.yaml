@@ -336,6 +336,9 @@ importers:
       dompurify:
         specifier: 3.4.2
         version: 3.4.2
+      htmlparser2:
+        specifier: 10.1.0
+        version: 10.1.0
       jspdf:
         specifier: 4.2.1
         version: 4.2.1
@@ -360,6 +363,9 @@ importers:
       openai:
         specifier: 6.38.0
         version: 6.38.0(ws@8.21.3)(zod@4.4.2)
+      parse5:
+        specifier: 8.0.1
+        version: 8.0.1
       posthog-js:
         specifier: 1.374.2
         version: 1.374.2

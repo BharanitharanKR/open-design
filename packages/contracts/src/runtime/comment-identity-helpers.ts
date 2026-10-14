@@ -19,7 +19,8 @@ ${commentSelectorClaimsIdentity.toString()}
     return uniqueCommentNode(uuid) === el ? { elementId: 'cmt:' + uuid, selector: commentSelector(uuid) } : null;
   }
   function strictCommentNode(elementId, selector){
-    var uuid = String(elementId).slice(4);
+    if (typeof elementId !== 'string' || elementId.indexOf('cmt:') !== 0) return null;
+    var uuid = elementId.slice(4);
     if (!commentUuid(uuid) || selector !== commentSelector(uuid)) return null;
     return uniqueCommentNode(uuid);
   }

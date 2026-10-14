@@ -66,6 +66,19 @@ for (const full of [false, true]) describe(`complete injected comment runtime (s
       expect(postMessage.mock.calls.map(c => c[0])).toContainEqual(expect.objectContaining({ type: 'od:comment-active-target-update', elementId: 'data-od-comment-id' }));
     } finally { dom.window.close(); }
   });
+  it('wrong-prefix UUID pairs fail after a healthy exact-prefix locate', () => {
+    const { dom, win, postMessage } = setup(`<body><h2 data-od-comment-id="${uuid}">Target</h2></body>`);
+    try {
+      const target = win.document.querySelector('h2')!;
+      win.dispatchEvent(new win.MessageEvent('message', { data: { type: 'od:comment-active-target', elementId: `cmt:${uuid}`, selector, locate: true, requestId: 'healthy' } }));
+      expect(target.scrollIntoView).toHaveBeenCalledOnce();
+      expect(postMessage.mock.calls.map(c => c[0])).toContainEqual(expect.objectContaining({ type: 'od:comment-active-target-update', requestId: 'healthy' }));
+      postMessage.mockClear();
+      win.dispatchEvent(new win.MessageEvent('message', { data: { type: 'od:comment-active-target', elementId: `bad:${uuid}`, selector, locate: true, requestId: 'wrong-prefix' } }));
+      expect(target.scrollIntoView).toHaveBeenCalledOnce();
+      expect(postMessage.mock.calls.map(c => c[0])).toContainEqual(expect.objectContaining({ type: 'od:comment-location-missing', requestId: 'wrong-prefix' }));
+    } finally { dom.window.close(); }
+  });
   it('dynamic selected descendant never borrows an ancestor persisted identity', () => {
     const { dom, win, postMessage } = setup(`<body><h2 data-od-id="tool" data-od-comment-id="${uuid}"><span>Dynamic child</span></h2></body>`);
     try {

@@ -81,6 +81,18 @@ it.each(['personal', 'team'] as const)('explicit HTTP/CLI preparation uses %s wr
     // Ordinary raw preview does not prepare or create history.
     expect((await requestHttp(`${base}/api/projects/project/raw/index.html`, { headers: headers() })).status).toBe(200);
     expect(await listProjectFileVersions(projects, 'project', 'index.html')).toHaveLength(0);
+    const beforeProbe = await fs.readdir(path.join(projects, 'project'), { recursive: true });
+    const passive = await requestHttp(`${base}/api/projects/project/files/index.html/versions?bootstrap=0`, { headers: headers() });
+    expect(passive.status).toBe(200);
+    expect((await passive.json() as { versions: unknown[] }).versions).toEqual([]);
+    expect(await listProjectFileVersions(projects, 'project', 'index.html')).toHaveLength(0);
+    expect(await fs.readdir(path.join(projects, 'project'), { recursive: true })).toEqual(beforeProbe);
+    expect(await fs.readFile(path.join(projects, 'project/index.html'), 'utf8')).toBe(source);
+    // The existing explicit history workflow keeps its default bootstrap behavior.
+    await projectFiles.writeProjectFile(projects, 'project', 'default.html', Buffer.from('<p>Baseline</p>'));
+    const defaultHistory = await requestHttp(`${base}/api/projects/project/files/default.html/versions`, { headers: headers() });
+    expect(defaultHistory.status).toBe(200);
+    expect((await defaultHistory.json() as { versions: unknown[] }).versions).toHaveLength(1);
     expect((await prepare(request, 'reader')).status).toBe(403);
     expect((await requestHttp(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(request) })).status).toBe(403);
     expect((await prepare(request, 'owner', `${base}/api/projects/other/files/index.html/comment-identities/prepare`)).status).toBe(403);

@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, expect, it, vi } from 'vitest';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { FileViewer } from '../../src/components/FileViewer';
+import { invalidateHtmlSourceSnapshotProject } from '../../src/components/html-source-snapshot-cache';
 import { CollabProvider, type CollabContextValue } from '../../src/collab/collab-context';
 const source = '<html><body><h2>Authored target</h2></body></html>';
 const context: WorkspaceCollabContext = {
@@ -30,6 +31,7 @@ function setup(options: { readonly?: boolean; streaming?: boolean; fail?: boolea
       return Response.json({ source: preparedSource, changed: true, preparedTargets: 1, version: { id: 'source-version-2', version: 2 } });
     }
     const pathname = new URL(url, 'http://localhost').pathname;
+    if (pathname.endsWith('/versions')) return Response.json({ versions: [] });
     if (pathname.endsWith('/raw/index.html') || pathname.endsWith('/files/index.html')) return new Response(serverSource);
     if (url.includes('/integrations/vela/status')) return Response.json({ loggedIn: true, user: { id: 'owner' } });
     return Response.json({});
@@ -41,7 +43,7 @@ function setup(options: { readonly?: boolean; streaming?: boolean; fail?: boolea
   render(tree);
   return { writes, fetcher };
 }
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); invalidateHtmlSourceSnapshotProject('prep-project'); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 it('explicit source-version preparation entry is discoverable; passive viewing and cancellation invoke no write', async () => {
   const { writes } = setup();
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -86,7 +88,7 @@ it.each([false, true])('source-version save awaits a fresh challenged frame; sta
   const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
   // This is a frontend protocol regression, not a real browser/publication witness.
   act(() => { fireEvent.load(frame); });
-  const probe = postMessage.mock.calls.find(([message]) => (message as { type?: string }).type === 'od:srcdoc-transport-ready-probe')?.[0] as { generation?: string; probeId?: string } | undefined;
+  const probe = postMessage.mock.calls.filter(([message]) => (message as { type?: string }).type === 'od:srcdoc-transport-ready-probe').at(-1)?.[0] as { generation?: string; probeId?: string } | undefined;
   expect(probe?.probeId).toBeTruthy();
   act(() => {
     window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: {

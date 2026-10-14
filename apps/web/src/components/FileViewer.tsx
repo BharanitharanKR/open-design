@@ -1,6 +1,7 @@
 import { commentSelectorsMatch, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
 import { indexCommentTargets } from '../comments/target-index';
 import { useCommentPreparation } from '../comments/use-comment-preparation';
+import { useSourcePreparationProof } from '../comments/use-source-preparation-proof';
 import commentPreparationStyles from './CommentPreparation.module.css';
 import { useExperienceError } from '../observability/use-experience-error';
 import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-detail';
@@ -8147,16 +8148,19 @@ function HtmlViewer({
   }
 
   async function publishCurrentFilePublic(mode?: 'resume') {
+    if (!commentPreparation.validateLiveRevision()) return;
     if (streaming || viewerOnly || publishingPublicFile || commentPreparation.busy) return;
     // Never backfill an identity deliberately lost by a later edit/history restore.
     // Resume restores the immutable publication and must not prepare current source.
     const firstSupportedExposure = canPrepareCommentSource && mode !== 'resume' && (!fileShareStatus || fileShareStatus === 'none');
-    if (firstSupportedExposure && !hasIdentityCommentHistory && !commentPreparation.saved) {
-      await commentPreparation.prepare();
+    if (firstSupportedExposure && !hasVerifiedPreparation) {
+      await requestCommentPreparation();
       return; // explicit second publish action, after the actual fresh frame is ready
     }
-    if (firstSupportedExposure && (!commentPreparationSettled || !commentIdentityFrameReady)) {
-      commentPreparation.reportBlocked(!commentPreparationSettled ? 'COMMENT_EDITING_UNSETTLED' : 'COMMENT_PREVIEW_NOT_READY');
+    // Share-plan can hold this callback across later unsaved input changes.
+    // Recheck its live revision even when preparation is already established.
+    if (canPrepareCommentSource && mode !== 'resume' && !commentPreparation.validatePublication(firstSupportedExposure)) {
+      beginPreparedDocumentWitness();
       return;
     }
     publicFileStateReadRef.current = null;
@@ -8275,6 +8279,7 @@ function HtmlViewer({
   }
 
   async function updateCurrentFilePublic() {
+    if (!commentPreparation.validateLiveRevision()) return;
     if (!canPublishPublic || streaming || viewerOnly || !publishedFileSlug || publishingPublicFile
       || updateInFlightRef.current || fileShareFreshness !== 'outdated' || fileShareStatus !== 'active') return;
     publicFileStateReadRef.current = null;
@@ -12592,7 +12597,6 @@ function HtmlViewer({
   }, [inspectMode, srcDoc, useUrlLoadPreview, workspaceActive]);
 
   const commentTargetsKey = JSON.stringify([projectId, file.name, srcDoc, useUrlLoadPreview, reloadKey]);
-  const hasIdentityCommentHistory = previewComments.some(comment => comment.filePath === file.name && comment.elementId.startsWith('cmt:'));
   const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles) && !needsPowered && liveHtml === undefined;
   const commentPreparationSettled = !streaming && !manualEditMode && !manualEditDraftDirty
     && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
@@ -12603,10 +12607,17 @@ function HtmlViewer({
     source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes,
     boardImages.map(image => [image.name, image.size, image.lastModified]), manualEditDraft, speakerNotesDraft, workspaceActive,
   ]), [source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes, boardImages, manualEditDraft, speakerNotesDraft, workspaceActive]);
+  const commentIdentityFrameReady = commentTargetsReadyKey === commentTargetsKey
+    && (useUrlLoadPreview ? urlSelectionBridgeReady
+      : commentPreviewReady?.frame === iframeRef.current && commentPreviewReady.generation === srcDocTransportGeneration);
+  const sourcePreparationProof = useSourcePreparationProof({ enabled: canPrepareCommentSource,
+    projectId, fileName: file.name, context: workspaceContext ?? null, source, inputKey: commentPreparationInputKey });
   const commentPreparation = useCommentPreparation({
     projectId, fileName: file.name, context: workspaceContext ?? null,
     authorized: canPrepareCommentSource, settled: commentPreparationSettled,
     inputKey: commentPreparationInputKey,
+    document: { source, key: commentTargetsKey, ready: commentIdentityFrameReady },
+    verifiedDocument: sourcePreparationProof.verifiedDocument,
     confirm: () => window.confirm(t('fileViewer.commentIdentityConfirm')),
     apply: () => {
       // Reload through the ordinary lifecycle, never from preview serialization.
@@ -12617,14 +12628,31 @@ function HtmlViewer({
       void onFileSaved?.();
     },
   });
-  const commentIdentityFrameReady = commentTargetsReadyKey === commentTargetsKey
-    && (useUrlLoadPreview ? urlSelectionBridgeReady
-      : commentPreviewReady?.frame === iframeRef.current && commentPreviewReady.generation === srcDocTransportGeneration);
+  function requestCommentPreparation() {
+    if (!commentPreparation.saved && sourcePreparationProof.status !== 'ready') {
+      sourcePreparationProof.retry();
+      commentPreparation.reportBlocked(sourcePreparationProof.error ?? 'COMMENT_PREPARATION_PROOF_PENDING');
+      return Promise.resolve(false);
+    }
+    // A verified earlier source version prevents backfill after deliberate loss.
+    if (sourcePreparationProof.prior || commentPreparation.saved) return Promise.resolve(false);
+    return commentPreparation.prepare();
+  }
+  const hasVerifiedPreparation = Boolean(commentPreparation.saved) || sourcePreparationProof.prior;
+  function beginPreparedDocumentWitness() {
+    if (!commentPreparation.documentPending() || !commentPreparation.canStartDocumentWitness()) return;
+    // An explicit Comment/Publish action may enable the read-only bridge so
+    // that a reopened verified source can report targets. Creation stays off.
+    setBoardMode(true);
+    setMode('preview');
+  }
+  const commentsBlockedForPreparation = () => commentPreparation.documentPending()
+    || (canPrepareCommentSource && !hasVerifiedPreparation && !currentActiveComposerComment());
   // Ordinary preview text decoding consumes a UTF-8 BOM; preparation uses exact
   // authored bytes. This transport-only prefix does not change any target identity.
   const previewMatchesPreparedSource = Boolean(commentPreparation.saved && source !== null
     && source.replace(/^\uFEFF/, '') === commentPreparation.saved.source.replace(/^\uFEFF/, ''));
-  const preparedPreviewReady = previewMatchesPreparedSource && commentIdentityFrameReady;
+  const preparedPreviewReady = previewMatchesPreparedSource && commentIdentityFrameReady && !commentPreparation.pendingDocument;
   const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean } | null>(null);
   const commentLocateSequenceRef = useRef(0);
   useEffect(() => {
@@ -15241,11 +15269,12 @@ function HtmlViewer({
   }
 
   function activateCommentCreateTool(returnFocusTarget?: HTMLElement | null) {
-    if (canPrepareCommentSource && !hasIdentityCommentHistory && !commentPreparation.saved) {
-      void commentPreparation.prepare();
+    if (canPrepareCommentSource && !hasVerifiedPreparation) {
+      void requestCommentPreparation();
       return; // select again after the saved document's real readiness witness
     }
-    if (commentPreparation.busy || (commentPreparation.saved && previewMatchesPreparedSource && !preparedPreviewReady)) return;
+    if (commentPreparation.busy) return;
+    if (commentPreparation.documentPending()) { beginPreparedDocumentWitness(); return; }
     if (returnFocusTarget) commentPanelReturnFocusRef.current = returnFocusTarget;
     fireArtifactToolbarClick('comment');
     void capturePreviewScrollPosition();
@@ -15380,7 +15409,7 @@ function HtmlViewer({
   }
 
   async function sendBoardBatch() {
-    if (!activeCommentTarget || !onSendBoardCommentAttachments || commentPreparation.busy) return;
+    if (!activeCommentTarget || !onSendBoardCommentAttachments || commentPreparation.busy || commentsBlockedForPreparation()) return;
     if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     const existingComment = currentActiveComposerComment();
     const sendingUnchangedSavedComment = Boolean(
@@ -15440,7 +15469,7 @@ function HtmlViewer({
   }
 
   async function savePersistentComment() {
-    if (!activeCommentTarget || !onSavePreviewComment || commentPreparation.busy) return;
+    if (!activeCommentTarget || !onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return;
     if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     // Allow saving when there is text OR an attached image (image-only notes).
     if (!commentDraft.trim() && boardImages.length === 0 && currentActiveComposerAttachments().length === 0) return;
@@ -15469,7 +15498,7 @@ function HtmlViewer({
   }
 
   async function savePanelComment(note: string) {
-    if (!onSavePreviewComment || commentPreparation.busy) return false;
+    if (!onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return false;
     if (activeCommentTarget?.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return false;
     const cleanNote = note.trim();
     if (!cleanNote) return false;
@@ -17806,15 +17835,15 @@ function HtmlViewer({
       {workspaceActive ? (
         <div className={commentPreparationStyles.status} role="status" data-testid="comment-identity-preparation">
           {!canPrepareCommentSource ? <span>{t('fileViewer.commentIdentityUnavailable')}</span> : null}
-          {canPrepareCommentSource && !hasIdentityCommentHistory && (!fileShareStatus || fileShareStatus === 'none')
-            && (!commentPreparation.saved || previewMatchesPreparedSource) ? (
-            <Button disabled={commentPreparation.busy || source === null} onClick={() => { void commentPreparation.prepare(); }}>
+          {canPrepareCommentSource && !hasVerifiedPreparation && (!fileShareStatus || fileShareStatus === 'none') ? (
+            <Button disabled={commentPreparation.busy || source === null || sourcePreparationProof.status === 'loading'} onClick={() => { void requestCommentPreparation(); }}>
               {t('fileViewer.commentIdentityPrepare')}
             </Button>
           ) : null}
           {commentPreparation.busy ? <span>{t('fileViewer.commentIdentitySaving')}</span> : null}
           {commentPreparation.error ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({commentPreparation.error})</span> : null}
-          {commentPreparation.saved ? <span>{t(preparedPreviewReady ? 'fileViewer.commentIdentitySaved' : 'fileViewer.commentIdentityWaiting', { version: commentPreparation.saved.version.version })}</span> : null}
+          {sourcePreparationProof.error && !commentPreparation.saved ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({sourcePreparationProof.error})</span> : null}
+          {commentPreparation.saved && (commentPreparation.pendingDocument || previewMatchesPreparedSource) ? <span>{t(preparedPreviewReady ? 'fileViewer.commentIdentitySaved' : 'fileViewer.commentIdentityWaiting', { version: commentPreparation.saved.version.version })}</span> : null}
         </div>
       ) : null}
       <div className="viewer-body" ref={previewBodyRef}>

@@ -64,6 +64,38 @@ it('unmounted viewer completion cannot reload or notify the next file', async ()
   expect(options.apply).not.toHaveBeenCalled();
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
+it('live-only publication validation preserves unsupported/resume semantics but rejects retained stale callbacks', () => {
+  const initial = { ...options, authorized: false, settled: false, context: null as WorkspaceCollabContext | null };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  expect(result.current.validateLiveRevision()).toBe(true);
+  const queued = result.current.validateLiveRevision;
+  rerender({ ...initial, inputKey: 'new-input-without-source-change' });
+  act(() => expect(queued()).toBe(false));
+  expect(result.current.validateLiveRevision()).toBe(true);
+});
+it('pending prepared document blocks old/null/nonmatching frames, then releases once without blocking intentional identity loss', async () => {
+  vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('<h2>Target</h2>')).mockResolvedValueOnce(Response.json(saved)).mockResolvedValueOnce(new Response(saved.source)));
+  const initial = { ...options, document: { source: '<h2>Target</h2>' as string | null, key: 'old-frame', ready: true } };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  await act(async () => { expect(await result.current.prepare()).toBe(true); });
+  expect(result.current.documentPending()).toBe(true);
+  rerender({ ...initial, document: { source: null, key: 'reload-frame', ready: false } });
+  expect(result.current.documentPending()).toBe(true);
+  rerender({ ...initial, document: { source: '<h2>Other source</h2>', key: 'reload-frame', ready: true } });
+  expect(result.current.documentPending()).toBe(true);
+  rerender({ ...initial, document: { source: saved.source, key: 'reload-frame', ready: false } });
+  expect(result.current.documentPending()).toBe(true);
+  rerender({ ...initial, document: { source: saved.source, key: 'reload-frame', ready: true } });
+  expect(result.current.documentPending()).toBe(false);
+  expect(result.current.validatePublication()).toBe(true);
+  const queued = result.current.validatePublication;
+  rerender({ ...initial, settled: false, inputKey: 'new-comment-draft', document: { source: saved.source, key: 'reload-frame', ready: true } });
+  act(() => expect(queued()).toBe(false));
+  rerender({ ...initial, inputKey: 'intentional-history-restore', document: { source: '<h2>Identity deliberately removed</h2>', key: 'history-frame', ready: true } });
+  expect(result.current.documentPending()).toBe(false);
+  expect(result.current.validatePublication()).toBe(true);
+  expect(options.apply).toHaveBeenCalledOnce();
+});
 it('successful source-version save applies once and remains a source version, not a cloud publication receipt', async () => {
   vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('<h2>Target</h2>')).mockResolvedValueOnce(Response.json(saved)).mockResolvedValueOnce(new Response(saved.source)));
   const { result } = renderHook(() => useCommentPreparation(options));
