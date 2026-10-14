@@ -138,6 +138,9 @@ importers:
       express:
         specifier: 5.2.1
         version: 5.2.1
+      htmlparser2:
+        specifier: 10.1.0
+        version: 10.1.0
       hyperframes:
         specifier: 0.8.1
         version: 0.8.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.2))(@types/node@20.19.39)(yauzl@2.10.0)

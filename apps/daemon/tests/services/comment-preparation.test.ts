@@ -17,6 +17,48 @@ async function fixture(fn: (root: string) => Promise<void>) {
 const request = { expectedSource: html, editingSettled: true as const };
 afterEach(() => vi.restoreAllMocks());
 describe('explicit static comment preparation source boundary', () => {
+  it.each([
+    '<x foo>Visible</x foo>',
+    '<p title=a data-od-comment-id=b data-od-comment-id="12345678-1234-4234-8234-123456789abc">A</p>',
+  ])('preserves HTML NBSP tag/attribute semantics and persisted idempotent retry: %s', async (source) => fixture(async (root) => {
+    // Actual U+00A0 characters above are HTML name/value data, not delimiters.
+    await writeProjectFile(root, 'p', 'index.html', Buffer.from(source));
+    const before = load(source);
+    const result = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: source });
+    const after = load(result.source);
+    expect(after('body').children().first().prop('tagName')).toBe(before('body').children().first().prop('tagName'));
+    expect(after('p').attr('title')).toBe(before('p').attr('title'));
+    expect(result.source.replace(/ data-od-comment-id="[^"]+"/g, '')).toBe(source.replace(/ data-od-comment-id="[^"]+"/g, ''));
+    const retry = await prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: result.source });
+    expect(retry).toMatchObject({ changed: false, source: result.source, version: { id: result.version.id } });
+    expect(await listProjectFileVersions(root, 'p', 'index.html')).toHaveLength(1);
+  }));
+  it.each([
+    '<body><p>A</p><body data-od-comment-id="12345678-1234-4234-8234-123456789abc" data-od-comment-id="bad">',
+    '<html data-od-comment-id="12345678-1234-4234-8234-123456789abc"><body><p>A</p></body><html data-od-comment-id="bad">',
+    '<html data-od-comment-id="12345678-1234-4234-8234-123456789abc"><body><p data-od-comment-id="23456789-1234-4234-8234-123456789abc">A</p></body><html data-od-comment-id="bad">',
+  ])('rejects merged/ignored authored identity tokens before save, including no-change retries: %s', async (source) => fixture(async (root) => {
+    await writeProjectFile(root, 'p', 'index.html', Buffer.from(source));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(prepareCommentIdentity(root, 'p', 'index.html', { ...request, expectedSource: source })).rejects.toMatchObject({ code: 'COMMENT_IDENTITY_INVALID' });
+      expect(await readFile(path.join(root, 'p/index.html'), 'utf8')).toBe(source);
+      expect(await listProjectFileVersions(root, 'p', 'index.html')).toHaveLength(0);
+    }
+  }));
+  it.each([
+    '<script>const markup = \'<body data-od-comment-id="bad" data-od-comment-id="bad">\';</script><p>A</p>',
+    '<style>.x::before { content: \'<html data-od-comment-id="bad">\'; }</style><p>A</p>',
+    '<!-- <body data-od-comment-id="bad"> --><p title=\'<html data-od-comment-id="bad">\'>A</p>',
+    '<script><!-- <script></script><body data-od-comment-id="bad"> --></script><p>A</p>',
+    '<textarea><html data-od-comment-id="bad"></textarea><p>A</p>',
+  ])('never treats raw text, comments or quoted values as authored start tags: %s', (source) => {
+    const prepared = prepareStaticCommentSource(source).source;
+    expect(prepared.replace(/ data-od-comment-id="(?!bad")[^"]+"/g, '')).toBe(source);
+    const before = load(source); const after = load(prepared);
+    for (const tag of ['script', 'style', 'textarea']) expect(after(tag).text()).toBe(before(tag).text());
+    expect(after('p').attr('title')).toBe(before('p').attr('title'));
+    expect(prepareStaticCommentSource(prepared).source).toBe(prepared);
+  });
   it('preserves unquoted slash values, quoted greater-than signs and SVG markup semantics', () => {
     const source = '<img src=a/><input value="a>b"/><svg viewBox="0 0 10 10"><path d="M0 0"/></svg>';
     const prepared = prepareStaticCommentSource(source).source;

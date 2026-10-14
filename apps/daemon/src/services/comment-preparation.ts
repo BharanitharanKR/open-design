@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { load, type CheerioAPI } from 'cheerio';
+import { Parser } from 'htmlparser2';
 import {
   COMMENT_ID_ATTRIBUTE, isCommentUuid,
   type PrepareCommentIdentityRequest, type PrepareCommentIdentityResponse, type ProjectMetadata,
@@ -23,12 +24,53 @@ function validatedParsedIds($: CheerioAPI): Set<string> {
   }
   return ids;
 }
+/** Validate every authored opening token, not only nodes surviving tree construction.
+ * Public onattribute callbacks retain repetitions before attribute-map deduplication;
+ * public name spans use HTML ASCII delimiters rather than JavaScript whitespace.
+ */
+function validatedAuthoredTags(source: string, $: CheerioAPI): { ids: Set<string>; nameEnds: Map<number, number> } {
+  const ids = new Set<string>();
+  const nameEnds = new Map<number, number>();
+  // htmlparser2 handles ordinary raw text. parse5's source ranges additionally
+  // exclude tokenizer-context differences such as double-escaped script data.
+  const rawTextRanges = $('script,style,title,textarea,xmp,iframe,noembed,noframes,noscript,plaintext').toArray().flatMap((node) => {
+    const location = (node as typeof node & { sourceCodeLocation?: { startOffset: number; endOffset: number } }).sourceCodeLocation;
+    return location ? [location] : [];
+  });
+  let start = -1;
+  let nameEnd = -1;
+  let identitySeen = false;
+  let rawText = false;
+  const parser = new Parser({
+    onopentagname() {
+      start = parser.startIndex;
+      nameEnd = parser.endIndex;
+      identitySeen = false;
+      rawText = rawTextRanges.some((range) => start > range.startOffset && start < range.endOffset);
+    },
+    onattribute(name, value) {
+      if (rawText || name !== COMMENT_ID_ATTRIBUTE) return;
+      if (identitySeen || !isCommentUuid(value) || ids.has(value)) {
+        throw new CommentPreparationError('COMMENT_IDENTITY_INVALID', 'Malformed or duplicate authored comment identity');
+      }
+      identitySeen = true;
+      ids.add(value);
+    },
+    onopentag(_name, _attributes, implied) {
+      if (!implied && !rawText) nameEnds.set(start, nameEnd);
+    },
+  }, { xmlMode: false, decodeEntities: true });
+  parser.end(source);
+  return { ids, nameEnds };
+}
+
 /** Insert attributes using parser source offsets: never serialize/reformat authored HTML.
  * Validate the whole authored document before indexing, including non-selectable nodes.
  */
 export function prepareStaticCommentSource(source: string): { source: string; preparedTargets: number } {
   const $ = load(source, { sourceCodeLocationInfo: true });
-  const seen = validatedParsedIds($);
+  const authored = validatedAuthoredTags(source, $);
+  const seen = new Set([...authored.ids, ...validatedParsedIds($)]);
   // parse5 exposes template content through a detached fragment; parentElement
   // traversal alone cannot identify that inert authored subtree.
   const excludedRanges = $(excluded).toArray().flatMap((node) => {
@@ -41,23 +83,16 @@ export function prepareStaticCommentSource(source: string): { source: string; pr
     const location = (node as typeof node & { sourceCodeLocation?: { startTag?: { startOffset: number; endOffset: number } } }).sourceCodeLocation;
     const start = location?.startTag;
     if (!start) continue; // synthetic html/body nodes are not source targets
-    const tag = source.slice(start.startOffset, start.endOffset);
-    // Tokenize attribute names without interpreting strings inside attribute values.
-    const attrNames = Array.from(tag.matchAll(/([^\s=<>/]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gu)).slice(1).map((m) => (m[1] ?? '').toLowerCase());
-    const count = attrNames.filter((name) => name === COMMENT_ID_ATTRIBUTE).length;
     const id = $(node).attr(COMMENT_ID_ATTRIBUTE);
-    if (count > 1) {
-      throw new CommentPreparationError('COMMENT_IDENTITY_INVALID', 'Duplicate comment identity attribute');
-    }
     if (('name' in node && (node.name === 'html' || node.name === 'body')) || $(node).is(excluded) ||
         excludedRanges.some((range) => start.startOffset >= range.startOffset && start.startOffset < range.endOffset)) continue;
     preparedTargets++;
     if (id === undefined) {
       // Insert after the tag name: a trailing slash in an unquoted value is
       // data, not necessarily self-closing syntax (<img src=a/> means src=a/).
-      const tagName = /^<[^\s/>]+/u.exec(tag)?.[0];
-      if (!tagName) throw new CommentPreparationError('COMMENT_SOURCE_INVALID', 'Source tag cannot be prepared');
-      insertions.push(start.startOffset + tagName.length);
+      const nameEnd = authored.nameEnds.get(start.startOffset);
+      if (nameEnd === undefined) throw new CommentPreparationError('COMMENT_SOURCE_INVALID', 'Source tag cannot be prepared');
+      insertions.push(nameEnd);
     }
   }
   let prepared = source;
