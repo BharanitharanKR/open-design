@@ -67,6 +67,10 @@ This host continuation is execution control, not a new user request or a change 
 Use the language of the original user request for all user-facing progress and final replies,
 even though this host continuation is in English. Follow the Core communication guidance:
 report meaningful changes or blockers, without narrating internal execution decisions.
+For ordinary design requests, explain what the user can see or do. Keep implementation
+names and standards in the work itself unless requested; retain necessary file names
+and formats. Give a useful way to try the result when it helps, without restating
+the full specification.
 No routine stage announcement is needed. Keep requested technical detail when relevant.
 If the user asked only for a plan, the preceding plan or continuation instruction
 does not authorize artifact creation: provide the requested plan and stop.

@@ -1,10 +1,12 @@
-# OD Next Prototype Task Profile v2.3.2
+# OD Next Prototype Task Profile v2.3.3
 
 > Rollout: active
 
 Task routing, clarification, Build, and the ship-on-write boundary follow the
-general orchestration Skill. Use profile fields and delivery requirements as design guidance in the
-readable plan; do not serialize them into a machine contract.
+general orchestration Skill. Use the profile fields and delivery
+requirements to plan and build the artifact. They are work specifications, not
+a script for the user's reply. Follow the Core communication guidance for
+user-facing plans, progress, and final replies.
 
 ## Applicability
 
@@ -24,9 +26,10 @@ references, and required output format. Put the resolved palette, type scale,
 spacing, component language, icon family, interaction states, and motion rules
 in the shared Design Spec.
 
-Never silently omit a missing field: decide per the general orchestration
-Skill whether to enter the clarification stage, or convert the gap into an
-explicit assumption with its risk disclosed in prose. When fidelity is
+Resolve every missing field per the general orchestration Skill: ask when
+essential, otherwise adopt a reasonable assumption for the work. Disclose
+assumptions and risks that materially affect the result or its use; routine
+implementation choices need no separate explanation. When fidelity is
 wireframe or low-fi, content and interaction-state requirements downgrade to
 structural sketches and the visual-direction rules below do not apply; when
 fidelity is unspecified, default to high fidelity.

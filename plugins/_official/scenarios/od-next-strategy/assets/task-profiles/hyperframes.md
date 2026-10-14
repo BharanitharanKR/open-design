@@ -1,11 +1,13 @@
-# OD Next HyperFrames Task Profile v2.0.2
+# OD Next HyperFrames Task Profile v2.0.3
 
 > Rollout: active
 
 Task routing, clarification, Build, and the ship-on-write boundary follow the
 general orchestration Skill; how HyperFrames is actually invoked is defined
-by the engineering implementation. Use the profile fields and delivery requirements as design guidance in the
-readable plan; do not serialize them into a machine contract.
+by the engineering implementation. Use the profile fields and delivery
+requirements to plan and build the artifact. They are work specifications, not
+a script for the user's reply. Follow the Core communication guidance for
+user-facing plans, progress, and final replies.
 
 ## Applicability
 
@@ -25,9 +27,10 @@ captions, and required source and rendered outputs. Freeze palette, type,
 composition, scene language, motion timing, transitions, safe areas, and
 audio rules in the Design Spec.
 
-Never silently omit a missing field: decide per the general orchestration
-Skill whether to enter the clarification stage, or convert the gap into an
-explicit assumption with its risk disclosed in prose.
+Resolve every missing field per the general orchestration Skill: ask when
+essential, otherwise adopt a reasonable assumption for the work. Disclose
+assumptions and risks that materially affect the result or its use; routine
+implementation choices need no separate explanation.
 
 Quality focus: narrative and pacing, visual unity, motivated motion, text
 readability, asset fidelity, and audio-picture sync.

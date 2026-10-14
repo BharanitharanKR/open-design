@@ -135,6 +135,8 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(core).toContain('Preserve necessary attribution');
     expect(bundle.coreSystemPrompt.outputContract).toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.outputContract).not.toContain('design direction, implementation steps');
+    expect(bundle.sessionSkills.taskTypeSkill.body).toContain('They are work specifications, not');
+    expect(bundle.sessionSkills.taskTypeSkill.body).toContain('materially affect the result or its use');
     expect(bundle.sessionSkills.generalOrchestrationSkill.body)
       .toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.nativeExecution.profile).toBe(executionProfile);

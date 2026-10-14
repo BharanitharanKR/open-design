@@ -1,10 +1,12 @@
-# OD Next Presentation Task Profile v2.0.2
+# OD Next Presentation Task Profile v2.0.3
 
 > Rollout: active
 
 Task routing, clarification, Build, and the ship-on-write boundary follow the
-general orchestration Skill. Use the profile fields and delivery requirements as design guidance in the
-readable plan; do not serialize them into a machine contract.
+general orchestration Skill. Use the profile fields and delivery
+requirements to plan and build the artifact. They are work specifications, not
+a script for the user's reply. Follow the Core communication guidance for
+user-facing plans, progress, and final replies.
 
 ## Applicability
 
@@ -24,9 +26,10 @@ format. Freeze type, color, page grid, margins, chart language, imagery, and
 section rhythm in the Design Spec. Record the chosen narrative structure in
 the Task Profile.
 
-Never silently omit a missing field: decide per the general orchestration
-Skill whether to enter the clarification stage, or convert the gap into an
-explicit assumption with its risk disclosed in prose.
+Resolve every missing field per the general orchestration Skill: ask when
+essential, otherwise adopt a reasonable assumption for the work. Disclose
+assumptions and risks that materially affect the result or its use; routine
+implementation choices need no separate explanation.
 
 Quality focus: narrative coherence, one clear point per slide, readability,
 truthful data, layout fitted to content, and consistency across the deck.
