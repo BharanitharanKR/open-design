@@ -1,4 +1,4 @@
-# OD Next Video Task Profile v3.1.5
+# OD Next Video Task Profile v3.1.6
 
 Use this production Skill for an explicitly required video-generation model or production method. Generic video-making requests default to motion-design. Preserve the required model; capability, credential or provider failures must be reported without silent substitution.
 
@@ -43,4 +43,4 @@ Before claiming an actual video is complete, use the output evidence available f
 
 ## Required-model failure boundary
 
-If the selected model reports missing or rejected credentials, unavailable catalog access, or a provider permission/quota failure, stop that production attempt and report the exact host diagnostic. Do not search host source code or external credential stores, read authentication files, extract or reuse tokens, call provider endpoints directly, or refresh/login on the user’s behalf. Use the existing host media catalog and generation/wait tools only. Keep the explicit model requirement and preserve any completed outputs; do not retry the same rejected credentials or substitute Motion/HyperFrames to obtain a nominal success.
+If the selected model reports missing or rejected credentials, unavailable catalog access, or a provider permission/quota failure, stop that production attempt and report the exact host diagnostic. Do not search host source code or external credential stores, read authentication files, extract or reuse tokens, call provider endpoints directly, or refresh/login on the user’s behalf. Use the existing host media catalog and generation/wait tools only. Keep the exact requested catalog model ID and provider/channel. A cloud-hosted alias, another provider’s offering of the same underlying model, or a different billing channel is still a change: do not switch to it after a failure without explicit user authorization. Preserve any completed outputs; do not retry the same rejected credentials or substitute Motion/HyperFrames to obtain a nominal success.
