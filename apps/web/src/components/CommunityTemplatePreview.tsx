@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { useT } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
 import { Icon } from './Icon';
+import { CREATION_TYPE_ORDER, type CreationTypeId } from './creation-type-order';
 import {
   buildCategoryCatalog,
   buildSubcategoryCatalog,
@@ -64,21 +65,38 @@ export type TemplateDemo = {
   prompt: string;
 };
 
-/** The tabs the Community gallery always renders inline, mirroring the Home
- *  type row's taxonomy and order (`HOME_TYPE_ROW_IDS` + Image; web-clone stays
- *  a Home-only entry). Fixed rather than derived from the catalogue so the row
- *  reads the same set of artifact kinds as Home even while a kind has no
- *  published templates yet. */
-export const COMMUNITY_TAB_TYPES: readonly TemplateType[] = ['Prototype', 'Slides', 'Document', 'Image'];
+// Community owns its supported type set. Website clone remains Home-only.
+const COMMUNITY_TYPES: Partial<Record<CreationTypeId, TemplateType>> = {
+  prototype: 'Prototype',
+  'motion-design': 'Motion design',
+  deck: 'Slides',
+  document: 'Document',
+  image: 'Image',
+  hyperframes: 'HyperFrames',
+  webgl: 'WebGL',
+  'live-artifact': 'Live Artifact',
+  video: 'Video',
+  audio: 'Audio',
+};
 
-/** The kinds behind the row's 更多 popover, in product order (OPEND-3098,
- *  2026-09-16). Fixed like the inline set: a kind with nothing published still
- *  gets its entry and shows the empty state when picked, rather than vanishing
- *  and reappearing with the catalogue. Website clone is a Home-only entry and
- *  stays out of Community. */
-export const COMMUNITY_MORE_TYPES: readonly TemplateType[] = ['Motion design', 'HyperFrames', 'Video', 'Audio', 'Live Artifact', 'WebGL'];
+// Grouping is Community-specific; priority comes only from the shared order.
+// Empty categories keep their entry rather than depending on the catalogue.
+const COMMUNITY_INLINE_TYPES: ReadonlySet<TemplateType> = new Set([
+  'Prototype', 'Motion design', 'Slides', 'Document', 'Image',
+]);
 
-export const TEMPLATE_TYPE_ORDER: TemplateType[] = [...COMMUNITY_TAB_TYPES, ...COMMUNITY_MORE_TYPES];
+export const TEMPLATE_TYPE_ORDER: TemplateType[] = CREATION_TYPE_ORDER.flatMap((id) => {
+  const type = COMMUNITY_TYPES[id];
+  return type ? [type] : [];
+});
+
+export const COMMUNITY_TAB_TYPES: readonly TemplateType[] = TEMPLATE_TYPE_ORDER.filter(
+  (type) => COMMUNITY_INLINE_TYPES.has(type),
+);
+
+export const COMMUNITY_MORE_TYPES: readonly TemplateType[] = TEMPLATE_TYPE_ORDER.filter(
+  (type) => !COMMUNITY_INLINE_TYPES.has(type),
+);
 
 /** The Community grid is the plugin catalogue seen through the artifact a user
  *  wants to make. Membership comes from the shared facet derivation in

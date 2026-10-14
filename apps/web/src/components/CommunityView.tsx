@@ -190,7 +190,7 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
     [plugins],
   );
   // The row's 更多 popover holds the FIXED `COMMUNITY_MORE_TYPES` list — the
-  // same tail the Home type row keeps for its overflow — not whatever kinds
+  // shared creation priority with Community's own grouping — not whatever kinds
   // the catalogue happens to carry (OPEND-3098): a kind with nothing published
   // yet keeps its entry and shows the empty state when picked. A picked
   // overflow kind is promoted to an inline pill after 图片 for as long as it is

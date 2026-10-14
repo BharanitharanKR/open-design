@@ -22,6 +22,7 @@
 import type { ProjectKind, ProjectMetadata } from '@open-design/contracts';
 import type { DefaultScenarioPluginId } from '@open-design/contracts';
 import type { IconName } from '../Icon';
+import { CREATION_TYPE_ORDER as CREATE_RAIL_ORDER } from '../creation-type-order';
 
 // Plugin ids the chip rail can dispatch to. Most chips route to a
 // `DefaultScenarioPluginId` so the same fallback table the daemon
@@ -400,22 +401,9 @@ export function chipsForGroup(group: ChipGroup): HomeHeroChip[] {
   return HOME_HERO_CHIPS.filter((c) => c.group === group);
 }
 
-// Fixed Home information architecture. Only these output types are
-// top-level choices. Action-only create entries (for example Create Design
-// System) are intentionally excluded. Prototype leads and Motion design follows.
-export const CREATE_RAIL_ORDER = [
-  'prototype',
-  'motion-design',
-  'deck',
-  'document',
-  'image',
-  'web-clone',
-  'hyperframes',
-  'webgl',
-  'live-artifact',
-  'video',
-  'audio',
-] as const;
+// Preserve the existing Home API while sharing its priority with Community.
+// Action-only entries (for example Create Design System) remain excluded.
+export { CREATION_TYPE_ORDER as CREATE_RAIL_ORDER } from '../creation-type-order';
 
 // The Home type row is an explicit product decision, not a width computation
 // (OPEND-3146, 2026-09-16): three entry types stay inline, and 更多 holds EVERY
