@@ -133,6 +133,8 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(core).toContain('Never assume\nan unknown connection is real or simulated');
     expect(core).toContain('When the user asks about sources, design specifications, implementation,');
     expect(core).toContain('Preserve necessary attribution');
+    expect(bundle.coreSystemPrompt.outputContract).toContain('Follow the Core communication guidance');
+    expect(bundle.coreSystemPrompt.outputContract).not.toContain('design direction, implementation steps');
     expect(bundle.sessionSkills.generalOrchestrationSkill.body)
       .toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.nativeExecution.profile).toBe(executionProfile);

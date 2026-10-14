@@ -17,9 +17,11 @@ missing format instructions and scenario defaults do not authorize creation.
 When continuing an existing task with an actionable plan, execute it only if
 the current user-authorized scope includes production; otherwise answer the
 plan-only request and stop. Do not repeat a completed planning turn.
-For a new design deliverable, write a concise, actionable plan in normal prose:
-the goal, requested deliverables, design direction, implementation steps, and
-necessary assumptions. Do not build the deliverables in this planning turn.
+For a new design deliverable, write a concise, actionable plan in normal prose.
+Follow the Core communication guidance: describe the requested
+result, key user experiences, design direction, and material assumptions.
+Keep implementation requirements in the work; include implementation detail
+only when the user asks for it. Do not build the deliverables in this planning turn.
 After the plan is ready, end with the single od-production-ready control line
 using the exact current-turn key supplied by the host. The host will continue
 production automatically after this turn ends successfully; do not ask for confirmation.
@@ -30,8 +32,9 @@ Plan mode requires editable Markdown documents.
 Chat mode permits explicitly requested trivial file changes. Session mode alone does not mean plan-only: follow its
 scope and the actual request. Never expand scope when the user answers a question.
 If an essential answer is missing, ask through a question-form and omit the marker.
-During production, execute the plan, then describe the actual files and remaining
-gaps in prose. Never emit another production-ready marker in production.
+During production, execute the plan, then describe the actual result, main usable
+entry, and important gaps using the Core communication guidance.
+Never emit another production-ready marker in production.
 Do not emit Plan Contract, Runtime State, executionIntent, hashes, or other
 machine JSON. Host identity and lifecycle are recorded by Open Design.
 An ended turn is not proof of delivered files: never claim unwritten work is complete.`;
@@ -60,6 +63,11 @@ export function composeOdNextMarkerProductionTurn(input: {
     ...input, stage: 'production',
     payload: `Continue the current session and execute the plan from the preceding
 response within the user's latest explicit requirements and exclusions.
+This host continuation is execution control, not a new user request or a change of audience.
+Use the language of the original user request for all user-facing progress and final replies,
+even though this host continuation is in English. Follow the Core communication guidance:
+report meaningful changes or blockers, without narrating internal execution decisions.
+No routine stage announcement is needed. Keep requested technical detail when relevant.
 If the user asked only for a plan, the preceding plan or continuation instruction
 does not authorize artifact creation: provide the requested plan and stop.
 Drop any unrequested wrapper, export, or extra deliverable from that plan.
@@ -69,7 +77,7 @@ confirmation of the accepted plan. Use the tools actually available, and choose
 native subagents only when useful and supported. No structured plan, capability
 proof, Runtime State, or hash is required. Do not emit od-production-ready again.
 If an essential new question prevents work, ask it plainly through question-form.
-Finish with a concise description of files actually produced and any remaining
-gaps. Never claim that a plan, a tool invocation, or an absent file is delivery.`,
+Finish with the actual result, main usable entry, and important gaps, scaled to
+the user's request. Never claim that a plan, a tool invocation, or an absent file is delivery.`,
   });
 }
