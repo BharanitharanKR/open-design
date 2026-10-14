@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { bindMotionPreviewActivity, unbindMotionPreviewActivity } from '../runtime/motion-preview-activity';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { projectFileUrl } from '../providers/registry';
 import type { ProjectFile } from '../types';
@@ -165,7 +166,13 @@ export function HtmlProjectCoverFrame({
   diagnostic,
   pendingContent,
   ungated = false,
+  motionThumbnail = false,
+  motionSize,
+  onMotionSize,
 }: {
+  motionThumbnail?: boolean;
+  motionSize?: { width: number; height: number };
+  onMotionSize?: (size: { width: number; height: number }) => void;
   src: string | undefined;
   initial: string;
   iframeClassName: string;
@@ -201,6 +208,14 @@ export function HtmlProjectCoverFrame({
    */
   ungated?: boolean;
 }) {
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const onSizeRef = useRef(onMotionSize);
+  onSizeRef.current = onMotionSize;
+  const setFrame = useCallback((frame: HTMLIFrameElement | null) => {
+    if (frameRef.current) unbindMotionPreviewActivity(frameRef.current);
+    frameRef.current = frame;
+    if (frame && motionThumbnail) bindMotionPreviewActivity(frame, (size) => onSizeRef.current?.(size));
+  }, [motionThumbnail]);
   const [failed, setFailed] = useState(false);
   const [verified, setVerified] = useState(false);
   /**
@@ -315,6 +330,13 @@ export function HtmlProjectCoverFrame({
   if (!verified || !canLoad) return pendingFace;
 
   const holdingPendingFace = keepsPendingFaceUntilLoaded && !loaded;
+  // Keep Motion's viewport at the canvas ratio, then fit both axes into the
+  // bounded card. Ordinary HTML retains its desktop 1440×900 viewport.
+  const frameHeight = motionSize ? 1440 * motionSize.height / motionSize.width : undefined;
+  const frameStyle: CSSProperties & { '--artifact-frame-height'?: string } = {
+    ...(holdingPendingFace ? HIDDEN_UNTIL_LOADED : {}),
+    ...(frameHeight ? { height: frameHeight, '--artifact-frame-height': `${frameHeight}px` } : {}),
+  };
 
   return (
     <>
@@ -331,13 +353,15 @@ export function HtmlProjectCoverFrame({
        */}
       {holdingPendingFace ? pendingFace : null}
       <iframe
+        ref={setFrame}
+        data-od-active={motionThumbnail ? String(hostVisible) : undefined}
         className={iframeClassName}
         src={src}
         title=""
         loading="lazy"
         sandbox="allow-scripts"
         tabIndex={-1}
-        style={holdingPendingFace ? HIDDEN_UNTIL_LOADED : undefined}
+        style={frameStyle}
         onLoad={() => {
           settle();
           setLoaded(true);

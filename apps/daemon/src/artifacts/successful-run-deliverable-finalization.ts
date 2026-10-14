@@ -1,5 +1,6 @@
 import type {
   DeliverableSyntaxMetrics,
+  MotionDeliveryContract,
   DeliverableSyntaxRepairState,
   ProjectMetadata,
 } from '@open-design/contracts';
@@ -29,10 +30,12 @@ export function deliverableSyntaxFinalizerEnabled(
 
 /**
  * Resolve the canonical output and run the syntax finalizer for every
- * successful physical Run. Strategy protocol state is intentionally absent
- * from this boundary: a complete HTML artifact is sufficient evidence.
+ * successful physical Run. Only a frozen, explicit motion output contract adds paired video validation;
+ * ordinary HTML delivery keeps its existing boundary.
  */
 export async function finalizeSuccessfulRunDeliverable(input: {
+  motionDelivery?: MotionDeliveryContract;
+  motionDeliveries?: MotionDeliveryContract[];
   artifactCount: number;
   previousMetrics?: DeliverableSyntaxMetrics;
   processTreeQuiescent: boolean;
@@ -47,19 +50,26 @@ export async function finalizeSuccessfulRunDeliverable(input: {
   allowMultipleOutputCandidates?: boolean;
   syntaxFinalizerEnabled?: boolean;
 }): Promise<SuccessfulRunDeliverableFinalizationResult> {
-  const deliverable = await validateRunDeliverable({
+  let deliverable = await validateRunDeliverable({
     projectsRoot: input.projectsRoot,
     projectId: input.projectId,
     ...(input.projectMetadata !== undefined
       ? { projectMetadata: input.projectMetadata }
       : {}),
     runStatus: 'succeeded',
+    ...(input.motionDelivery ? { motionDelivery: input.motionDelivery } : {}),
     artifactCount: input.artifactCount,
     ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}),
     ...(input.baselineEntryFile ? { baselineEntryFile: input.baselineEntryFile } : {}),
     ...(input.allowIndependentOutput ? { allowIndependentOutput: true } : {}),
     ...(input.allowMultipleOutputCandidates ? { allowMultipleOutputCandidates: true } : {}),
   });
+  for (const contract of input.motionDeliveries ?? []) {
+    const motion = await validateRunDeliverable({ projectsRoot: input.projectsRoot, projectId: input.projectId,
+      ...(input.projectMetadata === undefined ? {} : { projectMetadata: input.projectMetadata }), runStatus: 'succeeded', artifactCount: input.artifactCount,
+      ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}), motionDelivery: contract });
+    if (!motion.valid) { deliverable = motion; break; }
+  }
   if (
     !deliverable.valid
     || !input.projectId

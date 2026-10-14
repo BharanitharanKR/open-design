@@ -659,6 +659,28 @@ function localBlockedTurnVerdictUnknownToServer(
   return { runStatus: local.runStatus, errorEvent };
 }
 
+/** Keep a live thinking suffix when an older snapshot has the same event count. */
+function localThinkingExtendsServerSnapshot(server: ChatMessage, local: ChatMessage): boolean {
+  if (!server.runId || server.runId !== local.runId || !isActiveRunStatus(server.runStatus)) {
+    return false;
+  }
+  const serverEvents = server.events ?? [];
+  const localEvents = local.events ?? [];
+  if (serverEvents.length === 0 || serverEvents.length !== localEvents.length) return false;
+  const lastIndex = serverEvents.length - 1;
+  const serverTail = serverEvents[lastIndex];
+  const localTail = localEvents[lastIndex];
+  if (
+    serverTail?.kind !== 'thinking'
+    || localTail?.kind !== 'thinking'
+    || localTail.text.length <= serverTail.text.length
+    || !localTail.text.startsWith(serverTail.text)
+  ) return false;
+  return serverEvents.slice(0, lastIndex).every((event, index) =>
+    JSON.stringify(event) === JSON.stringify(localEvents[index]),
+  );
+}
+
 function mergeServerMessageWithLocal(
   server: ChatMessage,
   local?: ChatMessage,
@@ -672,7 +694,8 @@ function mergeServerMessageWithLocal(
       merged.content = local.content;
     }
     if (!(server.strategyTaskBlocked === false && local.strategyTaskBlocked === true)
-      && (local.events?.length ?? 0) > (server.events?.length ?? 0)) {
+      && ((local.events?.length ?? 0) > (server.events?.length ?? 0)
+        || localThinkingExtendsServerSnapshot(server, local))) {
       merged.events = local.events;
     }
   }
@@ -7370,6 +7393,7 @@ export function ProjectView({
                 attempt: state.attempt,
                 max: state.max,
                 phase: state.phase,
+                ...(state.cause ? { cause: state.cause } : {}),
               });
             },
             onAgentReconnect: (state: DaemonAgentReconnectState) => {
@@ -9583,6 +9607,7 @@ export function ProjectView({
             attempt: state.attempt,
             max: state.max,
             phase: state.phase,
+            ...(state.cause ? { cause: state.cause } : {}),
           });
         },
         onAgentReconnect: (state: DaemonAgentReconnectState) => {
@@ -13935,6 +13960,7 @@ export function ProjectView({
               onOpenSettings={onOpenSettings}
               amrBalanceCardUsd={amrBalanceCardUsd}
               amrBalanceCardAnchorMessageId={amrBalanceCardAnchorId}
+              amrBalanceAudience={amrBalanceBranch.audience}
               amrBalanceCardUnavailable={amrBalanceFailureWalletUnavailable}
               onAmrBalanceUpgrade={handleAmrBalanceCardUpgrade}
               showByokRecoveryAction={

@@ -1,3 +1,4 @@
+import { declareTaskMotionDelivery, freezeTaskMotionDeliveries, readTaskMotionDeliveries } from '../../../src/strategies/od-next/motion-delivery-store.js';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -203,6 +204,26 @@ describe('OD Next planning coordinator', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it('freezes native motion requirements independently of retired Plan Contracts', () => {
+    const movie = { mode: 'video', sourcePath: 'motion-source/film/index.html', videoPath: 'film.mp4', audio: 'required' };
+    expect(declareTaskMotionDelivery(db, 'run-request', movie)).toEqual([movie]);
+    expect(declareTaskMotionDelivery(db, 'run-request', movie)).toEqual([movie]);
+    const second = { mode: 'interactive', sourcePath: 'interactive/index.html' };
+    declareTaskMotionDelivery(db, 'run-request', second);
+    freezeTaskMotionDeliveries(db, 'task-1');
+    expect(readTaskMotionDeliveries(db, 'task-1')).toEqual([movie, second]);
+    expect(() => declareTaskMotionDelivery(db, 'run-request', { ...movie, audio: 'silent' })).toThrow(/frozen/);
+    expect(() => declareTaskMotionDelivery(db, 'run-request', { ...second, sourcePath: 'new.html' })).toThrow(/frozen/);
+    expect(() => declareTaskMotionDelivery(db, 'foreign-run', movie)).toThrow(/current active/);
+  });
+
+  it('rejects unspecified audio and unsafe or colliding output paths', () => {
+    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'index.html', videoPath: 'film.mp4' })).toThrow(/audio/);
+    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'interactive', sourcePath: '../index.html' })).toThrow();
+    declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'first.html', videoPath: 'film.mp4', audio: 'silent' });
+    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'second.html', videoPath: 'film.mp4', audio: 'required' })).toThrow(/unique/);
+  });
+
   function markerHarness(planOnly = false) {
     const identity = strategyTaskCreateIdentityFixture();
     let task = createStrategyTaskExecution(db, {
@@ -236,6 +257,13 @@ describe('OD Next planning coordinator', () => {
     });
     return { task, service, physical };
   }
+  it('rejects Motion declaration for plan-only and mismatched project grants', () => {
+    const { task } = markerHarness(true);
+    expect(() => declareTaskMotionDelivery(db, task.latestRunId, {mode:'interactive',sourcePath:'index.html'})).toThrow(/production-authorized/);
+    expect(() => declareTaskMotionDelivery(db, 'run-request', {mode:'interactive',sourcePath:'index.html'}, 'foreign-project')).toThrow(/production-authorized/);
+    expect(readTaskMotionDeliveries(db, task.taskExecutionId)).toEqual([]);
+  });
+
   const productionMarker = '<od-production-ready key="5e819e50c013db87" />';
   function markerReply(text: string) {
     const stream = createOdNextRunProtocol(null, '5e819e50c013db87');

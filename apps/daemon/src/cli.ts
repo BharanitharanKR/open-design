@@ -244,7 +244,7 @@ const MESSAGE_CENTER_STRING_FLAGS = new Set([
 ]);
 const MESSAGE_CENTER_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const PROJECT_STRING_FLAGS = new Set([
-  'daemon-url', 'name', 'skill', 'design-system', 'plugin', 'metadata-json',
+  'daemon-url', 'name', 'skill', 'design-system', 'plugin', 'metadata-json', 'task-type',
   'pending-prompt', 'project', 'conversation', 'message', 'prompt',
   'prompt-file', 'task-execution', 'path', 'dir', 'as', 'url',
   'client-request-id',
@@ -1739,7 +1739,7 @@ async function runMedia(args) {
     printMediaHelp();
     return;
   }
-  if (sub !== 'generate' && sub !== 'wait' && sub !== 'scaffold' && sub !== 'models') {
+  if (sub !== 'declare-motion' && sub !== 'generate' && sub !== 'wait' && sub !== 'scaffold' && sub !== 'models') {
     console.error(`unknown subcommand: od media ${sub}`);
     printMediaHelp();
     process.exit(1);
@@ -1754,6 +1754,20 @@ async function runMedia(args) {
     const response = await fetch(`${daemonUrl.replace(/\/$/, '')}/api/media/models`);
     if (!response.ok) throw new Error(`Media catalog request failed (${response.status})`);
     console.log(JSON.stringify(await response.json()));
+    return;
+  }
+  if (sub === 'declare-motion') {
+    const flags = parseFlags(subArgs, { string: ['daemon-url', 'mode', 'source', 'output', 'audio'], boolean: ['json'] });
+    const token = process.env.OD_TOOL_TOKEN;
+    if (!token) throw new Error('Motion declarations require the active host tool token.');
+    const contract = { mode: flags.mode, sourcePath: flags.source,
+      ...(flags.output ? { videoPath: flags.output } : {}), ...(flags.audio ? { audio: flags.audio } : {}) };
+    const response = await fetch(`${(await cliDaemonUrl(flags)).replace(/\/$/, '')}/api/tools/media/motion-delivery`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(contract),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message ?? result.error ?? 'Motion declaration rejected');
+    console.log(JSON.stringify(result));
     return;
   }
   if (sub === 'wait') return runMediaWait(subArgs);
@@ -1787,7 +1801,7 @@ async function runMediaScaffold(rawArgs) {
   }
   const compositionDir = flags['composition-dir'];
   if (!compositionDir) {
-    console.error('--composition-dir required (expected .hyperframes-cache/<id>)');
+    console.error('--composition-dir required (expected .hyperframes-cache/<id> or motion-source/<id>)');
     process.exit(2);
   }
 
@@ -2255,6 +2269,7 @@ async function cliDaemonBaseUrl(flags) {
 
 function printMediaHelp() {
   console.log(`Usage: od media models --json
+       od media declare-motion --mode video|interactive --source <html> [--output <mp4> --audio required|silent] --json
        od media scaffold --composition-dir .hyperframes-cache/<id> [opts]
        od media generate --surface <image|video|audio> --model <id> [opts]
        "$OD_NODE_BIN" "$OD_BIN" media generate --surface <image|video|audio> --model <id> [opts]
@@ -2262,7 +2277,7 @@ function printMediaHelp() {
 Scaffold:
   Creates hyperframes.json, meta.json, and index.html without running
   HyperFrames init or installing global skills. The target must be new and
-  live directly under .hyperframes-cache.
+  live directly under .hyperframes-cache or motion-source (visible editable source).
   --json is accepted for consistency; scaffold output is always one JSON line.
 
 Generate required:
@@ -7007,7 +7022,8 @@ async function runProject(args) {
     console.log(`Usage:
   od project create [--name "<title>"] [--skill <id>] [--design-system <id>]
                     [--plugin <id>] [--inputs <json>] [--metadata-json <path|->]
-                    [--mode design|chat|plan]
+                    [--mode design|chat|plan] [--task-type motion-design]
+                    [--prompt-file <path|->] [--json]
   od project create-design-system <id> [--name "<title>"]
                     [--prompt "<text>" | --prompt-file <path|->] [--json]
                     Duplicate a project as a design-system workspace and seed
@@ -7212,6 +7228,21 @@ Common options:
       if (flags['metadata-json']) {
         const mj = safeReadJsonFile(flags['metadata-json']);
         if (mj && typeof mj === 'object') body.metadata = mj;
+      }
+      const prompt = await readPromptFromFlags(flags);
+      if (prompt) body.pendingPrompt = prompt;
+      if (flags['task-type']) {
+        if (flags['task-type'] !== 'motion-design') {
+          console.error('--task-type currently supports motion-design');
+          process.exit(2);
+        }
+        if (flags.plugin || (conversationMode && conversationMode !== 'design')) {
+          console.error('--task-type motion-design requires Design mode and no explicit --plugin');
+          process.exit(2);
+        }
+        body.conversationMode = 'design';
+        body.metadata = { ...body.metadata, kind: 'video', intent: 'motion-design', videoModel: 'hyperframes-html' };
+        body.automaticStrategyTaskProfile = 'motion-design';
       }
       if (flags.plugin) body.pluginId = flags.plugin;
       if (flags.inputs) {

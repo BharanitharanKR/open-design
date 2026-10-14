@@ -1,4 +1,6 @@
-# OD Next Video Task Profile v3.1.3
+# OD Next Video Task Profile v3.1.4
+
+Use this production Skill for an explicitly required video-generation model or production method. Generic video-making requests default to motion-design. Preserve the required model; capability, credential or provider failures must be reported without silent substitution.
 
 Deliver an actual playable MP4. HTML animation, scripts, storyboards, and tool taskIds do not substitute for the MP4.
 

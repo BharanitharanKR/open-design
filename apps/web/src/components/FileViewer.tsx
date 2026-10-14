@@ -246,6 +246,11 @@ import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
 import {
+  LocalizedExportError,
+  exportFailureToast,
+  genericExportFailedToast,
+} from './export-failure-toast';
+import {
   PreviewDrawOverlay,
   ANNOTATION_EVENT,
   type AnnotationEventDetail,
@@ -282,6 +287,7 @@ import {
   previewIframeKeepAliveKey,
   useIframeKeepAlivePool,
 } from './IframeKeepAlivePool';
+import { bindMotionPreviewActivity, unbindMotionPreviewActivity } from '../runtime/motion-preview-activity';
 
 import type {
   ChatCommentAttachment,
@@ -3336,6 +3342,7 @@ type HtmlVersionExportContext = {
 
 type ExportToastState = {
   message: string;
+  details?: string | null;
   tone: 'default' | 'success' | 'error' | 'loading';
 };
 
@@ -3762,7 +3769,7 @@ function FileVersionManagerModal({
     setVersionExportToast({ message: t('fileViewer.exportingProgress'), tone: 'loading' });
     const content = await ensureVersionContent(version);
     if (!content) {
-      setVersionExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      setVersionExportToast(genericExportFailedToast(t));
       return;
     }
     try {
@@ -3780,8 +3787,7 @@ function FileVersionManagerModal({
       }
       setVersionExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
     } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
-      setVersionExportToast({ message, tone: 'error' });
+      setVersionExportToast(exportFailureToast(err, t));
     }
   }
 
@@ -3806,7 +3812,7 @@ function FileVersionManagerModal({
     setVersionExportToast({ message: t('fileViewer.exportingProgress'), tone: 'loading' });
     const content = await ensureVersionContent(version);
     if (!content) {
-      setVersionExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      setVersionExportToast(genericExportFailedToast(t));
       return;
     }
     const context: HtmlVersionExportContext = {
@@ -3826,7 +3832,7 @@ function FileVersionManagerModal({
     }
     await runVersionExport(version, async (content, title) => {
       const snapshot = await captureVersionPreviewSnapshot({ full: true });
-      if (!snapshot) throw new Error(t('fileViewer.exportFailed'));
+      if (!snapshot) throw new Error('version PDF snapshot unavailable');
       await exportSnapshotAsPdf(snapshot, title);
     });
   }
@@ -3834,9 +3840,9 @@ function FileVersionManagerModal({
   async function exportVersionImage(version: ProjectFileVersion, format: ImageExportFormat) {
     await runVersionExport(version, async (content, title) => {
       const snapshot = await captureVersionPreviewSnapshot({ full: true });
-      if (!snapshot) throw new Error(t('fileViewer.exportImageFailed'));
+      if (!snapshot) throw new LocalizedExportError(t('fileViewer.exportImageFailed'));
       const blob = await imageDataUrlToBlob(snapshot.dataUrl, format);
-      if (blob.size <= 0) throw new Error(t('fileViewer.exportImageFailed'));
+      if (blob.size <= 0) throw new LocalizedExportError(t('fileViewer.exportImageFailed'));
       const target = await prepareImageExportTarget(title, format, { useNativePicker: false });
       if (!target) return 'cancelled';
       if (target.method === 'download' && format === 'png') {
@@ -4330,6 +4336,7 @@ function FileVersionManagerModal({
         <Toast
           className="file-version-export-toast"
           message={visibleExportToast.message}
+          details={visibleExportToast.details}
           tone={visibleExportToast.tone}
           role={visibleExportToast.tone === 'error' ? 'alert' : 'status'}
           ttlMs={visibleExportToast.tone === 'loading' ? 60000 : 2200}
@@ -7602,8 +7609,7 @@ function HtmlViewer({
     }
     const failToast = (err?: unknown) => {
       stopTicker();
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
-      if (toastFormats.has(format)) setExportToast({ message, tone: 'error' });
+      if (toastFormats.has(format)) setExportToast(exportFailureToast(err, t));
     };
     try {
       const out = fn();
@@ -8397,6 +8403,12 @@ function HtmlViewer({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const setUnpooledUrlPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
+    const previous = urlPreviewIframeRef.current;
+    if (previous && previous !== frame) unbindMotionPreviewActivity(previous);
+    urlPreviewIframeRef.current = frame;
+    if (frame) bindMotionPreviewActivity(frame);
+  }, []);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
   const srcDocNavigationCommittedRef = useRef<{
     frame: HTMLIFrameElement;
@@ -10238,10 +10250,12 @@ function HtmlViewer({
     && !needsPowered;
   const setSrcDocPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
     if (srcDocPreviewIframeRef.current !== frame) {
+      if (srcDocPreviewIframeRef.current) unbindMotionPreviewActivity(srcDocPreviewIframeRef.current);
       srcDocNavigationCommittedRef.current = null;
       srcDocContentReadyRef.current = null;
     }
     srcDocPreviewIframeRef.current = frame;
+    if (frame) bindMotionPreviewActivity(frame);
     // A ref callback is the only synchronous witness when React replaces or
     // reattaches the active document. Keeping the generic active ref aligned
     // here prevents edit/style messages from being sent to the previous
@@ -10836,6 +10850,7 @@ function HtmlViewer({
         sourceFingerprint: sourceFingerprint ?? '',
         generation,
         srcDoc: previewSource ? buildSrcdoc(previewSource, {
+          motionPreview: true,
           deck: effectiveDeck,
           baseHref: srcDocBaseHref,
           initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
@@ -11735,10 +11750,13 @@ function HtmlViewer({
   ).searchParams.get('odEditStandby') || 0);
   const manualEditStandbyNavigationPending =
     manualEditUrlStandbyRevision > lastRenderedStandbyRevision;
-  const urlFrameSrc = filesRefreshPending && !manualEditStandbyNavigationPending
+  const selectedUrlFrameSrc = filesRefreshPending && !manualEditStandbyNavigationPending
     ? lastRenderedUrlFrameSrcRef.current
     : activePoweredPreviewSrcOverride ?? computedUrlFrameSrc;
-  lastRenderedUrlFrameSrcRef.current = urlFrameSrc;
+  lastRenderedUrlFrameSrcRef.current = selectedUrlFrameSrc;
+  const urlFrameSrc = selectedUrlFrameSrc === 'about:blank'
+    ? selectedUrlFrameSrc
+    : appendResourceQuery(selectedUrlFrameSrc, 'odMotionPreview=1');
   const urlFrameSandbox = usePoweredPreview
     ? POWERED_PREVIEW_SANDBOX
     : 'allow-scripts allow-downloads';
@@ -15708,8 +15726,7 @@ function HtmlViewer({
       });
     } catch (err) {
       console.warn('[exportAsImage] failed to save snapshot:', err);
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportImageFailed');
-      setExportToast({ message, tone: 'error' });
+      setExportToast(exportFailureToast(err, t));
       fireImageExportResult('failed', exportErrorCode(err));
     } finally {
       imageExportInFlightRef.current = false;
@@ -17478,7 +17495,7 @@ function HtmlViewer({
                             ? (useUrlLoadPreview ? 'artifact-preview-frame' : 'artifact-preview-frame-url-load')
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
-                          data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -17519,12 +17536,12 @@ function HtmlViewer({
                         />
                       ) : (
                         <iframe
-                          ref={urlPreviewIframeRef}
+                          ref={setUnpooledUrlPreviewIframe}
                           data-testid={workspaceActive
                             ? (useUrlLoadPreview ? 'artifact-preview-frame' : 'artifact-preview-frame-url-load')
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
-                          data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -17574,7 +17591,7 @@ function HtmlViewer({
                           ? (useUrlLoadPreview ? 'artifact-preview-frame-srcdoc' : 'artifact-preview-frame')
                           : `artifact-preview-frame-srcdoc-retained-${file.name}`}
                         data-od-render-mode="srcdoc"
-                        data-od-active={mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
+                        data-od-active={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
                         data-od-handoff-visible={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                         data-od-handoff-pending={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                         aria-hidden={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? undefined : true}
@@ -17759,6 +17776,7 @@ function HtmlViewer({
                 ? createPortal(
                     <Toast
                       message={exportToast.message}
+                      details={exportToast.details}
                       tone={exportToast.tone}
                       role={exportToast.tone === 'error' ? 'alert' : 'status'}
                       ttlMs={exportToast.tone === 'loading' ? 60000 : 2200}
@@ -18120,12 +18138,13 @@ function HtmlViewer({
                       // reach at all (transient, says nothing about support).
                       // Telling a user with a dead daemon that the feature is
                       // "not available here" sends them to the wrong problem.
-                      throw new Error(
-                        'error' in res
-                          ? res.error
-                          : res.reason === 'unreachable'
-                            ? t('fileViewer.exportDaemonUnreachable')
-                            : t('fileViewer.exportPptxNa'),
+                      // A raw renderer/daemon `error` string stays out of the UI
+                      // (generic S26a copy); the two localized reasons pass through.
+                      if ('error' in res) throw new Error(res.error);
+                      throw new LocalizedExportError(
+                        res.reason === 'unreachable'
+                          ? t('fileViewer.exportDaemonUnreachable')
+                          : t('fileViewer.exportPptxNa'),
                       );
                     }
                   });

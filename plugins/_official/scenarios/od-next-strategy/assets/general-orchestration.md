@@ -187,7 +187,7 @@ round based on any check. Never claim the artifact went through actions that did
 
 Build's self-discipline happens only during writing: organize the source
 against the completion standards and the task type's quality requirements;
-disk write is finalization.
+writing all required outputs, including contracted renders, is finalization.
 
 ### Source reads and writes
 
@@ -238,3 +238,5 @@ explain unresolved failures in ordinary language.
 
 Reuse existing session context rather than repeating it. Do not create unrequested
 variants or send overlapping production work to multiple agents.
+
+For selected Motion video outputs, register each exact source/MP4 pair and required/silent audio decision through `od media declare-motion` during an authorized production plan. Registration changes task metadata only, not files. The host freezes it when production continues. Rendering and waiting are production; HTML alone is not a completed motion film. Only those registered video outputs permit the Motion Skill’s one bounded review and repair. An ordinary motion helper, template or hand-selected type does not authorize another output.

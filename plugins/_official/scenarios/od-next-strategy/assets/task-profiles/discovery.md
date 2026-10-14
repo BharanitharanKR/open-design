@@ -1,4 +1,4 @@
-# OD Next Deliverable Discovery Task Profile v3.1.8
+# OD Next Deliverable Discovery Task Profile v3.2.0
 
 Before choosing a deliverable type or calling a tool, determine what the user authorizes in this turn. For chat, explanation, or text-only planning, the requested output is the answer or plan itself: respond from the available context and stop. Do not read production Skills or their framework resources, inspect project inputs, create files, or signal production readiness merely to prepare that answer. Naming a future artifact, selecting a manual type, or supplying a template or ordinary @Skill does not change this boundary.
 
@@ -22,6 +22,9 @@ For authorized production, choose the smallest set of production Skills that cov
 6. An implementation technique is not automatically a separate deliverable: narration or a timeline within a video, and images within a presentation, are production dependencies. Add the corresponding main Skill only when the user separately requests editable source, audio, or images.
 7. A source-backed view that must refresh from local JSON or a connected source is a live-artifact, even when it looks like a simple list or dashboard. Select live-artifact rather than prototype for that output. A static dashboard or a mock refresh button alone remains prototype; follow the actual data and refresh requirement.
 8. Select web-clone, not prototype, when the user asks to recreate a specified reference page from a URL, screenshot, supplied HTML, or source code. The reference may be pasted or attached; it does not need a live URL. Preserve the requested structure, content, and interactions, including any explicitly requested adaptations. In the catalog, kind=prototype describes the output, not an additional Skill to read. Style inspiration alone or designing a new page from requirements remains prototype; an incidental source snippet does not make a task a recreation. If separate outputs are requested, choose each by its own intent.
+
+9. For video-making requests, an explicitly required video model or production method wins. Select video for an explicitly required video-generation model and retain the actual model; if unavailable, report the blocker without silently substituting Motion or HyperFrames. Otherwise select motion-design by default, including a generic request to make a video. HyperFrames is the lowest-priority fallback, not a competing default: use it for explicit HyperFrames/timeline-source requirements or a fallback the user has authorized. Motion's internal HyperFrames renderer does not require an extra main Skill. A model mentioned only as an example is not a mandatory selection.
+10. Pointer/scroll-driven motion remains interactive HTML. Adding hover, scroll or transition effects within a website remains prototype with optional ordinary motion craft; it does not authorize an MP4. Ordinary @motion-design and its templates never override the current Query. Audio inside a motion film is a dependency, not an independently requested audio deliverable.
 
 ## Native reading and reuse
 

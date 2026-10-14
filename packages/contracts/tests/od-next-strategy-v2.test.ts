@@ -1,3 +1,4 @@
+import { MotionDeliveryContractSchema } from '../src/motion-delivery.js';
 import { describe, expect, it } from 'vitest';
 import {
   AgentCapabilitySnapshotV2Schema,
@@ -225,5 +226,14 @@ describe('task profile resources', () => {
     expect(() => BundledStrategyDeclarationV2Schema.parse(profile([
       { path: '../escape.html', version: '1.0.0' },
     ]))).toThrow();
+  });
+});
+
+describe('native motion delivery declaration', () => {
+  it('requires explicit mode and valid project-relative paths', () => {
+    expect(MotionDeliveryContractSchema.safeParse({mode:'interactive',sourcePath:'index.html'}).success).toBe(true);
+    expect(MotionDeliveryContractSchema.safeParse({mode:'video',sourcePath:'source/index.html'}).success).toBe(false);
+    expect(MotionDeliveryContractSchema.safeParse({mode:'video',sourcePath:'source/index.html',videoPath:'film.mp4',audio:'required'}).success).toBe(true);
+    expect(MotionDeliveryContractSchema.safeParse({mode:'interactive',sourcePath:'../index.html'}).success).toBe(false);
   });
 });

@@ -32,7 +32,7 @@ it('ships ten loadable main Skills without restoring the retired machine protoco
   expect(assets.taskSkill).toContain('Only for a request that authorizes producing or editing an artifact');
   expect(assets.taskSkill).toContain('production-ready');
   expect(assets.taskSkill).not.toMatch(/requiredDeliverables|runtime-state|planContractHash/);
-  expect(DELIVERABLE_SKILLS).toHaveLength(10);
+  expect(DELIVERABLE_SKILLS).toHaveLength(11);
   for (const skill of DELIVERABLE_SKILLS) {
     expect(assets.taskSkill).toContain(`${folder}/assets/task-profiles/${skill.id}.md`);
     const body = await readFile(path.join(folder, `assets/task-profiles/${skill.id}.md`), 'utf8');

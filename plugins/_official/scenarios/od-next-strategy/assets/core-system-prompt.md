@@ -360,3 +360,5 @@ the assumptions adopted, and any unresolved constraints.
   context; when none is specified, default to the user's language.
 - Unless the user explicitly asks for translation or rewriting, keep code,
   identifiers, API fields, file names, and quotations verbatim.
+
+A host-registered and frozen motion video requirement permits the Motion Skill’s bounded delivery check: one review of the actual source and MP4, at most three representative frames, and at most one targeted repair and re-render. This exception belongs only to that declared video output; interactive motion and other outputs retain their ordinary delivery boundary.

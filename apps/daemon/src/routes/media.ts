@@ -1,3 +1,4 @@
+import { declareTaskMotionDelivery } from '../strategies/od-next/motion-delivery-store.js';
 import fs from 'node:fs';
 import type { Express } from 'express';
 import type {
@@ -1020,6 +1021,18 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       const body: any = { error: String(err && err.message ? err.message : err) };
       if (code) body.code = code;
       res.status(status).json(body);
+    }
+  });
+
+  app.post('/api/tools/media/motion-delivery', async (req, res) => {
+    const grant = authorizeToolRequest(req, res, 'media:declare-motion', { endpoint: '/api/tools/media/motion-delivery' });
+    if (!grant) return;
+    if (!await ctx.authorizeProjectToolRequest(res, grant.projectId, { mode: 'write', capability: 'writeFiles' })) return;
+    try {
+      const task = declareTaskMotionDelivery(db, grant.runId, req.body, grant.projectId);
+      res.json({ declarations: task });
+    } catch (error) {
+      sendApiError(res, 409, 'MOTION_DELIVERY_DECLARATION_REJECTED', error instanceof Error ? error.message : 'Invalid motion requirement');
     }
   });
 

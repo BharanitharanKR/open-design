@@ -773,6 +773,7 @@ const SCENARIO_PROJECT_INTENTS: Record<NonNullable<ContractProjectMetadata['inte
   'worker-visualizer': true,
   marketing: true,
   hyperframes: true,
+  'motion-design': true,
 };
 
 function toScenarioProjectIntent(value: unknown): ContractProjectMetadata['intent'] | undefined {

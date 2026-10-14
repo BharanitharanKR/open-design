@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.1
+# OD Next Prototype Task Profile v3.1.2
 
 > Rollout: active
 
@@ -192,12 +192,12 @@ fact and quotes its source in `device-frame-shell`.
 
 Open Design stages `.od-frames/layout.css` beside the handset shells and
 quotes it in the `layout-primitives` context fact. It is structure only —
-display, flex/grid, overflow, wrapping, ratio — and sets no palette, type,
-spacing scale, or component look. Put the whole block into the document's own
-`<style>` as its first rule set (`@layer od-layout` must come first so the
-product's CSS always wins), keep the `OD-LAYOUT-PRIMITIVES v1` marker comments,
-and compose the shapes below from it instead of re-deriving them per card,
-row, tile, or chip.
+display, flex/grid, overflow, wrapping, ratio, and opt-in icon geometry — and
+sets no palette, type, spacing scale, or component look. Put the whole block
+into the document's own `<style>` as its first rule set (`@layer od-layout`
+must come first so the product's CSS always wins), keep the
+`OD-LAYOUT-PRIMITIVES v1` marker comments, and compose the shapes below from it
+instead of re-deriving them per card, row, tile, or chip.
 
 Two kinds of text, two treatments:
 
@@ -241,6 +241,27 @@ reaches product UI.
 
 - Keep SVG drawing elements inside an actual `<svg viewBox="...">` root. When constructing them from JavaScript, use `document.createElementNS('http://www.w3.org/2000/svg', ...)` or insert SVG markup into an existing SVG root; never inject bare `path`, `line`, or `text` elements into an HTML `div`.
 - Give the chart a visible viewport and explicit dimensions. Keep plotted marks, axes, and labels within that viewport at the intended screen sizes; an empty chart container is not a rendered chart.
+
+### Bound functional icon geometry
+
+A `viewBox` defines internal coordinates; it does not set rendered size.
+Treat functional inline SVGs as one component contract before writing markup:
+
+- Every producer for UI glyphs — an `icon()` helper or direct inline markup —
+  emits `<svg class="od-icon" ...>`; never emit a bare `<svg>` that relies on
+  `viewBox` alone for layout geometry.
+- Copy the staged `.od-icon` primitive into the artifact. Its default size is
+  `1em`; set `--od-icon-size` on the icon or a semantic modifier when another
+  size is needed. The icon owns this geometry — never scatter sizing across
+  parent selectors such as `.menu-item svg` or `.card-meta svg`.
+- Apply this opt-in contract to UI glyphs such as menu checks, location pins,
+  arrows, status marks, and control icons. Content SVGs — charts, plans,
+  diagrams, logos, maps, and illustrations — keep their own explicit geometry;
+  never size them through `.od-icon` or a global `svg` rule.
+- Classify by the role the SVG plays on the page, not by its canvas size and
+  not by whether it carries a `viewBox`. A logo stays a content SVG even
+  inside a button or a nav bar; a deliberately large UI glyph stays functional
+  and takes its size from `--od-icon-size`.
 
 ### Design usable forms and feedback
 
@@ -317,6 +338,10 @@ Meet the following in one pass, while writing the source:
   the measured intrinsic dimensions and render the full frame; cover-cropping
   is reserved for decorative backdrops, and no content-bearing image is
   cropped or distorted.
+- Functional icon geometry holds: every inline SVG UI glyph carries `.od-icon`
+  at its producer, takes size from `--od-icon-size`, and never depends on a
+  parent-context or global `svg` sizing rule; content SVGs stay outside this
+  primitive.
 - Layout mechanics hold through the staged primitives: every stacked-text
   box, truncation, chip rail, and screen bar is composed from the
   `layout-primitives` classes per the text treatment table above; sibling

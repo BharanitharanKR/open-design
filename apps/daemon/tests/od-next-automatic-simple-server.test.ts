@@ -896,6 +896,11 @@ process.exit(127);
       'Hold the run open and drain slowly after a stop.', 'draining-first'));
     const firstRunId = first.runId as string;
     await vi.waitFor(async () => expect((await getRun(started!.url, firstRunId)).status).toBe('running'));
+    // A running registry entry precedes child initialization. Wait for the
+    // fixture's installed SIGTERM handler before testing its drain window.
+    await vi.waitFor(async () => {
+      expect(await readFile(fixture.logPath, 'utf8')).toContain('\"drainReady\":true');
+    });
     const stopping = fetch(`${started.url}/api/runs/${encodeURIComponent(firstRunId)}/cancel`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
     });
@@ -2907,6 +2912,7 @@ process.stdin.on('end', () => {
   if (stdin.includes('Hold the run open and drain slowly after a stop.') && !stdin.includes('Historical task context.')) {
     // Stopping answers only after the process exits; keep that window open.
     process.on('SIGTERM', () => setTimeout(() => process.exit(0), 2500));
+    fs.appendFileSync(logPath, JSON.stringify({ drainReady: true }) + '\\n');
     setInterval(() => {}, 1 << 30);
     return;
   }

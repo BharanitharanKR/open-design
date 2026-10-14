@@ -28,6 +28,7 @@ export const StrategyTaskTypeV2Schema = z.enum([
   'marketing',
   'hyperframes',
   'discovery',
+  'motion-design',
   'generic',
 ]);
 export type StrategyTaskTypeV2 = z.infer<typeof StrategyTaskTypeV2Schema>;
