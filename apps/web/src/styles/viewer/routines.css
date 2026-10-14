@@ -4555,14 +4555,17 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled:w
 .workspace-shell--project:has(.project-recent-rail[data-open='true']) .app .split.split-focus .workspace {
   margin-left: 0;
 }
-.project-recent-rail__actions {
+.project-recent-rail__actions.entry-nav-rail__search-row {
   position: absolute;
-  top: 8px;
+  /* The 34px search/collapse buttons share the 27px centerline of the
+     project title and file tabs in the adjacent top row. */
+  top: 10px;
   left: 52px;
   z-index: 132;
   display: flex;
   justify-content: flex-end;
   gap: 4px;
+  margin: 0;
   -webkit-app-region: no-drag;
 }
 .project-recent-rail__actions .entry-nav-rail__collapse {
