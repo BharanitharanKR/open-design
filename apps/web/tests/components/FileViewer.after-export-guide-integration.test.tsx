@@ -378,7 +378,7 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 				else fail(new Error("export failed"));
 			});
 			if (outcome === "failed") {
-				await screen.findByText("Export failed");
+				expect(await screen.findByText("Export failed")).toBeVisible();
 				expect(screen.getByText("This export did not complete. Please try again.")).toBeVisible();
 				expect(screen.queryByText("export failed")).toBeNull();
 			} else {
@@ -386,6 +386,7 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 					expect(screen.queryByText(/Exporting/i)).toBeNull(),
 				);
 			}
+			expect(screen.queryByText("Export complete")).toBeNull();
 			expect(
 				screen.queryByRole("status", { name: "Share the link, invite feedback" }),
 			).toBeNull();

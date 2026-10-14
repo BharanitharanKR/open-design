@@ -43,6 +43,14 @@ export function AfterExportShareGuide({ onOpenShare, onDismiss, onNeverShow, onO
     return () => window.clearTimeout(timer);
   }, [clock, onDismiss]);
 
+  useEffect(() => {
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onDismiss();
+    };
+    window.addEventListener('keydown', dismissOnEscape);
+    return () => window.removeEventListener('keydown', dismissOnEscape);
+  }, [onDismiss]);
+
   function updateInteraction(next: typeof interaction) {
     setClock((previous: ShareGuideClock) => advanceShareGuideClock(previous, performance.now(), next));
     setInteraction(next);
