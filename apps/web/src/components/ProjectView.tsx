@@ -705,8 +705,8 @@ const DEFAULT_CHAT_PANEL_WIDTH = 460;
 const MIN_CHAT_PANEL_WIDTH = 345;
 const MAX_CHAT_PANEL_WIDTH = 720;
 const MIN_WORKSPACE_PANEL_WIDTH = 400;
-// Match the 4px gutter between the home sidebar and content card.
-const SPLIT_RESIZE_HANDLE_WIDTH = 4;
+// Keep the chat and workspace cards 8px apart, including the resize gutter.
+const SPLIT_RESIZE_HANDLE_WIDTH = 8;
 const BYOK_OPENCODE_UNAVAILABLE_MESSAGE =
   'BYOK API runs require OpenCode. Install OpenCode, then rescan local agents in Settings before retrying.';
 const BYOK_PROVIDER_REQUIRED_MESSAGE =

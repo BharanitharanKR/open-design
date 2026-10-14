@@ -2356,11 +2356,11 @@ a.avatar-item:visited {
 @property --project-chat-handle-width {
   syntax: '<length>';
   inherits: true;
-  initial-value: 4px;
+  initial-value: 8px;
 }
 .split {
   --project-chat-panel-width: 460px;
-  --project-chat-handle-width: 4px;
+  --project-chat-handle-width: var(--spacing-8);
   --project-workspace-panel-track: minmax(400px, 1fr);
   display: grid;
   /* Always three tracks — collapsing never drops to a 1-column layout.
@@ -2534,7 +2534,7 @@ a.avatar-item:visited {
   grid-column: 2;
   position: relative;
   z-index: 45;
-  width: var(--project-chat-handle-width, 4px);
+  width: var(--project-chat-handle-width, 8px);
   min-width: 0;
   height: 100%;
   cursor: col-resize;

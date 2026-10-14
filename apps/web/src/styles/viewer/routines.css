@@ -1057,10 +1057,10 @@
   min-width: 32px;
   max-width: 32px;
 }
-/* Keep 4px between the destination buttons' right edge (48px) and the
+/* Keep 8px between the destination buttons' right edge (48px) and the
    project chat card. */
 .workspace-shell--project .workspace-shell__body {
-  padding-left: 52px;
+  padding-left: 56px;
 }
 .workspace-shell--project .split-chat-tabs-dock > .workspace-tabs-home-chrome,
 .workspace-shell--project > .workspace-tabs-chrome > .workspace-tabs-home-chrome {
@@ -1827,7 +1827,7 @@ html.is-window-fullscreen .workspace-shell--desktop[data-host-platform='darwin']
 }
 .app .split-resize-handle:where(:not([data-chat-root], [data-chat-root] *)) {
   --split-resize-gradient-surface: #fff;
-  width: var(--project-chat-handle-width, 2px);
+  width: var(--project-chat-handle-width, 8px);
   min-width: 0;
   background: transparent;
 }
@@ -4496,7 +4496,7 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled:w
   --rail-ink-quiet: var(--text-muted);
 }
 .project-recent-rail > .entry-nav-rail__panel {
-  margin: 8px 4px 8px 0;
+  margin: 8px var(--spacing-8) 8px 0;
   overflow: visible;
 }
 .project-recent-rail:has(.entry-nav-rail__team-menu) {
@@ -4508,7 +4508,7 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled:w
   position: relative;
   z-index: 140;
   width: 8px;
-  margin: 44px -4px 8px;
+  margin: 44px 0 8px -8px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -4550,7 +4550,7 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled:w
   flex: 1 1 0;
   min-width: 0;
 }
-/* The open recent-project rail already leaves a 4px inset before the preview.
+/* The open recent-project rail already leaves an 8px inset before the preview.
    Do not add the focus-mode workspace gutter when the chat is collapsed. */
 .workspace-shell--project:has(.project-recent-rail[data-open='true']) .app .split.split-focus .workspace {
   margin-left: 0;
