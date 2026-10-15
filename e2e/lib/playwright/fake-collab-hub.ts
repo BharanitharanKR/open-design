@@ -1,4 +1,5 @@
-import { chmod, cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, cp, lstat, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import type { CommentFileFact, CommentFileMutation, CommentFileState } from '@open-design/contracts';
 import { createServer, type Server, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
 
@@ -676,7 +677,7 @@ async function handleTeamProjectsCommand(input: {
       syncState: flag(input.args, '--sync-state') ?? previous?.syncState ?? 'synced',
       lastSyncedVersionId:
         flag(input.args, '--last-synced-version-id') ?? previous?.lastSyncedVersionId ?? null,
-      metadata: parseJsonFlag(input.args, '--metadata-json') ?? previous?.metadata ?? null,
+      metadata: await admitRootCommentFiles(input, previous, parseJsonFlag(input.args, '--metadata-json')),
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
       access: {
@@ -700,6 +701,63 @@ async function handleTeamProjectsCommand(input: {
     return jsonLine({ ok: true });
   }
   throw new Error(`unsupported team-projects command: ${input.args.join(' ')}`);
+}
+
+/** This hub models root receipts only, backed by its actual copied snapshots.
+ * Mutation proposals become server state; replaying response state is rejected.
+ * Selected/mixed-receipt authority remains covered by the Vela-owned tests.
+ */
+async function admitRootCommentFiles(
+  input: { workspaceId: string; identity: ClientIdentity; resources: Map<string, ResourceRecord> },
+  previous: TeamProjectRecord | undefined,
+  metadata: Record<string, unknown> | null,
+): Promise<Record<string, unknown> | null> {
+  if (!metadata) return previous?.metadata ?? null;
+  const old = previous?.metadata?._commentFiles as CommentFileState | undefined;
+  if (metadata._commentFiles === undefined) {
+    return old ? { ...metadata, _commentFiles: old } : metadata;
+  }
+  const mutation = metadata._commentFiles as CommentFileMutation;
+  if (!previous || previous.workspaceId !== input.workspaceId || previous.ownerMemberId !== input.identity.memberId
+    || !mutation || mutation.schemaVersion !== 1 || !Array.isArray(mutation.files)
+    || mutation.baseRevision !== (old?.revision ?? 0)) throw new Error('comment_file_mutation_rejected');
+  const resource = input.resources.get(workspaceResourceKey(input.workspaceId, mutation.resourceId));
+  if (!resource || resource.projectId !== previous.projectId || resource.ownerMemberId !== input.identity.memberId
+    || resource.resourceId !== previous.resourceId || mutation.versionId !== `v${resource.version}`) {
+    throw new Error('comment_file_receipt_rejected');
+  }
+  const snapshot = resource.versions.get(resource.version);
+  if (!snapshot) throw new Error('comment_file_receipt_rejected');
+  const files = new Map<string, CommentFileFact>(old?.files.map(file => [file.sourceFileId, file]));
+  const ids = new Set<string>();
+  for (const file of mutation.files) {
+    if (file.receipt || typeof file.sourceFileId !== 'string' || ids.has(file.sourceFileId)
+      || typeof file.retired !== 'boolean' || typeof file.entryPath !== 'string'
+      || file.entryPath !== file.sourceFilePath || !/\.html?$/i.test(file.entryPath)
+      || file.entryPath.startsWith('/') || /[\\\\\0]/.test(file.entryPath)
+      || file.entryPath.split('/').some(part => !part || part === '.' || part === '..')) {
+      throw new Error('comment_file_mutation_rejected');
+    }
+    ids.add(file.sourceFileId);
+    const prior = files.get(file.sourceFileId);
+    if (prior && (prior.sourceFilePath !== file.sourceFilePath || (prior.retired && !file.retired))) {
+      throw new Error('comment_file_lifetime_conflict');
+    }
+    if (file.retired && (!prior || prior.resourceId !== mutation.resourceId || prior.versionId !== mutation.versionId)) {
+      throw new Error('comment_file_retirement_rejected');
+    }
+    if (!(await lstat(join(snapshot, file.entryPath))).isFile()) throw new Error('comment_file_entry_missing');
+    files.set(file.sourceFileId, { sourceFileId: file.sourceFileId, sourceFilePath: file.sourceFilePath,
+      entryPath: file.entryPath, retired: file.retired, resourceId: mutation.resourceId, versionId: mutation.versionId });
+  }
+  const activePaths = new Set<string>();
+  for (const file of files.values()) {
+    if (file.retired) continue;
+    if (activePaths.has(file.sourceFilePath)) throw new Error('comment_file_lifetime_conflict');
+    activePaths.add(file.sourceFilePath);
+  }
+  const state: CommentFileState = { schemaVersion: 1, revision: (old?.revision ?? 0) + 1, files: [...files.values()] };
+  return { ...metadata, _commentFiles: state };
 }
 
 async function handleResourceCommand(input: {
