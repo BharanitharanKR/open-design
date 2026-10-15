@@ -1,3 +1,5 @@
+import { TOUCHPOINT_POLL_MS } from "../../src/components/touchpoint-lifecycle";
+import { touchpointLoadQueue, resetTouchpointLoadObservability, TouchpointLoadAttempt } from "../../src/components/touchpoint-load-observability";
 // @vitest-environment jsdom
 
 import { createHash } from "node:crypto";
@@ -13,7 +15,9 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const openExternalUrlMock = vi.hoisted(() => vi.fn(async () => true));
+const openExternalUrlMock = vi.hoisted(() => vi.fn(async (_url: string) => true));
+const cmsTrack = vi.hoisted(() => vi.fn());
+vi.mock("../../src/analytics/provider", () => ({ useAnalytics: () => ({ track: cmsTrack }), useAppVersion: () => "0.0.0" }));
 type CampaignHostGlobal = typeof globalThis & {
 	__openDesignCampaignTestHost?: unknown;
 };
@@ -26,6 +30,7 @@ vi.mock("../../src/providers/registry", () => ({
 	openExternalUrl: openExternalUrlMock,
 }));
 import { ProductionCampaignModal } from "../../src/components/ProductionCampaignModal";
+import * as campaignNavigation from "../../src/components/touchpoint-navigation";
 import { internalActionNavigationUrl } from "../../src/components/touchpoint-navigation";
 import { ProductionCampaignBadge } from "../../src/components/ProductionCampaignBadge";
 import * as touchpointComponent from "../../src/components/touchpoint-component";
@@ -142,6 +147,10 @@ function localizedDecision(
 }
 
 beforeEach(() => {
+	// Existing impression/lease cases isolate the receipt transport; explicit receipt cases below restore it.
+	vi.spyOn(TouchpointLoadAttempt.prototype, "exposure").mockImplementation(function (this: TouchpointLoadAttempt) { const eventId = this.visible(); this.report("success"); return eventId; });
+	vi.spyOn(touchpointLoadQueue("production"), "enqueue").mockImplementation(() => {});
+	vi.spyOn(touchpointLoadQueue("test"), "enqueue").mockImplementation(() => {});
 	vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({
 		length: 1,
 	} as DOMRectList);
@@ -155,7 +164,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	cmsTrack.mockClear();
 	cleanup();
+	resetTouchpointLoadObservability();
 	delete (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost;
 	openExternalUrlMock.mockClear();
 	vi.unstubAllGlobals();
@@ -320,7 +331,7 @@ describe("ProductionCampaignModal", () => {
 			const originalElement = document.querySelector("opend-touchpoint");
 			localStorage.setItem("touchpoint-displayed:v1:renew-user:campaign-1", "1");
 			await act(async () => {
-				await vi.advanceTimersByTimeAsync(30_000);
+				await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS);
 			});
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(31_000);
@@ -618,7 +629,7 @@ it("rejects a decision unless both decision and content target the campaign moda
 describe("Production campaign live refresh", () => {
 	let available: boolean;
 	let hidden: boolean;
-	const fetchMock = vi.fn(async () =>
+	const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
 		available
 			? new Response(JSON.stringify(decision()), { status: 200 })
 			: new Response(null, { status: 404 }),
@@ -656,12 +667,63 @@ describe("Production campaign live refresh", () => {
 		return view;
 	};
 
-	it("discovers a newly published campaign at 30 seconds without a focus event", async () => {
+	it.each(["success", "failure", "stale"] as const)(
+		"handles modal navigation completion: %s",
+		async (outcome) => {
+			let dispatchAction!: (id: string) => Promise<void>;
+			vi.spyOn(OpenDesignTouchpointElement.prototype, "mount").mockImplementation(
+				async (_entry, _digest, _context, _urls, _actions, options) => {
+					dispatchAction = options!.dispatchAction!;
+				},
+			);
+			Object.defineProperty(navigator, "userActivation", {
+				configurable: true, value: { isActive: true },
+			});
+			vi.stubGlobal("fetch", vi.fn(async (_input, init) =>
+				new Response(JSON.stringify(init?.method === "POST" ? { ok: true } : decision()), { status: 200 }),
+			));
+			let finishNavigation!: (accepted: boolean) => void;
+			openExternalUrlMock.mockImplementationOnce(() => new Promise<boolean>((resolve) => {
+				finishNavigation = resolve;
+			}));
+			const view = await open();
+			await tick(16);
+			expect(screen.queryByRole("dialog")).not.toBeNull();
+			let completion!: Promise<unknown>;
+			await act(async () => {
+				completion = dispatchAction("learn").catch((error: Error) => error.message);
+			});
+			expect(screen.queryByRole("dialog")).not.toBeNull();
+			if (outcome === "stale") {
+				view.rerender(<ProductionCampaignModal authenticated sessionSubject="new-user" />);
+				await tick(16);
+			}
+			let result: unknown;
+			await act(async () => {
+				finishNavigation(outcome !== "failure");
+				result = await completion;
+			});
+			if (outcome === "success") {
+				expect(screen.queryByRole("dialog")).toBeNull();
+				await tick(TOUCHPOINT_POLL_MS);
+				expect(screen.queryByRole("dialog")).toBeNull();
+			} else {
+				expect(screen.queryByRole("dialog")).not.toBeNull();
+				if (outcome === "failure") {
+					expect(result).toBe("touchpoint_action_denied");
+					await act(async () => { await dispatchAction("learn"); });
+					expect(screen.queryByRole("dialog")).toBeNull();
+				}
+			}
+		},
+	);
+
+	it("discovers a newly published campaign at the poll boundary without a focus event", async () => {
 		await open();
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(screen.queryByRole("dialog")).toBeNull();
 		available = true;
-		await tick(29_999);
+		await tick(TOUCHPOINT_POLL_MS - 1);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(screen.queryByRole("dialog")).toBeNull();
 		await tick(1);
@@ -705,13 +767,13 @@ describe("Production campaign live refresh", () => {
 		).toBe("1");
 		const host = document.querySelector("opend-touchpoint");
 		expect(host).not.toBeNull();
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(document.querySelector("opend-touchpoint")).toBe(host);
 		expect(OpenDesignTouchpointElement.prototype.mount).toHaveBeenCalledTimes(1);
 		fireEvent.keyDown(document, { key: "Escape" });
 		expect(screen.queryByRole("dialog")).toBeNull();
-		await tick(60_000);
+		await tick(2 * TOUCHPOINT_POLL_MS);
 		expect(fetchMock).toHaveBeenCalledTimes(4);
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
@@ -770,7 +832,7 @@ describe("Production campaign live refresh", () => {
 	// content identity alone, so the same hour of rotating credentials costs
 	// nothing: one host, one mount.
 	it("keeps one mounted host for a whole hour of rotating decision ids", async () => {
-		const POLLS = 120; // one hour at the 30s interval
+		const POLLS = 3_600_000 / TOUCHPOINT_POLL_MS; // one full hour
 		let issued = 0;
 		const rotating = vi.fn(async () => {
 			issued += 1;
@@ -786,10 +848,14 @@ describe("Production campaign live refresh", () => {
 		const hosts = new Set<Element>();
 		hosts.add(document.querySelector("opend-touchpoint") as Element);
 		for (let poll = 1; poll <= POLLS; poll += 1) {
-			await tick(30_000);
+			await tick(TOUCHPOINT_POLL_MS);
 			hosts.add(document.querySelector("opend-touchpoint") as Element);
 		}
 		expect(rotating).toHaveBeenCalledTimes(POLLS + 1);
+		const facts = vi.mocked(touchpointLoadQueue("production").enqueue).mock.calls.map(([record]) => record);
+		expect(facts.filter(record => record.kind === "start")).toHaveLength(1);
+		expect(facts.filter(record => record.kind === "terminal")).toHaveLength(1);
+		expect(facts.filter(record => record.kind === "renewal")).toHaveLength(POLLS);
 		// One host element for the whole hour, mounted once.
 		expect(hosts.size).toBe(1);
 		expect(OpenDesignTouchpointElement.prototype.mount).toHaveBeenCalledTimes(1);
@@ -799,13 +865,13 @@ describe("Production campaign live refresh", () => {
 	// host and one mount, and it still is. The two cases now agree, which is the
 	// point — the credential has stopped being able to change the answer.
 	it("keeps one mounted host for a whole hour when the decision id is stable", async () => {
-		const POLLS = 120;
+		const POLLS = 3_600_000 / TOUCHPOINT_POLL_MS;
 		available = true;
 		await open();
 		await tick(16);
 		const host = document.querySelector("opend-touchpoint");
 		expect(host).not.toBeNull();
-		await tick(POLLS * 30_000);
+		await tick(POLLS * TOUCHPOINT_POLL_MS);
 		expect(fetchMock).toHaveBeenCalledTimes(POLLS + 1);
 		expect(document.querySelector("opend-touchpoint")).toBe(host);
 		expect(OpenDesignTouchpointElement.prototype.mount).toHaveBeenCalledTimes(1);
@@ -864,7 +930,7 @@ describe("Production campaign live refresh", () => {
 		// restore fires is now what drives recovery. What this case is about —
 		// the host is not rebuilt across the outage — is unchanged.
 		act(() => { window.dispatchEvent(new Event("online")); });
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		expect(requests.length).toBeGreaterThan(0);
 		// The client still identifies itself with the credential it is holding,
 		// which by now the server has expired (OPEND-3372 keeps it answerable).
@@ -916,9 +982,9 @@ describe("Production campaign live refresh", () => {
 		vi.stubGlobal("fetch", staged);
 		await open();
 		await tick(16);
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		expect(screen.getByRole("dialog")).toBeTruthy();
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		await tick(16);
 		expect(staged.mock.calls.length).toBeGreaterThanOrEqual(3);
 		expect(screen.queryByRole("dialog")).toBeNull();
@@ -929,9 +995,40 @@ describe("Production campaign live refresh", () => {
 	// which is the stale one. Settlement has to be bound to the deployment
 	// window, not to that credential's own sixty seconds.
 	it("reports the stale decision id on a click after the credential rotated", async () => {
+		vi.mocked(TouchpointLoadAttempt.prototype.exposure).mockRestore();
+		const material = {
+			version: 1 as const,
+			materialVersionId: "12345678-1234-4234-8234-123456789012",
+			sourceHash: "a".repeat(64),
+			templateId: "modal-v3",
+			templateVersion: 7,
+			rendererDigest: digest("renderer"),
+			compilerIdentity: "fixture",
+			sourceDslVersion: 3 as const,
+		};
+		const fixedManifest = {
+			...manifest,
+			material,
+			placements: manifest.placements.map((placement) => ({
+				...placement,
+				locales: ["en"],
+			})),
+		};
+		const fixedContent = {
+			...content,
+			locale: "en",
+			manifest: fixedManifest,
+			manifestHash: digest(JSON.stringify(fixedManifest)),
+		};
+		const dimensions = {
+			template_id: material.templateId,
+			template_version: material.templateVersion,
+			material_version_id: material.materialVersionId,
+		};
 		const longLived = (overrides: Record<string, unknown> = {}) => {
 			const now = Date.now();
 			return decision({
+				content: fixedContent,
 				authorizationExpiresAt: new Date(now + 30 * 60_000).toISOString(),
 				endsAt: new Date(now + 40 * 60_000).toISOString(),
 				...overrides,
@@ -966,7 +1063,12 @@ describe("Production campaign live refresh", () => {
 				return new Response(JSON.stringify({ ok: true }), { status: 200 });
 			}
 			return new Response(
-				JSON.stringify(longLived({ touchpointDecisionId: decisionId })),
+				JSON.stringify(
+					longLived({
+						touchpointDecisionId: decisionId,
+						content: decisionId === "decision-1" ? fixedContent : content,
+					}),
+				),
 				{ status: 200 },
 			);
 		});
@@ -974,12 +1076,25 @@ describe("Production campaign live refresh", () => {
 		await open();
 		await tick(16);
 		decisionId = "decision-2";
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
+		expect(vi.mocked(touchpointLoadQueue('production').enqueue).mock.calls.some(([record]) => record.kind === 'renewal' && record.decision_id === 'decision-2')).toBe(true);
 		await act(async () => {
 			await dispatchAction?.("learn");
 		});
-		expect(posted).toHaveLength(1);
-		expect(posted[0]).toMatchObject({ touchpointDecisionId: "decision-1" });
+		const events = posted as Array<{ kind: string; eventId: string; touchpointDecisionId: string }>;
+		const [exposure] = events.filter(event => event.kind === 'exposure');
+		const [click] = events.filter(event => event.kind === 'click');
+		expect(events).toHaveLength(2);
+		for (const [, props] of cmsTrack.mock.calls)
+			expect(props).toMatchObject(dimensions);
+		const view = cmsTrack.mock.calls.find(
+			([event]) => event === "surface_view",
+		)![1];
+		expect(view).toMatchObject({ ...dimensions, decision_id: "decision-1" });
+		expect(click).toMatchObject({ touchpointDecisionId: "decision-1" });
+		expect(cmsTrack.mock.calls.filter(([event]) => event === 'ui_click')).toEqual([['ui_click', expect.objectContaining({ decision_id: 'decision-1', element: 'link_cta', action_id: 'learn', target_kind: 'https' }), { insertId: click!.eventId }]]);
+		expect(cmsTrack.mock.calls.filter(([event]) => event === 'surface_view')).toEqual([['surface_view', expect.objectContaining({ decision_id: 'decision-1' }), { insertId: exposure!.eventId }]]);
+		expect(vi.mocked(touchpointLoadQueue('production').enqueue).mock.calls.map(([record]) => record).filter(record => record.kind === 'terminal')).toEqual([expect.objectContaining({ decision_id: 'decision-1', event_id: exposure!.eventId })]);
 	});
 
 	it.each([
@@ -1005,7 +1120,7 @@ describe("Production campaign live refresh", () => {
 		const host = document.querySelector("opend-touchpoint");
 		expect(host).not.toBeNull();
 		next = overrides;
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		await tick(16);
 		expect(document.querySelector("opend-touchpoint")).not.toBe(host);
 		expect(OpenDesignTouchpointElement.prototype.mount).toHaveBeenCalledTimes(2);
@@ -1047,7 +1162,7 @@ describe("Production campaign live refresh", () => {
 		await open();
 		await tick(16);
 		const host = document.querySelector("opend-touchpoint");
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		// Same key, so the host survives...
 		expect(document.querySelector("opend-touchpoint")).toBe(host);
 		await tick(44_000);
@@ -1082,19 +1197,19 @@ describe("Production campaign live refresh", () => {
 		await tick(16);
 		expect(screen.getByRole("dialog")).toBeTruthy();
 		withdrawn = true;
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		await tick(16);
 		expect(screen.queryByRole("dialog")).toBeNull();
 		// Not merely gone: gone and not coming back on a later poll.
 		withdrawn = false;
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		await tick(16);
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
 
 	it("does not poll signed-out users and removes timers and wake listeners on cleanup", async () => {
 		const view = await open(false);
-		await tick(30_000);
+		await tick(TOUCHPOINT_POLL_MS);
 		expect(fetchMock).not.toHaveBeenCalled();
 		view.rerender(
 			<ProductionCampaignModal authenticated sessionSubject="poll-user" />,
@@ -1115,17 +1230,38 @@ describe("Production campaign live refresh", () => {
 			<ProductionCampaignModal authenticated sessionSubject="poll-user" />,
 		);
 		await act(async () => {});
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/production-runtime?")).length).toBe(2);
 		view.unmount();
 		await tick(60_000);
 		await act(async () => {
 			document.dispatchEvent(new Event("visibilitychange"));
 		});
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/production-runtime?")).length).toBe(2);
 	});
 });
 
 describe("Production campaign action guard", () => {
+	it("rejects an action when the host cannot open the external page", async () => {
+		const { dispatchProductionCampaignAction } = await import(
+			"../../src/components/ProductionCampaignModal"
+		);
+		Object.defineProperty(navigator, "userActivation", {
+			configurable: true,
+			value: { isActive: true },
+		});
+		vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+		openExternalUrlMock.mockResolvedValueOnce(false);
+		const accepted = await dispatchProductionCampaignAction(
+			decision() as any,
+			"learn",
+			1,
+			() => 1,
+			Date.now() + 10_000,
+		);
+		expect(openExternalUrlMock).toHaveBeenCalledWith("https://example.com");
+		expect(accepted).toBe(false);
+	});
+
 	it.each([500, 502, 503])(
 		"consumes an authorized action when telemetry returns %s",
 		async (status) => {
@@ -1512,7 +1648,7 @@ describe("ProductionCampaignModal mount lifetime", () => {
 			});
 			expect(dispatchAction).toBeTypeOf("function");
 			await act(async () => {
-				await vi.advanceTimersByTimeAsync(30_000);
+				await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS);
 			});
 			expect(gets).toBe(2);
 			expect(OpenDesignTouchpointElement.prototype.mount).toHaveBeenCalledTimes(1);
@@ -1714,6 +1850,64 @@ describe("ProductionCampaignModal mount lifetime", () => {
 	});
 });
 
+// OPEND-3286: the CTA lives in the component's open ShadowRoot, which a
+// light-DOM `querySelector("button")` cannot reach, so entry focus used to fall
+// back to the `.modal` container and the platform painted a ring around the
+// whole campaign on every re-entry.
+describe("ProductionCampaignModal initial focus", () => {
+	const enter = async () => {
+		const view = render(
+			<ProductionCampaignModal authenticated sessionSubject="user-a" />,
+		);
+		await screen.findByRole("dialog");
+		return view;
+	};
+	beforeEach(() => {
+		(globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
+			client: { osLocale: "en-US", type: "desktop" },
+		};
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response(JSON.stringify(decision()), { status: 200 })),
+		);
+	});
+	it("focuses the CTA inside the ShadowRoot on entry and on re-entry", async () => {
+		vi.spyOn(OpenDesignTouchpointElement.prototype, "mount").mockImplementation(
+			async function (this: OpenDesignTouchpointElement) {
+				const cta = document.createElement("button");
+				cta.type = "button";
+				cta.textContent = "Try now";
+				this.shadowRoot?.replaceChildren(cta);
+			},
+		);
+		for (let entry = 0; entry < 2; entry += 1) {
+			const view = await enter();
+			const host = document.querySelector("opend-touchpoint")!;
+			const cta = host.shadowRoot!.querySelector("button")!;
+			await waitFor(() => expect(host.shadowRoot!.activeElement).toBe(cta));
+			expect(document.activeElement).toBe(host);
+			expect(document.activeElement).not.toBe(
+				screen.getByRole("dialog").firstElementChild,
+			);
+			view.unmount();
+			// Leaving and coming back: drop the device impression so the same
+			// activity presents again, as the acceptance re-entry does.
+			localStorage.clear();
+		}
+	});
+	it("falls back to the container without a focus ring when content has no control", async () => {
+		await enter();
+		const modal = screen.getByRole("dialog").firstElementChild;
+		await waitFor(() => expect(document.activeElement).toBe(modal));
+		expect(modal?.getAttribute("tabindex")).toBe("-1");
+		const focusRule = modalHostStyles.match(/\.modal:focus\s*\{[^}]*\}/)?.[0];
+		expect(focusRule).toContain("outline: none");
+		// Focus stays trapped on the container instead of escaping the modal.
+		fireEvent.keyDown(document, { key: "Tab" });
+		expect(document.activeElement).toBe(modal);
+	});
+});
+
 describe("ProductionCampaignModal device impressions", () => {
 	const marker = (subject = "user-a", activity = "campaign-1") =>
 		`touchpoint-displayed:v1:${encodeURIComponent(subject)}:${encodeURIComponent(activity)}`;
@@ -1909,14 +2103,15 @@ describe("ProductionCampaignModal device impressions", () => {
 		vi.stubGlobal("fetch", fetchMock);
 
 		render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
-		await act(async () => { await vi.advanceTimersByTimeAsync(16); });
+		// The dialog is presented once verified content has mounted.
+		await advanceToRecordedImpression();
 		const dialog = screen.getByRole("dialog");
 		const host = document.querySelector("opend-touchpoint");
 		expect(host).not.toBeNull();
 		await advanceToRecordedImpression();
 		const callsBeforeHiding = fetchMock.mock.calls.length;
 
-		// Backgrounded. The thirty-second tick lands inside this and must not fire:
+		// Backgrounded. The periodic tick lands inside this and must not fire:
 		// no answer could be acted on while `isCurrent` fences a hidden page.
 		hidden = true;
 		await act(async () => { fireEvent(document, new Event("visibilitychange")); });
@@ -1956,9 +2151,9 @@ describe("ProductionCampaignModal device impressions", () => {
 			vi.fn(async () => new Response(JSON.stringify(decision()), { status: 200 })),
 		);
 		render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
-		await act(async () => { await vi.advanceTimersByTimeAsync(16); });
-		expect(screen.getByRole("dialog")).toBeTruthy();
+		// The dialog is presented once verified content has mounted.
 		await advanceToRecordedImpression();
+		expect(screen.getByRole("dialog")).toBeTruthy();
 
 		// Asleep past the sixty-second authorization this decision carries. The
 		// lease retires on its own deadline while the page is hidden.
@@ -1973,6 +2168,9 @@ describe("ProductionCampaignModal device impressions", () => {
 		await act(async () => { fireEvent(document, new Event("visibilitychange")); });
 		await act(async () => { await vi.advanceTimersByTimeAsync(16); });
 		expect(screen.queryByRole("dialog")).toBeNull();
+		// The frame is presented only after verification, so the published offer
+		// itself is observed through its (still hidden) host element.
+		expect(document.querySelector("opend-touchpoint")).toBeNull();
 
 		// Control. Both assertions above are absences, and an absence is what a
 		// lifecycle that never came back at all also looks like — a `wake` that
@@ -1985,6 +2183,8 @@ describe("ProductionCampaignModal device impressions", () => {
 		localStorage.removeItem(marker());
 		await act(async () => { fireEvent(document, new Event("visibilitychange")); });
 		await act(async () => { await vi.advanceTimersByTimeAsync(16); });
+		expect(document.querySelector("opend-touchpoint")).not.toBeNull();
+		await advanceToRecordedImpression();
 		expect(screen.getByRole("dialog")).toBeTruthy();
 	});
 	it("keeps the displayed campaign on screen when a failed poll later recovers", async () => {
@@ -2041,7 +2241,7 @@ describe("ProductionCampaignModal device impressions", () => {
 		expect(host).not.toBeNull();
 		await advanceToRecordedImpression();
 		await act(async () => {
-			await vi.advanceTimersByTimeAsync(30_000);
+			await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS);
 		});
 		expect(calls).toBe(2);
 		expect(document.querySelector("opend-touchpoint")).toBe(host);
@@ -2193,8 +2393,10 @@ describe("ProductionCampaignModal device impressions", () => {
 		const view = render(
 			<ProductionCampaignModal authenticated sessionSubject="user-a" />,
 		);
-		await screen.findByRole("dialog");
+		await waitFor(() => expect(verify).toHaveBeenCalled());
 		await act(async () => {});
+		// A rejected verification releases the page instead of leaving a backdrop.
+		expect(screen.queryByRole("dialog")).toBeNull();
 		expect(localStorage.getItem(marker())).toBeNull();
 		view.unmount();
 		verify.mockRestore();
@@ -2233,4 +2435,392 @@ describe("ProductionCampaignModal device impressions", () => {
 		fireEvent.keyDown(document, { key: "Escape" });
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
+});
+
+it("mounts phase 2 pricing and countdown, retries rejected navigation, and closes only after successful navigation", async () => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop', osLocale: 'en-US' } };
+  Object.defineProperty(navigator, 'userActivation', { configurable: true, value: { isActive: true } });
+  const staticActions = [{ id: 'upgrade', target: { kind: 'console-pricing' } }];
+  const requiredCapabilities = ['close', 'static-action', 'countdown-v1', 'action-console-pricing-v1'];
+  const phaseManifest = { ...manifest, runtimeApiVersion: 2, placements: manifest.placements.map(p => ({ ...p, requiredCapabilities, staticActions })) };
+  const phaseContent = { ...content, manifest: phaseManifest, manifestHash: digest(JSON.stringify(phaseManifest)), runtime: { ...content.runtime, apiVersion: 2 } };
+  const fetchMock = vi.fn(async (url: string) => new Response(url.endsWith('/events') ? '{}' : JSON.stringify(decision({ content: phaseContent, requiredCapabilities, staticActions })), { status: 200 }));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<ProductionCampaignModal authenticated sessionSubject="phase2-modal" />);
+  await screen.findByRole('dialog', { name: 'Campaign' });
+  const mount = vi.mocked(OpenDesignTouchpointElement.prototype.mount);
+  const call = mount.mock.calls.at(-1)!;
+  expect(call[2]).toMatchObject({ schedule: { endsAt: expect.any(String) }, serverOffsetMs: expect.any(Number) });
+  expect(call[5]?.runtimeApiVersion).toBe(2);
+  openExternalUrlMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  await act(async () => { await expect(call[5]!.dispatchAction!('upgrade')).rejects.toThrow('touchpoint_action_denied'); });
+  expect(screen.queryByRole('dialog', { name: 'Campaign' })).not.toBeNull();
+  await act(async () => { await call[5]!.dispatchAction!('upgrade'); });
+  expect(screen.queryByRole('dialog', { name: 'Campaign' })).toBeNull();
+  expect(new URL(vi.mocked(openExternalUrlMock).mock.calls.at(-1)![0] as string).searchParams.get('billing')).toBe('plan');
+});
+
+
+it("observes start before actual production fetch and correlates one visible terminal B with its failed receipt", async () => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: "desktop" } };
+  vi.mocked(TouchpointLoadAttempt.prototype.exposure).mockRestore();
+  const facts = () => vi.mocked(touchpointLoadQueue("production").enqueue).mock.calls.map(([record]) => record);
+  const transport = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/events')) return new Response('{}', { status: 503 });
+    expect(facts().filter(record => record.kind === 'start')).toHaveLength(1);
+    expect(facts()[0]).toMatchObject({ decision_id: null, decision_outcome: null });
+    return new Response(JSON.stringify(decision()), { status: 200 });
+  });
+  vi.stubGlobal('fetch', transport);
+  render(<ProductionCampaignModal authenticated sessionSubject="observation-modal" />);
+  await screen.findByRole('dialog');
+  await waitFor(() => expect(facts().some(record => record.kind === 'report')).toBe(true));
+  const exposure = transport.mock.calls.filter(([url]) => url.endsWith('/events'));
+  expect(exposure).toHaveLength(1);
+  const visible = facts().find(record => record.result === 'visible')!;
+  expect(JSON.parse(String(exposure[0]![1]?.body)).eventId).toBe(visible.event_id);
+  expect(cmsTrack).toHaveBeenCalledWith('surface_view', expect.objectContaining({ page_name: 'home', area: 'cms_campaign_modal', element: 'modal', activity_id: 'campaign-1', deployment_id: 'deployment-1', content_version_id: 'version-1', decision_id: 'decision-1', load_attempt_id: visible.load_attempt_id, mode: 'production' }), { insertId: visible.event_id });
+  expect(facts().filter(record => record.kind === 'terminal')).toHaveLength(1);
+  expect(facts().find(record => record.kind === 'report')).toMatchObject({ report_result: 'failed' });
+  expect(screen.getByRole('dialog')).toBeTruthy();
+});
+
+
+it.each(['mount', 'network', 'http', 'no_activity', 'capability_unsupported'] as const)("recovers actual same-content modal after %s with a new pre-fetch start and one exposure B", async initial => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop' } };
+  vi.mocked(TouchpointLoadAttempt.prototype.exposure).mockRestore();
+  const facts = () => vi.mocked(touchpointLoadQueue('production').enqueue).mock.calls.map(([record]) => record);
+  const mount = vi.mocked(OpenDesignTouchpointElement.prototype.mount);
+  if (initial === 'mount') mount.mockRejectedValueOnce(new Error('mount failed'));
+  let requests = 0;
+  const transport = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/events')) return new Response('{}', { status: 200 });
+    requests++;
+    // A replacement start must already exist when the actual request begins.
+    // Empty polls retain the first attempt until this response identifies content.
+    expect(facts().filter(record => record.kind === 'start')).toHaveLength(initial === 'no_activity' ? 1 : Math.min(requests, 2));
+    if (requests === 1) {
+      if (initial === 'network') throw new TypeError('network');
+      if (initial === 'http') return new Response('{}', { status: 503 });
+      if (initial === 'no_activity') return new Response(JSON.stringify({ decision: null }));
+      if (initial === 'capability_unsupported') return new Response(JSON.stringify(decision({ requiredCapabilities: ['unknown-capability'] })));
+    }
+    return new Response(JSON.stringify(decision({ touchpointDecisionId: 'recovered-credential' })));
+  });
+  vi.stubGlobal('fetch', transport);
+  render(<ProductionCampaignModal authenticated sessionSubject={'recover-' + initial} />);
+  await waitFor(() => expect(facts().filter(record => record.kind === 'terminal')).toHaveLength(1));
+  expect(facts().find(record => record.kind === 'terminal')!.result).not.toBe('visible');
+  if (initial === 'network' || initial === 'http') fireEvent(window, new Event('online'));
+  else await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+  await screen.findByRole('dialog');
+  await waitFor(() => expect(facts().some(record => record.result === 'visible')).toBe(true));
+  const starts = facts().filter(record => record.kind === 'start');
+  const terminals = facts().filter(record => record.kind === 'terminal');
+  expect(starts).toHaveLength(2); expect(terminals).toHaveLength(2);
+  expect(new Set(terminals.map(record => record.load_attempt_id)).size).toBe(2);
+  const visible = terminals.find(record => record.result === 'visible')!;
+  expect(visible.load_attempt_id).toBe(starts[1]!.load_attempt_id);
+  const exposures = () => transport.mock.calls.filter(([url]) => url.endsWith('/events')).map(([, init]) => JSON.parse(String(init?.body)));
+  expect(exposures()).toEqual([expect.objectContaining({ eventId: visible.event_id, touchpointDecisionId: 'recovered-credential', kind: 'exposure' })]);
+  await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+  expect(facts().filter(record => record.kind === 'start')).toHaveLength(2);
+  expect(facts().filter(record => record.kind === 'terminal')).toHaveLength(2);
+  expect(facts().some(record => record.kind === 'renewal')).toBe(true);
+  expect(exposures()).toHaveLength(1);
+});
+
+
+it("recovers a cancelled real modal mount before its abort-ignoring completion without losing or duplicating B", async () => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop' } };
+  vi.mocked(TouchpointLoadAttempt.prototype.exposure).mockRestore();
+  const facts = () => vi.mocked(touchpointLoadQueue('production').enqueue).mock.calls.map(([record]) => record);
+  let resolveOld!: () => void;
+  vi.mocked(OpenDesignTouchpointElement.prototype.mount).mockImplementationOnce(() => new Promise<void>(resolve => { resolveOld = resolve; }));
+  let requests = 0;
+  const transport = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/events')) return new Response('{}');
+    requests++;
+    expect(facts().filter(record => record.kind === 'start')).toHaveLength(requests);
+    return new Response(JSON.stringify(decision({ touchpointDecisionId: 'cancel-recovered' })));
+  });
+  vi.stubGlobal('fetch', transport);
+  render(<ProductionCampaignModal authenticated sessionSubject="cancel-recover" />);
+  await waitFor(() => expect(resolveOld).toBeTypeOf('function'));
+  act(() => window.dispatchEvent(new Event('pagehide')));
+  expect(facts().filter(record => record.kind === 'terminal')).toEqual([expect.objectContaining({ result: 'cancelled', cancel_reason: 'page_left' })]);
+  act(() => window.dispatchEvent(new Event('pageshow')));
+  await screen.findByRole('dialog');
+  await waitFor(() => expect(facts().some(record => record.result === 'visible')).toBe(true));
+  await act(async () => resolveOld());
+  const terminals = facts().filter(record => record.kind === 'terminal');
+  expect(terminals).toHaveLength(2);
+  expect(new Set(terminals.map(record => record.load_attempt_id)).size).toBe(2);
+  const exposures = transport.mock.calls.filter(([url]) => url.endsWith('/events'));
+  expect(exposures).toHaveLength(1);
+  expect(JSON.parse(String(exposures[0]![1]?.body)).eventId).toBe(terminals.find(record => record.result === 'visible')!.event_id);
+});
+
+it.each([undefined, 'secondary_close', 'close'] as const)('classifies a real modal SDK close %s only when its reason is explicit', async reason => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop' } };
+  const fetchMock = vi.fn(async () => Response.json(decision()));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<ProductionCampaignModal authenticated sessionSubject="close-classification" />);
+  await screen.findByRole('dialog');
+  await waitFor(() => expect(cmsTrack.mock.calls.some(([event]) => event === 'surface_view')).toBe(true));
+  const call = vi.mocked(OpenDesignTouchpointElement.prototype.mount).mock.calls.at(-1)!;
+  await act(async () => { call[5]!.requestClose!(reason); });
+  expect(screen.queryByRole('dialog')).toBeNull();
+  const clicks = cmsTrack.mock.calls.filter(([event]) => event === 'ui_click');
+  expect(clicks).toHaveLength(reason ? 1 : 0);
+  if (reason) expect(clicks[0]![1]).toMatchObject({ area: 'cms_campaign_modal', element: reason });
+});
+
+it('retains one first empty observation across actual modal host polls before a campaign appears', async () => {
+ (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop' } };
+ vi.useFakeTimers({ shouldAdvanceTime: true });
+ let absent = true;
+ vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/events') ? Response.json({}) : Response.json(absent ? { decision: null } : decision())));
+ render(<ProductionCampaignModal authenticated sessionSubject="initial-empty-modal" />);
+ await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+ const facts = () => vi.mocked(touchpointLoadQueue('production').enqueue).mock.calls.map(([record]) => record);
+ expect(facts().filter(record => record.kind === 'start')).toHaveLength(1);
+ expect(facts().filter(record => record.kind === 'terminal')).toHaveLength(1);
+ absent = false;
+ await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+ await screen.findByRole('dialog');
+ expect(facts().filter(record => record.kind === 'start')).toHaveLength(2);
+ expect(new Set(facts().map(record => record.session_id)).size).toBe(1);
+});
+
+
+it.each(['https', 'internal'] as const)('dispatches independent %s link A and B from the real Production modal SDK without Pricing attribution', async target_kind => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: 'desktop' } };
+  Object.defineProperty(navigator, 'userActivation', { configurable: true, value: { isActive: true } });
+  const staticActions = [
+    { id: 'Link-A', target: target_kind === 'https' ? { kind: 'https', url: 'https://example.com/a' } : { kind: 'internal', path: '/projects?a=1' } },
+    { id: 'Link_B', target: target_kind === 'https' ? { kind: 'https', url: 'https://example.com/b' } : { kind: 'internal', path: '/projects?b=1' } },
+  ];
+  const linkManifest = { ...manifest, placements: manifest.placements.map(p => ({ ...p, staticActions })) };
+  const linkContent = { ...content, manifest: linkManifest, manifestHash: digest(JSON.stringify(linkManifest)) };
+  const transport = vi.fn(async (url: string, _init?: RequestInit) => Response.json(url.endsWith('/events') ? {} : decision({ content: linkContent, staticActions })));
+  vi.stubGlobal('fetch', transport);
+  // A refused host open retains the modal so both independent SDK actions can be exercised.
+  openExternalUrlMock.mockResolvedValue(false);
+  if (target_kind === 'internal') vi.spyOn(campaignNavigation, 'navigateCampaignTarget').mockResolvedValue(false);
+  render(<ProductionCampaignModal authenticated sessionSubject="independent-links" />);
+  await screen.findByRole('dialog');
+  await waitFor(() => expect(cmsTrack.mock.calls.some(([event]) => event === 'surface_view')).toBe(true));
+  const dispatch = vi.mocked(OpenDesignTouchpointElement.prototype.mount).mock.calls.at(-1)![5]!.dispatchAction!;
+  await act(async () => { await expect(dispatch('not-registered')).rejects.toThrow('touchpoint_action_denied'); });
+  Object.defineProperty(navigator, 'userActivation', { configurable: true, value: { isActive: false } });
+  await act(async () => { await expect(dispatch(staticActions[0]!.id)).rejects.toThrow('touchpoint_action_denied'); });
+  expect(cmsTrack.mock.calls.filter(([event]) => event === 'ui_click')).toHaveLength(0);
+  Object.defineProperty(navigator, 'userActivation', { configurable: true, value: { isActive: true } });
+  for (const action of staticActions) await act(async () => { await expect(dispatch(action.id)).rejects.toThrow('touchpoint_action_denied'); });
+  const clicks = transport.mock.calls.filter(([url]) => url.endsWith('/events')).map(([, init]) => JSON.parse(String(init?.body))).filter(body => body.kind === 'click');
+  expect(new Set(clicks.map(body => body.eventId)).size).toBe(2);
+  expect(cmsTrack.mock.calls.filter(([event]) => event === 'ui_click')).toEqual(staticActions.map((action, i) => ['ui_click', expect.objectContaining({ page_name: 'home', area: 'cms_campaign_modal', element: 'link_cta', action_id: action.id, target_kind }), { insertId: clicks[i].eventId }]));
+  for (const [, props] of cmsTrack.mock.calls.filter(([event]) => event === 'ui_click')) {
+    expect(props).not.toHaveProperty('entry_id'); expect(props).not.toHaveProperty('url');
+  }
+  expect(localStorage.getItem('open-design:amr-entry-attribution:v1')).toBeNull();
+  openExternalUrlMock.mockResolvedValue(true);
+});
+
+it.each(['close', 'secondary_close'] as const)(
+  'shares verified V3 modal B with independent SDK %s X',
+  async (reason) => {
+    (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
+      client: { type: 'desktop' },
+    };
+    const material = {
+      version: 1 as const,
+      materialVersionId: '12345678-1234-4234-8234-123456789012',
+      sourceHash: 'a'.repeat(64),
+      templateId: 'modal-x',
+      templateVersion: 3,
+      rendererDigest: digest('renderer'),
+      compilerIdentity: 'fixture',
+      sourceDslVersion: 3 as const,
+    };
+    const fixedManifest = {
+      ...manifest,
+      material,
+      placements: manifest.placements.map((placement) => ({
+        ...placement,
+        locales: ['en'],
+      })),
+    };
+    const fixedContent = {
+      ...content,
+      locale: 'en',
+      manifest: fixedManifest,
+      manifestHash: digest(JSON.stringify(fixedManifest)),
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(decision({ content: fixedContent }))),
+    );
+    render(
+      <ProductionCampaignModal
+        authenticated
+        sessionSubject={`obs-x-${reason}`}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        cmsTrack.mock.calls.some(([event]) => event === 'surface_view'),
+      ).toBe(true),
+    );
+    const view = cmsTrack.mock.calls.find(
+      ([event]) => event === 'surface_view',
+    )![1];
+    expect(view).toMatchObject({
+      template_id: 'modal-x',
+      template_version: 3,
+      material_version_id: material.materialVersionId,
+    });
+    const call = vi
+      .mocked(OpenDesignTouchpointElement.prototype.mount)
+      .mock.calls.at(-1)!;
+    await act(async () => {
+      call[5]!.requestClose!(reason);
+    });
+    expect(cmsTrack).toHaveBeenLastCalledWith(
+      'ui_click',
+      expect.objectContaining({
+        template_id: view.template_id,
+        template_version: view.template_version,
+        material_version_id: view.material_version_id,
+        load_attempt_id: view.load_attempt_id,
+        element: reason,
+      }),
+      expect.anything(),
+    );
+  },
+);
+
+it('isolates verified modal versions in real replacement attempts and refuses stale SDK callbacks', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
+    client: { type: 'desktop' },
+  };
+  vi.mocked(TouchpointLoadAttempt.prototype.exposure).mockRestore();
+  let version = 1;
+  const transport = vi.fn(async (url: string) => {
+    if (url.endsWith('/events')) return Response.json({});
+    const material = {
+      version: 1 as const,
+      materialVersionId:
+        version === 1
+          ? '12345678-1234-4234-8234-123456789012'
+          : '22345678-1234-4234-8234-123456789012',
+      sourceHash: 'a'.repeat(64),
+      templateId: 'modal-versioned',
+      templateVersion: version,
+      rendererDigest: digest('renderer'),
+      compilerIdentity: 'fixture',
+      sourceDslVersion: 3 as const,
+    };
+    const fixedManifest = {
+      ...manifest,
+      material,
+      placements: manifest.placements.map((placement) => ({
+        ...placement,
+        locales: ['en'],
+      })),
+    };
+    return Response.json(
+      decision({
+        content: {
+          ...content,
+          id: `version-${version}`,
+          locale: 'en',
+          manifest: fixedManifest,
+          manifestHash: digest(JSON.stringify(fixedManifest)),
+        },
+      }),
+    );
+  });
+  vi.stubGlobal('fetch', transport);
+  render(
+    <ProductionCampaignModal authenticated sessionSubject="obs-versions" />,
+  );
+  await waitFor(() =>
+    expect(
+      cmsTrack.mock.calls.filter(([event]) => event === 'surface_view'),
+    ).toHaveLength(1),
+  );
+  const first = cmsTrack.mock.calls[0]![1];
+  version = 2;
+  await act(async () => {
+    window.dispatchEvent(new Event('focus'));
+  });
+  await waitFor(() =>
+    expect(
+      cmsTrack.mock.calls.filter(([event]) => event === 'surface_view'),
+    ).toHaveLength(2),
+  );
+  const views = cmsTrack.mock.calls.filter(
+    ([event]) => event === 'surface_view',
+  );
+  expect(
+    views.map(([, props]) => [
+      props.content_version_id,
+      props.template_version,
+    ]),
+  ).toEqual([
+    ['version-1', 1],
+    ['version-2', 2],
+  ]);
+  expect(views[1]![1].load_attempt_id).not.toBe(first.load_attempt_id);
+  expect(first.template_version).toBe(1);
+  // A stale mount cannot dispatch C; production's SDK enforces the supplied current fence.
+  const oldMount = vi.mocked(OpenDesignTouchpointElement.prototype.mount).mock
+    .calls[0]!;
+  Object.defineProperty(navigator, 'userActivation', {
+    configurable: true,
+    value: { isActive: true },
+  });
+  await act(async () => {
+    await expect(oldMount[5]!.dispatchAction!('learn')).rejects.toThrow(
+      'touchpoint_action_denied',
+    );
+  });
+  expect(
+    cmsTrack.mock.calls.filter(([event]) => event === 'ui_click'),
+  ).toHaveLength(0);
+});
+
+
+it.each([["en", 0], ["en", 1], ["zh-CN", 0], ["zh-CN", 1]] as const)("HST-001 homepage modal %s opens distinct target for button %s", async (locale, buttonIndex) => {
+  (globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = { client: { type: "desktop", osLocale: locale } };
+  const staticActions = [
+    { id: "primary", target: { kind: "https" as const, url: "https://primary.example.test/modal-a" } },
+    { id: "secondary", target: { kind: "https" as const, url: "https://secondary.example.test/modal-b" } },
+  ];
+  const dualManifest = {
+    ...manifest,
+    placements: [{ ...manifest.placements[0]!, locales: [locale], staticActions }],
+  };
+  const active = decision({
+    staticActions,
+    content: { ...content, locale, manifest: dualManifest, manifestHash: digest(JSON.stringify(dualManifest)) },
+  });
+  let dispatch!: (id: string) => Promise<void>;
+  vi.mocked(OpenDesignTouchpointElement.prototype.mount).mockImplementation(async function (this: OpenDesignTouchpointElement, _url, _digest, _context, _resources, _actions, options) {
+    dispatch = options!.dispatchAction!;
+    this.shadowRoot?.replaceChildren(document.createTextNode("HST-001 modal"));
+  });
+  vi.stubGlobal("fetch", vi.fn(async (_url, init) => Response.json(init?.method === "POST" ? { ok: true } : active)));
+  Object.defineProperty(navigator, "userActivation", { configurable: true, value: { isActive: true } });
+  render(<I18nProvider initial={locale}><ProductionCampaignModal authenticated sessionSubject="hst001-modal" /></I18nProvider>);
+  await waitFor(() => expect(dispatch).toBeTypeOf("function"));
+  expect(staticActions[0]!.target.url).not.toBe(staticActions[1]!.target.url);
+  // Each successful CTA closes the presentation; exercise each button on a fresh mount.
+  const chosen = staticActions[buttonIndex]!;
+  await act(async () => { await dispatch(chosen.id); });
+  expect(openExternalUrlMock.mock.calls.map(([url]) => url)).toEqual([chosen.target.url]);
 });

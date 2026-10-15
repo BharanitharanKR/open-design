@@ -12,7 +12,7 @@ import {
 } from "vitest";
 import type { WebTouchpointContent } from "../../src/components/touchpoint-component";
 
-const mounts = vi.fn(async () => undefined);
+const mounts = vi.fn(async (..._args: unknown[]) => undefined);
 const disposes = vi.fn(async () => undefined);
 const verify = vi.fn();
 vi.mock("../../src/components/touchpoint-component", async () => ({
@@ -96,6 +96,126 @@ beforeEach(() => {
 	verify.mockResolvedValue(verified());
 });
 afterEach(() => cleanup());
+
+describe("HoverTouchpointOverlay measured clipping", () => {
+	let resize: () => void;
+	let observed: Element[];
+	let frames: FrameRequestCallback[];
+	beforeEach(() => {
+		observed = [];
+		frames = [];
+		vi.stubGlobal("ResizeObserver", class {
+			constructor(callback: () => void) { resize = callback; }
+			observe(element: Element) { observed.push(element); }
+			disconnect() {}
+		});
+		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => frames.push(callback));
+		vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+		vi.spyOn(window, "innerWidth", "get").mockReturnValue(400);
+		vi.spyOn(window, "innerHeight", "get").mockReturnValue(300);
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+	const flushLayout = () => act(() => {
+		const pending = frames.splice(0);
+		for (const callback of pending) callback(0);
+	});
+	const setup = async (width = 120, height = 60) => {
+		const { container } = render(createElement(HoverTouchpointOverlay, {
+			entry: content("opend.home.hover-entry"),
+			layer: content("opend.home.hover-layer"),
+			isAuthorized: () => true,
+		}));
+		const [entry, layer] = Array.from(container.querySelectorAll("opend-touchpoint")) as [HTMLElement, HTMLElement];
+		const size = { width, height };
+		const card = document.createElement("div");
+		layer.attachShadow({ mode: "open" }).appendChild(card);
+		vi.spyOn(entry, "getBoundingClientRect").mockReturnValue({ left: 40, top: 20, right: 64, bottom: 44, width: 24, height: 24 } as DOMRect);
+		const constrained = (axis: "Width" | "Height") => Math.min(size[axis === "Width" ? "width" : "height"], Number.parseFloat(layer.style[`max${axis}`]) || Infinity);
+		vi.spyOn(layer, "getBoundingClientRect").mockImplementation(() => ({ left: 40, top: 52, right: 40 + constrained("Width"), bottom: 52 + constrained("Height"), width: constrained("Width"), height: constrained("Height") }) as DOMRect);
+		Object.defineProperties(layer, {
+			clientWidth: { get: () => constrained("Width") },
+			clientHeight: { get: () => constrained("Height") },
+			scrollWidth: { get: () => Math.max(size.width, constrained("Width")) },
+			scrollHeight: { get: () => Math.max(size.height, constrained("Height")) },
+		});
+		await waitFor(() => expect(entry).not.toHaveAttribute("hidden"));
+		fireEvent.pointerEnter(entry);
+		flushLayout();
+		return { entry, layer, card, size };
+	};
+
+	it("leaves fitting material shadows unclipped", async () => {
+		const { layer } = await setup();
+		expect(layer.style.overflow).toBe("visible");
+		expect(layer.style.maxWidth).toBe("384px");
+		expect(layer.style.maxHeight).toBe("240px");
+	});
+
+	it.each([[600, 60], [120, 600]])("scrolls content constrained in either axis (%i × %i) and recovers after content shrink", async (width, height) => {
+		const { layer, card, size } = await setup(width, height);
+		expect(layer.style.overflow).toBe("auto");
+		expect(observed).toContain(card);
+		layer.scrollTop = 30;
+		layer.scrollLeft = 20;
+		act(() => resize());
+		flushLayout();
+		expect(layer.scrollTop).toBe(30);
+		expect(layer.scrollLeft).toBe(20);
+		size.width = 120;
+		size.height = 60;
+		act(() => resize());
+		flushLayout();
+		expect(layer.style.overflow).toBe("visible");
+	});
+
+	it("remeasures natural content on viewport growth instead of retaining old scroll constraints", async () => {
+		const { layer } = await setup(600, 600);
+		expect(layer.style.overflow).toBe("auto");
+		vi.spyOn(window, "innerWidth", "get").mockReturnValue(1000);
+		vi.spyOn(window, "innerHeight", "get").mockReturnValue(1000);
+		fireEvent.resize(window);
+		flushLayout();
+		expect(layer.style.overflow).toBe("visible");
+		expect(layer.style.maxWidth).toBe("984px");
+		expect(layer.style.maxHeight).toBe("940px");
+	});
+
+	it("checks overflow after width constraints reflow the material, then recovers when the viewport grows", async () => {
+		const { layer, size } = await setup(600, 60);
+		Object.defineProperty(size, "height", {
+			get: () => Number.parseFloat(layer.style.maxWidth) < 600 ? 600 : 60,
+		});
+		act(() => resize());
+		flushLayout();
+		expect(layer.clientHeight).toBe(284);
+		expect(layer.style.overflow).toBe("auto");
+		vi.spyOn(window, "innerWidth", "get").mockReturnValue(1000);
+		fireEvent.resize(window);
+		flushLayout();
+		expect(layer.style.overflow).toBe("visible");
+		// Material growth while the host is open must re-enter scroll mode.
+		size.width = 1200;
+		act(() => resize());
+		flushLayout();
+		expect(layer.style.overflow).toBe("auto");
+	});
+
+	it("keeps width-reflowed content above a low anchor within viewport bounds", async () => {
+		const { entry, layer, size } = await setup(600, 60);
+		vi.spyOn(entry, "getBoundingClientRect").mockReturnValue({ left: 40, top: 250, right: 64, bottom: 274, width: 24, height: 24 } as DOMRect);
+		Object.defineProperty(size, "height", {
+			get: () => Number.parseFloat(layer.style.maxWidth) < 600 ? 600 : 60,
+		});
+		act(() => resize());
+		flushLayout();
+		expect(layer.style.top).toBe("8px");
+		expect(layer.style.maxHeight).toBe("234px");
+		expect(layer.style.overflow).toBe("auto");
+	});
+});
 
 describe("HoverTouchpointOverlay interaction boundary", () => {
 	beforeAll(() => {
@@ -210,6 +330,26 @@ describe("HoverTouchpointOverlay interaction boundary", () => {
 		expect(layer.parentElement).toHaveAttribute("hidden");
 	});
 
+	it("respects the size manuscript 16px boundary and 8px entry gap for compact cards", () => {
+		const viewport={left:0,top:0,right:800,bottom:600,width:800,height:600};
+		const card={width:280,height:400};
+		const below=placeHoverOverlay({left:730,top:16,right:754,bottom:40,width:24,height:24},card,viewport,16);
+		expect(below.left).toBe(504); expect(below.top).toBe(48);
+		expect(below.left+280).toBe(784); expect(below.maxWidth).toBe(768);
+		const above=placeHoverOverlay({left:730,top:550,right:754,bottom:574,width:24,height:24},card,viewport,16);
+		expect(above.placement).toBe("above"); expect(above.top+400).toBe(542);
+		const narrow=placeHoverOverlay({left:40,top:20,right:64,bottom:44,width:24,height:24},card,{left:0,top:0,right:200,bottom:180,width:200,height:180},16);
+		expect(narrow.left).toBe(16);expect(narrow.maxWidth).toBe(168);
+	});
+
+	it("keeps the layer inside content when the entry is in an excluded native titlebar", () => {
+		const viewport={left:0,top:44,right:1226,bottom:671,width:1226,height:627};
+		const result=placeHoverOverlay({left:1004,top:10,right:1028,bottom:34,width:24,height:24},{width:280,height:275},viewport,16);
+		expect(result.top).toBe(60);
+		expect(result.left).toBe(930);
+		expect(result.top+275).toBeLessThanOrEqual(viewport.bottom-16);
+	});
+
 	it("flips above and clamps to a narrow viewport without changing keyboard dismissal", async () => {
 		const position = placeHoverOverlay(
 			{ left: 70, top: 80, right: 94, bottom: 104, width: 24, height: 24 },
@@ -225,6 +365,9 @@ describe("HoverTouchpointOverlay interaction boundary", () => {
 		const [entry, layer] = Array.from(container.querySelectorAll("opend-touchpoint")) as [HTMLElement, HTMLElement];
 		await waitFor(() => expect(entry).not.toHaveAttribute("hidden"));
 		act(() => entry.focus());
+		// ENT-4: Tab focus alone must not expand; Enter does.
+		expect(layer.parentElement).toHaveAttribute("hidden");
+		fireEvent.keyDown(entry, { key: "Enter" });
 		expect(layer.parentElement).not.toHaveAttribute("hidden");
 		fireEvent.keyDown(window, { key: "Escape" });
 		expect(layer.parentElement).toHaveAttribute("hidden");
@@ -329,5 +472,66 @@ describe("HoverTouchpointOverlay interaction boundary", () => {
 		await waitFor(() => expect(disposes).toHaveBeenCalledTimes(2));
 		expect(entryDispose).toHaveBeenCalledOnce();
 		expect(layerDispose).toHaveBeenCalledOnce();
+	});
+});
+
+describe("explicit SDK X callback fencing", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+	it("rejects callbacks from a replaced pair even when its successor is visible and authorized", async () => {
+		vi.useFakeTimers();
+		vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+		vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({
+			length: 1,
+		} as DOMRectList);
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				disconnect() {}
+			},
+		);
+		const onLayerClose = vi.fn();
+		const authorized = () => true;
+		const props = {
+			entry: content("opend.home.hover-entry"),
+			layer: content("opend.home.hover-layer"),
+			isAuthorized: authorized,
+			onLayerClose,
+		};
+		const view = render(createElement(HoverTouchpointOverlay, props));
+		await act(async () => {});
+		const old = mounts.mock.calls[1]![5] as {
+			requestClose: (reason?: string) => void;
+		};
+		await act(async () => {
+			fireEvent.pointerEnter(view.container.querySelector("opend-touchpoint")!);
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(32);
+		});
+		view.rerender(
+			createElement(HoverTouchpointOverlay, {
+				...props,
+				layer: { ...props.layer, id: "foreign-content" },
+			}),
+		);
+		await act(async () => {});
+		const fresh = mounts.mock.calls[3]![5] as {
+			requestClose: (reason?: string) => void;
+		};
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(32);
+		});
+		act(() => old.requestClose("close"));
+		expect(onLayerClose).not.toHaveBeenCalled();
+		act(() => fresh.requestClose("close"));
+		expect(onLayerClose).toHaveBeenCalledTimes(1);
+		view.unmount();
+		act(() => fresh.requestClose("close"));
+		expect(onLayerClose).toHaveBeenCalledTimes(1);
 	});
 });

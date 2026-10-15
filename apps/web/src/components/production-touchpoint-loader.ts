@@ -1,15 +1,14 @@
+import { parseTouchpointLoadMetrics, touchpointUtf8Bytes, TOUCHPOINT_LOAD_METRICS_HEADER } from "@open-design/contracts/api/touchpointLoadResults";
+import { touchpointClientResourceSizes, touchpointResponseFailure, type TouchpointLoadOwner } from "./touchpoint-load-observability";
 import {
 	touchpointOfflineReplayOf,
+	touchpointRevocationReceiptOf,
+	type TouchpointRevocationReceipt,
 	type TouchpointOfflineReplay,
 } from "@open-design/contracts/api/touchpointOffline";
 import type { TouchpointOfflineRecovery } from "./touchpoint-lifecycle";
 
-export type ProductionRuntimeRevocationReceipt = Readonly<{
-	touchpointDecisionId: string;
-	deploymentId: string;
-	activityId: string;
-	contentVersionId: string;
-}>;
+export type ProductionRuntimeRevocationReceipt = TouchpointRevocationReceipt;
 export type ProductionTouchpointLoadResult =
 	/**
 	 * `offlineReplay` is the daemon's own marker, carried up whole rather than
@@ -23,15 +22,32 @@ export type ProductionTouchpointLoadResult =
 	 * to find out kept a withdrawn activity on screen for the rest of the
 	 * schedule. {@link productionTouchpointRecovery} is where it is decided.
 	 */
-	| Readonly<{ kind: "decision"; value: unknown; offlineReplay: TouchpointOfflineReplay | null }>
+	| Readonly<{ kind: "decision"; value: unknown; receivedAt?: number; offlineReplay: TouchpointOfflineReplay | null }>
 	| Readonly<{ kind: "no-decision" }>
 	| Readonly<{ kind: "revoked"; receipt: ProductionRuntimeRevocationReceipt }>;
 
+/**
+ * An explicit authentication or authorization refusal from the decision
+ * endpoint. It is an answer, never an outage: it neither enters offline
+ * fallback nor lets an earlier grant ride it out.
+ */
+const touchpointAuthorizationRefused = (detail: string) => detail === "http_401" || detail === "http_403";
+
 export class ProductionTouchpointLoadError extends Error {
 	/**
-	 * A 410 is the server's own withdrawal and must clear display authority even
-	 * when its receipt body is unreadable. Every other failure is transport or
-	 * protocol noise, which the shared lifecycle rides out on the existing lease.
+	 * Whether this failure ends display authority outright, as the server's
+	 * own withdrawal does.
+	 *
+	 * A 410 is that withdrawal and must clear display even when its receipt
+	 * body is unreadable. A 401 or 403 is the same kind of answer about the
+	 * ACCOUNT rather than the activity (OPEND-3436 AC9): the server has refused
+	 * this session, so nothing it granted earlier — least of all a lease the
+	 * offline fallback stretched to `endsAt` — may keep that session's campaign
+	 * on screen. Treating it as "try again later" is what let a rejected
+	 * account keep displaying from cache. See {@link touchpointAuthorizationRefused}.
+	 *
+	 * Every other failure is transport or protocol noise, which the shared
+	 * lifecycle rides out on the existing lease.
 	 */
 	readonly touchpointWithdrawal: boolean;
 	/**
@@ -62,47 +78,69 @@ export class ProductionTouchpointLoadError extends Error {
 	readonly touchpointServerError: boolean;
 	constructor(readonly detail: string) {
 		super("touchpoint_load_failed");
-		this.touchpointWithdrawal = detail === "http_410";
+		this.touchpointWithdrawal = detail === "http_410" || touchpointAuthorizationRefused(detail);
 		this.touchpointServerError = /^http_5\d\d$/u.test(detail);
 		this.touchpointOfflineFallback = detail === "network" || this.touchpointServerError;
 	}
 }
 
-function receipt(value: unknown): ProductionRuntimeRevocationReceipt | null {
-	if (!value || typeof value !== "object") return null;
-	const candidate = value as Partial<ProductionRuntimeRevocationReceipt>;
-	return typeof candidate.touchpointDecisionId === "string" && typeof candidate.deploymentId === "string" && typeof candidate.activityId === "string" && typeof candidate.contentVersionId === "string" ? candidate as ProductionRuntimeRevocationReceipt : null;
-}
-
 /** Loads a production decision; only a server-authenticated 410 receipt revokes an active lease. */
-export async function loadProductionTouchpointDecision(placementKey: string, locale: string, signal: AbortSignal, activeDecisionId?: string): Promise<ProductionTouchpointLoadResult> {
+export async function loadProductionTouchpointDecision(placementKey: string, locale: string, signal: AbortSignal, activeDecisionId?: string, observation?: TouchpointLoadOwner): Promise<ProductionTouchpointLoadResult> {
+	const observed = observation?.begin(placementKey);
 	let response: Response;
 	try {
-		const query = new URLSearchParams({ placementKey, locale });
+		const query = new URLSearchParams({ placementKey, locale, emptyResponse: "200" });
 		if (activeDecisionId) query.set("activeDecisionId", activeDecisionId);
 		response = await fetch(`/api/touchpoints/production-runtime?${query}`, { cache: "no-store", signal });
 	} catch (error) {
 		if (error instanceof DOMException && error.name === "AbortError") throw error;
+		if (observed) observation?.failure(observed, new ProductionTouchpointLoadError("network"));
 		throw new ProductionTouchpointLoadError("network");
 	}
-	if (response.status === 404) return { kind: "no-decision" };
+	if (signal.aborted) throw new DOMException("aborted", "AbortError");
+	if (response.status === 404) { if (observed) observation?.empty(observed, "no_activity"); return { kind: "no-decision" }; }
 	if (response.status === 410) {
 		try {
-			const body = await response.json() as { error?: unknown; receipt?: unknown };
-			const parsed = body.error === "production_runtime_revoked" ? receipt(body.receipt) : null;
+			const parsed = touchpointRevocationReceiptOf(await response.json());
 			if (!parsed) throw new ProductionTouchpointLoadError("http_410");
+			// A valid receipt can name an unrelated grant; the host applies the
+			// exact binding check before retiring its visible attempt with the lease.
+			if (!activeDecisionId) observation?.cancel("revoked");
 			return { kind: "revoked", receipt: parsed };
 		} catch (error) {
+			observation?.cancel("revoked");
 			if (error instanceof ProductionTouchpointLoadError) throw error;
 			throw new ProductionTouchpointLoadError("http_410");
 		}
 	}
-	if (!response.ok) throw new ProductionTouchpointLoadError(`http_${String(response.status).slice(0, 3)}`);
+	if (!response.ok) {
+		const error = Object.assign(new ProductionTouchpointLoadError(`http_${String(response.status).slice(0, 3)}`), await touchpointResponseFailure(response));
+		if (observed) observation?.failure(observed, error);
+		if (error.touchpointWithdrawal) observation?.cancel("revoked");
+		throw error;
+	}
 	try {
-		const value: unknown = await response.json();
-		if (!value || typeof value !== "object") throw new ProductionTouchpointLoadError("invalid_dto");
-		return { kind: "decision", value, offlineReplay: touchpointOfflineReplayOf(value) };
+		const bodyStarted = performance.now();
+		let value: unknown;
+		let decodeMs: number | null = null;
+		let localBytes: number | null = null;
+		if (typeof response.text === "function") {
+			const text = await response.text();
+			localBytes = touchpointUtf8Bytes(text);
+			const decodeStarted = performance.now();
+			value = JSON.parse(text); decodeMs = Math.max(0, performance.now() - decodeStarted);
+		} else value = await response.json();
+		if (signal.aborted) throw new DOMException("aborted", "AbortError");
+		const localMs = Math.max(0, performance.now() - bodyStarted - (decodeMs ?? 0));
+		if (value && typeof value === "object" && !Array.isArray(value) && "decision" in value && value.decision === null) { if (observed) observation?.empty(observed, "no_activity"); return { kind: "no-decision" }; }
+		if (!value || typeof value !== "object" || Array.isArray(value)) throw new ProductionTouchpointLoadError("invalid_dto");
+		if (observed) {
+			observation?.decision(placementKey, observed, value, parseTouchpointLoadMetrics(response.headers?.get(TOUCHPOINT_LOAD_METRICS_HEADER)), { ...touchpointClientResourceSizes(value), local_transfer_ms: typeof response.text === "function" ? localMs : null, local_response_bytes: localBytes, decode_validate_ms: decodeMs, ...(touchpointOfflineReplayOf(value) ? { cache_source: "offline_fallback" as const, cache_hit: true, public_transfer_ms: null, resource_read_ms: null, public_response_bytes: null, public_base64_bytes: null } : {}) });
+		}
+		return { kind: "decision", value, receivedAt: Date.now(), offlineReplay: touchpointOfflineReplayOf(value) };
 	} catch (error) {
+		if (signal.aborted) throw error;
+		if (observed) observation?.failure(observed, error instanceof ProductionTouchpointLoadError ? error : new Error("decode_error"));
 		if (error instanceof ProductionTouchpointLoadError) throw error;
 		throw new ProductionTouchpointLoadError("malformed_json");
 	}
