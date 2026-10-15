@@ -97,12 +97,6 @@
     width: 100%;
   }
 }
-:global(.artifact-card) .cardPublished:global(.artifact-card-act),
-:global(.artifact-card) .cardPublished:global(.artifact-card-act):hover:not(:disabled) {
-  background: #E3F1E6;
-  color: #2F6B3F;
-}
-
 /* Disabled appearance applies to the existing readonly/generation gates only. */
 :global(.artifact-card) .card:global(.artifact-card-act):disabled {
   background: #F3F3F1;

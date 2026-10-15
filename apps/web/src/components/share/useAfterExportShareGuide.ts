@@ -12,8 +12,10 @@ export function useAfterExportShareGuide(input: {
 }) {
   const live = useRef(input);
   const epoch = useRef(0);
+  const preferenceScope = useRef(0);
   if (live.current.scopeKey !== input.scopeKey || live.current.appUserId !== input.appUserId || live.current.enabled !== input.enabled) {
     epoch.current += 1;
+    preferenceScope.current += 1;
   }
   live.current = input;
   const mounted = useRef(true);
@@ -42,12 +44,16 @@ export function useAfterExportShareGuide(input: {
       hasEverShared: input.hasEverShared, neverShow: never, canOpenShare: input.enabled,
     })) setNotice({ epoch: epoch.current, id: ++sequence.current });
   }, [pendingEpoch, input.scopeKey, input.appUserId, input.hasEverShared, input.historyLoading, input.enabled]);
+  // Retained card callbacks must never suppress a newly selected account/scope.
+  // Unlike export epochs, this generation is unaffected by StrictMode effect replay.
+  const currentPreferenceScope = preferenceScope.current;
   const neverShow = useCallback(() => {
-    const preference = createShareGuidePreference(() => window.localStorage, live.current.appUserId);
+    if (!mounted.current || currentPreferenceScope !== preferenceScope.current) return false;
+    const preference = createShareGuidePreference(() => window.localStorage, input.appUserId);
     const saved = preference.suppress();
     if (saved) { setNotice(null); setPendingEpoch(null); }
     return saved;
-  }, []);
+  }, [currentPreferenceScope, input.appUserId]);
   const beginExport = useCallback(() => {
     const startEpoch = String(epoch.current);
     const accept = createExportSuccessGate(startEpoch, () => String(epoch.current));

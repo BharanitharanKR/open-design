@@ -149,12 +149,15 @@ it.each([false, true])('publishes only B after switching from shared A (B reject
   const bUrl = 'https://viewer.example.test/artifact/proj/b-only';
   const writes: string[] = [];
   let bPublished = false;
+  const bBinding = deferred<Response>();
+  const bPlan = deferred<Response>();
   const copy = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } });
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const isB = url.includes('/files/other.html/');
-    if (url.includes('/share-plan')) return Response.json({ fileCount: 1, totalBytes: 123, exceedsSizeLimit: false, exclusions: [] });
+    if (url.includes('/share-plan')) return isB ? (await bPlan.promise).clone()
+      : Response.json({ fileCount: 1, totalBytes: 123, exceedsSizeLimit: false, exclusions: [] });
     if (url.includes('/publish-public')) {
       if (init?.method === 'POST') {
         writes.push(url);
@@ -163,6 +166,7 @@ it.each([false, true])('publishes only B after switching from shared A (B reject
         return Response.json({ status: 'published', url: bUrl,
           receipt: { filePath: 'other.html', slug: 'b-only', publishedAt: 1, version: 1, versionId: 'b-v1' } });
       }
+      if (isB && !bPublished) return (await bBinding.promise).clone();
       return Response.json(isB
         ? { publication: bPublished ? { url: bUrl, slug: 'b-only', fileName: 'other.html' } : null,
           status: bPublished ? 'active' : 'none', freshness: 'current' }
@@ -176,8 +180,15 @@ it.each([false, true])('publishes only B after switching from shared A (B reject
   const view = await open();
   expect(await screen.findByText(publication.url)).toBeVisible();
   view.rerender(tree(b));
-  const generate = await screen.findByRole('menuitem', { name: /generate and copy link/i });
+  expect(await screen.findByRole('menuitem', { name: /generate and copy link/i })).toBeVisible();
   expect(screen.queryByText(publication.url)).toBeNull();
+  // A restored binding changes the preflight identity. Finish B's restoration
+  // before its plan and click; an earlier queued intent belongs to the old plan.
+  await act(async () => bBinding.resolve(Response.json({ publication: null, status: 'none', freshness: 'current' })));
+  await act(async () => bPlan.resolve(Response.json({ fileCount: 1, totalBytes: 123, exceedsSizeLimit: false, exclusions: [] })));
+  await waitFor(() => expect(screen.queryByText('Checking sharing…')).toBeNull());
+  const generate = screen.getByRole('menuitem', { name: /generate and copy link/i });
+  expect(generate).toBeEnabled();
   await act(async () => fireEvent.click(generate));
   await waitFor(() => expect(writes).toEqual(['/api/projects/proj/files/other.html/publish-public']));
   if (!rejected) await waitFor(() => expect(copy).toHaveBeenCalledWith(bUrl));

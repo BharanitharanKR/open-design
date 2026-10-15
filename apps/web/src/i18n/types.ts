@@ -3988,6 +3988,13 @@ export interface Dict {
   'sketch.tooltipClean': string;
   'fileViewer.empty': string;
   'fileViewer.loading': string;
+  'fileViewer.commentIdentityPrepare': string;
+  'fileViewer.commentIdentityConfirm': string;
+  'fileViewer.commentIdentitySaving': string;
+  'fileViewer.commentIdentityFailed': string;
+  'fileViewer.commentIdentitySaved': string;
+  'fileViewer.commentIdentityWaiting': string;
+  'fileViewer.commentIdentityUnavailable': string;
   'fileViewer.exportPptx': string;
   'fileViewer.openInNewTab': string;
   'fileViewer.copyPath': string;

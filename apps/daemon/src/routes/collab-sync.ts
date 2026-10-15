@@ -81,6 +81,7 @@ import {
 } from '../collab/public-file-publication-store.js';
 import { classifyVelaCommandFailure, logPublicFileFailure, logPublicShareDiagnostic, type PublicShareDiagnosticStage } from '../collab/public-file-failure.js';
 import { clientRequestIdFor } from '../http/client-request-id.js';
+import { publicShareProjectBootstrapDiagnostic } from '../collab/public-share-project-bootstrap.js';
 import { isAbortedOperationError } from '../integrations/aborted-error.js';
 import { buildDeployFilePlan, entryIndexConflictError } from '../deploy.js';
 import { readProjectManifest } from '../project-locations.js';
@@ -1526,7 +1527,10 @@ export function registerCollabSyncRoutes(
       try {
         if (!publisher.ensureProject) throw new Error('project bootstrap unavailable');
         sharedProject = await publisher.ensureProject(scope, principal, prepared.run);
-      } catch {
+      } catch (error) {
+        logPublicShareDiagnostic({ operation: 'bootstrap', status: 503,
+          errorCode: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', requestId, startedAt,
+          ...publicShareProjectBootstrapDiagnostic(error) });
         return res.status(503).json({ error: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE' });
       }
       if (sharedProject.projectId !== projectId || sharedProject.ownerMemberId !== principal.memberId) {

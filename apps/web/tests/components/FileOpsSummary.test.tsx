@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CollabProvider, useProjectCollabContext } from '../../src/collab/collab-context';
 import { FileOpsSummary } from '../../src/components/FileOpsSummary';
-import { ArtifactPublicationContext } from '../../src/components/share/ArtifactPublicationContext';
 import type { FileOpEntry } from '../../src/runtime/file-ops';
 
 function entry(partial: Partial<FileOpEntry> & { path: string }): FileOpEntry {
@@ -294,25 +293,20 @@ describe('FileOpsSummary artifact cards', () => {
     );
   });
 
-  it('shows the current file as shared after confirmed publication, retains the panel trigger, and clears on stop', () => {
+  it('keeps the static Share panel trigger through rerenders and project changes', () => {
     const onPublish = vi.fn();
     const props = { entries: [entry({ path: 'result.html' })], projectId: 'proj-1', onPublish, onExport: vi.fn() };
-    const renderCard = (paths: string[] | null) => <ArtifactPublicationContext.Provider value={paths ? new Set(paths) : null}><FileOpsSummary {...props} /></ArtifactPublicationContext.Provider>;
-    const view = render(renderCard([]));
+    const view = render(<FileOpsSummary {...props} />);
     const share = screen.getByTestId('artifact-card-publish-result.html');
     expect(share).toHaveTextContent('Share');
-    view.rerender(renderCard(['other.html']));
-    expect(share).toHaveTextContent('Share');
-    view.rerender(renderCard(['result.html']));
-    expect(share).toHaveTextContent('Shared');
+    view.rerender(<FileOpsSummary {...props} />);
+    expect(share).toHaveTextContent(/^Share$/);
     expect(share).toBeEnabled();
     fireEvent.click(share);
     expect(onPublish).toHaveBeenCalledExactlyOnceWith('result.html', share.getAttribute('data-artifact-anchor'));
-    view.rerender(renderCard([]));
-    expect(share).toHaveTextContent('Share');
-    view.rerender(renderCard(null));
-    expect(share).toHaveTextContent('Status unknown');
-    expect(share).toHaveAccessibleName('Share · Status unknown');
+    view.rerender(<FileOpsSummary {...props} projectId="proj-2" />);
+    expect(share).toHaveTextContent(/^Share$/);
+    expect(share).toHaveAccessibleName('Share');
     expect(share).toBeEnabled();
   });
 

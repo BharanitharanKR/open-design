@@ -1,4 +1,9 @@
-import { commentSelectorsMatch, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
+import { commentSelectorsMatch, commentUsesIdentity, ownerCommentNeedsLocation, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
+import { indexCommentTargets } from '../comments/target-index';
+import { useCommentPreparation } from '../comments/use-comment-preparation';
+import { useCommentPreparationConfirmation } from './CommentPreparationConfirmation';
+import { useSourcePreparationProof } from '../comments/use-source-preparation-proof';
+import commentPreparationStyles from './CommentPreparation.module.css';
 import { useExperienceError } from '../observability/use-experience-error';
 import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-detail';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
@@ -4437,8 +4442,7 @@ function FileVersionManagerModal({
 // O7: 刚刚 / N 分钟前 / N 小时前（同一天）/ 昨天 / 短日期（跨年补年份）. The hour
 // bucket is keyed on calendar day, not elapsed duration, so a same-day
 // comment never reads as "N 天前"; days-ago/weeks-ago buckets are dropped.
-function formatCommentTime(ts: number, t: TranslateFn): string {
-  const now = Date.now();
+function formatCommentTime(ts: number, now: number, t: TranslateFn): string {
   const diff = now - ts;
   if (diff < 60_000) return t('common.justNow');
   const mins = Math.floor(diff / 60_000);
@@ -4477,6 +4481,7 @@ function commentActivityAt(comment: PreviewComment): number {
   );
 }
 
+/** Comment age is creation age; edits, resolution and synchronization cannot reset it. */
 function commentCreatedAt(comment: PreviewComment): number {
   return Number.isFinite(comment.createdAt) ? comment.createdAt : commentActivityAt(comment);
 }
@@ -4738,6 +4743,7 @@ export function CommentSidePanel({
   filePath,
   selectedIds,
   activeCommentId,
+  unavailableCommentId,
   collapsed,
   hasUnread = false,
   onCollapsedChange,
@@ -4769,6 +4775,7 @@ export function CommentSidePanel({
   filePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
+  unavailableCommentId?: string | null;
   collapsed: boolean;
   hasUnread?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -4803,6 +4810,16 @@ export function CommentSidePanel({
   const { workspaceContext } = useProjectCollabContext();
   const [newCommentDraft, setNewCommentDraft] = useState('');
   const [dragState, setDragState] = useState<CommentSideDragState | null>(null);
+  const [commentClock, setCommentClock] = useState(() => Date.now());
+  const showCommentAge = !collapsed && comments.length > 0;
+  useEffect(() => {
+    if (!showCommentAge) return;
+    // Creation age advances even when no new comment or sync event arrives.
+    // Keep the clock in the panel, not the preview/iframe rendering pipeline.
+    setCommentClock(Date.now());
+    const timer = window.setInterval(() => setCommentClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [showCommentAge]);
   const sorted = comments;
   // recvq5BVsolIxi: the inline "N." prefix must match the canvas pin number
   // (comment.pinSeq) so the two surfaces always agree, even when this panel
@@ -5044,8 +5061,8 @@ export function CommentSidePanel({
                     {t('fileViewer.speakerNotesSlide', { current: comment.slideIndex + 1, total: deckSlideCount })}
                   </span>
                 ) : null}
-                <span className="comment-side-time" title={formatAbsoluteDateTime(commentActivityAt(comment)) ?? undefined}>
-                  {formatCommentTime(commentActivityAt(comment), t)}
+                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment)) ?? undefined}>
+                  {formatCommentTime(commentCreatedAt(comment), commentClock, t)}
                 </span>
                 {sendable ? (
                   <button
@@ -5063,6 +5080,11 @@ export function CommentSidePanel({
                 ) : null}
               </div>
               <CommentListBody key={comment.note} note={comment.note} t={t} />
+              {unavailableCommentId === comment.id ? (
+                <span role="status" data-testid="comment-location-unavailable">
+                  {t('comment.anchorState.lost')}
+                </span>
+              ) : null}
               {projectId && comment.attachments && comment.attachments.length > 0 ? (
                 <div className="comment-side-attachments">
                   {comment.attachments.map((attachment) => {
@@ -5236,6 +5258,7 @@ function CommentSideDock({
   filePath,
   selectedIds,
   activeCommentId,
+  unavailableCommentId,
   collapsed,
   hasUnread = false,
   onCollapsedChange,
@@ -5264,6 +5287,7 @@ function CommentSideDock({
   filePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
+  unavailableCommentId?: string | null;
   collapsed: boolean;
   hasUnread?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -5301,6 +5325,7 @@ function CommentSideDock({
         filePath={filePath}
         selectedIds={selectedIds}
         activeCommentId={activeCommentId}
+        unavailableCommentId={unavailableCommentId}
         collapsed={collapsed}
         hasUnread={hasUnread}
         onCollapsedChange={onCollapsedChange}
@@ -6115,10 +6140,15 @@ function CommentPreviewOverlays({
             const resolution = resolveOwnerCommentAnchor(comment, liveTargets, currentVersion);
             return { comment, markerNumber, snapshot: resolution.snapshot, anchorState: resolution.state };
           }
+          // Personal/local comments do not enable team drift persistence. New
+          // identities still require a unique current target, never a ghost box.
+          const resolution = commentUsesIdentity(comment)
+            ? resolveOwnerCommentAnchor(comment, liveTargets, currentVersion) : null;
           return {
             comment,
             markerNumber,
-            snapshot: liveSnapshotForComment(comment, liveTargets),
+            snapshot: resolution ? (resolution.state === 'lost' ? null : resolution.snapshot)
+              : liveSnapshotForComment(comment, liveTargets),
             anchorState: 'anchored' as PreviewCommentAnchorState,
           };
         })
@@ -6164,7 +6194,7 @@ function CommentPreviewOverlays({
   // comments reuses the whole subtree and React skips reconciling it.
   const savedMarkers = useMemo(
     () =>
-      visibleComments.filter(({ comment }) => !driftLadder || comment.id !== activeExistingCommentId || Boolean(activeTarget)).map(({ comment, markerNumber, snapshot, anchorState }) => {
+      visibleComments.filter(({ comment }) => !(driftLadder || commentUsesIdentity(comment)) || comment.id !== activeExistingCommentId || Boolean(activeTarget)).map(({ comment, markerNumber, snapshot, anchorState }) => {
         const bounds = overlayBoundsFromSnapshot(snapshot, scale, overlayOffset);
         const label = commentTargetDisplayName(comment);
         const drifted = anchorState !== 'anchored';
@@ -8144,7 +8174,23 @@ function HtmlViewer({
   }
 
   async function publishCurrentFilePublic(mode?: 'resume') {
-    if (streaming || viewerOnly || publishingPublicFile) return;
+    if (!commentPreparation.validateLiveRevision()) return;
+    // Read-only source checking cannot gate restoration of an immutable share.
+    const preparationBusy = commentPreparation.busy && (mode !== 'resume' || !commentPreparation.revalidating);
+    if (streaming || viewerOnly || publishingPublicFile || preparationBusy) return;
+    // Never backfill an identity deliberately lost by a later edit/history restore.
+    // Resume restores the immutable publication and must not prepare current source.
+    const firstSupportedExposure = canPrepareCommentSource && mode !== 'resume' && (!fileShareStatus || fileShareStatus === 'none');
+    if (firstSupportedExposure && !hasVerifiedPreparation) {
+      await requestCommentPreparation();
+      return; // explicit second publish action, after the actual fresh frame is ready
+    }
+    // Share-plan can hold this callback across later unsaved input changes.
+    // Recheck its live revision even when preparation is already established.
+    if (canPrepareCommentSource && mode !== 'resume' && !commentPreparation.validatePublication(firstSupportedExposure)) {
+      beginPreparedDocumentWitness();
+      return;
+    }
     publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
@@ -8254,8 +8300,13 @@ function HtmlViewer({
   }
 
   async function updateCurrentFilePublic() {
+    if (!commentPreparation.validateLiveRevision()) return;
     if (!canPublishPublic || streaming || viewerOnly || !publishedFileSlug || publishingPublicFile
       || updateInFlightRef.current || fileShareFreshness !== 'outdated' || fileShareStatus !== 'active') return;
+    if (canPrepareCommentSource && !commentPreparation.validatePublication(false)) {
+      beginPreparedDocumentWitness();
+      return;
+    }
     publicFileStateReadRef.current = null;
     const requestProjectId = projectId;
     const requestFileName = file.name;
@@ -9378,6 +9429,9 @@ function HtmlViewer({
   useEffect(() => cancelHoverCardDismiss, [cancelHoverCardDismiss]);
   const [activePreviewCommentId, setActivePreviewCommentId] = useState<string | null>(null);
   const [commentLocationIntent, setCommentLocationIntent] = useState(0);
+  const [missingCommentLocation, setMissingCommentLocation] = useState<{
+    commentId: string; previewKey: string; intent: number;
+  } | null>(null);
   const [liveCommentTargets, setLiveCommentTargets] = useState<Map<string, PreviewCommentSnapshot>>(() => new Map());
   const [commentTargetsReadyKey, setCommentTargetsReadyKey] = useState<string | null>(null);
   const liveCommentTargetsRef = useRef(liveCommentTargets);
@@ -11456,6 +11510,7 @@ function HtmlViewer({
   const usesPersistentSrcDocTransport = persistentSrcDocTransportUrl !== null;
   const [srcDocTransportResetKey, setSrcDocTransportResetKey] = useState(0);
   const [srcDocShellReady, setSrcDocShellReady] = useState(false);
+  const [commentPreviewReady, setCommentPreviewReady] = useState<{ frame: HTMLIFrameElement; generation: string } | null>(null);
   const [srcDocRecoveryGeneration, setSrcDocRecoveryGeneration] = useState<string | null>(null);
   const recoverUnacknowledgedSrcDocTransport = useCallback((
     generation: string,
@@ -11797,6 +11852,9 @@ function HtmlViewer({
         pendingSrcDocTransportProbeRef.current = null;
         srcDocParsingGraceRef.current = null;
         verifiedSrcDocTransportRef.current = { frame, generation: data.generation };
+        const readyGeneration = data.generation;
+        setCommentPreviewReady(current => current?.frame === frame && current.generation === readyGeneration
+          ? current : { frame, generation: readyGeneration });
         srcDocNavigationCommittedRef.current = { frame, generation: data.generation };
         // A captured URL runtime state is still being replayed behind the
         // outgoing URL frame. Keep that frame painted until the body bridge
@@ -12566,9 +12624,86 @@ function HtmlViewer({
     win.postMessage({ type: 'od:inspect-mode', enabled: inspectMode }, '*');
   }, [inspectMode, srcDoc, useUrlLoadPreview, workspaceActive]);
 
-  const commentTargetsKey = JSON.stringify([file.name, srcDoc, useUrlLoadPreview]);
-  const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean } | null>(null);
+  const commentTargetsKey = JSON.stringify([projectId, file.name, srcDoc, useUrlLoadPreview, reloadKey]);
+  // Only a current target report or a paired locate failure can establish loss.
+  // Saved boxes/text never supply location evidence; an unwitnessed document is pending.
+  const selectedLocationComment = previewComments.find(comment => comment.id === activePreviewCommentId
+    && comment.filePath === file.name && commentUsesIdentity(comment) && ownerCommentNeedsLocation(comment, collab.enabled));
+  const lostSelectedCommentId = selectedLocationComment && commentTargetsReadyKey === commentTargetsKey
+    && (resolveOwnerCommentAnchor(selectedLocationComment, liveCommentTargets, collab.publishedVersion ?? undefined).state === 'lost'
+      || (missingCommentLocation?.commentId === selectedLocationComment.id && missingCommentLocation.previewKey === commentTargetsKey
+        && missingCommentLocation.intent === commentLocationIntent)) ? selectedLocationComment.id : null;
+  const preparationComposerComment = currentActiveComposerComment();
+  // A strict-lost row has no composer. Its exact saved prefill is not new work,
+  // but any edit (including clearing that note) must still prevent publication.
+  const unchangedLostCommentPrefill = !activeCommentTarget && lostSelectedCommentId !== null
+    && preparationComposerComment?.id === lostSelectedCommentId
+    && commentDraft === preparationComposerComment.note;
+  const commentPreparationDraftUnsettled = !unchangedLostCommentPrefill && (
+    Boolean(commentDraft.trim()) || Boolean(preparationComposerComment && (activeCommentTarget || lostSelectedCommentId)
+      && commentDraft !== preparationComposerComment.note)
+  );
+  const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles) && !needsPowered && liveHtml === undefined;
+  const commentPreparationSettled = !streaming && !manualEditMode && !manualEditDraftDirty
+    && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
+    && !manualEditPendingStyleRef.current && !inspectMode && !savingInspect && !drawOverlayOpen
+    && source !== null && !versionModalOpen && !filesRefreshPending && !commentPreparationDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
+    && !sendingBoardBatch && !_speakerNotesSaving && !publishingPublicFile;
+  const commentPreparationInputKey = useMemo(() => JSON.stringify([
+    source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes,
+    boardImages.map(image => [image.name, image.size, image.lastModified]), manualEditDraft, speakerNotesDraft, workspaceActive,
+  ]), [source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes, boardImages, manualEditDraft, speakerNotesDraft, workspaceActive]);
+  const commentIdentityFrameReady = commentTargetsReadyKey === commentTargetsKey
+    && (useUrlLoadPreview ? urlSelectionBridgeReady
+      : commentPreviewReady?.frame === iframeRef.current && commentPreviewReady.generation === srcDocTransportGeneration);
+  const sourcePreparationProof = useSourcePreparationProof({ enabled: canPrepareCommentSource,
+    projectId, fileName: file.name, context: workspaceContext ?? null, source, inputKey: commentPreparationInputKey });
+  const preparationConfirmation = useCommentPreparationConfirmation();
+  const commentPreparation = useCommentPreparation({
+    projectId, fileName: file.name, context: workspaceContext ?? null,
+    authorized: canPrepareCommentSource, settled: commentPreparationSettled,
+    inputKey: commentPreparationInputKey,
+    document: { source, key: commentTargetsKey, ready: commentIdentityFrameReady },
+    verifiedDocument: sourcePreparationProof.verifiedDocument,
+    readCurrentProof: sourcePreparationProof.revalidate,
+    confirm: preparationConfirmation.confirm,
+    apply: () => {
+      // Reload through the ordinary lifecycle, never from preview serialization.
+      // No comment submission/publication follows this source-version save.
+      reloadHtmlPreview();
+      setBoardMode(true);
+      setMode('preview');
+      void onFileSaved?.();
+    },
+  });
+  function requestCommentPreparation() {
+    if (!commentPreparation.saved && sourcePreparationProof.status !== 'ready') {
+      sourcePreparationProof.retry();
+      commentPreparation.reportBlocked(sourcePreparationProof.error ?? 'COMMENT_PREPARATION_PROOF_PENDING');
+      return Promise.resolve(false);
+    }
+    // A verified earlier source version prevents backfill after deliberate loss.
+    if (sourcePreparationProof.prior || commentPreparation.saved) return Promise.resolve(false);
+    return commentPreparation.prepare();
+  }
+  const hasVerifiedPreparation = Boolean(commentPreparation.saved) || sourcePreparationProof.prior;
+  function beginPreparedDocumentWitness() {
+    if (!commentPreparation.documentPending() || !commentPreparation.canStartDocumentWitness()) return;
+    // An explicit Comment/Publish action may enable the read-only bridge so
+    // that a reopened verified source can report targets. Creation stays off.
+    setBoardMode(true);
+    setMode('preview');
+  }
+  const commentsBlockedForPreparation = () => commentPreparation.documentPending()
+    || (canPrepareCommentSource && !hasVerifiedPreparation && !currentActiveComposerComment());
+  // Ordinary preview text decoding consumes a UTF-8 BOM; preparation uses exact
+  // authored bytes. This transport-only prefix does not change any target identity.
+  const previewMatchesPreparedSource = Boolean(commentPreparation.saved && source !== null
+    && source.replace(/^\uFEFF/, '') === commentPreparation.saved.source.replace(/^\uFEFF/, ''));
+  const preparedPreviewReady = previewMatchesPreparedSource && commentIdentityFrameReady && !commentPreparation.pendingDocument;
+  const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean; reportRevision: number } | null>(null);
   const commentLocateSequenceRef = useRef(0);
+  const commentTargetReportRevisionRef = useRef(0);
   useEffect(() => {
     setLiveCommentTargets(new Map());
   }, [commentTargetsKey]);
@@ -12592,7 +12727,7 @@ function HtmlViewer({
       return;
     }
     function onMessage(ev: MessageEvent) {
-      if (!isOurPreviewIframeSource(ev.source)) return;
+      if (!isOurPreviewIframeSource(ev.source) || (boardMode && !isActivePreviewIframeSource(ev.source))) return;
       const data = ev.data as
         | {
             type?: string;
@@ -12601,7 +12736,7 @@ function HtmlViewer({
         | null;
       if (data?.type !== 'od:comment-targets' || !Array.isArray(data.targets)) return;
       setCommentTargetsReadyKey(commentTargetsKey);
-      const next = new Map<string, PreviewCommentSnapshot>();
+      const candidates: PreviewCommentSnapshot[] = [];
       data.targets.forEach((item) => {
         const elementId = String(item?.elementId || '');
         if (!elementId) return;
@@ -12611,8 +12746,7 @@ function HtmlViewer({
           width: clampBridgeCoordinate(item?.position?.width),
           height: clampBridgeCoordinate(item?.position?.height),
         };
-        if (!isValidCommentOverlayPosition(position)) return;
-        next.set(elementId, {
+        candidates.push({
           filePath: file.name,
           elementId,
           selector: String(item?.selector || ''),
@@ -12626,13 +12760,15 @@ function HtmlViewer({
           ...(typeof item?.slideIndex === 'number' ? { slideIndex: item.slideIndex } : {}),
         });
       });
+      const next = indexCommentTargets(candidates);
+      for (const [id, snapshot] of next) if (!isValidCommentOverlayPosition(snapshot.position)) next.delete(id);
       setLiveCommentTargets((current) => (
         liveCommentTargetMapsEqual(current, next) ? current : next
       ));
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [inspectMode, boardMode, file.name, commentTargetsKey, isOurPreviewIframeSource, workspaceActive]);
+  }, [inspectMode, boardMode, file.name, commentTargetsKey, isOurPreviewIframeSource, isActivePreviewIframeSource, workspaceActive]);
 
   useEffect(() => {
     setActiveCommentTarget(null);
@@ -12740,7 +12876,7 @@ function HtmlViewer({
       ...(typeof data.slideIndex === 'number' ? { slideIndex: data.slideIndex } : {}),
     });
     function onMessage(ev: MessageEvent) {
-      if (!isOurPreviewIframeSource(ev.source)) return;
+      if (!isActivePreviewIframeSource(ev.source)) return;
       const data = ev.data as (Partial<PreviewCommentSnapshot> & {
         type?: string;
         requestId?: string;
@@ -12750,12 +12886,12 @@ function HtmlViewer({
       if (!data?.type) return;
       if (data.type === 'od:comment-targets' && Array.isArray(data.targets)) {
         setCommentTargetsReadyKey(commentTargetsKey);
-        const next = new Map<string, PreviewCommentSnapshot>();
-        data.targets.forEach((item) => {
-          const snapshot = snapshotFromData(item);
-          if (!snapshot.elementId || !isValidCommentOverlayPosition(snapshot.position)) return;
-          next.set(snapshot.elementId, snapshot);
-        });
+        commentTargetReportRevisionRef.current += 1;
+        setMissingCommentLocation(null);
+        const next = indexCommentTargets(data.targets.map(snapshotFromData));
+        for (const [id, snapshot] of next) {
+          if (!id || !isValidCommentOverlayPosition(snapshot.position)) next.delete(id);
+        }
         setLiveCommentTargets((current) => (
           liveCommentTargetMapsEqual(current, next) ? current : next
         ));
@@ -12775,21 +12911,34 @@ function HtmlViewer({
         });
         return;
       }
+      if (data.type === 'od:comment-active-target-update' && commentUsesIdentity({ elementId: String(data.elementId || ''), selector: String(data.selector || '') })) {
+        // A tracking/locate reply cannot resurrect an absent or ambiguous cmt
+        // identity rejected by this document's authoritative target report.
+        const indexed = liveCommentTargetsRef.current.get(String(data.elementId || ''));
+        if (commentTargetsReadyKey !== commentTargetsKey || !indexed || indexed.selector !== data.selector
+          || (indexed.slideIndex ?? -1) !== (data.slideIndex ?? -1)) return;
+      }
       if (data.type === 'od:comment-location-missing' || (data.type === 'od:comment-active-target-update' && data.requestId)) {
         const request = commentLocateRequestRef.current;
         if (!request || request.requestId !== data.requestId || request.previewKey !== commentTargetsKey) return;
         if (data.type === 'od:comment-location-missing') {
+          // A completed locate or a newer target index supersedes this failure.
+          if (request.scrolled || request.reportRevision !== commentTargetReportRevisionRef.current) return;
+          setMissingCommentLocation({ commentId: request.commentId, previewKey: request.previewKey, intent: commentLocationIntent });
           setActiveCommentTarget(null);
           setHoveredCommentTarget(null);
           return;
         }
         const snapshot = snapshotFromData(data);
         if (!snapshot.elementId || !isValidCommentOverlayPosition(snapshot.position)) return;
+        if (commentUsesIdentity({ elementId: request.targetId ?? '', selector: request.selector })
+          && (!request.targetId || snapshot.elementId !== request.targetId || snapshot.selector !== request.selector)) return;
         if (snapshot.elementId !== request.targetId && !commentSelectorsMatch(snapshot.selector, request.selector)) return;
         request.targetId = snapshot.elementId;
         // A tagged reply acknowledges srcDoc's completed locate/scroll. Later
         // tracking updates must not trigger the URL bridge's initial scroll.
         request.scrolled = true;
+        setMissingCommentLocation(null);
         setActiveCommentTarget(snapshot);
         setHoveredCommentTarget(snapshot);
         setLiveCommentTargets(current => new Map(current).set(snapshot.elementId, snapshot));
@@ -12803,12 +12952,17 @@ function HtmlViewer({
         // boxes without request ids; match the current target and use its
         // existing scroll protocol, without changing daemon or its contract.
         if (request && request.previewKey === commentTargetsKey && snapshot.elementId === request.targetId) {
+          setMissingCommentLocation(null);
           const height = iframeRef.current?.clientHeight ?? 0;
-          if (!request.scrolled && height > 0 && (snapshot.position.y < 0 || snapshot.position.y + snapshot.position.height > height)) {
+          if (!request.scrolled && height > 0) {
+            // The first measurable reply consumes this locate intent even if
+            // already visible. Later tracking must respect the owner's scroll.
             request.scrolled = true;
-            iframeRef.current?.contentWindow?.postMessage({ type: 'od:preview-scroll-by',
-              left: 0, top: snapshot.position.y + snapshot.position.height / 2 - height / 2 }, '*');
-            return;
+            if (snapshot.position.y < 0 || snapshot.position.y + snapshot.position.height > height) {
+              iframeRef.current?.contentWindow?.postMessage({ type: 'od:preview-scroll-by',
+                left: 0, top: snapshot.position.y + snapshot.position.height / 2 - height / 2 }, '*');
+              return;
+            }
           }
           setActiveCommentTarget(snapshot);
           setHoveredCommentTarget(snapshot);
@@ -12929,20 +13083,21 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, isOurPreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
+  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, commentTargetsReadyKey, commentLocationIntent, isActivePreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
 
   useEffect(() => {
     commentLocateRequestRef.current = null;
-    if (!workspaceActive || !boardMode || !collab.enabled || !activePreviewCommentId) return;
+    if (!workspaceActive || !boardMode || !activePreviewCommentId) return;
     const comment = previewComments.find(item => item.id === activePreviewCommentId && item.filePath === file.name);
-    if (!comment || comment.elementId.startsWith('pin-') || comment.selectionKind === 'pod') return;
+    if (!comment || !ownerCommentNeedsLocation(comment, collab.enabled)) return;
     setActiveCommentTarget(null);
     setHoveredCommentTarget(null);
     if (commentTargetsReadyKey !== commentTargetsKey) return;
     const requestId = `comment-location-${++commentLocateSequenceRef.current}`;
     const resolution = resolveOwnerCommentAnchor(comment, liveCommentTargets, collab.publishedVersion ?? undefined);
     commentLocateRequestRef.current = { requestId, commentId: comment.id, previewKey: commentTargetsKey, selector: comment.selector,
-      targetId: resolution.state !== 'lost' ? resolution.snapshot?.elementId ?? null : null, scrolled: false };
+      targetId: resolution.state !== 'lost' ? resolution.snapshot?.elementId ?? null : null, scrolled: false,
+      reportRevision: commentTargetReportRevisionRef.current };
     iframeRef.current?.contentWindow?.postMessage({ type: 'od:comment-active-target',
       elementId: comment.elementId, selector: comment.selector, locate: true, requestId }, '*');
     return () => { commentLocateRequestRef.current = null; };
@@ -15182,6 +15337,12 @@ function HtmlViewer({
   }
 
   function activateCommentCreateTool(returnFocusTarget?: HTMLElement | null) {
+    if (canPrepareCommentSource && !hasVerifiedPreparation) {
+      void requestCommentPreparation();
+      return; // select again after the saved document's real readiness witness
+    }
+    if (commentPreparation.busy) return;
+    if (commentPreparation.documentPending()) { beginPreparedDocumentWitness(); return; }
     if (returnFocusTarget) commentPanelReturnFocusRef.current = returnFocusTarget;
     fireArtifactToolbarClick('comment');
     void capturePreviewScrollPosition();
@@ -15316,7 +15477,8 @@ function HtmlViewer({
   }
 
   async function sendBoardBatch() {
-    if (!activeCommentTarget || !onSendBoardCommentAttachments) return;
+    if (!activeCommentTarget || !onSendBoardCommentAttachments || commentPreparation.busy || commentsBlockedForPreparation()) return;
+    if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     const existingComment = currentActiveComposerComment();
     const sendingUnchangedSavedComment = Boolean(
       existingComment
@@ -15375,7 +15537,8 @@ function HtmlViewer({
   }
 
   async function savePersistentComment() {
-    if (!activeCommentTarget || !onSavePreviewComment) return;
+    if (!activeCommentTarget || !onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return;
+    if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     // Allow saving when there is text OR an attached image (image-only notes).
     if (!commentDraft.trim() && boardImages.length === 0 && currentActiveComposerAttachments().length === 0) return;
     const isFreePin = activeCommentTarget.elementId.startsWith('pin-');
@@ -15403,7 +15566,8 @@ function HtmlViewer({
   }
 
   async function savePanelComment(note: string) {
-    if (!onSavePreviewComment) return false;
+    if (!onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return false;
+    if (activeCommentTarget?.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return false;
     const cleanNote = note.trim();
     if (!cleanNote) return false;
     const idSeed = Date.now().toString(36);
@@ -16772,6 +16936,7 @@ function HtmlViewer({
         document.body,
       )
     : null;
+  const unavailableCommentId = boardMode ? lostSelectedCommentId : null;
   const commentSidePanel = workspaceActive && commentPanelOpen ? (
     <CommentSideDock
       comments={visibleSideComments}
@@ -16780,6 +16945,7 @@ function HtmlViewer({
       deckSlideCount={effectiveDeck ? slideState?.count : undefined}
       selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
+      unavailableCommentId={unavailableCommentId}
       // The panel used to be pinned open whenever it was portaled (it docked
       // into a full-height column, where a collapsed rail made no sense). It
       // now always floats as a card, so its collapse control has to actually
@@ -16833,7 +16999,7 @@ function HtmlViewer({
           ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
         };
         requestComposerRetarget(() => {
-          const needsLocation = collab.enabled && !comment.elementId.startsWith('pin-') && comment.selectionKind !== 'pod';
+          const needsLocation = ownerCommentNeedsLocation(comment, collab.enabled);
           if (needsLocation) setCommentLocationIntent(intent => intent + 1);
           setActiveCommentTarget(needsLocation ? null : snapshot);
           setHoveredCommentTarget(needsLocation ? null : snapshot);
@@ -17736,6 +17902,27 @@ function HtmlViewer({
               )}
             </div>
       </>)}
+      {preparationConfirmation.dialog}
+      {workspaceActive ? (
+        <div className={commentPreparationStyles.status} role="status" data-testid="comment-identity-preparation">
+          {!canPrepareCommentSource ? <span>{t('fileViewer.commentIdentityUnavailable')}</span> : null}
+          {canPrepareCommentSource && !hasVerifiedPreparation && (!fileShareStatus || fileShareStatus === 'none') ? (
+            <Button disabled={commentPreparation.busy || source === null || sourcePreparationProof.status === 'loading'} onClick={() => { void requestCommentPreparation(); }}>
+              {t('fileViewer.commentIdentityPrepare')}
+            </Button>
+          ) : null}
+          {canPrepareCommentSource && commentPreparation.pendingDocument ? (
+            <Button data-testid="comment-identity-revalidate" disabled={commentPreparation.busy || source === null}
+              onClick={() => { void commentPreparation.revalidateDocument().then(ok => { if (ok) beginPreparedDocumentWitness(); }); }}>
+              {t('fileViewer.retryLink')}
+            </Button>
+          ) : null}
+          {commentPreparation.busy ? <span>{t(commentPreparation.revalidating ? 'fileViewer.loading' : 'fileViewer.commentIdentitySaving')}</span> : null}
+          {commentPreparation.error ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({commentPreparation.error})</span> : null}
+          {sourcePreparationProof.error && !commentPreparation.saved ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({sourcePreparationProof.error})</span> : null}
+          {commentPreparation.saved && (commentPreparation.pendingDocument || previewMatchesPreparedSource) ? <span>{t(preparedPreviewReady ? 'fileViewer.commentIdentitySaved' : 'fileViewer.commentIdentityWaiting', { version: commentPreparation.saved.version.version })}</span> : null}
+        </div>
+      ) : null}
       <div className="viewer-body" ref={previewBodyRef}>
         {initialPreviewLoading ? (
           <FileViewerLoadingSkeleton />
@@ -18080,7 +18267,7 @@ function HtmlViewer({
                       setCommentSidePanelCollapsed(false);
                       setCommentCreateMode(true);
                       setBoardMode(true);
-                      const needsLocation = collab.enabled && !comment.elementId.startsWith('pin-') && comment.selectionKind !== 'pod';
+                      const needsLocation = ownerCommentNeedsLocation(comment, collab.enabled);
                       if (needsLocation) setCommentLocationIntent(intent => intent + 1);
                       setActiveCommentTarget(needsLocation ? null : snapshot);
                       setHoveredCommentTarget(needsLocation ? null : snapshot);
