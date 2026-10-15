@@ -7,7 +7,7 @@ import { commentRelayScope } from '../src/collab/comment-relay-scope.js';
 import { commentRelayLocalBindingMatches, commentRelayRecordPromotedToTeam, createCommentRelayOutboxStore, migrateCommentRelayOutbox, type CommentRelayLocalProjectBinding } from '../src/collab/comment-relay-outbox.js';
 import { createSqlitePublicFilePublicationStore, migratePublicFilePublications } from '../src/collab/public-file-publication-store.js';
 import { recordCommentRelayPublicationMapping } from '../src/collab/comment-relay-publication-mapping.js';
-import { createProjectVisibilityTransitions } from '../src/collab/project-visibility-transitions.js';
+import { createPublicFileMutations } from '../src/collab/public-file-mutations.js';
 import type { CollabCloudClient } from '../src/integrations/collab-cloud.js';
 
 function deferred<T>() {
@@ -31,7 +31,7 @@ function fixture() {
     permissions: buildWorkspacePermissions({ role: 'owner', lifecycleState: 'active' }),
   };
   let time = 100;
-  const transitions = createProjectVisibilityTransitions();
+  const transitions = createPublicFileMutations();
   const outbox = createCommentRelayOutboxStore(db, () => time);
   const push = vi.fn<CollabCloudClient['pushComment']>().mockResolvedValue({ seq: 1 });
   const resolveAuthority = vi.fn(async () => context);

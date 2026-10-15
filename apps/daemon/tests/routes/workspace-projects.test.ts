@@ -14,6 +14,18 @@ import {
   type WorkspaceDirectoryFetchResult,
 } from '../../src/collab/vela-workspace-context.js';
 import { recoverPersistedTeamShareOwnership } from '../../src/collab/persisted-team-share.js';
+import { withTeamProjectCatalog } from '../team-project-registration-fixture.js';
+
+// The HTTP suite supplies its catalog transport explicitly. No production
+// legacy-policy mode is needed to exercise the real runtime and move routes.
+vi.mock('../../src/collab/runtime.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/collab/runtime.js')>();
+  return {
+    ...actual,
+    createCollabRuntime: (options: import('../../src/collab/runtime.js').CreateCollabRuntimeOptions) =>
+      actual.createCollabRuntime(withTeamProjectCatalog(options)),
+  };
+});
 
 describe('workspace project routes', () => {
   let server: http.Server;
@@ -2294,6 +2306,7 @@ describe('workspace project routes', () => {
         updateWorkspaceProject(deps.db, workspaceId, projectId, { resourceHubResourceId: serverRoot });
         return { version: 7 };
       }),
+      requestTeamDelete: vi.fn(async () => {}),
       requestTeamUnshare: vi.fn(async () => {}),
       refreshTeamProjectMetadata: vi.fn(),
     };

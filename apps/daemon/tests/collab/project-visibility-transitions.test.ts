@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createProjectVisibilityTransitions } from '../../src/collab/project-visibility-transitions.js';
+import { createPublicFileMutations } from '../../src/collab/public-file-mutations.js';
 import {
   reconcileWorkspaceProjectsWithRemote,
   type LocalTeamProjectBinding,
@@ -13,7 +13,7 @@ function barrier() {
   return { promise, release };
 }
 function fixture(visibility: 'personal' | 'team') {
-  const transitions = createProjectVisibilityTransitions();
+  const transitions = createPublicFileMutations();
   const row: LocalTeamProjectBinding = { projectId: 'p', workspaceId: 'w', visibility,
     resourceState: 'active', createdByWorkspaceMemberId: 'owner', resourceHubResourceId: 'server-root' };
   const applyBind = vi.fn((_id, patch) => Object.assign(row, patch));

@@ -125,10 +125,7 @@ export async function applyOwnedProjectContent(options: ApplyOwnedContentOptions
       teamId: scope.resourceTeamId, memberId: scope.ownerMemberId,
       role: 'member' as const, lifecycleState: 'active' as const, workspaceType: 'team' as const,
     };
-    const resourceIds = scope.resourceId !== undefined
-      ? [scope.resourceId]
-      : projectResourceIdsFor(scope.projectId, principal, projectResourceIdFor);
-    if (resourceIds.some((id) => !id.trim())) throw new Error('owner project root is unavailable');
+    const resourceIds = projectResourceIdsFor(scope.projectId, principal, projectResourceIdFor);
     let stdout: string | undefined;
     let lastError: unknown;
     for (const [index, resourceId] of resourceIds.entries()) {

@@ -1,12 +1,6 @@
-// spec 04 §11: before this fix, `DELETE /api/projects/:id` never called
-// `collabSync.requestTeamUnshare` for a team-visible project — unlike the
-// `/move` route's `visibility: 'personal'` branch, which already knows how to
-// take a project out of the team space via the exact same helper
-// (`requestTeamVisibility` in routes/project/index.ts). `dbDeleteProject`'s
-// `ON DELETE CASCADE` only ever drops the DELETER's own `workspace_projects`
-// row — the resource hub's published entry (and every other member's own,
-// separately-stored, already-bound row) never learned the project was gone,
-// so a deleted team project kept surfacing for teammates.
+// Permanent deletion must remove the remote root/catalog before the local
+// project disappears. A move to private instead retains both. Local SQLite
+// cascade deletion alone cannot withdraw a remote Team project.
 //
 // This spec drives the REAL `registerProjectRoutes` DELETE handler over real
 // HTTP, wired to a REAL `createCollabRuntime` instance with an injected fake
@@ -192,6 +186,7 @@ async function startServer(
         collab.requestTeamShare(projectId, share),
       requestTeamUnshare: (projectId: string, share?: ResourceHubPrincipal | null) =>
         collab.requestTeamUnshare(projectId, share),
+      requestTeamDelete: (projectId: string, principal: ResourceHubPrincipal) => collab.requestTeamDelete(projectId, principal),
       refreshTeamProjectMetadata: (projectId: string) => collab.refreshTeamProjectMetadata(projectId),
       invalidateTeamProjectCatalog: () => {},
     },
@@ -212,7 +207,7 @@ it('waits for in-flight public mutation before entering project deletion', async
   const active = gate.run('locked-project', async () => { order.push('publish'); await blocked; order.push('published'); });
   // Mark arrival explicitly so no sleep is needed to prove DELETE is queued.
   let entered!: () => void; const arrival = new Promise<void>(resolve => { entered = resolve; });
-  const lock: PublicFileMutations = { run(id, operation) { entered(); return gate.run(id, operation); } };
+  const lock: PublicFileMutations = { ...gate, run(id, operation) { entered(); return gate.run(id, operation); } };
   const hub = fakeHub();
   const { baseUrl, db } = await startServer(hub, async () => { order.push('stop'); }, lock);
   insertProject(db, { id: 'locked-project', name: 'Locked', createdAt: 1, updatedAt: 1 });
@@ -324,7 +319,7 @@ it.each(['personal', 'team'] as const)('does not bypass %s deletion safety with 
 });
 
 describe('DELETE /api/projects/:id unshares a team-visible project from the hub first', () => {
-  it('unpublishes and drops the catalog entry BEFORE the local delete, for a project the caller shared', async () => {
+  it.each<'team' | 'personal'>(['team', 'personal'])('permanently deletes the retained %s root and catalog before local deletion', async visibility => {
     const hub = fakeHub();
     const { baseUrl, db } = await startServer(hub);
     const now = Date.now();
@@ -333,7 +328,8 @@ describe('DELETE /api/projects/:id unshares a team-visible project from the hub 
     ensureWorkspaceProject(db, {
       projectId,
       workspaceId: WORKSPACE_ID,
-      visibility: 'team',
+      visibility,
+      resourceHubResourceId: 'retained-root',
       createdByWorkspaceMemberId: OWNER_MEMBER_ID,
       resourceState: 'active',
       syncState: 'synced',

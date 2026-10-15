@@ -52,9 +52,13 @@ export function teamProjectMaterializationSupersedes(
   stored: AuthorizedTeamProjectPullReceipt | null,
   previous: AuthorizedTeamProjectPullReceipt,
 ): boolean {
-  // Both receipts were committed against the trusted root binding. A newer
-  // receipt may supersede only that same immutable identity, not an alias.
-  const resourceId = previous.resourceId;
+  const canonicalResourceId = projectResourceIdFor(previous.projectId, {
+    teamId: previous.resourceTeamId,
+    memberId: previous.ownerMemberId,
+    role: 'member',
+    lifecycleState: 'active',
+    workspaceType: 'team',
+  });
   return Boolean(
     stored &&
     stored.schemaVersion === previous.schemaVersion &&
@@ -63,8 +67,8 @@ export function teamProjectMaterializationSupersedes(
     stored.viewerMemberId === previous.viewerMemberId &&
     stored.ownerMemberId === previous.ownerMemberId &&
     stored.projectId === previous.projectId &&
-    resourceId.trim().length > 0 &&
-    stored.resourceId === resourceId &&
+    stored.resourceId === canonicalResourceId &&
+    previous.resourceId === canonicalResourceId &&
     stored.ref === previous.ref &&
     stored.lifecycleState === previous.lifecycleState &&
     Number.isSafeInteger(stored.version) &&
@@ -143,7 +147,7 @@ export function latestTeamProjectMaterializationVersion(
     authorized.viewerMemberId === scope.viewerMemberId &&
     authorized.ownerMemberId === scope.ownerMemberId &&
     authorized.projectId === projectId &&
-    authorized.resourceId === (scope.resourceId ?? projectResourceIdFor(projectId, ownerPrincipal)) &&
+    authorized.resourceId === projectResourceIdFor(projectId, ownerPrincipal) &&
     authorized.ref === 'published' &&
     authorized.lifecycleState === 'active' &&
     Number.isSafeInteger(authorized.version) &&
@@ -196,10 +200,10 @@ export function materializePulledTeamMirror(
         ? scope.viewerMemberId
         : null;
     const resourceHubResourceId =
-      scope.resourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
+      receipt?.resourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
     if (
-      !resourceHubResourceId.trim() ||
-      (receipt && receipt.resourceId !== resourceHubResourceId)
+      receipt &&
+      receipt.resourceId !== projectResourceIdFor(input.id, ownerPrincipal)
     ) {
       throw new Error(`team mirror receipt resource conflict for ${input.id}`);
     }

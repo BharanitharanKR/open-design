@@ -135,7 +135,7 @@ export function validateAuthorizedTeamProjectPullReceipt(
   receipt: AuthorizedTeamProjectPullReceipt,
   input: ReceiptValidationInput,
 ): void {
-  const expectedResourceId = input.scope.resourceId ?? projectResourceIdFor(input.projectId, {
+  const expectedResourceId = projectResourceIdFor(input.projectId, {
     teamId: input.scope.resourceTeamId,
     memberId: input.scope.ownerMemberId,
     role: 'member',

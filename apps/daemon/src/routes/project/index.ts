@@ -1,9 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createProjectVisibilityTransitions, type ProjectVisibilityTransitions } from '../../collab/project-visibility-transitions.js';
 import { ProjectPublicFileStopPendingError, type PublicFileDeleteTarget } from '../../collab/project-public-file-stop.js';
 import type { ProjectDeleteResponse } from '@open-design/contracts';
 import { publicFileMutationHandler } from '../public-file-mutation-handler.js';
-import type { PublicFileMutations } from '../../collab/public-file-mutations.js';
+import { createPublicFileMutations, type PublicFileMutations } from '../../collab/public-file-mutations.js';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
@@ -361,7 +360,6 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
     ) => Promise<Parameters<typeof resolvePluginSnapshot>[0]['plugin'] | null>;
   };
   teamProjectCatalog?: VelaTeamProjectCatalogClient;
-  projectVisibilityTransitions?: ProjectVisibilityTransitions;
   /** Bounded authoritative verifier for idempotent Workspace project reads. */
   verifyWorkspaceReadAuthority?: VerifyWorkspaceRequestAuthority;
   /** Authoritative verifier for every Workspace-bound project mutation. */
@@ -2177,7 +2175,7 @@ function buildDesignSystemCopyPendingPrompt(input: {
 
 export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDeps) {
   const { db, design } = ctx;
-  const visibilityTransitions = ctx.projectVisibilityTransitions ?? createProjectVisibilityTransitions();
+  const projectMutations = ctx.publicFileMutations ?? createPublicFileMutations();
   const projectCreatePreparationTimeoutMs =
     typeof ctx.projectCreatePreparationTimeoutMs === 'number'
     && Number.isFinite(ctx.projectCreatePreparationTimeoutMs)
@@ -2799,7 +2797,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         .filter((row) => row.resourceHubResourceId)
         .map((row) => [`${row.resourceHubResourceId}\0${row.id}`, row] as const),
     );
-    const canReconcile = visibilityTransitions.captureReconciliation();
+    const canReconcile = projectMutations.captureReconciliation();
     const tombstoned = locallyTombstonedTeamProjects(localRows, ctx);
     let remoteProjects: VelaTeamProjectRecord[];
     try {
@@ -3619,7 +3617,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     return /team_project_owner_conflict/i.test(String(error));
   }
 
-  const withVisibilityMoveLocks = visibilityTransitions.withMoves;
+  const withVisibilityMoveLocks = projectMutations.withMoves;
 
   app.post('/api/workspaces/:workspaceId/projects/:projectId/move', async (req, res) => withVisibilityMoveLocks([req.params.projectId], async () => {
     try {
@@ -5530,19 +5528,12 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
           || getWorkspaceProjectByProjectId(db, project.id)?.visibility !== 'personal') throw error;
         shareResiduals = error.shareResiduals;
       }
-      // spec 04 §11: a team-visible project must be unshared from the hub
-      // BEFORE it disappears locally — mirrors the 'personal' branch of
-      // /move's `requestTeamVisibility`, the one other place this daemon
-      // already knows how to take a project out of the team space. Without
-      // this, `dbDeleteProject` only ever touches THIS caller's own
-      // `workspace_projects` row: the hub's published resource (and every
-      // OTHER member's already-bound local row) never learns the project is
-      // gone, so teammates keep seeing it. `enforceWorkspaceProjectMutation`
-      // just above already proved the caller may mutate this exact row, so
-      // no separate `canShareProjects` gate is layered on top here — the
-      // whole project is about to stop existing regardless.
+      // Permanent deletion removes a registered root; moving to private does
+      // not. Pending public-stop residuals permit local-only private deletion,
+      // so retain their cloud identity for the existing stop retry pipeline.
       const workspaceRow = getWorkspaceProjectByProjectId(db, project.id);
-      if (workspaceRow?.visibility === 'team') {
+      if (workspaceRow && !shareResiduals?.length
+        && (workspaceRow.visibility === 'team' || workspaceRow.resourceHubResourceId)) {
         // Same context the gate above allowed this delete under — NOT a fresh
         // header read, which is null for a headerless caller and would skip the
         // hub work while still deleting locally.
@@ -5559,7 +5550,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
             'workspace context is required to unshare this project before deleting it',
           );
         }
-        await requestTeamVisibility([project.id], teamCtx, 'personal');
+        await collabSync.requestTeamDelete(project.id, workspaceProjectPrincipal(teamCtx));
+        try { collabSync.invalidateTeamProjectCatalog?.(); } catch { /* Best-effort display cache. */ }
       }
       // Stop any live agent run in this project before its row and directory
       // are removed, otherwise the CLI subprocess is orphaned — it keeps

@@ -107,9 +107,6 @@ export interface RegisterPulledProjectInput {
 }
 
 export interface TeamMirrorPullScope {
-  /** Trusted catalog/local-bound root; never accepted from an HTTP caller.
-   * Omitted only by legacy synthetic transports. */
-  resourceId?: string;
   workspaceId: string;
   resourceTeamId: string;
   viewerMemberId: string;
@@ -159,9 +156,6 @@ export interface RegisterCollabSyncRoutesDeps {
     | 'publishedHead'
     | 'projectSyncState'
     | 'projectOwnerMemberId'
-    | 'requestTeamShare'
-    | 'requestTeamUnshare'
-    | 'projectVisibilityPolicy'
     | 'forgetTeamShare'
     | 'pullLatest'
   >;
@@ -179,7 +173,6 @@ export interface RegisterCollabSyncRoutesDeps {
     projectId: string,
     scope?: { workspaceId: string; workspaceMemberId: string },
   ) => Promise<string | null>;
-  resolveTeamProjectResourceId?: (projectId: string, scope: TeamMirrorPullScope) => Promise<string>;
   resolveSharedProject?: (
     projectId: string,
     scope?: TeamMirrorPullScope | null,
@@ -763,8 +756,6 @@ export function registerCollabSyncRoutes(
     publishedHead,
     projectSyncState,
     projectOwnerMemberId,
-    requestTeamShare,
-    requestTeamUnshare,
     pullLatest,
   } = deps.collab;
   const {
@@ -783,25 +774,6 @@ export function registerCollabSyncRoutes(
     notifyFilesChanged,
     notifyProjectMetadataChanged,
   } = deps;
-  /**
-   * One seam for "this project's team-share state just changed".
-   *
-   * Both halves belong together: the visibility record is persisted AND the
-   * team-project catalog is dropped. The catalog read behind
-   * `/api/workspace/projects/team` is served from a short-lived SWR entry, so a
-   * GET issued right after a share would otherwise answer with the pre-share
-   * list until the freshness window expired or a hub event happened to arrive.
-   *
-   * Announce through this rather than calling the two deps side by side, so a
-   * future mutation added to this module cannot pick up one and forget the
-   * other.
-   */
-  const announceTeamShareStateChange = (
-    change: Parameters<NonNullable<RegisterCollabSyncRoutesDeps['onTeamShareStateChanged']>>[0],
-  ): void => {
-    deps.onTeamShareStateChanged?.(change);
-    invalidateTeamProjectCatalog?.();
-  };
   const readManifest = deps.readManifest ?? readProjectManifest;
   const publicFilePublicationStore =
     deps.publicFilePublicationStore
@@ -970,10 +942,7 @@ export function registerCollabSyncRoutes(
           role: ownerMemberId === viewerPrincipal.memberId ? viewerPrincipal.role : 'member' as const,
         }
       : viewerPrincipal;
-    const boundScope = scope && deps.resolveTeamProjectResourceId
-      ? { ...scope, resourceId: await deps.resolveTeamProjectResourceId(projectId, scope) }
-      : scope;
-    return { verification, principal, scope: boundScope };
+    return { verification, principal, scope };
   }
 
   async function canShareProjectsForRequest(
@@ -1282,11 +1251,7 @@ export function registerCollabSyncRoutes(
           !projectStore?.get ||
           !isUnmaterializedSharedPlaceholder(projectStore.get(projectId))
         ) return;
-        if (deps.collab.projectVisibilityPolicy === 'explicit-only') {
-          await deps.collab.forgetTeamShare?.(projectId, resourcePrincipal);
-        } else {
-          await requestTeamUnshare(projectId, resourcePrincipal ?? undefined);
-        }
+        await deps.collab.forgetTeamShare?.(projectId, resourcePrincipal);
         retireUnmaterializedSharedPlaceholder?.(projectId);
         invalidateTeamProjectCatalog?.();
       }
@@ -1920,76 +1885,8 @@ export function registerCollabSyncRoutes(
     const context = verification.context;
     const principal = contextToResourceHubPrincipal(context);
 
-    if (deps.collab.projectVisibilityPolicy === 'explicit-only'
-      && (event === 'project_team_share_requested' || event === 'project_team_unshare_requested')) {
+    if (event === 'project_team_share_requested' || event === 'project_team_unshare_requested') {
       return res.status(409).json({ error: 'PROJECT_VISIBILITY_REQUIRES_MOVE' });
-    }
-
-    if (event === 'project_team_share_requested') {
-      if (!principal || !(await canShareProjectsForRequest(req, context))) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
-      }
-      const sharerMemberId = principal.memberId;
-      const existingOwnerMemberId = await resolveSharedProjectOwner?.(projectId, {
-        workspaceId: context!.workspaceId,
-        workspaceMemberId: context!.workspaceMemberId,
-      }) ?? null;
-      if (
-        existingOwnerMemberId &&
-        existingOwnerMemberId !== sharerMemberId
-      ) {
-        return res.json({
-          ok: true,
-          syncState: 'synced',
-          publishedVersion: publishedVersion(projectId, principal),
-        });
-      }
-      let nextPublishedVersion: number | null;
-      try {
-        ({ version: nextPublishedVersion } = await requestTeamShare(projectId, principal ?? sharerMemberId));
-      } catch (error) {
-        console.warn('[od] failed to publish team-shared project bytes:', error);
-        return res.status(502).json({ error: 'TEAM_PROJECT_PUBLISH_UNAVAILABLE' });
-      }
-      if (nextPublishedVersion == null) {
-        return res.status(502).json({ error: 'TEAM_PROJECT_PUBLISH_UNAVAILABLE' });
-      }
-      announceTeamShareStateChange({
-        projectId,
-        principal,
-        visibility: 'team',
-        ownerMemberId: sharerMemberId ?? null,
-        updatedByMemberId: sharerMemberId ?? null,
-      });
-      return res.json({
-        ok: true,
-        syncState: projectSyncState(projectId, principal),
-        publishedVersion: nextPublishedVersion,
-      });
-    }
-
-    if (event === 'project_team_unshare_requested') {
-      if (!principal || !(await canShareProjectsForRequest(req, context))) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
-      }
-      const callerMemberId = principal.memberId;
-      const remoteOwnerMemberId = await resolveSharedProjectOwner?.(projectId, {
-        workspaceId: context!.workspaceId,
-        workspaceMemberId: context!.workspaceMemberId,
-      }) ?? null;
-      const ownerMemberId =
-        remoteOwnerMemberId ?? projectOwnerMemberId(projectId, principal);
-      if (ownerMemberId && ownerMemberId !== callerMemberId) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_UNSHARE_DENIED' });
-      }
-      await requestTeamUnshare(projectId, principal);
-      announceTeamShareStateChange({
-        projectId,
-        principal,
-        visibility: 'personal',
-        ownerMemberId,
-        updatedByMemberId: callerMemberId ?? null,
-      });
     }
 
     res.json({ ok: true, syncState: projectSyncState(projectId, principal) });
@@ -2006,7 +1903,7 @@ export function registerCollabSyncRoutes(
   async function pullSharedProjectOnce(
     projectId: string,
     principal: ResourceHubPrincipal | null,
-    capturedScope: TeamMirrorPullScope | null,
+    scope: TeamMirrorPullScope | null,
     authorizationWitness?: ProactivePullAuthorizationWitness,
     expectedVersion?: number,
     authorizedStageInvocation?: AuthorizedProactivePullInvocation,
@@ -2062,9 +1959,6 @@ export function registerCollabSyncRoutes(
       return outcome;
     };
     try {
-    const scope = capturedScope && deps.resolveTeamProjectResourceId
-      ? { ...capturedScope, resourceId: await deps.resolveTeamProjectResourceId(projectId, capturedScope) }
-      : capturedScope;
     let authoritativeSharedProject: TeamProject | null = null;
     let authorizedCapabilityFallbackVersion: number | null = null;
     const authorizedPull = deps.authorizedTeamProjectPull;
@@ -2126,8 +2020,6 @@ export function registerCollabSyncRoutes(
         }
         try {
           const scopeStillAuthorized = await deps.verifyWorkspaceScope(scope);
-          if (deps.resolveTeamProjectResourceId
-            && scope.resourceId !== await deps.resolveTeamProjectResourceId(projectId, scope)) return false;
           return (
             scopeStillAuthorized &&
             isAuthorizedProactivePullInvocation(

@@ -29,6 +29,14 @@ function fixture() {
   return { calls, ensurePrivate, setVisibility, getRegistration, retainRegistration, upsert, remove, publish, unpublish, policy: () => policy };
 }
 describe('explicit project policy and stable root', () => {
+  it('does not fall back to whole-root publication when policy transport is unavailable', async () => {
+    const publish = vi.fn(async () => ({ version: 1, versionId: 'v1' }));
+    const upsert = vi.fn();
+    runtime = createCollabRuntime({ adapter: { publish }, teamProjectCatalog: { upsert } });
+    await expect(runtime.requestTeamShare('p', principal)).rejects.toThrow('TEAM_PROJECT_POLICY_UNAVAILABLE');
+    expect(publish).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+  });
   it('uploads the retained root then explicitly promotes after private public registration', async () => {
     const f = fixture();
     await runtime.requestTeamShare('p', principal);
