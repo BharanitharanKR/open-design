@@ -405,6 +405,64 @@ test('[P0] funding confirmation only updates the cache and billing events expire
   }
 });
 
+test('[P0] twenty Home sends stay blocked across expiry, billing events and failed confirmation', async ({ page }, testInfo) => {
+  const start = Date.now();
+  await page.clock.setFixedTime(start);
+  await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
+  const create = await holdProjectCreate(page);
+  await routeSuccessfulRuns(page, { runId: 'home-retained-funding-run' });
+  const { workspaceId, workspaceMemberId } = AMR_PERSONAL_WORKSPACE_CONTEXT;
+  let now = start;
+  let verdict: 'insufficient' | 'unknown' | 'available' = 'insufficient';
+  let unavailable = false;
+  // The display projection is unavailable throughout; only confirmed funding
+  // evidence can keep the draft here after its old 30-second TTL.
+  await page.route('**/api/workspace/billing?**', (route) => route.fulfill({ json: { summary: null, workspaceBalance: null } }));
+  await page.route('**/api/workspace/billing/preflight?**', (route) => route.fulfill(unavailable
+    ? { status: 503, json: { error: 'unavailable' } }
+    : { json: { preflight: { schemaVersion: 1, workspaceId, workspaceMemberId, modelId: 'glm-5',
+      generatedAt: new Date(now).toISOString(), balanceUsd: '0', fundingCheck: verdict } } }));
+  const warmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?')
+    && new URL(response.url()).searchParams.get('modelId') === 'glm-5');
+  try {
+    await gotoEntryHome(page);
+    await (await warmed).finished();
+    for (let attempt = 1; attempt <= 20; attempt++) {
+      if (attempt === 9) {
+        now += 31_000;
+        await page.clock.setFixedTime(now);
+        verdict = 'unknown';
+        // Same window event dispatched by the existing billing recovery path.
+        await page.evaluate(() => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
+      }
+      unavailable = attempt >= 15;
+      const checked = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+      await sendFromHome(page, 'Keep this insufficient draft on Home.');
+      await (await checked).finished();
+      const dialog = page.getByTestId('amr-balance-dialog');
+      await expect(dialog).toBeVisible();
+      await expect(page.getByTestId('project-creation-pending-view')).toHaveCount(0);
+      expect(create.requested(), `attempt ${attempt} must not create a project`).toBe(false);
+      await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+      await expect(page.getByTestId('home-hero-submit')).toBeEnabled();
+    }
+    await testInfo.attach('twenty-blocked-sends-preserve-draft', { body: await page.screenshot(), contentType: 'image/png' });
+    unavailable = false;
+    verdict = 'available';
+    const recovered = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+    await sendFromHome(page, 'Keep this insufficient draft on Home.');
+    await (await recovered).finished();
+    const dialog = page.getByTestId('amr-balance-dialog');
+    await expect(dialog).toBeVisible();
+    expect(create.requested()).toBe(false);
+    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+    await sendFromHome(page, 'Keep this insufficient draft on Home.');
+    await expect.poll(() => create.requested()).toBe(true);
+  } finally {
+    create.release();
+  }
+});
+
 for (const planAvailable of [false, true]) {
   test(`[P0] Home restores the wallet memory gate with Coding Plan available=${planAvailable}`, async ({ page }, testInfo) => {
     await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });

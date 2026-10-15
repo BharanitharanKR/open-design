@@ -1489,7 +1489,7 @@ export function EntryShell({
       );
       // Restore #8240's pre-handoff memory gate using both the wallet and
       // Coding Plan projection. The existing billing stream/fallback refreshes
-      // this projection even after the independent hint's short TTL expires.
+      // this projection; confirmed backend insufficiency survives cache refreshes.
       const memoryBlock = amrBalanceGateFromMemory(
         workspaceBillingBalanceUsd(workspaceBillingResponse, homeFundingContext),
         { scope, modelId: amrModelId, preflight: workspaceBillingResponse?.preflight, profile: amrProfile },
@@ -1524,7 +1524,7 @@ export function EntryShell({
         invalidateAmrFundingFeedback();
       }
     }
-    // Without fresh negative evidence, the project frame opens on the click tick,
+    // Without known negative evidence, the project frame opens on the click tick,
     // before any admission check. Everything below runs behind that frame —
     // this shell is unmounted the moment the hand-off navigates, so nothing
     // after this line may rely on this instance's state or DOM. App owns the

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cachedHomeAmrFundingBlock, invalidateAmrFundingFeedback, HOME_AMR_FUNDING_CACHE_TTL_MS, checkAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
+import { cachedHomeAmrFundingBlock, invalidateAmrFundingFeedback, checkAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
 import { advanceWorkspaceAccountGeneration, resetWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 
 let sequence = 0;
@@ -98,30 +98,31 @@ describe('Home cached funding gate', () => {
     await checkAmrFundingFeedback(scope, 'model');
     expect(cachedHomeAmrFundingBlock(scope, 'model', snapshot)).toBeNull();
   });
-  it('expires negative evidence against its server timestamp, not just arrival time', async () => {
+  it('retains confirmed insufficiency after its server timestamp ages out', async () => {
     vi.useFakeTimers();
     const { scope, preflight } = fixture('insufficient');
     preflight.generatedAt = new Date(Date.now() - 10_000).toISOString();
     await checkAmrFundingFeedback(scope, 'model');
-    vi.advanceTimersByTime(HOME_AMR_FUNDING_CACHE_TTL_MS - 10_001);
+    vi.advanceTimersByTime(30_000 - 10_001);
     expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
     vi.advanceTimersByTime(1);
-    expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
   });
   it.each(['available', 'unknown', undefined] as const)('does not block zero-wallet users on %s', async (result) => {
     const { scope } = fixture(result);
     await checkAmrFundingFeedback(scope, 'model');
     expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
   });
-  it('retains a fresh negative after failed confirmation without extending its lifetime', async () => {
+  it('retains confirmed insufficiency after failed confirmation and expiry', async () => {
     vi.useFakeTimers();
     const { scope, fetchMock } = fixture('insufficient');
     await checkAmrFundingFeedback(scope, 'model');
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     expect(await checkAmrFundingFeedback(scope, 'model')).toBe('unknown');
     expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
-    vi.advanceTimersByTime(HOME_AMR_FUNDING_CACHE_TTL_MS);
-    expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
+    vi.advanceTimersByTime(30_000);
+    invalidateAmrFundingFeedback();
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
   });
   it('clears a previous negative when fresh funding is available, even after the positive expires', async () => {
     vi.useFakeTimers();
@@ -131,6 +132,52 @@ describe('Home cached funding gate', () => {
     expect(await checkAmrFundingFeedback(scope, 'model')).toBe('available');
     vi.advanceTimersByTime(5_001);
     expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
+  });
+  it.each(['unknown', 'stale-available', 'wrong-model', 'unavailable', 'timeout'] as const)(
+    'retains a confirmed block after invalidation and %s, then recovers on fresh available', async (result) => {
+      const { scope, preflight, fetchMock } = fixture('insufficient');
+      await checkAmrFundingFeedback(scope, 'model');
+      invalidateAmrFundingFeedback();
+      const confirmation = { ...preflight, fundingCheck: 'available' };
+      if (result === 'unknown') confirmation.fundingCheck = 'unknown';
+      if (result === 'stale-available') confirmation.generatedAt = new Date(Date.now() - 31_000).toISOString();
+      if (result === 'wrong-model') confirmation.modelId = 'other';
+      if (result === 'timeout') fetchMock.mockRejectedValueOnce(new DOMException('timed out', 'TimeoutError'));
+      else fetchMock.mockResolvedValueOnce(result === 'unavailable'
+        ? new Response(null, { status: 503 }) : new Response(JSON.stringify({ preflight: confirmation })));
+      expect(await checkAmrFundingFeedback(scope, 'model')).toBe('unknown');
+      expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
+      preflight.fundingCheck = 'available';
+      expect(await checkAmrFundingFeedback(scope, 'model')).toBe('available');
+      expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
+    },
+  );
+  it('retains separate blocks when switching models or workspaces and clears only the confirmed scope', async () => {
+    const { scope, preflight } = fixture('insufficient');
+    await checkAmrFundingFeedback(scope, 'model');
+    const other = { ...scope, workspaceId: 'second-workspace' };
+    preflight.workspaceId = other.workspaceId;
+    await checkAmrFundingFeedback(other, 'model');
+    preflight.modelId = 'other-model';
+    await checkAmrFundingFeedback(other, 'other-model');
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
+    preflight.fundingCheck = 'available';
+    await checkAmrFundingFeedback(other, 'other-model');
+    expect(cachedHomeAmrFundingBlock(other, 'other-model')).toBeNull();
+    expect(cachedHomeAmrFundingBlock(other, 'model')).not.toBeNull();
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
+  });
+  it('does not let an invalidated late positive erase confirmed insufficiency', async () => {
+    const { scope, preflight, fetchMock } = fixture('insufficient');
+    await checkAmrFundingFeedback(scope, 'model');
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const old = checkAmrFundingFeedback(scope, 'model');
+    invalidateAmrFundingFeedback();
+    expect(await checkAmrFundingFeedback(scope, 'model')).toBe('insufficient');
+    finish(new Response(JSON.stringify({ preflight: { ...preflight, fundingCheck: 'available' } })));
+    expect(await old).toBe('unknown');
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
   });
   it('billing invalidation prevents an older in-flight read from restoring the block', async () => {
     const { scope, preflight, fetchMock } = fixture('insufficient');

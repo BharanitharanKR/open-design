@@ -5,16 +5,22 @@ import type { AmrBalanceGateScope } from './amr-balance-gate';
 type FundingFeedback = 'available' | 'insufficient' | 'unknown';
 const pending = new Map<string, Promise<FundingFeedback>>();
 let positive: { key: string; expiresAt: number } | null = null;
-let homeBlock: { key: string; expiresAt: number; snapshot: AmrWalletSnapshot } | null = null;
+const homeBlocks = new Map<string, AmrWalletSnapshot>();
+let blockAccountGeneration = currentWorkspaceAccountGeneration();
 let cacheGeneration = 0;
-export const HOME_AMR_FUNDING_CACHE_TTL_MS = 30_000;
 
 function fundingKey(scope: AmrBalanceGateScope, modelId: string | null): string {
-  return JSON.stringify([cacheGeneration, currentWorkspaceAccountGeneration(), scope.workspaceType, scope.workspaceId, scope.workspaceMemberId, modelId]);
+  const accountGeneration = currentWorkspaceAccountGeneration();
+  if (blockAccountGeneration !== accountGeneration) {
+    homeBlocks.clear();
+    blockAccountGeneration = accountGeneration;
+  }
+  return JSON.stringify([accountGeneration, scope.workspaceType, scope.workspaceId, scope.workspaceMemberId, modelId]);
 }
 
-/** Home can hold navigation while confirming a short-lived negative or a
- * wallet-and-plan projection. A recent positive overrides either memory hint. */
+/** A confirmed insufficiency holds Home until the same principal/model is
+ * confirmed available. Expiry, billing invalidation and failed reads are not
+ * evidence of funding. A recent positive also overrides the display projection. */
 export function cachedHomeAmrFundingBlock(
   scope: AmrBalanceGateScope | undefined,
   modelId: string | null,
@@ -23,18 +29,17 @@ export function cachedHomeAmrFundingBlock(
   if (!scope) return null;
   const key = fundingKey(scope, modelId);
   if (positive?.key === key && positive.expiresAt > Date.now()) return null;
-  if (homeBlock?.key === key && homeBlock.expiresAt > Date.now()) return homeBlock.snapshot;
-  return memorySnapshot;
+  return homeBlocks.get(key) ?? memorySnapshot;
 }
 
+/** Invalidate reusable positives and in-flight reads, never a confirmed block. */
 export function invalidateAmrFundingFeedback(): void {
   cacheGeneration++;
   positive = null;
-  homeBlock = null;
 }
 
-/** Project sends always re-read negative evidence. Home separately peeks at a
- * short-lived negative to hold navigation and then confirms it with this read. */
+/** Project sends always re-read negative evidence. Home retains the block
+ * while confirming it; only a fresh available response removes that block. */
 export function checkAmrFundingFeedback(
   scope: AmrBalanceGateScope | undefined,
   modelId: string | null,
@@ -43,7 +48,9 @@ export function checkAmrFundingFeedback(
   const generation = currentWorkspaceAccountGeneration();
   const key = fundingKey(scope, modelId);
   if (positive?.key === key && positive.expiresAt > Date.now()) return Promise.resolve('available');
-  const existing = pending.get(key);
+  const requestGeneration = cacheGeneration;
+  const requestKey = JSON.stringify([requestGeneration, key]);
+  const existing = pending.get(requestKey);
   if (existing) return existing;
   const request = (async (): Promise<FundingFeedback> => {
     try {
@@ -55,27 +62,23 @@ export function checkAmrFundingFeedback(
       if (!response.ok) return 'unknown';
       const { preflight } = await response.json() as WorkspaceBillingPreflightResponse;
       const age = Date.now() - Date.parse(preflight?.generatedAt);
-      if (generation !== currentWorkspaceAccountGeneration() || key !== fundingKey(scope, modelId) || !preflight ||
+      if (generation !== currentWorkspaceAccountGeneration() || requestGeneration !== cacheGeneration || !preflight ||
         preflight.schemaVersion !== 1 || preflight.workspaceId !== scope.workspaceId ||
         preflight.workspaceMemberId !== scope.workspaceMemberId || preflight.modelId !== modelId ||
         !Number.isFinite(age) || age < -5_000 || age > 30_000) return 'unknown';
       if (preflight.fundingCheck === 'available') {
-        if (homeBlock?.key === key) homeBlock = null;
+        homeBlocks.delete(key);
         positive = { key, expiresAt: Date.now() + 5_000 };
         return 'available';
       }
       if (preflight.fundingCheck === 'insufficient') {
         const balance = preflight.balanceUsd?.trim();
         if (balance && Number.isFinite(Number(balance)) && Number(balance) <= 0) {
-          homeBlock = {
-            key,
-            expiresAt: Math.min(Date.now(), Date.parse(preflight.generatedAt)) + HOME_AMR_FUNDING_CACHE_TTL_MS,
-            snapshot: {
-              status: 'available', profile: 'default', user: null, balanceUsd: balance,
-              updatedAt: preflight.generatedAt, fetchedAt: new Date().toISOString(),
-              stale: false, source: 'daemon_cache',
-            },
-          };
+          homeBlocks.set(key, {
+            status: 'available', profile: 'default', user: null, balanceUsd: balance,
+            updatedAt: preflight.generatedAt, fetchedAt: new Date().toISOString(),
+            stale: false, source: 'daemon_cache',
+          });
         }
         return 'insufficient';
       }
@@ -84,7 +87,7 @@ export function checkAmrFundingFeedback(
       return 'unknown';
     }
   })();
-  pending.set(key, request);
-  void request.finally(() => pending.delete(key));
+  pending.set(requestKey, request);
+  void request.finally(() => pending.delete(requestKey));
   return request;
 }

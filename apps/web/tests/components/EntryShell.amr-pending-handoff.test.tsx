@@ -64,6 +64,11 @@ vi.mock('../../src/components/AmrBalanceDialog', () => ({
 type CreateInput = Parameters<ComponentProps<typeof EntryShell>['onCreateProject']>[0];
 
 const mockedCheckAmrBalanceGate = vi.mocked(checkAmrBalanceGate);
+let testAccountSequence = 0;
+beforeEach(() => {
+  testAccountSequence++;
+});
+
 const originalFetch = globalThis.fetch;
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -84,7 +89,7 @@ function personalContext(): WorkspaceCollabContext {
   const role = 'owner' as const;
   const lifecycleState = 'active' as const;
   return {
-    workspaceId: 'ws-personal-2614',
+    workspaceId: `ws-personal-2614-${testAccountSequence}`,
     workspaceType: 'personal',
     workspaceMemberId: 'wm-personal-2614',
     role,
@@ -249,7 +254,7 @@ describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
       autoSendFirstMessage: true,
       amrGatePrecheckWitness: {
         workspaceType: 'personal',
-        workspaceId: 'ws-personal-2614',
+        workspaceId: `ws-personal-2614-${testAccountSequence}`,
         workspaceMemberId: 'wm-personal-2614',
       },
     });
@@ -476,7 +481,7 @@ describe('Home memory funding gate', () => {
   });
 
   it.each(['billing-changed', 'billing-subscription-changed', 'wallet-balance-changed', 'coding-plan-usage-changed'] as const)(
-    '%s invalidates the scoped hint without fetching or submitting', async (type) => {
+    '%s retains confirmed insufficiency without fetching or submitting', async (type) => {
       const h = await primeHomeFunding();
       const context = personalContext();
       const handlers = [...vi.mocked(useWorkspaceInvalidation).mock.calls].reverse().find(
@@ -501,7 +506,7 @@ describe('Home memory funding gate', () => {
         // new funding request per event.
         for (let i = 0; i < 8; i++) invalidate(event as never);
       });
-      expect(cachedHomeAmrFundingBlock(context, 'default')).toBeNull();
+      expect(cachedHomeAmrFundingBlock(context, 'default')).not.toBeNull();
       expect(vi.mocked(globalThis.fetch).mock.calls.length).toBe(readCount);
       expect(h.onCreateProject).not.toHaveBeenCalled();
     },
@@ -517,6 +522,40 @@ describe('Home memory funding gate', () => {
     expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
     expect(h.onCreateProject).not.toHaveBeenCalled();
   });
+
+  it.each(['unchanged', 'billing-event', 'ttl-expiry'] as const)(
+    'keeps twenty explicit sends blocked after insufficiency with %s', async (transition) => {
+      const h = await primeHomeFunding();
+      const now = Date.now();
+      let dateNow: ReturnType<typeof vi.spyOn> | undefined;
+      try {
+        for (let attempt = 1; attempt <= 20; attempt++) {
+          if (attempt === 9 && transition === 'billing-event') {
+            const handlers = [...vi.mocked(useWorkspaceInvalidation).mock.calls].reverse().find(
+              ([handlers]) => handlers['team-project-content-ready'],
+            )![0];
+            const context = personalContext();
+            await act(async () => handlers['wallet-balance-changed']!({
+              type: 'wallet-balance-changed', workspaceId: context.workspaceId,
+              workspaceMemberId: context.workspaceMemberId, revision: '9',
+            }));
+          }
+          if (attempt === 9 && transition === 'ttl-expiry') {
+            dateNow = vi.spyOn(Date, 'now').mockReturnValue(now + 31_000);
+          }
+          await submitHome(`Unfunded attempt ${attempt}`);
+          expect(h.onBeginProjectCreation, `attempt ${attempt} must stay on Home`).not.toHaveBeenCalled();
+          await screen.findByTestId('amr-balance-dialog');
+          await act(async () => h.confirm('insufficient'));
+          expect(h.onCreateProject).not.toHaveBeenCalled();
+          fireEvent.click(screen.getByTestId('amr-balance-dialog-dismiss'));
+          await waitFor(() => expect(screen.getByTestId('home-hero-submit')).toBeEnabled());
+        }
+      } finally {
+        dateNow?.mockRestore();
+      }
+    },
+  );
 
   it('confirmed sign-out still rolls back the pending frame and preserves the draft', async () => {
     const h = harness('amr');
