@@ -85,7 +85,7 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
   } finally { service.dispose(); }
 });
 
-it.each(['team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambiguous'] as const)('replays e9e4564dc server-asserted alias into actual local source rows: %s', async scenario => {
+it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambiguous'] as const)('replays e9e4564dc server-asserted alias into actual local source rows: %s', async scenario => {
   const wire = readFileSync(new URL('./fixtures/vela-share-downstream-e9e4564dc.json', import.meta.url), 'utf8');
   const captured = JSON.parse(wire);
   expect(captured.comments[0].publicationSlug).toBe('share-management-slug');
@@ -112,7 +112,7 @@ it.each(['team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambig
     })();
   }
   const context: WorkspaceCollabContext = {
-    workspaceId: 'fixture-space', workspaceType: scenario === 'team' ? 'team' : 'personal', workspaceMemberId: 'member-owner',
+    workspaceId: 'fixture-space', workspaceType: scenario === 'team' || scenario === 'private-team' ? 'team' : 'personal', workspaceMemberId: 'member-owner',
     role: 'owner', memberStatus: 'active', lifecycleState: 'active', billingState: 'active',
     planId: null, providerMode: 'platform_credits', teamId: 'fixture-space',
     seatSummary: buildWorkspaceSeatSummary({ seatLimit: 5, usedSeats: 1 }),
@@ -123,7 +123,8 @@ it.each(['team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambig
     client: createVelaCliCollabClient({ run: async args => { calls.push(args); return wire; } }),
     listProjectIds: () => [], resolveLocalConversationId: () => 'local',
     resolveProjectWorkspaceContext: async () => context,
-    listPersonalCommentRelayFilePaths: () => new Set([scope.filePath]),
+    isMemberSyncProjectShared: () => scenario === 'team',
+    listPersonalCommentRelayFilePaths: () => new Set(scenario === 'team' ? [] : [scope.filePath]),
     ...(scenario === 'lookup-missing' ? {} : {
       resolvePublishedCommentSourcePath: ({ publicationSlug, publishedPath }: { publicationSlug: string; publishedPath: string }) => {
         if (scenario === 'lookup-error') throw new Error('mapping unavailable');

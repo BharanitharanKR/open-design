@@ -14,6 +14,7 @@ type TeamProjectRecord = {
   workspaceId: string;
   projectId: string;
   resourceId: string;
+  visibility: 'private' | 'team';
   ownerMemberId: string;
   displayName: string | null;
   syncState: string;
@@ -573,18 +574,43 @@ async function handleTeamProjectsCommand(input: {
   emit: (event: HubEvent) => void;
 }): Promise<string> {
   const [, command, projectId] = input.args;
-  if (command === '--help') return 'team-projects list get upsert remove\n';
+  if (command === '--help') return 'team-projects list get ensure-private visibility register-resource upsert remove\n';
   if (command === 'list' || command == null) {
     return jsonLine({
       workspaceId: input.workspaceId,
       projects: [...input.projects.values()].filter(
-        (project) => project.workspaceId === input.workspaceId,
+        (project) => project.workspaceId === input.workspaceId && project.visibility === 'team',
       ).map((project) => recordForIdentity(project, input.identity)),
     });
   }
+  if (command === 'ensure-private' && projectId) {
+    const previous = input.projects.get(projectId);
+    if (previous && previous.ownerMemberId !== input.identity.memberId) throw new Error('team_project_not_found');
+    if (previous) return jsonLine(recordForIdentity(previous, input.identity));
+    const now = new Date().toISOString();
+    const record: TeamProjectRecord = {
+      id: `catalog-${projectId}`, workspaceId: input.workspaceId, projectId,
+      resourceId: `server-root-${projectId}`, visibility: 'private',
+      ownerMemberId: input.identity.memberId, displayName: null, syncState: 'pending_upload',
+      lastSyncedVersionId: null, metadata: null, createdAt: now, updatedAt: now,
+      access: { canView: true, canComment: true, canEdit: true, frozen: false },
+    };
+    input.projects.set(projectId, record);
+    return jsonLine(recordForIdentity(record, input.identity));
+  }
+  if ((command === 'visibility' || command === 'register-resource') && projectId) {
+    const project = input.projects.get(projectId);
+    if (!project || project.ownerMemberId !== input.identity.memberId) throw new Error('team_project_not_found');
+    if (command === 'register-resource') return jsonLine({ ok: true });
+    const visibility = input.args[3];
+    if (visibility !== 'private' && visibility !== 'team') throw new Error('invalid visibility');
+    project.visibility = visibility;
+    input.emit({ type: 'team-projects-changed', workspaceId: input.workspaceId, projectId });
+    return jsonLine(recordForIdentity(project, input.identity));
+  }
   if (command === 'get' && projectId) {
     const project = input.projects.get(projectId);
-    if (!project) throw new Error('team_project_not_found');
+    if (!project || (project.visibility === 'private' && project.ownerMemberId !== input.identity.memberId)) throw new Error('team_project_not_found');
     return jsonLine(recordForIdentity(project, input.identity));
   }
   if (command === 'pull' && projectId) {
@@ -644,6 +670,7 @@ async function handleTeamProjectsCommand(input: {
       workspaceId: input.workspaceId,
       projectId,
       resourceId,
+      visibility: previous?.visibility ?? 'team',
       ownerMemberId: previous?.ownerMemberId ?? input.identity.memberId,
       displayName: flag(input.args, '--display-name') ?? previous?.displayName ?? null,
       syncState: flag(input.args, '--sync-state') ?? previous?.syncState ?? 'synced',

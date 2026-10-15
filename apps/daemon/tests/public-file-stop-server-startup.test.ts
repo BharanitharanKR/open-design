@@ -19,7 +19,7 @@ it('runs the real shared SQLite queue consumer once after server startup, deferr
   });
   const startupSpy = vi.spyOn(publications, 'createPublicFileStopStartup').mockImplementation((store, prepareStop, mutations) => {
     expect(prepareStop).toBe(prepare);
-    expect(mutations).toEqual({ run: expect.any(Function) });
+    expect(mutations).toEqual({ run: expect.any(Function), withMoves: expect.any(Function), captureReconciliation: expect.any(Function) });
     const run = vi.fn(createStartup(store, prepareStop, mutations));
     runs.push(run);
     return run;

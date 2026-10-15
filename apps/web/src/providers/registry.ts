@@ -3393,6 +3393,22 @@ export function designSystemStaticUrl(
   );
 }
 
+export async function fetchDesignSystemStaticText(
+  designSystemId: string,
+  filePath: string,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<string | null> {
+  try {
+    const response = await fetch(designSystemStaticUrl(designSystemId, filePath, workspaceContext), {
+      cache: 'no-store',
+      ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
+    });
+    return response.ok ? await response.text() : null;
+  } catch {
+    return null;
+  }
+}
+
 function looksLikeImage(name: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(name);
 }

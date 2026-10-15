@@ -12643,7 +12643,10 @@ function HtmlViewer({
     Boolean(commentDraft.trim()) || Boolean(preparationComposerComment && (activeCommentTarget || lostSelectedCommentId)
       && commentDraft !== preparationComposerComment.note)
   );
-  const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles) && !needsPowered && liveHtml === undefined;
+  // A routing-only large-file preview is not the authored document: it cannot
+  // witness a saved source version. Publication still preflights the real file.
+  const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles)
+    && !needsPowered && !passiveLargeHtmlPreview && liveHtml === undefined;
   const commentPreparationSettled = !streaming && !manualEditMode && !manualEditDraftDirty
     && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
     && !manualEditPendingStyleRef.current && !inspectMode && !savingInspect && !drawOverlayOpen

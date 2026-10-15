@@ -26,7 +26,7 @@ it.each([false, true])('registers the real binding queue once and honors pending
   const createStartup = startup.createShareBindingStartup;
   let run: ReturnType<typeof vi.fn<ReturnType<typeof createStartup>>> | undefined;
   const startSpy = vi.spyOn(startup, 'createShareBindingStartup').mockImplementation((store, options) => {
-    expect(options.prepare).toBe(prepare); expect(options.mutations).toEqual({ run: expect.any(Function) });
+    expect(options.prepare).toBe(prepare); expect(options.mutations).toEqual({ run: expect.any(Function), withMoves: expect.any(Function), captureReconciliation: expect.any(Function) });
     run = vi.fn(createStartup(store, options)); return run;
   });
   let started: StartServerResult | undefined;

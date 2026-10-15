@@ -53,13 +53,9 @@ export function teamProjectMaterializationSupersedes(
   stored: AuthorizedTeamProjectPullReceipt | null,
   previous: AuthorizedTeamProjectPullReceipt,
 ): boolean {
-  const canonicalResourceId = projectResourceIdFor(previous.projectId, {
-    teamId: previous.resourceTeamId,
-    memberId: previous.ownerMemberId,
-    role: 'member',
-    lifecycleState: 'active',
-    workspaceType: 'team',
-  });
+  // Both receipts were committed against the trusted root binding. A newer
+  // receipt may supersede only that same immutable identity, not an alias.
+  const resourceId = previous.resourceId;
   return Boolean(
     stored &&
     stored.schemaVersion === previous.schemaVersion &&
@@ -68,8 +64,8 @@ export function teamProjectMaterializationSupersedes(
     stored.viewerMemberId === previous.viewerMemberId &&
     stored.ownerMemberId === previous.ownerMemberId &&
     stored.projectId === previous.projectId &&
-    stored.resourceId === canonicalResourceId &&
-    previous.resourceId === canonicalResourceId &&
+    resourceId.trim().length > 0 &&
+    stored.resourceId === resourceId &&
     stored.ref === previous.ref &&
     stored.lifecycleState === previous.lifecycleState &&
     Number.isSafeInteger(stored.version) &&
@@ -148,7 +144,7 @@ export function latestTeamProjectMaterializationVersion(
     authorized.viewerMemberId === scope.viewerMemberId &&
     authorized.ownerMemberId === scope.ownerMemberId &&
     authorized.projectId === projectId &&
-    authorized.resourceId === projectResourceIdFor(projectId, ownerPrincipal) &&
+    authorized.resourceId === (scope.resourceId ?? projectResourceIdFor(projectId, ownerPrincipal)) &&
     authorized.ref === 'published' &&
     authorized.lifecycleState === 'active' &&
     Number.isSafeInteger(authorized.version) &&
@@ -200,15 +196,17 @@ export function materializePulledTeamMirror(
       : scope.ownerMemberId === scope.viewerMemberId
         ? scope.viewerMemberId
         : null;
-    // Native manual pulls carry the trusted root whose bytes actually landed.
-    // Retained catalog roots need not equal the current owner-derived ID. Use
-    // that root for binding checks too, without granting staged-pull authority.
-    const resourceHubResourceId = receipt?.resourceId
-      ?? (!options.placeholder ? options.fileReceipt?.resourceId : undefined)
+    // Prefer the authoritative catalog scope. A native manual pull can supply
+    // the actual landed root when no catalog root was passed, but never a
+    // staged-pull cursor or permission to override an existing binding.
+    const resourceHubResourceId = scope.resourceId
+      ?? (!receipt && !options.placeholder ? options.fileReceipt?.resourceId : undefined)
       ?? projectResourceIdFor(input.id, ownerPrincipal);
     if (
-      receipt &&
-      receipt.resourceId !== projectResourceIdFor(input.id, ownerPrincipal)
+      !resourceHubResourceId.trim() ||
+      (receipt && receipt.resourceId !== resourceHubResourceId) ||
+      (!receipt && !options.placeholder && options.fileReceipt
+        && options.fileReceipt.resourceId !== resourceHubResourceId)
     ) {
       throw new Error(`team mirror receipt resource conflict for ${input.id}`);
     }

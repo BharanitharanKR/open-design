@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   closeDatabase,
   getProject,
-  ensureWorkspaceProject,
   insertProject,
+  ensureWorkspaceProject,
   listConversations,
   listMessages,
   listWorkspaceProjects,
@@ -106,6 +106,17 @@ describe('authorized team mirror SQLite materialization', () => {
     expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
   });
 
+  it('rejects a native byte root that contradicts the trusted catalog scope even before local registration', async () => {
+    const db = await database();
+    const exactScope = { ...scope, resourceId: 'retained-catalog-root' };
+    expect(() => materializePulledTeamMirror(db, input, exactScope, undefined, {
+      fileReceipt: { resourceId: 'different-root', versionId: 'version-7' },
+    })).toThrow('team mirror receipt resource conflict');
+    expect(getProject(db, input.id)).toBeNull();
+    expect(listWorkspaceProjects(db, scope.workspaceId)).toHaveLength(0);
+    expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
+  });
+
   it('never treats generic nested project metadata as admitted catalog facts', async () => {
     const forged = { schemaVersion: 1, revision: 1, files: [{
       sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
@@ -135,6 +146,44 @@ describe('authorized team mirror SQLite materialization', () => {
     materializePulledTeamMirror(db, remote, ownerScope, { ...receipt(), ...ownerScope });
     expect(getProject(db, input.id)?.metadata?._commentFiles).toEqual(facts);
     expect(getProject(db, input.id)?.metadata?.nameSource).toBe('manual');
+  });
+  it.each([
+    ['server root', 'arbitrary-server-root', true],
+    ['populated legacy root', 'project-project-1', true],
+    ['rootless local old data', 'project-project-1', false],
+  ] as const)('materializes %s using authoritative catalog lookup without replacing its identity', async (_case, exactRoot, populated) => {
+    const db = await database();
+    insertProject(db, input);
+    ensureWorkspaceProject(db, { projectId: input.id, workspaceId: scope.workspaceId,
+      visibility: 'team', resourceHubResourceId: populated ? exactRoot : null, syncState: 'synced' });
+    const catalog = createVelaCliTeamProjectCatalog({ supportsTeamProjects: () => true,
+      run: async () => JSON.stringify({ projectId: input.id, workspaceId: scope.workspaceId,
+        ownerMemberId: scope.ownerMemberId, visibility: 'team', resourceId: exactRoot,
+        createdAt: '2026-01-01T00:00:00Z' }),
+    });
+    const registration = await catalog.getRegistration(input.id, { teamId: scope.workspaceId,
+      memberId: scope.ownerMemberId, role: 'member', lifecycleState: 'active' });
+    expect(registration?.resourceId).toBe(exactRoot);
+    const exactScope = { ...scope, resourceId: registration!.resourceId! };
+    const exactReceipt = { ...receipt(), resourceId: exactRoot };
+    materializePulledTeamMirror(db, input, exactScope, exactReceipt);
+    expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toEqual(exactReceipt);
+    expect(listWorkspaceProjects(db, scope.workspaceId)[0]?.resourceHubResourceId).toBe(exactRoot);
+    expect(latestTeamProjectMaterializationVersion(exactReceipt, null, input.id, exactScope)).toBe(7);
+  });
+  it('binds placeholders and superseding cursors to the same trusted arbitrary root, not receipt authority', async () => {
+    const db = await database();
+    const exactScope = { ...scope, resourceId: 'server-root' };
+    materializePulledTeamMirror(db, input, exactScope, undefined, { placeholder: true });
+    expect(listWorkspaceProjects(db, scope.workspaceId)[0]?.resourceHubResourceId).toBe('server-root');
+    expect(() => materializePulledTeamMirror(db, input, exactScope,
+      { ...receipt(), resourceId: 'selected-file-resource' })).toThrow('resource conflict');
+    expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
+    const previous = { ...receipt(), resourceId: 'server-root', version: 6 };
+    const next = { ...receipt(), resourceId: 'server-root' };
+    expect(teamProjectMaterializationSupersedes(next, previous)).toBe(true);
+    expect(teamProjectMaterializationSupersedes({ ...next, resourceId: 'different-root' }, previous)).toBe(false);
+    expect(latestTeamProjectMaterializationVersion({ ...next, resourceId: 'different-root' }, null, input.id, exactScope)).toBeNull();
   });
   it('reads a newer legacy cursor after an authorized materialization', () => {
     expect(

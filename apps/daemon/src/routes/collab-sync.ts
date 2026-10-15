@@ -108,6 +108,8 @@ export interface RegisterPulledProjectInput {
 }
 
 export interface TeamMirrorPullScope {
+  /** Exact catalog-bound root; never supplied by an HTTP caller. */
+  resourceId?: string;
   workspaceId: string;
   resourceTeamId: string;
   viewerMemberId: string;
@@ -213,6 +215,7 @@ export interface RegisterCollabSyncRoutesDeps {
    * mutable active Workspace.
    */
   verifyWorkspaceScope?: (scope: TeamMirrorPullScope) => Promise<boolean>;
+  resolveTeamProjectResourceId?: (projectId: string, scope: TeamMirrorPullScope) => Promise<string>;
   /** Set/clear the non-destructive "team mirror revoked" flag on a local
    *  project so read routes stop serving a project that has left the team. */
   markTeamProjectRevoked?: (projectId: string, revoked: boolean) => void;
@@ -946,7 +949,10 @@ export function registerCollabSyncRoutes(
           role: ownerMemberId === viewerPrincipal.memberId ? viewerPrincipal.role : 'member' as const,
         }
       : viewerPrincipal;
-    return { verification, principal, scope };
+    const boundScope = scope && deps.resolveTeamProjectResourceId
+      ? { ...scope, resourceId: await deps.resolveTeamProjectResourceId(projectId, scope) }
+      : scope;
+    return { verification, principal, scope: boundScope };
   }
 
   async function canShareProjectsForRequest(
@@ -1536,27 +1542,6 @@ export function registerCollabSyncRoutes(
     } catch {
       return res.status(502).json({ error: 'PUBLIC_SHARE_PREPARATION_UNAVAILABLE' });
     }
-    if (needsCatalog) {
-      try {
-        if (!publisher.ensureProject) throw new Error('project bootstrap unavailable');
-        sharedProject = await publisher.ensureProject(scope, principal, prepared.run);
-      } catch (error) {
-        logPublicShareDiagnostic({ operation: 'bootstrap', status: 503,
-          errorCode: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', requestId, startedAt,
-          ...publicShareProjectBootstrapDiagnostic(error) });
-        return res.status(503).json({ error: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE' });
-      }
-      if (sharedProject.projectId !== projectId || sharedProject.ownerMemberId !== principal.memberId) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
-      }
-    }
-    // Associate even legacy selected resources; catalog presence is not proof
-    // of that relationship. The pinned session must ACK before any file bytes.
-    try {
-      await registerVelaTeamProjectResource(projectId, publicFileResourceIdFor(scope), prepared.run);
-    } catch {
-      return res.status(503).json({ error: 'PUBLIC_SHARE_RESOURCE_REGISTRATION_UNAVAILABLE' });
-    }
     // Absence must be observed remotely, not inferred from a lost local row.
     // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
     const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
@@ -1584,6 +1569,29 @@ export function registerCollabSyncRoutes(
     // link is the explicit `{ mode: 'resume' }` request (OPEND-3510).
     if (stoppedSlug) {
       return res.status(409).json({ error: 'SHARE_STOPPED_RESUME_REQUIRED' });
+    }
+    // Policy/bootstrap and association are mutations too: a refused stopped
+    // publish must not reach them. Recovery above reuses its existing binding.
+    if (needsCatalog) {
+      try {
+        if (!publisher.ensureProject) throw new Error('project bootstrap unavailable');
+        sharedProject = await publisher.ensureProject(scope, principal, prepared.run);
+      } catch (error) {
+        logPublicShareDiagnostic({ operation: 'bootstrap', status: 503,
+          errorCode: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', requestId, startedAt,
+          ...publicShareProjectBootstrapDiagnostic(error) });
+        return res.status(503).json({ error: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE' });
+      }
+      if (sharedProject.projectId !== projectId || sharedProject.ownerMemberId !== principal.memberId) {
+        return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
+      }
+    }
+    // Associate even legacy selected resources; catalog presence is not proof
+    // of that relationship. The pinned session must ACK before any file bytes.
+    try {
+      await registerVelaTeamProjectResource(projectId, publicFileResourceIdFor(scope), prepared.run);
+    } catch {
+      return res.status(503).json({ error: 'PUBLIC_SHARE_RESOURCE_REGISTRATION_UNAVAILABLE' });
     }
     const resourceId = publicFileResourceIdFor(scope);
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'od-public-file-'));
@@ -1938,11 +1946,14 @@ export function registerCollabSyncRoutes(
   async function pullSharedProjectOnce(
     projectId: string,
     principal: ResourceHubPrincipal | null,
-    scope: TeamMirrorPullScope | null,
+    capturedScope: TeamMirrorPullScope | null,
     authorizationWitness?: ProactivePullAuthorizationWitness,
     expectedVersion?: number,
     authorizedStageInvocation?: AuthorizedProactivePullInvocation,
   ): Promise<CollabSyncPullOutcome> {
+    const scope = capturedScope && deps.resolveTeamProjectResourceId
+      ? { ...capturedScope, resourceId: await deps.resolveTeamProjectResourceId(projectId, capturedScope) }
+      : capturedScope;
     const profileReceivedAtMs =
       authorizedStageInvocation?.profileReceivedAtMs;
     type AuthorizedPullTimingPhase =
@@ -2055,6 +2066,8 @@ export function registerCollabSyncRoutes(
         }
         try {
           const scopeStillAuthorized = await deps.verifyWorkspaceScope(scope);
+          if (deps.resolveTeamProjectResourceId
+            && scope.resourceId !== await deps.resolveTeamProjectResourceId(projectId, scope)) return false;
           return (
             scopeStillAuthorized &&
             isAuthorizedProactivePullInvocation(
