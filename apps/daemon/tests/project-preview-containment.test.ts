@@ -120,6 +120,24 @@ describe('project preview containment routes', () => {
     },
   );
 
+  it('keeps hosted motion playback enabled when a native HTML preview redirects', async () => {
+    const projectId = await createProject();
+    await writeProjectFile(projectId, 'index.html', '<!doctype html><html><head><meta name="od-motion-output" content="video"></head><body><main data-composition-id="main" data-duration="5" data-width="640" data-height="360">Motion</main><script src="timeline.js"></script></body></html>');
+    const raw = await fetch(`${baseUrl}/api/projects/${projectId}/raw/index.html?odPreviewBridge=scroll&odPreviewBridge=redirect&odMotionPreview=1`);
+    expect(raw.status).toBe(200);
+    expect(new URL(raw.url).pathname).toMatch(/\/preview\/[^/]+\/index\.html$/);
+    expect(new URL(raw.url).searchParams.get('odMotionPreview')).toBe('1');
+    expect(await raw.text()).toContain('data-od-motion-source-player');
+
+    const scope = await fetch(`${baseUrl}/api/projects/${projectId}/preview-url?file=index.html&documentMode=url`)
+      .then((response) => response.json() as Promise<ProjectPreviewUrlResponse>);
+    const direct = new URL(scope.url, baseUrl);
+    direct.searchParams.set('odMotionPreview', '1');
+    const document = await fetch(direct);
+    expect(document.status).toBe(200);
+    expect(await document.text()).toContain('data-od-motion-source-player');
+  });
+
   it('binds each directory preview to its own HTML, including same-directory files', async () => {
     const projectId = await createProject();
     const scopes: string[] = [];
@@ -730,6 +748,22 @@ describe('project preview containment routes', () => {
       `${baseUrl}/api/projects/${projectId}/raw/notes.txt?odPreviewBridge=buildfocus`,
     );
     expect(await text.text()).not.toContain('data-od-preview-build-focus');
+  });
+
+  it('upgrades a persisted Motion player for thumbnail previews while raw source bytes remain unchanged', async () => {
+    const projectId = await createProject({ kind: 'video', intent: 'motion-design' });
+    const source = '<!doctype html><html><head><meta name="od-motion-output" content="video"></head><body><main data-composition-id="main"></main><script data-od-motion-source-player="5">oldPlayer();</script></body></html>';
+    await writeProjectFile(projectId, 'index.html', source);
+    const plain = await fetch(`${baseUrl}/api/projects/${projectId}/raw/index.html`);
+    expect(await plain.text()).toBe(source);
+    const thumbnail = await fetch(`${baseUrl}/api/projects/${projectId}/raw/index.html?odMotionPreview=1&odMotionThumbnail=1`);
+    expect(thumbnail.status).toBe(200);
+    const html = await thumbnail.text();
+    expect(html).not.toContain('oldPlayer();');
+    expect(html).toContain('data-od-motion-source-player="6"');
+    expect(html).toContain("searchParams.get('odMotionThumbnail')");
+    expect(html.match(/<script data-od-motion-source-player/g)).toHaveLength(1);
+    expect(html).not.toContain('data-od-url-scroll-bridge');
   });
 
   it('rejects invalid preview scopes and escaping preview-url paths', async () => {

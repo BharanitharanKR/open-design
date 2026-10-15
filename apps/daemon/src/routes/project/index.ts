@@ -1,3 +1,4 @@
+import { injectMotionSourcePlayer, isMotionVideoComposition, MOTION_PREVIEW_OUTPUT_HEADER } from '@open-design/contracts/runtime/motion-source-player';
 import { createHash, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -1811,6 +1812,7 @@ function applyUrlPreviewBridgesToHtml(
   transformed: string | Buffer,
   mime: string,
   requestedBridge: unknown,
+  requestedMotionPreview?: unknown,
 ): string | Buffer {
   if (
     !(
@@ -1821,7 +1823,8 @@ function applyUrlPreviewBridgesToHtml(
       wantsUrlPreviewBuildFocusBridge(requestedBridge) ||
       wantsUrlPreviewSandboxGuard(requestedBridge) ||
       wantsUrlPreviewFocusGuard(requestedBridge) ||
-      wantsUrlPreviewRedirectGuard(requestedBridge)
+      wantsUrlPreviewRedirectGuard(requestedBridge) ||
+      requestedMotionPreview === '1'
     ) ||
     !/^text\/html(?:;|$)/i.test(mime)
   ) {
@@ -1832,7 +1835,7 @@ function applyUrlPreviewBridgesToHtml(
   // Sanitize the <title> so Cmd+P -> "Save as PDF" produces a Teams-safe
   // filename. URL-load iframes cannot rely on the host rewriting the document
   // title after load, and powered previews are intentionally cross-origin.
-  html = daemonSanitizeTitleInDoc(html);
+  html = injectMotionSourcePlayer(daemonSanitizeTitleInDoc(html));
   // Guards must run before authored scripts. injectAfterHeadOpen prepends at
   // the start of <head>; apply in reverse runtime order so the final document
   // executes sandbox -> redirect -> observability -> focus.
@@ -4138,6 +4141,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         || req.body?.automaticStrategyTaskProfile === 'ppt'
         || req.body?.automaticStrategyTaskProfile === 'marketing'
         || req.body?.automaticStrategyTaskProfile === 'hyperframes'
+        || req.body?.automaticStrategyTaskProfile === 'motion-design'
           ? req.body.automaticStrategyTaskProfile
           : null;
       if (
@@ -6995,7 +6999,12 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             metadata: project.metadata, projectsRoot: PROJECTS_DIR, readProjectFile,
           });
           if (!isBoundDocument || mode !== 'url' || !/^text\/html(?:;|$)/i.test(file.mime)) return transformed;
-          const bridged = applyUrlPreviewBridgesToHtml(transformed, file.mime, document.bridges);
+          const bridged = applyUrlPreviewBridgesToHtml(
+            transformed,
+            file.mime,
+            document.bridges,
+            req.query.odMotionPreview,
+          );
           const expiresAt = projectPreviewScopes.documentExpiresAt(project.id, scope);
           if (expiresAt === undefined) return bridged;
           const dir = path.posix.dirname(filePath);
@@ -7066,6 +7075,12 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       );
       const skipHtmlPreviewBridge =
         /^text\/html(?:;|$)/i.test(meta.mime) && meta.size > PREVIEW_URL_GUARD_MAX_HTML_BYTES;
+      // Large HTML keeps its original streamed GET path. The existing cover
+      // HEAD still needs actual identity, including self-contained video sources.
+      if (skipHtmlPreviewBridge && req.method === 'HEAD') {
+        const file = await readProjectFile(PROJECTS_DIR, projectId, relPath, project?.metadata);
+        res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(file.buffer.toString('utf8')) ? 'video' : 'html');
+      }
 
       if (!skipHtmlPreviewBridge && /^text\/html(?:;|$)/i.test(meta.mime)
         && (wantsUrlPreviewRedirectGuard(req.query.odPreviewBridge) || wantsUrlPreviewSandboxGuard(req.query.odPreviewBridge))) {
@@ -7085,6 +7100,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
           for (const key of ['v', 'r', 'fr', 'odPreviewEpoch', 'odEditStandby']) {
             if (typeof req.query[key] === 'string') query.set(key, req.query[key] as string);
           }
+          if (req.query.odMotionPreview === '1') query.set('odMotionPreview', '1');
           res.setHeader('Cache-Control', 'no-store');
           res.redirect(302, `/api/projects/${encodeURIComponent(projectId)}/preview/${scope}/${encodeProjectPathForUrl(relPath)}?${query}`);
           return;
@@ -7107,10 +7123,15 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
+          if (/^text\/html(?:;|$)/i.test(file.mime)) {
+            const html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : String(transformed);
+            res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(html) ? 'video' : 'html');
+          }
           const bridged = applyUrlPreviewBridgesToHtml(
             transformed,
             file.mime,
             req.query.odPreviewBridge,
+            req.query.odMotionPreview,
           );
           const workspaceId = typeof req.query.workspaceId === 'string'
             ? req.query.workspaceId
@@ -7212,6 +7233,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       );
       const skipPoweredTransform =
         /^text\/html(?:;|$)/i.test(meta.mime) && meta.size > PREVIEW_URL_GUARD_MAX_HTML_BYTES;
+      if (skipPoweredTransform && req.method === 'HEAD') {
+        const file = await readProjectFile(PROJECTS_DIR, projectId, relPath, project?.metadata);
+        res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(file.buffer.toString('utf8')) ? 'video' : 'html');
+      }
       await sendProjectFile(
         req,
         res,
@@ -7228,7 +7253,11 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
-          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge);
+          if (/^text\/html(?:;|$)/i.test(file.mime)) {
+            const html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : String(transformed);
+            res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(html) ? 'video' : 'html');
+          }
+          return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge, req.query.odMotionPreview);
         },
       );
     } catch (err: any) {
