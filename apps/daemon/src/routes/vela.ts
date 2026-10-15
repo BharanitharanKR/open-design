@@ -1,4 +1,8 @@
+import { normalizeTelemetryAppVersion, readCurrentAppVersionInfo } from '../app-version.js';
+import { touchpointLoadBatchSchema, TOUCHPOINT_LOAD_BODY_BYTES, parseTouchpointLoadMetrics } from '@open-design/contracts/api/touchpointLoadResults';
+import { touchpointMetricsHeader, touchpointResourceSizes, TOUCHPOINT_LOAD_METRICS_HEADER } from '../services/touchpoint-load-metrics.js';
 import type { Express, Request, Response } from 'express';
+import { touchpointTestBehaviorEventSchema, TOUCHPOINT_TEST_BEHAVIOR_BODY_LIMIT, touchpointTestAutomatedReportSchema, TOUCHPOINT_TEST_AUTOMATED_REPORT_BODY_LIMIT } from '@open-design/contracts/api/touchpointTestRuntime';
 import type {
   TestRuntimeAcceptanceRequest,
   TestRuntimeContextRequest,
@@ -495,18 +499,65 @@ function decodeProxyBody(
   return null;
 }
 
+/**
+ * The part of a caller's `accept-encoding` this proxy can read back.
+ *
+ * The daemon does not only pipe decision bodies: it reads them to store content
+ * and to rebuild a trimmed (`contentOmitted`) reply from what it holds. A reply
+ * framed in an encoding `decodeProxyBody` cannot open is echoed untouched, and
+ * for a trimmed reply that means handing the browser a decision with no content.
+ * Chromium advertises `zstd`, so forwarding its header verbatim let upstream
+ * pick exactly such an encoding. Every coding named here must be one
+ * `decodeProxyBody` decodes; q-values are kept, anything else is dropped.
+ */
+function decodableAcceptEncoding(value: string | string[] | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const kept = value
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => {
+      const coding = part.split(';')[0]?.trim().toLowerCase();
+      return (
+        coding === 'gzip' ||
+        coding === 'x-gzip' ||
+        coding === 'deflate' ||
+        coding === 'br' ||
+        coding === 'identity'
+      );
+    });
+  return kept.length > 0 ? kept.join(', ') : null;
+}
+
+/**
+ * The whole budget a production decision gets from the runtime before the
+ * daemon answers from its own store instead (OPEND-3436 AC2).
+ *
+ * It has to run out BEFORE the browser gives up on the same request, which the
+ * web lifecycle does after 15s (`REQUEST_TIMEOUT_MS`, a budget for a whole
+ * round). The socket's 30s idle timeout ran out after it: the browser
+ * abandoned the attempt at 15s, `abortUpstream` then killed the upstream, and
+ * the offline replay that exists for exactly this case was never delivered —
+ * so a hung runtime hid a campaign whose schedule was still running.
+ *
+ * It is a deadline for the request as a whole, not an idle timeout, so neither
+ * a trickling upstream nor the one assembly retry can stretch it, and it only
+ * acts while nothing has been sent to the browser yet.
+ */
+const TOUCHPOINT_DECISION_BUDGET_MS = 10_000;
+
+/** A received refusal or redirect remains an answer even when its body is incomplete. */
+const touchpointStatusRefusesReplay = (status: number): boolean =>
+  (status < 200 || status >= 300) && (status < 500 || status >= 600);
+
 /** The daemon's own content-assembly parameters, which no browser ever sends. */
 const HELD_CONTENT_PARAMS = ['heldContentId', 'heldContentLocale'] as const;
 
 /**
- * The (placementKey, locale) a production decision request is about, or `null`
- * when this request is not one the daemon may assemble content for.
+ * The (placementKey, locale) whose display authority a production decision answers.
  *
- * A caller that already carries either held-content parameter is passed through
- * untouched: the daemon never rewrites someone else's conditional request.
+ * Conditional caller parameters affect assembly eligibility separately.
  */
 function touchpointContentKeyForRequest(url: URL, scope: string): TouchpointContentKey | null {
-  if (HELD_CONTENT_PARAMS.some((param) => url.searchParams.has(param))) return null;
   const placementKey = url.searchParams.get('placementKey');
   const locale = url.searchParams.get('locale');
   return placementKey && locale ? { scope, placementKey, locale } : null;
@@ -537,12 +588,94 @@ function touchpointCacheScope(context: {
   return `${context.profile ?? ''}\u0000${context.apiUrl}\u0000${account}`;
 }
 
+export interface VelaRoutesLifecycle { close(): Promise<void>; }
+type TouchpointRequests = { closing: boolean; active: Map<() => void, Promise<void>> };
+
+/** Single authenticated write seam. No caller headers, queries, redirects or cache. */
+function proxyTestBehavior(req: Request, res: Response, context: { apiUrl: string; controlKey: string }, requests?: TouchpointRequests): void {
+  const body = velaProxyRequestBody(req);
+  const declared = req.headers['content-length'];
+  // The global JSON parser already consumed the stream. Requiring the wire
+  // length prevents chunked/whitespace bodies evading this narrower budget.
+  if (declared === undefined) { res.status(411).json({ error: 'touchpoint_test_behavior_length_required' }); return; }
+  if (req.headers['content-encoding'] && req.headers['content-encoding'] !== 'identity') {
+    res.status(415).json({ error: 'touchpoint_test_behavior_encoding_unsupported' }); return;
+  }
+  if ((declared !== undefined && (!/^\d+$/.test(String(declared)) || Number(declared) > TOUCHPOINT_TEST_BEHAVIOR_BODY_LIMIT)) || (body && body.byteLength > TOUCHPOINT_TEST_BEHAVIOR_BODY_LIMIT)) {
+    res.status(413).json({ error: 'touchpoint_test_behavior_body_too_large' }); return;
+  }
+  if (Object.keys(req.query).length || !touchpointTestBehaviorEventSchema.safeParse(req.body).success) {
+    res.status(400).json({ error: 'invalid_touchpoint_test_behavior' }); return;
+  }
+  const target = new URL('/api/v1/touchpoints/runtime/test-events', context.apiUrl);
+  if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password) {
+    res.status(500).json({ error: 'invalid_vela_api_url' }); return;
+  }
+  if (requests?.closing) { res.status(503).json({ error: 'touchpoint_runtime_closing' }); return; }
+  let settled = false;
+  let incoming: http.IncomingMessage | undefined;
+  let upstream: http.ClientRequest | undefined;
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  let resolveDone: () => void = () => undefined;
+  const done = new Promise<void>(resolve => { resolveDone = resolve; });
+  const finish = () => {
+    if (settled) return false;
+    settled = true;
+    clearTimeout(deadline);
+    requests?.active.delete(cancel);
+    resolveDone();
+    return true;
+  };
+  const fail = (status: number, error: string) => {
+    if (!finish()) return;
+    incoming?.destroy();
+    upstream?.destroy();
+    if (!res.writableEnded && !res.destroyed) res.status(status).json({ error });
+  };
+  const cancel = () => {
+    if (!finish()) return;
+    incoming?.destroy(); upstream?.destroy();
+    if (!res.destroyed && !res.writableEnded) res.status(503).json({ error: 'touchpoint_runtime_closing' });
+  };
+  upstream = (target.protocol === 'https:' ? https : http).request(target, {
+    method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json',
+      'content-length': String(body?.byteLength ?? 0), authorization: `Bearer ${context.controlKey}` },
+  }, response => {
+    incoming = response;
+    if (settled) { response.destroy(); return; }
+    const status = response.statusCode ?? 502;
+    if (status >= 300 && status < 400) { fail(502, 'touchpoint_test_behavior_redirect'); return; }
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    response.on('data', (chunk: Buffer) => {
+      if (settled) return;
+      bytes += chunk.length;
+      if (bytes > TOUCHPOINT_TEST_BEHAVIOR_BODY_LIMIT) { fail(502, 'touchpoint_test_behavior_response_too_large'); return; }
+      chunks.push(chunk);
+    });
+    response.on('error', () => fail(502, 'touchpoint_runtime_unavailable'));
+    response.on('aborted', () => fail(502, 'touchpoint_runtime_unavailable'));
+    response.on('end', () => {
+      if (!finish()) return;
+      res.status(status).type('application/json').end(Buffer.concat(chunks, bytes));
+    });
+  });
+  deadline = setTimeout(() => fail(504, 'touchpoint_test_behavior_timeout'), 5_000);
+  deadline.unref?.();
+  requests?.active.set(cancel, done);
+  upstream.on('error', () => fail(502, 'touchpoint_runtime_unavailable'));
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  upstream.end(body);
+}
+
 function proxyTouchpointRuntimeRequest(
   req: Request,
   res: Response,
-  context: { profile?: string; apiUrl: string; controlKey?: string },
+  context: { profile?: string; apiUrl: string; controlKey?: string; daemonVersion?: string | null },
   runtime: 'test' | 'production',
   contentCache?: TouchpointContentCache,
+  requests?: TouchpointRequests,
 ): void {
   // Express retains the mounted path for these route patterns, so normalize
   // it before applying the strict suffix allowlist.
@@ -552,12 +685,13 @@ function proxyTouchpointRuntimeRequest(
   // keeps its separately enumerated context/deployment routes; neither proxy
   // forwards a browser-supplied Vela credential or arbitrary path.
   let suffix: string | null = null;
-  if (runtime === 'production') {
+  if (req.method === 'POST' && runtimePath === '/load-results') suffix = '/load-results';
+  else if (runtime === 'production') {
     if (req.method === 'GET' && runtimePath === '/') suffix = '/production';
     else if (req.method === 'POST' && runtimePath === '/events') suffix = '/events';
   } else if (
     req.method === 'POST' &&
-    /^\/test-deployments\/[A-Za-z0-9_-]{1,128}\/acceptances$/u.test(runtimePath)
+    /^\/test-deployments\/[A-Za-z0-9_-]{1,128}\/(?:acceptances|automated-reports)$/u.test(runtimePath)
   ) {
     suffix = runtimePath;
   } else if (req.method === 'GET' && runtimePath === '/deployments') {
@@ -566,11 +700,17 @@ function proxyTouchpointRuntimeRequest(
     suffix = '/test';
   } else if (req.method === 'POST' && runtimePath === '/context') {
     suffix = '/test-context';
+  } else if (req.method === 'POST' && runtimePath === '/events') {
+    suffix = '/test-events';
   }
   if (!suffix || !context.controlKey) {
     res.status(context.controlKey ? 404 : 401).json({
       error: context.controlKey ? 'unknown_touchpoint_runtime_path' : 'vela_control_key_required',
     });
+    return;
+  }
+  if (suffix === '/test-events') {
+    proxyTestBehavior(req, res, { apiUrl: context.apiUrl, controlKey: context.controlKey }, requests);
     return;
   }
   const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
@@ -583,16 +723,50 @@ function proxyTouchpointRuntimeRequest(
     return;
   }
   const body = req.method === 'POST' ? velaProxyRequestBody(req) : null;
+  if (suffix.endsWith('/automated-reports')) {
+    const declared = req.headers['content-length'];
+    if ((declared !== undefined && (!/^\d+$/.test(String(declared)) || Number(declared) > TOUCHPOINT_TEST_AUTOMATED_REPORT_BODY_LIMIT)) || (body && body.byteLength > TOUCHPOINT_TEST_AUTOMATED_REPORT_BODY_LIMIT)) {
+      res.status(413).json({ error: 'automated_report_body_too_large' }); return;
+    }
+    if (!touchpointTestAutomatedReportSchema.safeParse(req.body).success) {
+      res.status(400).json({ error: 'invalid_automated_report' }); return;
+    }
+  }
+  if (suffix === '/load-results') {
+    const declared = req.headers['content-length'];
+    if ((declared !== undefined && (!/^\d+$/.test(String(declared)) || Number(declared) > TOUCHPOINT_LOAD_BODY_BYTES)) || (body && body.byteLength > TOUCHPOINT_LOAD_BODY_BYTES)) {
+      res.status(413).json({ error: 'touchpoint_load_body_too_large' }); return;
+    }
+    let payload: unknown;
+    try { payload = body ? JSON.parse(body.toString('utf8')) : null; } catch { payload = null; }
+    if (!touchpointLoadBatchSchema.safeParse(payload).success) {
+      res.status(400).json({ error: 'invalid_touchpoint_load_batch' }); return;
+    }
+  }
   // Content assembly applies to exactly one route: the read-only production
   // decision. Everything else keeps the verbatim streaming path.
-  const contentKey =
-    contentCache && runtime === 'production' && req.method === 'GET' && suffix === '/production'
-      ? touchpointContentKeyForRequest(
-          target,
-          touchpointCacheScope({ ...context, controlKey: context.controlKey }),
-        )
-      : null;
+  const authorityScope = runtime === 'production'
+    ? touchpointCacheScope({ ...context, controlKey: context.controlKey }) : null;
+  const authorityKey = contentCache && authorityScope && req.method === 'GET' && suffix === '/production'
+    ? touchpointContentKeyForRequest(target, authorityScope) : null;
+  const contentKey = !HELD_CONTENT_PARAMS.some(param => target.searchParams.has(param)) ? authorityKey : null;
 
+  if (requests?.closing) { res.status(503).json({ error: 'touchpoint_runtime_closing' }); return; }
+  const operation = authorityScope && contentCache ? contentCache.beginAuthority(authorityScope) : null;
+  if (authorityScope && contentCache && !operation) {
+    res.status(503).json({ error: 'touchpoint_authority_unavailable' });
+    return;
+  }
+  let operationFinished = false;
+  let resolveOperation: () => void = () => undefined;
+  const operationDone = new Promise<void>(resolve => { resolveOperation = resolve; });
+  const finishOperation = (): void => {
+    if (operationFinished) return;
+    operationFinished = true;
+    if (operation && authorityScope) contentCache?.settleAuthority(authorityScope, operation);
+    requests?.active.delete(abortUpstream);
+    resolveOperation();
+  };
   const controlKey = context.controlKey;
   /**
    * A caller that walked away takes its upstream request with it.
@@ -610,6 +784,7 @@ function proxyTouchpointRuntimeRequest(
    * rather than adding to it -- so a single mutable reference covers both.
    */
   let currentUpstream: http.ClientRequest | null = null;
+  let currentResponse: http.IncomingMessage | null = null;
   /**
    * Set when the caller walked away, so the failure handlers below can tell an
    * upstream that died from an upstream this proxy killed. Without it, an
@@ -617,13 +792,28 @@ function proxyTouchpointRuntimeRequest(
    * a megabyte-scale package for a response nobody will ever read.
    */
   let callerGone = false;
+  let settlePendingWithdrawal: ((body: unknown) => void) | null = null;
   const abortUpstream = (): void => {
     callerGone = true;
+    settlePendingWithdrawal?.(null);
     const pending = currentUpstream;
+    if (!res.writableEnded) currentResponse?.destroy();
     if (pending && !res.writableEnded && !pending.destroyed) pending.destroy();
   };
+  requests?.active.set(abortUpstream, operationDone);
   req.once('aborted', abortUpstream);
   res.once('close', abortUpstream);
+  if (authorityKey && contentCache) {
+    // Destroying with an error routes into the ordinary unreachable path,
+    // which answers from the store when it can and with 502 when it cannot.
+    const budget = setTimeout(() => {
+      const pending = currentUpstream;
+      if (pending && !res.headersSent && !pending.destroyed)
+        pending.destroy(new Error('Touchpoint decision budget spent'));
+    }, TOUCHPOINT_DECISION_BUDGET_MS);
+    budget.unref?.();
+    res.once('close', () => clearTimeout(budget));
+  }
   /**
    * Answer from the daemon's own store because the runtime could not be
    * reached (OPEND-3436). Reports whether it did, so every caller can fall
@@ -641,7 +831,10 @@ function proxyTouchpointRuntimeRequest(
     res.status(200);
     res.setHeader('content-type', 'application/json');
     res.setHeader(TOUCHPOINT_OFFLINE_REPLAY_HEADER, '1');
-    res.end(Buffer.from(JSON.stringify(replayed), 'utf8'));
+    const localBody = Buffer.from(JSON.stringify(replayed), 'utf8');
+    const resources = touchpointResourceSizes(replayed);
+    res.setHeader(TOUCHPOINT_LOAD_METRICS_HEADER, touchpointMetricsHeader({ daemon_version: context.daemonVersion ?? null, cache_hit: true, cache_source: 'offline_fallback', local_response_bytes: localBody.byteLength, local_base64_bytes: resources.base64, decoded_resource_bytes: resources.decoded }));
+    res.end(localBody);
     return true;
   };
   /**
@@ -651,7 +844,12 @@ function proxyTouchpointRuntimeRequest(
    * loop between a server that trims and a cache that cannot assemble.
    */
   const send = (held: HeldContentRef | null, fallback: boolean): void => {
+    const ticket = contentKey && contentCache ? contentCache.ticket(contentKey) : undefined;
     const attempt = new URL(target);
+    if (contentKey && contentCache && !attempt.searchParams.get('activeDecisionId')) {
+      const persistedDecisionId = contentCache.activeDecisionId(contentKey);
+      if (persistedDecisionId) attempt.searchParams.set('activeDecisionId', persistedDecisionId);
+    }
     if (held) {
       attempt.searchParams.set('heldContentId', held.heldContentId);
       attempt.searchParams.set('heldContentLocale', held.heldContentLocale);
@@ -666,9 +864,9 @@ function proxyTouchpointRuntimeRequest(
     // refresh pulled the payload uncompressed — measured at 383KB against 214KB
     // for the same decision. Forward the caller's preference and hand its
     // `content-encoding` back, so the body stays labelled the way it is framed.
-    const acceptEncoding = req.headers['accept-encoding'];
-    if (typeof acceptEncoding === 'string' && acceptEncoding)
-      headers['accept-encoding'] = acceptEncoding;
+    // Only codings the daemon can read are forwarded; see `decodableAcceptEncoding`.
+    const acceptEncoding = decodableAcceptEncoding(req.headers['accept-encoding']);
+    if (acceptEncoding) headers['accept-encoding'] = acceptEncoding;
     if (body) {
       headers['content-type'] =
         typeof req.headers['content-type'] === 'string'
@@ -676,10 +874,89 @@ function proxyTouchpointRuntimeRequest(
           : 'application/json';
       headers['content-length'] = String(body.length);
     }
+    /**
+     * The status this attempt's upstream answered with, once it has answered.
+     *
+     * The decision budget and a broken-off body both surface as errors, and an
+     * error used to read as "the runtime was not reached" whatever had already
+     * arrived. For a 410 that meant replaying the very package the server had
+     * just withdrawn, as a 200, with the offline-replay header on it. Whether
+     * the runtime was reached is decided by the status line, so the failure
+     * handlers ask this instead of assuming.
+     */
+    let upstreamStatus: number | null = null;
+    const refuseCachedAuthority = (status: number): void => {
+      if (!contentCache) return;
+      if (authorityScope && (status === 401 || status === 403)) contentCache.refuseScope(authorityScope);
+      else if (authorityKey && status === 404) contentCache.refuseReplay(authorityKey, status);
+    };
+    let releaseWithdrawal: (() => void) | null = null;
+    const settleWithdrawal = (body: unknown): void => {
+      if (!releaseWithdrawal) return;
+      const release = releaseWithdrawal;
+      releaseWithdrawal = null;
+      settlePendingWithdrawal = null;
+      try { if (authorityKey && contentCache) contentCache.forgetWithdrawn(authorityKey, body); }
+      finally { release(); }
+    };
+    let cutShortSettled = false;
+    let bodyEnded = false;
+    /**
+     * Settles an attempt whose body ended in an error — the decision budget,
+     * a reset socket, a truncated stream — before it could be answered.
+     *
+     * An authoritative status is answered as itself, never from the store. A
+     * 410 also reclaims what the normal `end` path would have: its receipt is
+     * unreadable here, and `touchpointWithdrawalReclaims` already rules that
+     * an unreadable receipt is the whole deployment being withdrawn. The
+     * reclaim does not depend on anyone still listening; the withdrawal
+     * happened either way. No response or a transient 5xx keeps offline replay.
+     * An incomplete 2xx also keeps replay: its status grants no usable decision
+     * until the whole body can be validated, so the previous complete answer
+     * remains the only display authority the daemon has.
+     */
+    const settleCutShort = (): void => {
+      if (cutShortSettled || bodyEnded) return;
+      cutShortSettled = true;
+      if (upstreamStatus !== null && touchpointStatusRefusesReplay(upstreamStatus)) {
+        if (upstreamStatus === 410) settleWithdrawal(null);
+        finishOperation();
+        if (res.headersSent) res.end();
+        else if (!callerGone && !res.writableEnded)
+          res.status(upstreamStatus).json({ error: 'touchpoint_runtime_response_incomplete' });
+        return;
+      }
+      finishOperation();
+      if (res.headersSent) res.end();
+      // DNS failure, refused connection, reset socket, or this proxy's own
+      // timeout: the runtime was not reached, so the last thing it said is the
+      // best thing the daemon has.
+      else if (!answerFromCache('upstream_unreachable'))
+        res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
+    };
     const transport = attempt.protocol === 'https:' ? https : http;
+    // Server time is captured before awaited reads; download time consumes its window.
+    const requestStarted = performance.now();
+    const requestElapsed = () => Math.max(0, performance.now() - requestStarted);
     const upstream = transport.request(attempt, { method: req.method, headers }, (upstreamRes) => {
+      if (callerGone && operationFinished) { upstreamRes.destroy(); return; }
+      currentResponse = upstreamRes;
+      upstreamStatus = upstreamRes.statusCode ?? null;
+      if (upstreamStatus === 410 && authorityKey && contentCache) {
+        releaseWithdrawal = contentCache.pauseReplay(authorityKey);
+        settlePendingWithdrawal = settleWithdrawal;
+      }
+      // The status itself retires the old grant, even if the body is cut off,
+      // oversized, or unreadable. Keep bytes for a later authenticated renewal.
+      if (upstreamStatus !== null) refuseCachedAuthority(upstreamStatus);
+      if (callerGone) { settleCutShort(); upstreamRes.destroy(); return; }
+      const upstreamMetrics = parseTouchpointLoadMetrics(typeof upstreamRes.headers[TOUCHPOINT_LOAD_METRICS_HEADER] === 'string' ? upstreamRes.headers[TOUCHPOINT_LOAD_METRICS_HEADER] : null);
       const passThrough = () => {
+        upstreamRes.once('end', () => { bodyEnded = true; finishOperation(); });
+        upstreamRes.once('error', settleCutShort);
+        upstreamRes.once('close', () => { if (!bodyEnded) settleCutShort(); });
         res.status(upstreamRes.statusCode ?? 502);
+        res.setHeader(TOUCHPOINT_LOAD_METRICS_HEADER, touchpointMetricsHeader({ daemon_version: context.daemonVersion ?? null, server_version: upstreamMetrics?.server_version ?? null, resource_read_ms: upstreamMetrics?.resource_read_ms ?? null }));
         res.setHeader('content-type', upstreamRes.headers['content-type'] ?? 'application/json');
         // Without this the client would decode gzip bytes as JSON. It is set only
         // when upstream actually encoded, so an unencoded reply is unaffected.
@@ -688,7 +965,7 @@ function proxyTouchpointRuntimeRequest(
           res.setHeader('content-encoding', contentEncoding);
         pipeProxyStreamWithGuard(upstreamRes, res, () => res.destroy());
       };
-      if (!contentKey || !contentCache) {
+      if (!contentCache || (!contentKey && !(authorityKey && upstreamStatus === 410))) {
         passThrough();
         return;
       }
@@ -700,6 +977,7 @@ function proxyTouchpointRuntimeRequest(
       let failed = false;
       let streaming = false;
       let answered = false;
+      let firstBodyByte: number | null = null;
       const forward = (chunk: Buffer): void => {
         if (!chunk.byteLength) return;
         if (!res.write(chunk)) {
@@ -719,6 +997,7 @@ function proxyTouchpointRuntimeRequest(
        */
       const degradeToStreaming = (): void => {
         streaming = true;
+        res.setHeader(TOUCHPOINT_LOAD_METRICS_HEADER, touchpointMetricsHeader({ daemon_version: context.daemonVersion ?? null }));
         res.status(upstreamRes.statusCode ?? 502);
         res.setHeader('content-type', upstreamRes.headers['content-type'] ?? 'application/json');
         const contentEncoding = upstreamRes.headers['content-encoding'];
@@ -750,22 +1029,22 @@ function proxyTouchpointRuntimeRequest(
        */
       const settleOversizedStatus = (): boolean => {
         const status = upstreamRes.statusCode ?? 502;
-        if (status === 410 && contentKey && contentCache) {
-          contentCache.forgetWithdrawn(contentKey, null);
+        if (status === 410) {
+          settleWithdrawal(null);
           // The 410 itself still goes to the browser, exactly as upstream
           // framed it. Deciding what to do with it is not this proxy's job.
           return false;
         }
         return touchpointStatusIsTransient(status) && answerFromCache('upstream_unavailable');
       };
+      upstreamRes.once('close', () => { if (!bodyEnded && !operationFinished && !answered) settleCutShort(); });
       upstreamRes.on('error', () => {
         if (answered) return;
         failed = true;
-        if (res.headersSent) res.end();
-        else if (!answerFromCache('upstream_unreachable'))
-          res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
+        settleCutShort();
       });
       upstreamRes.on('data', (chunk: Buffer) => {
+        if (firstBodyByte === null && chunk.byteLength) firstBodyByte = performance.now();
         if (answered) return;
         if (streaming) {
           forward(chunk);
@@ -778,6 +1057,7 @@ function proxyTouchpointRuntimeRequest(
           // Answered from cache. Keeping the rest would put the daemon's memory
           // back above the ceiling for a body nobody will read.
           answered = true;
+          finishOperation();
           chunks.length = 0;
           size = 0;
           upstreamRes.destroy();
@@ -786,20 +1066,42 @@ function proxyTouchpointRuntimeRequest(
         degradeToStreaming();
       });
       upstreamRes.on('end', () => {
+        bodyEnded = true;
         if (answered) return;
         if (streaming) {
+          finishOperation();
           res.end();
           return;
         }
         if (failed || res.headersSent) return;
         const raw = Buffer.concat(chunks, size);
+        const publicTransferMs = firstBodyByte === null ? null : Math.max(0, performance.now() - firstBodyByte);
         chunks.length = 0;
+        const annotate = (localBody: Buffer, publicBody: unknown = null, localContent: unknown = publicBody, assembled = false, compressedEcho = false) => {
+          const publicSizes = touchpointResourceSizes(publicBody), localSizes = touchpointResourceSizes(localContent);
+          res.setHeader(TOUCHPOINT_LOAD_METRICS_HEADER, touchpointMetricsHeader({
+            daemon_version: context.daemonVersion ?? null,
+            public_transfer_ms: publicTransferMs, public_response_bytes: raw.byteLength,
+            local_response_bytes: compressedEcho ? null : localBody.byteLength,
+            public_base64_bytes: publicSizes.base64, local_base64_bytes: localSizes.base64,
+            decoded_resource_bytes: localSizes.decoded,
+            resource_read_ms: assembled ? null : upstreamMetrics?.resource_read_ms ?? null,
+            server_version: upstreamMetrics?.server_version ?? null,
+            cache_hit: assembled ? true : null, cache_source: assembled ? 'daemon' : null,
+            held_content_id: held?.heldContentId ?? null, held_content_locale: held?.heldContentLocale ?? null,
+            content_omitted: publicBody && typeof publicBody === 'object' && 'contentOmitted' in publicBody ? (publicBody as { contentOmitted?: boolean }).contentOmitted ?? null : null,
+          }));
+        };
         const echo = () => {
+          finishOperation();
           res.status(upstreamRes.statusCode ?? 502);
           res.setHeader('content-type', upstreamRes.headers['content-type'] ?? 'application/json');
           const contentEncoding = upstreamRes.headers['content-encoding'];
           if (typeof contentEncoding === 'string' && contentEncoding)
             res.setHeader('content-encoding', contentEncoding);
+          let parsedEcho: unknown = null;
+          try { const text = decodeProxyBody(raw, upstreamRes.headers['content-encoding'] as string | undefined, MAX_BUFFERED_DECISION_BYTES); if (text) parsedEcho = JSON.parse(text.toString('utf8')); } catch { /* Unknown body remains unknown. */ }
+          annotate(raw, parsedEcho, parsedEcho, false, Boolean(upstreamRes.headers['content-encoding']));
           res.end(raw);
         };
         const decoded = decodeProxyBody(
@@ -815,22 +1117,24 @@ function proxyTouchpointRuntimeRequest(
           // the daemon and the browser cannot disagree about what a 410 means.
           // The 410 itself is forwarded either way — deciding what the browser
           // does with it is not this proxy's job.
-          if (status === 410 && contentKey && contentCache) {
+          if (status === 410) {
             let body: unknown = null;
             try {
               if (decoded) body = JSON.parse(decoded.toString('utf8'));
             } catch {
               body = null;
             }
-            contentCache.forgetWithdrawn(contentKey, body);
+            settleWithdrawal(body);
           }
           // 5xx is "temporarily unavailable", which is a transport condition
           // wearing a status code. Everything else — 401, 403, 404, 410 — is an
           // answer, and a cache may never overrule one.
-          else if (touchpointStatusIsTransient(status) && answerFromCache('upstream_unavailable'))
-            return;
+          else if (touchpointStatusIsTransient(status)) {
+            finishOperation();
+            if (answerFromCache('upstream_unavailable')) return;
+          }
         }
-        if (!decoded || status !== 200) {
+        if (!contentKey || !decoded || status !== 200) {
           echo();
           return;
         }
@@ -847,9 +1151,11 @@ function proxyTouchpointRuntimeRequest(
         }
         const decision = parsed as Record<string, unknown>;
         if (decision.contentOmitted !== true) {
-          contentCache.remember(contentKey, decision);
+          contentCache.remember(contentKey, decision, ticket, requestElapsed());
+          finishOperation();
           res.status(200);
           res.setHeader('content-type', upstreamRes.headers['content-type'] ?? 'application/json');
+          annotate(decoded, decision);
           res.end(decoded);
           return;
         }
@@ -858,42 +1164,49 @@ function proxyTouchpointRuntimeRequest(
         // non-null by construction; rebuilding without it would rebuild from
         // whatever the record says NOW, which a concurrent full response for
         // the same placement may already have replaced.
-        const full = held ? contentCache.reassemble(contentKey, held, decision) : null;
+        const full = held ? contentCache.reassemble(contentKey, held, decision, ticket, requestElapsed()) : null;
         if (full) {
+          finishOperation();
           res.status(200);
           res.setHeader('content-type', 'application/json');
-          res.end(Buffer.from(JSON.stringify(full), 'utf8'));
+          const localBody = Buffer.from(JSON.stringify(full), 'utf8');
+          annotate(localBody, decision, full, true);
+          res.end(localBody);
           return;
         }
         // The one thing that must never happen is a campaign that does not show
         // because a cache went bad. Ask again the way today's daemon asks, with
         // no held content, and answer from that.
-        if (fallback) send(null, false);
+        if (fallback) { try { send(null, false); } catch { echo(); } }
         else echo();
       });
     });
     currentUpstream = upstream;
+    upstream.once('close', () => {
+      if (ticket !== undefined) contentCache?.finishTicket(ticket);
+      // ClientRequest.close can precede body classification. A received body
+      // owns settlement; only a request with no response may finish here.
+      if (currentUpstream === upstream && upstreamStatus === null) finishOperation();
+    });
     upstream.setTimeout(30_000, () =>
       upstream.destroy(new Error('Touchpoint runtime request timed out')),
     );
-    upstream.on('error', () => {
-      if (res.headersSent) res.end();
-      // DNS failure, refused connection, reset socket, or this proxy's own
-      // timeout: the runtime was not reached, so the last thing it said is the
-      // best thing the daemon has.
-      else if (!answerFromCache('upstream_unreachable'))
-        res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
-    });
+    upstream.on('error', settleCutShort);
     if (body) upstream.write(body);
     upstream.end();
   };
 
   const held = contentKey && contentCache ? contentCache.held(contentKey) : null;
-  send(held, held !== null);
+  try { send(held, held !== null); }
+  catch {
+    finishOperation();
+    if (!res.headersSent && !res.writableEnded) res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
+  }
 }
 
-export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): void {
+export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): VelaRoutesLifecycle {
   const env = deps.env ?? process.env;
+  const daemonVersion = readCurrentAppVersionInfo({ env }).then(info => normalizeTelemetryAppVersion(info.version)).catch(() => null);
   const onCredentialStateObserved =
     deps.onCredentialStateObserved ?? (() => undefined);
   const { RUNTIME_DATA_DIR } = deps.paths;
@@ -901,6 +1214,24 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
   // other daemon path (AGENTS.md "Daemon data directory contract"). Two
   // namespaces therefore get two roots and cannot see each other's content.
   const touchpointContentCache = createTouchpointContentCache(RUNTIME_DATA_DIR);
+  const requests: TouchpointRequests = { closing: false, active: new Map() };
+  let closePromise: Promise<void> | null = null;
+  const lifecycle: VelaRoutesLifecycle = {
+    close() {
+      if (closePromise) return closePromise;
+      requests.closing = true;
+      closePromise = (async () => {
+        const pending = [...requests.active.entries()];
+        for (const [abort] of pending) abort();
+        // Await response/body classification, not merely HTTP close. Failed
+        // durable settlements retain their journal tokens on lock release.
+        await Promise.all(pending.map(([, done]) => done));
+        touchpointContentCache.close();
+        requests.active.clear();
+      })();
+      return closePromise;
+    },
+  };
   const { readAppConfig } = deps.appConfig;
   const getPublicBaseUrl = deps.http.getPublicBaseUrl ?? ((req: Request) => {
     const proto = req.protocol || 'http';
@@ -1159,13 +1490,14 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
           proxyTouchpointRuntimeRequest(
             req,
             res,
-            { ...context, apiUrl: target.origin },
+            { ...context, apiUrl: target.origin, daemonVersion: await daemonVersion },
             'production',
             touchpointContentCache,
+            requests,
           );
           return;
         }
-        proxyTouchpointRuntimeRequest(req, res, context, 'production', touchpointContentCache);
+        proxyTouchpointRuntimeRequest(req, res, { ...context, daemonVersion: await daemonVersion }, 'production', touchpointContentCache, requests);
       } catch {
         res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
       }
@@ -1189,7 +1521,7 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
           res.status(401).json({ error: 'vela_control_key_required' });
           return;
         }
-        proxyTouchpointRuntimeRequest(req, res, context, 'test');
+        proxyTouchpointRuntimeRequest(req, res, { ...context, daemonVersion: await daemonVersion }, 'test', undefined, requests);
       } catch {
         res.status(502).json({ error: 'touchpoint_runtime_unavailable' });
       }
@@ -1417,4 +1749,5 @@ export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): 
       res.status(500).json({ error: String(err) });
     }
   });
+  return lifecycle;
 }
