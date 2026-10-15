@@ -78,6 +78,7 @@ it.each(['missing', 'duplicate', 'wrong-selector'] as const)('Personal: %s cmt i
   fireEvent.click(screen.getByTestId('comment-side-item'));
   const request = post.mock.calls.map(call => call[0]).find(data => data?.locate);
   expect(request).toBeDefined();
+  expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
   expect(screen.queryByTestId('comment-active-pin')).toBeNull();
   expect(screen.queryByTestId(`comment-saved-marker-${comment.elementId}`)).toBeNull();
   await dispatch({ ...target, type: 'od:comment-active-target-update' });
@@ -106,6 +107,9 @@ it('Personal: waits for the active frame target report and marker selection also
   const { post, dispatch, target } = await setup();
   fireEvent.click(screen.getByTestId('comment-side-item'));
   expect(post.mock.calls.filter(call => call[0]?.locate)).toHaveLength(0);
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  await dispatch({ type: 'od:comment-location-missing', requestId: 'unwitnessed' });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
   const foreignFrame = document.createElement('iframe');
   document.body.appendChild(foreignFrame);
   try {
@@ -174,7 +178,9 @@ it('Personal: an unresolved request cannot reveal through a later valid report; 
   fireEvent.click(screen.getByTestId('comment-side-item'));
   const unresolved = post.mock.calls.map(call => call[0]).find(data => data?.locate);
   expect(unresolved).toBeDefined();
+  expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
   await dispatch({ type: 'od:comment-targets', targets: [target] });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
   await dispatch({ ...target, type: 'od:comment-active-target-update', requestId: unresolved.requestId });
   await dispatch({ ...target, type: 'od:comment-active-target-update' });
   expect(screen.queryByTestId('comment-active-pin')).toBeNull();
@@ -202,6 +208,8 @@ it('Personal: changing a pending selection prevents old tagged or untagged repli
   const current = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
   expect(current.requestId).not.toBe(old.requestId);
   expect(current.elementId).toBe(nextComment.elementId);
+  await dispatch({ type: 'od:comment-location-missing', requestId: old.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
   await dispatch({ ...target, type: 'od:comment-active-target-update', requestId: old.requestId });
   await dispatch({ ...target, type: 'od:comment-active-target-update' });
   expect(screen.queryByTestId('comment-active-pin')).toBeNull();
@@ -209,4 +217,74 @@ it('Personal: changing a pending selection prevents old tagged or untagged repli
   await dispatch({ ...nextTarget, type: 'od:comment-active-target-update' });
   expect(screen.getByTestId('comment-active-pin')).toHaveStyle({ left: '100px', top: '120px' });
   expect(screen.getByTestId('comment-popover-input')).toHaveValue(nextComment.note);
+});
+it('Personal: paired missing feedback rejects foreign/future replies, clears on repeat selection and restoration', async () => {
+  const { post, dispatch, target } = await setup('srcdoc');
+  await dispatch({ type: 'od:comment-targets', targets: [target] });
+  const row = screen.getByTestId('comment-side-item');
+  fireEvent.click(row);
+  const first = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
+  const foreignFrame = document.createElement('iframe');
+  document.body.appendChild(foreignFrame);
+  try {
+    await dispatch({ type: 'od:comment-location-missing', requestId: first.requestId }, foreignFrame.contentWindow);
+    await dispatch({ type: 'od:comment-location-missing', requestId: 'comment-location-999' });
+    expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  } finally { foreignFrame.remove(); }
+  await dispatch({ type: 'od:comment-location-missing', requestId: first.requestId });
+  expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
+  fireEvent.click(row);
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  const second = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
+  await dispatch({ type: 'od:comment-location-missing', requestId: first.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  await dispatch({ type: 'od:comment-location-missing', requestId: second.requestId });
+  expect(screen.getByTestId('comment-location-unavailable')).toBeInTheDocument();
+  await dispatch({ type: 'od:comment-targets', targets: [target] });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  // A newer authoritative index supersedes the old missing acknowledgement.
+  await dispatch({ type: 'od:comment-location-missing', requestId: second.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  fireEvent.click(row);
+  const restored = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
+  await dispatch({ ...target, type: 'od:comment-active-target-update', requestId: restored.requestId,
+    position: { ...target.position, y: 80 } });
+  expect(screen.getByTestId('comment-active-pin')).toHaveStyle({ top: '80px' });
+  await dispatch({ type: 'od:comment-location-missing', requestId: restored.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+});
+it('Personal: file/project changes clear loss and reject the old request while the current document is pending', async () => {
+  const { view, post, dispatch } = await setup();
+  await dispatch({ type: 'od:comment-targets', targets: [] });
+  fireEvent.click(screen.getByTestId('comment-side-item'));
+  const old = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
+  expect(screen.getByTestId('comment-location-unavailable')).toBeInTheDocument();
+  view.rerender(tree({ ...file, name: 'other.html', path: 'other.html' }, html.replace('Target', 'Other')));
+  await dispatch({ type: 'od:comment-location-missing', requestId: old.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  view.rerender(tree());
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  fireEvent.click(screen.getByTestId('comment-side-item'));
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  view.rerender(<CollabProvider value={personal}>
+    <FileViewer projectId="other-project" projectKind="prototype" file={file} liveHtml={html} previewComments={[comment]} />
+  </CollabProvider>);
+  await dispatch({ type: 'od:comment-location-missing', requestId: old.requestId });
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+});
+it('Personal: a replaced preview frame cannot carry loss into the newly loaded source', async () => {
+  const { view, frame, post, dispatch } = await setup('srcdoc');
+  await dispatch({ type: 'od:comment-targets', targets: [] });
+  fireEvent.click(screen.getByTestId('comment-side-item'));
+  const old = post.mock.calls.map(call => call[0]).filter(data => data?.locate).at(-1);
+  expect(screen.getByTestId('comment-location-unavailable')).toBeInTheDocument();
+  const oldWindow = frame.contentWindow;
+  view.unmount();
+  const current = await setup('srcdoc');
+  fireEvent.click(screen.getByTestId('comment-side-item'));
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
+  // Neither the previous document's index nor its request owns the new selection.
+  await current.dispatch({ type: 'od:comment-targets', targets: [] }, oldWindow);
+  await current.dispatch({ type: 'od:comment-location-missing', requestId: old.requestId }, oldWindow);
+  expect(screen.queryByTestId('comment-location-unavailable')).toBeNull();
 });

@@ -4743,6 +4743,7 @@ export function CommentSidePanel({
   filePath,
   selectedIds,
   activeCommentId,
+  unavailableCommentId,
   collapsed,
   hasUnread = false,
   onCollapsedChange,
@@ -4774,6 +4775,7 @@ export function CommentSidePanel({
   filePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
+  unavailableCommentId?: string | null;
   collapsed: boolean;
   hasUnread?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -5068,6 +5070,11 @@ export function CommentSidePanel({
                 ) : null}
               </div>
               <CommentListBody key={comment.note} note={comment.note} t={t} />
+              {unavailableCommentId === comment.id ? (
+                <span role="status" data-testid="comment-location-unavailable">
+                  {t('comment.anchorState.lost')}
+                </span>
+              ) : null}
               {projectId && comment.attachments && comment.attachments.length > 0 ? (
                 <div className="comment-side-attachments">
                   {comment.attachments.map((attachment) => {
@@ -5241,6 +5248,7 @@ function CommentSideDock({
   filePath,
   selectedIds,
   activeCommentId,
+  unavailableCommentId,
   collapsed,
   hasUnread = false,
   onCollapsedChange,
@@ -5269,6 +5277,7 @@ function CommentSideDock({
   filePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
+  unavailableCommentId?: string | null;
   collapsed: boolean;
   hasUnread?: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
@@ -5306,6 +5315,7 @@ function CommentSideDock({
         filePath={filePath}
         selectedIds={selectedIds}
         activeCommentId={activeCommentId}
+        unavailableCommentId={unavailableCommentId}
         collapsed={collapsed}
         hasUnread={hasUnread}
         onCollapsedChange={onCollapsedChange}
@@ -9416,6 +9426,9 @@ function HtmlViewer({
   useEffect(() => cancelHoverCardDismiss, [cancelHoverCardDismiss]);
   const [activePreviewCommentId, setActivePreviewCommentId] = useState<string | null>(null);
   const [commentLocationIntent, setCommentLocationIntent] = useState(0);
+  const [missingCommentLocation, setMissingCommentLocation] = useState<{
+    commentId: string; previewKey: string; intent: number;
+  } | null>(null);
   const [liveCommentTargets, setLiveCommentTargets] = useState<Map<string, PreviewCommentSnapshot>>(() => new Map());
   const [commentTargetsReadyKey, setCommentTargetsReadyKey] = useState<string | null>(null);
   const liveCommentTargetsRef = useRef(liveCommentTargets);
@@ -12667,8 +12680,9 @@ function HtmlViewer({
   const previewMatchesPreparedSource = Boolean(commentPreparation.saved && source !== null
     && source.replace(/^\uFEFF/, '') === commentPreparation.saved.source.replace(/^\uFEFF/, ''));
   const preparedPreviewReady = previewMatchesPreparedSource && commentIdentityFrameReady && !commentPreparation.pendingDocument;
-  const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean } | null>(null);
+  const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean; reportRevision: number } | null>(null);
   const commentLocateSequenceRef = useRef(0);
+  const commentTargetReportRevisionRef = useRef(0);
   useEffect(() => {
     setLiveCommentTargets(new Map());
   }, [commentTargetsKey]);
@@ -12851,6 +12865,8 @@ function HtmlViewer({
       if (!data?.type) return;
       if (data.type === 'od:comment-targets' && Array.isArray(data.targets)) {
         setCommentTargetsReadyKey(commentTargetsKey);
+        commentTargetReportRevisionRef.current += 1;
+        setMissingCommentLocation(null);
         const next = indexCommentTargets(data.targets.map(snapshotFromData));
         for (const [id, snapshot] of next) {
           if (!id || !isValidCommentOverlayPosition(snapshot.position)) next.delete(id);
@@ -12885,6 +12901,9 @@ function HtmlViewer({
         const request = commentLocateRequestRef.current;
         if (!request || request.requestId !== data.requestId || request.previewKey !== commentTargetsKey) return;
         if (data.type === 'od:comment-location-missing') {
+          // A completed locate or a newer target index supersedes this failure.
+          if (request.scrolled || request.reportRevision !== commentTargetReportRevisionRef.current) return;
+          setMissingCommentLocation({ commentId: request.commentId, previewKey: request.previewKey, intent: commentLocationIntent });
           setActiveCommentTarget(null);
           setHoveredCommentTarget(null);
           return;
@@ -12898,6 +12917,7 @@ function HtmlViewer({
         // A tagged reply acknowledges srcDoc's completed locate/scroll. Later
         // tracking updates must not trigger the URL bridge's initial scroll.
         request.scrolled = true;
+        setMissingCommentLocation(null);
         setActiveCommentTarget(snapshot);
         setHoveredCommentTarget(snapshot);
         setLiveCommentTargets(current => new Map(current).set(snapshot.elementId, snapshot));
@@ -12911,6 +12931,7 @@ function HtmlViewer({
         // boxes without request ids; match the current target and use its
         // existing scroll protocol, without changing daemon or its contract.
         if (request && request.previewKey === commentTargetsKey && snapshot.elementId === request.targetId) {
+          setMissingCommentLocation(null);
           const height = iframeRef.current?.clientHeight ?? 0;
           if (!request.scrolled && height > 0) {
             // The first measurable reply consumes this locate intent even if
@@ -13041,7 +13062,7 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, commentTargetsReadyKey, isActivePreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
+  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, commentTargetsReadyKey, commentLocationIntent, isActivePreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
 
   useEffect(() => {
     commentLocateRequestRef.current = null;
@@ -13054,7 +13075,8 @@ function HtmlViewer({
     const requestId = `comment-location-${++commentLocateSequenceRef.current}`;
     const resolution = resolveOwnerCommentAnchor(comment, liveCommentTargets, collab.publishedVersion ?? undefined);
     commentLocateRequestRef.current = { requestId, commentId: comment.id, previewKey: commentTargetsKey, selector: comment.selector,
-      targetId: resolution.state !== 'lost' ? resolution.snapshot?.elementId ?? null : null, scrolled: false };
+      targetId: resolution.state !== 'lost' ? resolution.snapshot?.elementId ?? null : null, scrolled: false,
+      reportRevision: commentTargetReportRevisionRef.current };
     iframeRef.current?.contentWindow?.postMessage({ type: 'od:comment-active-target',
       elementId: comment.elementId, selector: comment.selector, locate: true, requestId }, '*');
     return () => { commentLocateRequestRef.current = null; };
@@ -16893,6 +16915,14 @@ function HtmlViewer({
         document.body,
       )
     : null;
+  // Only a current target report or a paired locate failure can establish loss.
+  // Saved boxes/text never supply location evidence; an unwitnessed document is pending.
+  const selectedLocationComment = previewComments.find(comment => comment.id === activePreviewCommentId
+    && comment.filePath === file.name && commentUsesIdentity(comment) && ownerCommentNeedsLocation(comment, collab.enabled));
+  const unavailableCommentId = boardMode && selectedLocationComment && commentTargetsReadyKey === commentTargetsKey
+    && (resolveOwnerCommentAnchor(selectedLocationComment, liveCommentTargets, collab.publishedVersion ?? undefined).state === 'lost'
+      || (missingCommentLocation?.commentId === selectedLocationComment.id && missingCommentLocation.previewKey === commentTargetsKey
+        && missingCommentLocation.intent === commentLocationIntent)) ? selectedLocationComment.id : null;
   const commentSidePanel = workspaceActive && commentPanelOpen ? (
     <CommentSideDock
       comments={visibleSideComments}
@@ -16901,6 +16931,7 @@ function HtmlViewer({
       deckSlideCount={effectiveDeck ? slideState?.count : undefined}
       selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
+      unavailableCommentId={unavailableCommentId}
       // The panel used to be pinned open whenever it was portaled (it docked
       // into a full-height column, where a collapsed rail made no sense). It
       // now always floats as a card, so its collapse control has to actually
