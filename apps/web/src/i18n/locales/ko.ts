@@ -3077,7 +3077,7 @@ export const ko: Dict = {
   'fileViewer.empty': '보려는 파일을 선택하세요.',
   'fileViewer.loading': '불러오는 중…',
   'fileViewer.commentIdentityPrepare': "Prepare static comments · save source version",
-  'fileViewer.commentIdentityConfirm': "Prepare persistent identities for static HTML comments? This explicitly saves a source version. Finish edits and drafts first. Dynamic elements keep their existing behavior without this guarantee. Cancel makes no changes.",
+  'fileViewer.commentIdentityConfirm': "Prepare persistent identities for static HTML comments? This explicitly saves a source version. Finish edits and drafts first. Dynamic elements keep their existing behavior without this guarantee. Cancel makes no changes. No comment or publication will be submitted.",
   'fileViewer.commentIdentitySaving': "Saving comment identities…",
   'fileViewer.commentIdentityFailed': "Preparation did not complete. Your inputs are retained. Settle edits, check the source version and explicitly retry. No comment or publication was submitted.",
   'fileViewer.commentIdentitySaved': "Comment identities saved in source version {version}. Preview ready; select a target or publish explicitly.",

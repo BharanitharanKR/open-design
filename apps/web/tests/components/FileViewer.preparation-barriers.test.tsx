@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createHash, webcrypto } from 'node:crypto';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
@@ -78,6 +78,7 @@ function setup(options: { reload?: 'old' | 'failed' | 'held'; history?: PreviewC
 async function prepare() {
   const button = await screen.findByRole('button', { name: 'Prepare static comments · save source version' });
   await waitFor(() => expect(button).toBeEnabled()); fireEvent.click(button);
+  fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('Waiting for the matching preview'));
 }
 async function acknowledge(expected = uuid) {
@@ -195,7 +196,7 @@ it.each(['api', 'reopened'] as const)('R5 %s A -> ordinary save B before first a
   expect(route.saveComment).toHaveBeenCalledWith(expect.objectContaining({ elementId: `cmt:${uuid}`, text: 'Edited B' }), 'Note on B', false, [], undefined);
   expect(route.writes).toHaveBeenCalledTimes(before);
   expect(route.fetcher.mock.calls.filter(call => String(call[0]).includes('/versions?bootstrap=0')).length).toBeGreaterThan(1);
-  expect(window.confirm).toHaveBeenCalledTimes(origin === 'api' ? 1 : 0);
+  expect(window.confirm).not.toHaveBeenCalled();
 });
 it('R5 read-only retry preserves a draft and remains available after outage without writes', async () => {
   const route = setup(); await prepare(); route.saveB(); await acknowledge('Edited B');
@@ -292,5 +293,7 @@ it.each(['cmt:fake', 'cmt:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'])('untrusted com
   });
   await act(async () => {}); // Flush the completed in-memory raw response before the user action.
   fireEvent.click(screen.getByTestId('comment-panel-toggle'));
-  await waitFor(() => expect(window.confirm).toHaveBeenCalledOnce());
+  const dialog = await screen.findByRole('alertdialog');
+  expect(window.confirm).not.toHaveBeenCalled();
+  await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' })));
 });

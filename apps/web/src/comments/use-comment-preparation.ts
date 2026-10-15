@@ -15,7 +15,7 @@ export function useCommentPreparation(options: {
   document?: { source: string | null; key: string; ready: boolean };
   verifiedDocument?: { source: string } | null;
   readCurrentProof?: () => Promise<SourcePreparationProof>;
-  confirm: () => boolean; apply: (result: PrepareCommentIdentityResponse) => void;
+  confirm: () => boolean | Promise<boolean>; apply: (result: PrepareCommentIdentityResponse) => void;
 }) {
   const accountGeneration = currentWorkspaceAccountGeneration();
   const scope = JSON.stringify([options.projectId, options.fileName, workspaceIdentityCacheKey(options.context), accountGeneration]);
@@ -42,6 +42,7 @@ export function useCommentPreparation(options: {
     setDocumentRevision(value => value + 1);
   }); // Pending may be installed imperatively; check every commit, not just prop changes.
   const running = useRef(false);
+  const confirming = useRef(false);
   const proofRead = useRef<{ revision: number } | null>(null);
   const proofBusy = () => proofRead.current?.revision === live.current.revision;
   const alive = useRef(true);
@@ -61,15 +62,20 @@ export function useCommentPreparation(options: {
   function validatePublication(requirePreparedDocument = true) {
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     if (!options.authorized || !options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
-    if (running.current || proofBusy() || documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportBlocked('COMMENT_PREVIEW_NOT_READY'); return false; }
+    if (confirming.current || running.current || proofBusy() || documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportBlocked('COMMENT_PREVIEW_NOT_READY'); return false; }
     return true;
   }
   async function prepare() {
-    if (running.current || proofBusy() || !alive.current) return false;
+    if (confirming.current || running.current || proofBusy() || !alive.current) return false;
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     if (!options.authorized || !options.context) { reportBlocked('WORKSPACE_CONTEXT_REQUIRED'); return false; }
     if (!options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
-    if (!options.confirm()) return false;
+    confirming.current = true;
+    try { if (!await options.confirm()) return false; }
+    finally { confirming.current = false; }
+    // Consent can stay open while the file, account, source or draft changes.
+    // Never start even the authored-source read from that obsolete intent.
+    if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     running.current = true; setBusy(true); setError(null);
     try {
       const result = await prepareCommentSource({ ...options, revision: renderRevision }, currentAttempt);
@@ -85,7 +91,7 @@ export function useCommentPreparation(options: {
     } finally { running.current = false; if (alive.current) setBusy(false); }
   }
   async function revalidateDocument() {
-    if (running.current || proofBusy() || !alive.current) return false;
+    if (confirming.current || running.current || proofBusy() || !alive.current) return false;
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     if (!options.authorized || !options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
     if (pending.current?.scope !== scope || !options.readCurrentProof) return false;

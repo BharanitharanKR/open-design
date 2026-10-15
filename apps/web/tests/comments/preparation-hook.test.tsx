@@ -8,6 +8,26 @@ const context = { workspaceId: 'ws', workspaceMemberId: 'owner', permissions: { 
 const saved = { source: '<h2 data-od-comment-id="12345678-1234-4234-8234-123456789abc">Target</h2>', changed: true, preparedTargets: 1, version: { id: 'source-version-2', version: 2 } };
 const options = { projectId: 'p', fileName: 'index.html', context, authorized: true, settled: true, inputKey: 'no-drafts', confirm: () => true, apply: vi.fn() };
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); options.apply.mockClear(); resetWorkspaceAccountGeneration(); });
+it.each(['cancel', 'new-draft', 'source', 'file', 'project', 'authority', 'account', 'frame', 'unmount'])('async confirmation keeps %s mutation-free and rejects obsolete consent', async change => {
+  let decide!: (value: boolean) => void;
+  const consent = new Promise<boolean>(resolve => { decide = resolve; });
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('<h2>Target</h2>'));
+  vi.stubGlobal('fetch', fetcher);
+  const initial = { ...options, confirm: () => consent, document: { source: '<h2>Target</h2>', key: 'a', ready: true } };
+  const { result, rerender, unmount } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  let pending!: Promise<boolean>;
+  await act(async () => { pending = result.current.prepare(); });
+  expect(fetcher).not.toHaveBeenCalled();
+  if (change === 'account') advanceWorkspaceAccountGeneration('other-account');
+  else if (change === 'unmount') unmount();
+  else if (change !== 'cancel') rerender({ ...initial, inputKey: change,
+    ...(change === 'new-draft' ? { settled: false } : {}), ...(change === 'file' ? { fileName: 'other.html' } : {}),
+    ...(change === 'project' ? { projectId: 'other' } : {}), ...(change === 'authority' ? { authorized: false } : {}),
+    ...(change === 'source' ? { document: { source: '<h2>New B</h2>', key: 'b', ready: true } } : {}),
+    ...(change === 'frame' ? { document: { ...initial.document, ready: false } } : {}) });
+  await act(async () => { decide(change !== 'cancel'); expect(await pending).toBe(false); });
+  expect(fetcher).not.toHaveBeenCalled(); expect(options.apply).not.toHaveBeenCalled();
+});
 it('cancel never reads or mutates source', async () => {
   const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
   const { result } = renderHook(() => useCommentPreparation({ ...options, confirm: () => false }));

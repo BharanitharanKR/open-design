@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 import { FileViewer } from '../../src/components/FileViewer';
@@ -37,13 +37,37 @@ function setup(options: { readonly?: boolean; streaming?: boolean; fail?: boolea
     return Response.json({});
   });
   vi.stubGlobal('fetch', fetcher);
-  const tree = <CollabProvider value={{ ...collab, viewerOnly: Boolean(options.readonly) }}>
-    <FileViewer projectId="prep-project" projectKind="prototype" file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime: 1 }} streaming={Boolean(options.streaming)} viewerOnly={Boolean(options.readonly)} />
+  const tree = (streaming = Boolean(options.streaming)) => <CollabProvider value={{ ...collab, viewerOnly: Boolean(options.readonly) }}>
+    <FileViewer projectId="prep-project" projectKind="prototype" file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime: 1 }} streaming={streaming} viewerOnly={Boolean(options.readonly)} />
   </CollabProvider>;
-  render(tree);
-  return { writes, fetcher };
+  const view = render(tree());
+  return { writes, fetcher, setStreaming: (value: boolean) => view.rerender(tree(value)) };
+}
+async function saveConsent() {
+  fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save' }));
 }
 afterEach(() => { cleanup(); invalidateHtmlSourceSnapshotProject('prep-project'); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+it('A1 uses an app confirmation: Cancel/Escape mutate nothing; a later Save performs only preparation', async () => {
+  const { writes } = setup({ success: true });
+  const native = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  const trigger = await screen.findByRole('button', { name: 'Prepare static comments · save source version' });
+  await waitFor(() => expect(trigger).toBeEnabled());
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole('alertdialog');
+  expect(dialog).toHaveTextContent('saves a source version');
+  expect(dialog).toHaveTextContent('No comment or publication');
+  expect(writes).not.toHaveBeenCalled(); expect(native).not.toHaveBeenCalled();
+  await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' })));
+  expect(screen.queryByRole('alertdialog')).toBeNull(); expect(writes).not.toHaveBeenCalled();
+  fireEvent.click(trigger);
+  await screen.findByRole('alertdialog');
+  await act(async () => fireEvent.keyDown(document, { key: 'Escape' }));
+  expect(screen.queryByRole('alertdialog')).toBeNull(); expect(writes).not.toHaveBeenCalled();
+  fireEvent.click(trigger);
+  fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(writes).toHaveBeenCalledOnce());
+  expect(writes.mock.calls[0]?.[0]).toContain('/comment-identities/prepare');
+});
 it('explicit source-version preparation entry is discoverable; passive viewing and cancellation invoke no write', async () => {
   const { writes } = setup();
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -51,9 +75,21 @@ it('explicit source-version preparation entry is discoverable; passive viewing a
   expect(writes).not.toHaveBeenCalled();
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
-  expect(confirm).toHaveBeenCalledOnce();
-  expect(confirm.mock.calls[0]?.[0]).toContain('saves a source version');
+  const dialog = await screen.findByRole('alertdialog');
+  expect(confirm).not.toHaveBeenCalled();
+  expect(dialog).toHaveTextContent('saves a source version');
+  await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' })));
   expect(writes).not.toHaveBeenCalled();
+});
+it('Confirm rejects a live generation change made while the app dialog is open', async () => {
+  const { writes, setStreaming } = setup({ success: true });
+  const button = await screen.findByRole('button', { name: 'Prepare static comments · save source version' });
+  await waitFor(() => expect(button).toBeEnabled()); fireEvent.click(button);
+  const dialog = await screen.findByRole('alertdialog');
+  setStreaming(true);
+  await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Save' })));
+  expect(writes).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('COMMENT_PREPARATION_STALE');
 });
 it('generation gate retains the preview and invokes neither confirmation nor source mutation', async () => {
   const { writes } = setup({ streaming: true });
@@ -71,6 +107,7 @@ it('preparation failure shows a retryable error and never automatically comments
   const button = await screen.findByRole('button', { name: 'Prepare static comments · save source version' });
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
+  await saveConsent();
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('COMMENT_VERSION_UNCONFIRMED'));
   expect(writes).toHaveBeenCalledOnce();
   expect(writes.mock.calls[0]?.[0]).toContain('/comment-identities/prepare');
@@ -82,6 +119,7 @@ it.each([false, true])('source-version save awaits a fresh challenged frame; sta
   const button = await screen.findByRole('button', { name: 'Prepare static comments · save source version' });
   await waitFor(() => expect(button).toBeEnabled());
   fireEvent.click(button);
+  await saveConsent();
   await waitFor(() => expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('Waiting for the matching preview'));
   await waitFor(() => expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).srcdoc).toContain('12345678-1234-4234-8234-123456789abc'));
   const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
@@ -115,11 +153,12 @@ it('first supported public exposure invokes explicit preparation, never a public
   const generate = await screen.findByRole('menuitem', { name: 'Generate and copy link' });
   await waitFor(() => expect(generate).toBeEnabled());
   fireEvent.click(generate);
-  await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+  await act(async () => fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' })));
+  expect(confirm).not.toHaveBeenCalled();
   expect(writes).not.toHaveBeenCalled();
-  confirm.mockReturnValue(true);
   await waitFor(() => expect(generate).toBeEnabled());
   fireEvent.click(generate);
+  await saveConsent();
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('COMMENT_VERSION_UNCONFIRMED'));
   expect(writes).toHaveBeenCalledOnce();
   expect(writes.mock.calls[0]?.[0]).toContain('/comment-identities/prepare');

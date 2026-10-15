@@ -1,6 +1,7 @@
 import { commentSelectorsMatch, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
 import { indexCommentTargets } from '../comments/target-index';
 import { useCommentPreparation } from '../comments/use-comment-preparation';
+import { useCommentPreparationConfirmation } from './CommentPreparationConfirmation';
 import { useSourcePreparationProof } from '../comments/use-source-preparation-proof';
 import commentPreparationStyles from './CommentPreparation.module.css';
 import { useExperienceError } from '../observability/use-experience-error';
@@ -12618,6 +12619,7 @@ function HtmlViewer({
       : commentPreviewReady?.frame === iframeRef.current && commentPreviewReady.generation === srcDocTransportGeneration);
   const sourcePreparationProof = useSourcePreparationProof({ enabled: canPrepareCommentSource,
     projectId, fileName: file.name, context: workspaceContext ?? null, source, inputKey: commentPreparationInputKey });
+  const preparationConfirmation = useCommentPreparationConfirmation();
   const commentPreparation = useCommentPreparation({
     projectId, fileName: file.name, context: workspaceContext ?? null,
     authorized: canPrepareCommentSource, settled: commentPreparationSettled,
@@ -12625,7 +12627,7 @@ function HtmlViewer({
     document: { source, key: commentTargetsKey, ready: commentIdentityFrameReady },
     verifiedDocument: sourcePreparationProof.verifiedDocument,
     readCurrentProof: sourcePreparationProof.revalidate,
-    confirm: () => window.confirm(t('fileViewer.commentIdentityConfirm')),
+    confirm: preparationConfirmation.confirm,
     apply: () => {
       // Reload through the ordinary lifecycle, never from preview serialization.
       // No comment submission/publication follows this source-version save.
@@ -17839,6 +17841,7 @@ function HtmlViewer({
               )}
             </div>
       </>)}
+      {preparationConfirmation.dialog}
       {workspaceActive ? (
         <div className={commentPreparationStyles.status} role="status" data-testid="comment-identity-preparation">
           {!canPrepareCommentSource ? <span>{t('fileViewer.commentIdentityUnavailable')}</span> : null}
