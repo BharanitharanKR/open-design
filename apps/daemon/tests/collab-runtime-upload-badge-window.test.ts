@@ -61,7 +61,7 @@ describe('collab runtime — member pull materialized version', () => {
     });
 
     try {
-      await expect(runtime.pullLatest('shared-project')).resolves.toEqual({ version: 1 });
+      await expect(runtime.pullLatest('shared-project')).resolves.toEqual({ version: 1, versionId: 'v1' });
       expect(syncLatest).not.toHaveBeenCalled();
     } finally {
       runtime.dispose();
