@@ -8184,7 +8184,6 @@ function HtmlViewer({
       // Project-wide, so announce it even if the viewer moved on meanwhile.
       confirmedPublication = { sourceFilePath: file.path || requestFileName,
         accountScope: requestAccountScope, generation: requestAccountGeneration };
-      if (response.madeTeamVisible) notifyTeamProjectsChanged({ projectId: requestProjectId, kind: 'catalog' });
       const current = publicFileIdentityRef.current;
       if (
         publicFileRequestSeqRef.current !== requestSeq ||
@@ -8201,7 +8200,6 @@ function HtmlViewer({
       ) {
         return;
       }
-      if (response.madeTeamVisible) setShareAccess('workspace');
       clearPublicFileProgressTimers();
       setPublishProgress(boundedPublishProgress(0, true));
       // Keep success observable without delaying the link or S3's clipboard window.
@@ -8216,11 +8214,6 @@ function HtmlViewer({
       if (response.url) void copyPublicFileUrl(response.url);
     } catch (error) {
       console.warn('[FileViewer] failed to publish public file', error);
-      // A failed publish may still have registered a private team-workspace
-      // project in the team catalog; re-read visibility instead of assuming.
-      if (workspaceContext?.workspaceType === 'team' && shareAccess === 'private') {
-        notifyTeamProjectsChanged({ projectId: requestProjectId, kind: 'catalog' });
-      }
       const recoveryPublication = publicFileManualRevokePublication(error);
       firePublishResult({
         action: 'publish',

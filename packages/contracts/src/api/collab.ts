@@ -15,6 +15,17 @@ import type {
 // the sync trigger. Single source of truth for the daemon routes, the web
 // CollabClient, and the `od collab` CLI so no surface re-declares these shapes.
 
+/** Content-free creator registration returned by Vela ensure-private.
+ * Root identity is server-generated and independent of selected-file resources. */
+export interface PublicShareProjectRegistration {
+  workspaceId: string;
+  projectId: string;
+  resourceId: string;
+  ownerMemberId: string;
+  visibility: 'private' | 'team';
+  createdAt: string;
+}
+
 export interface ProjectShareHistoryResponse {
   projectId: string;
   /** Includes stopped bindings; absence of a local link is irrelevant. */

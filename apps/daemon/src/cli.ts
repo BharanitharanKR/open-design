@@ -7235,9 +7235,7 @@ function printProjectShareHelp() {
                     refused); each blocker prints a fix to paste to an agent.
   od project share publish <id> --path <file> [--json]
                     Publish a project file using the same endpoint as the UI.
-                    Publishing a private project in a team workspace makes the
-                    project visible to team members; the response then carries
-                    "madeTeamVisible": true and a notice is printed to stderr.
+                    Publishing does not change project team visibility.
   od project share resume <id> --path <file> [--json]
                     Resume sharing through the same stable-alias lifecycle as the UI.
   od project share get <id> --path <file> [--json]
@@ -7378,13 +7376,6 @@ async function runProjectShare(args) {
     return;
   }
   if (['stop', 'retry-stop'].includes(action)) return console.log('Sharing stopped.');
-  // Same notice the UI shows before a first publish (decision 67 #11): a public
-  // link for a private project in a team workspace makes the project visible
-  // to team members. stderr keeps stdout the link; --json carries
-  // `madeTeamVisible` instead.
-  if (action === 'publish' && data.madeTeamVisible === true) {
-    console.error('[project] notice: this project is now visible to your team members.');
-  }
   // Same state as the UI: a durable publication with no Viewer origin shows no
   // URL, but keeps its stable alias so the owner can still stop it.
   if (data.stale === true) {

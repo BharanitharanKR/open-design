@@ -4,7 +4,7 @@
 // holds only C's trigger + presence, talking to the hub through
 // ResourcePublishAdapter.
 
-import type { ProjectSyncState } from '@open-design/contracts';
+import type { PublicShareProjectRegistration, ProjectSyncState } from '@open-design/contracts';
 import { projectResourceIdFor } from '../integrations/vela-team-projects.js';
 import {
   CollabPresenceTracker,
@@ -27,6 +27,7 @@ import {
   createVelaCliResourceAdapter,
   shouldUseVelaCliResourceTransport,
 } from './vela-cli-resource-adapter.js';
+import type { VelaOwnerProjectRegistration } from './vela-cli-team-projects.js';
 import type { WorkspaceContextProvider } from './workspace-context.js';
 import { createWorkspaceContextProviderFromEnv } from './vela-workspace-context.js';
 
@@ -36,6 +37,9 @@ const TEAM_PROJECT_METADATA_RETRY_BASE_MS = 1_000;
 const TEAM_PROJECT_METADATA_RETRY_MAX_MS = 30_000;
 
 interface TeamProjectCatalogSink {
+  ensurePrivate?(projectId: string, principal: ResourceHubPrincipal): Promise<PublicShareProjectRegistration>;
+  setVisibility?(projectId: string, visibility: 'private' | 'team', principal: ResourceHubPrincipal): Promise<void>;
+  getRegistration?(projectId: string, principal: ResourceHubPrincipal): Promise<VelaOwnerProjectRegistration | null>;
   upsert(
     input: {
       projectId: string;
@@ -71,6 +75,11 @@ export interface CollabRuntimeScheduler {
 }
 
 export interface CollabRuntime {
+  /** Paired policy transport: demo intents and automatic repairs cannot write policy. */
+  projectVisibilityPolicy?: 'explicit-only';
+  isTeamShareSuppressed(projectId: string, scope: Pick<ResourceHubPrincipal, 'teamId' | 'memberId'>): boolean;
+  forgetTeamShare?(projectId: string, principal?: ResourceHubPrincipal | null): Promise<void>;
+  syncExistingTeamProject(projectId: string, principal: ResourceHubPrincipal): Promise<{ version: number | null }>;
   presence: CollabPresenceTracker;
   scheduler: CollabRuntimeScheduler;
   /** Workspace-context provider — the B-integration seam (identity/visibility). */
@@ -127,6 +136,9 @@ export interface CreateCollabRuntimeOptions {
     publish: () => Promise<PublishedResourceVersion | null>,
   ) => Promise<PublishedResourceVersion | null>;
   adapter?: ResourcePublishAdapter;
+  /** Exact persisted server root. When provided, missing authority must throw. */
+  resolveResourceId?: (projectId: string, principal?: ResourceHubPrincipal | null) => string | Promise<string>;
+  retainRegistration?: (registration: PublicShareProjectRegistration, principal: ResourceHubPrincipal) => void | Promise<void>;
   /** Managed-project directory resolver, so the real hub adapter can pack/land. */
   resolveProjectDir?: (projectId: string) => string | Promise<string>;
   /** Pull destination for a project that may not have a local database row yet. */
@@ -187,11 +199,13 @@ function selectResourcePublishAdapter(
   resolveProjectDir: ((projectId: string) => string | Promise<string>) | undefined,
   resolvePullDir: ((projectId: string) => string | Promise<string>) | undefined,
   describeProject: ((projectId: string) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>) | undefined,
+  resourceIdFor: CreateCollabRuntimeOptions['resolveResourceId'],
 ): ResourcePublishAdapter | null {
   if (!resolveProjectDir) return null;
   if (shouldUseVelaCliResourceTransport()) {
     return createVelaCliResourceAdapter({
       resolveProjectDir,
+      ...(resourceIdFor ? { resolveResourceId: resourceIdFor } : {}),
       ...(resolvePullDir ? { resolvePullDir } : {}),
       ...(describeProject ? { describeProject } : {}),
       // Every data-plane caller must provide a principal that was captured from
@@ -229,6 +243,27 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     cancelled: boolean;
   };
   const pendingMetadataRefreshes = new Map<string, PendingMetadataRefresh>();
+  // One project transport lane drains admitted work before an explicit policy
+  // write. New scheduler/metadata work re-checks membership inside this lane.
+  const transportTails = new Map<string, Promise<unknown>>();
+  const transitionTails = new Map<string, Promise<unknown>>();
+  const transitioning = new Set<string>();
+  const retainedRoots = new Map<string, string>();
+  const explicitPolicy = Boolean(options.teamProjectCatalog?.setVisibility);
+  function serial<T>(tails: Map<string, Promise<unknown>>, projectId: string, operation: () => Promise<T>): Promise<T> {
+    const previous = tails.get(projectId) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(operation);
+    tails.set(projectId, next);
+    void next.finally(() => { if (tails.get(projectId) === next) tails.delete(projectId); }).catch(() => undefined);
+    return next;
+  }
+  const rootFor = (projectId: string, principal: ResourceHubPrincipal) =>
+    retainedRoots.get(`${principal.teamId}\u0000${projectId}`)
+      ?? options.resolveResourceId?.(projectId, principal)
+      ?? projectResourceIdFor(projectId, principal);
+  const isShared = (projectId: string, principal: ResourceHubPrincipal) =>
+    sharePrincipals.get(projectId)?.get(principal.teamId)?.memberId === principal.memberId;
+
 
   const scopedProjectKey = (projectId: string, principal: ResourceHubPrincipal) =>
     `${principal.teamId}${SCOPED_PROJECT_SEPARATOR}${projectId}`;
@@ -258,6 +293,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       options.resolveProjectDir,
       options.resolvePullDir,
       options.describeProject,
+      options.resolveResourceId,
     ) ??
     createStubResourcePublishAdapter();
 
@@ -351,7 +387,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     refreshProjectAggregate(projectId);
   }
 
-  async function markTeamProject(
+  async function markTeamProjectRaw(
     projectId: string,
     syncState: TeamProjectCatalogSyncState,
     principal?: ResourceHubPrincipal | null,
@@ -372,7 +408,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       await options.teamProjectCatalog?.upsert(
         {
           projectId,
-          resourceId: projectResourceIdFor(projectId, target),
+          resourceId: await rootFor(projectId, target),
           ...(displayName ? { displayName } : {}),
           syncState,
           ...(lastSyncedVersionId ? { lastSyncedVersionId } : {}),
@@ -381,6 +417,24 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         target,
       );
     }
+  }
+
+  async function confirmTeamRegistration(projectId: string, principal: ResourceHubPrincipal): Promise<boolean> {
+    if (!options.teamProjectCatalog?.getRegistration) return true;
+    const registration = await options.teamProjectCatalog.getRegistration(projectId, principal);
+    if (!registration || registration.visibility !== 'team') return false;
+    if (!registration.resourceId?.trim()) throw new Error('TEAM_PROJECT_ROOT_UNAVAILABLE');
+    retainedRoots.set(scopedProjectKey(projectId, principal), registration.resourceId);
+    await options.retainRegistration?.({ ...registration, resourceId: registration.resourceId }, principal);
+    return true;
+  }
+
+  function markTeamProject(projectId: string, syncState: TeamProjectCatalogSyncState, principal?: ResourceHubPrincipal | null, lastSyncedVersionId?: string) {
+    return serial(transportTails, projectId, async () => {
+      if (explicitPolicy && (transitioning.has(projectId) || !principal || !isShared(projectId, principal))) return;
+      if (explicitPolicy && principal && !await confirmTeamRegistration(projectId, principal)) return;
+      await markTeamProjectRaw(projectId, syncState, principal, lastSyncedVersionId);
+    });
   }
 
   function startTeamProjectMetadataRefresh(
@@ -520,9 +574,14 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     });
   }
 
-  const publishContent: ResourcePublishAdapter['publish'] = (input) => options.coordinatePublication
+  const publishContentRaw: ResourcePublishAdapter['publish'] = (input) => options.coordinatePublication
     ? options.coordinatePublication(input.projectId, input.principal, () => baseAdapter.publish(input))
     : baseAdapter.publish(input);
+  const publishContent: ResourcePublishAdapter['publish'] = (input) => serial(transportTails, input.projectId, async () => {
+    if (explicitPolicy && (transitioning.has(input.projectId) || !input.principal || !isShared(input.projectId, input.principal))) return null;
+    if (explicitPolicy && input.principal && !await confirmTeamRegistration(input.projectId, input.principal)) return null;
+    return publishContentRaw(input);
+  });
   const schedulerAdapter: ResourcePublishAdapter = {
     async publish({ projectId: key, reason }) {
       const { projectId, principal } = parseScopedProjectKey(key);
@@ -609,7 +668,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     const key = principal ? scopedProjectKey(projectId, principal) : projectId;
     let publishedResult: PublishedResourceVersion | null = null;
     try {
-      const result = await publishContent({
+      const result = await publishContentRaw({
         projectId,
         reason,
         ...(principal ? { principal } : {}),
@@ -617,7 +676,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       if (!result) return { version: null };
       publishedResult = result;
       if (unshared.has(key) || unshared.has(projectId)) {
-        await baseAdapter.unpublish?.({
+        if (!explicitPolicy) await baseAdapter.unpublish?.({
           projectId,
           ...(principal ? { principal } : {}),
         });
@@ -636,7 +695,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         published.set(key, result.version);
         syncStates.set(key, 'synced');
       }
-      await markTeamProject(
+      await markTeamProjectRaw(
         projectId,
         'synced',
         principal,
@@ -654,7 +713,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         ...(result.versionId ? { versionId: result.versionId } : {}),
       };
     } catch (error) {
-      if (publishedResult) {
+      if (publishedResult && !explicitPolicy) {
         await baseAdapter.unpublish?.({
           projectId,
           ...(principal ? { principal } : {}),
@@ -677,7 +736,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       const { projectId, principal } = parseScopedProjectKey(result.projectId);
       const key = principal ? scopedProjectKey(projectId, principal) : projectId;
       if (unshared.has(result.projectId) || unshared.has(key) || unshared.has(projectId)) {
-        void schedulerAdapter.unpublish?.({ projectId: result.projectId }).catch((error: unknown) => {
+        if (!explicitPolicy) void schedulerAdapter.unpublish?.({ projectId: result.projectId }).catch((error: unknown) => {
           options.onError?.({ projectId, error, principal });
         });
         published.delete(key);
@@ -787,6 +846,42 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   const teamResources = options.teamResources ?? createDevTeamResourceStateProvider();
 
   return {
+    ...(explicitPolicy ? { projectVisibilityPolicy: 'explicit-only' as const } : {}),
+    isTeamShareSuppressed: (projectId, scope) => unshared.has(`${scope.teamId}\u0000${projectId}`),
+    async forgetTeamShare(projectId, principal) {
+      return serial(transitionTails, projectId, async () => {
+        transitioning.add(projectId);
+        try {
+          const targets = principal ? [principal] : principalsForProject(projectId);
+          for (const target of targets) await cancelTeamProjectMetadataRefresh(projectId, target);
+          await serial(transportTails, projectId, async () => {
+            for (const target of targets) {
+              const key = scopedProjectKey(projectId, target);
+              unshared.add(key);
+              published.delete(key);
+              syncStates.set(key, 'local_only');
+              scopedOwners.delete(key);
+              sharePrincipals.get(projectId)?.delete(target.teamId);
+              options.onMetadataRefreshComplete?.({ projectId, principal: target });
+            }
+            if (!sharePrincipals.get(projectId)?.size) {
+              sharePrincipals.delete(projectId);
+              unshared.add(projectId);
+            }
+            refreshProjectAggregate(projectId);
+          });
+        } finally { transitioning.delete(projectId); }
+      });
+    },
+    async syncExistingTeamProject(projectId, principal) {
+      return serial(transportTails, projectId, async () => {
+        if (!isShared(projectId, principal) || transitioning.has(projectId)
+          || !await confirmTeamRegistration(projectId, principal)) {
+          throw new Error('PROJECT_VISIBILITY_REQUIRES_MOVE');
+        }
+        return publishNow(projectId, 'sync', principal);
+      });
+    },
     presence,
     scheduler: schedulerFacade,
     workspaceContext,
@@ -816,6 +911,44 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       return syncStates.get(projectId) ?? 'local_only';
     },
     async requestTeamShare(projectId, share) {
+      if (explicitPolicy) {
+        if (!share || typeof share !== 'object') throw new Error('explicit project principal is required');
+        const principal = { ...share };
+        return serial(transitionTails, projectId, async () => {
+          transitioning.add(projectId);
+          const wasShared = isShared(projectId, principal);
+          const previousState = syncStates.get(scopedProjectKey(projectId, principal)) ?? 'local_only';
+          try {
+            await cancelTeamProjectMetadataRefresh(projectId, principal);
+            return await serial(transportTails, projectId, async () => {
+              const registration = await options.teamProjectCatalog!.ensurePrivate!(projectId, principal);
+              if (registration.projectId !== projectId || registration.workspaceId !== principal.teamId
+                || registration.ownerMemberId !== principal.memberId || !registration.resourceId.trim()
+                || (registration.visibility !== 'private' && registration.visibility !== 'team')) {
+                throw new Error('TEAM_PROJECT_REGISTRATION_UNAVAILABLE');
+              }
+              retainedRoots.set(scopedProjectKey(projectId, principal), registration.resourceId);
+              await options.retainRegistration?.(registration, principal);
+              unshared.delete(projectId);
+              unshared.delete(scopedProjectKey(projectId, principal));
+              const result = await publishNow(projectId, 'share', principal);
+              if (result.version == null) throw new Error('TEAM_PROJECT_ROOT_UPLOAD_UNAVAILABLE');
+              await options.teamProjectCatalog!.setVisibility!(projectId, 'team', principal);
+              rememberTeamShare(projectId, principal, 'synced');
+              return result;
+            });
+          } catch (error) {
+            if (wasShared) rememberTeamShare(projectId, principal, previousState);
+            else {
+              syncStates.set(scopedProjectKey(projectId, principal), 'local_only');
+              refreshProjectAggregate(projectId);
+            }
+            throw error;
+          } finally {
+            transitioning.delete(projectId);
+          }
+        });
+      }
       const principal = typeof share === 'object' && share
         ? share
         : await getProjectPrincipal(projectId);
@@ -828,6 +961,35 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       return publishNow(projectId, 'share', principal);
     },
     async requestTeamUnshare(projectId, principal) {
+      if (explicitPolicy) {
+        if (!principal) throw new Error('explicit project principal is required');
+        const captured = { ...principal };
+        return serial(transitionTails, projectId, async () => {
+          transitioning.add(projectId);
+          try {
+            await cancelTeamProjectMetadataRefresh(projectId, captured);
+            await serial(transportTails, projectId, async () => {
+              // Policy is the last remote write, after admitted root/metadata
+              // work drains. Demotion never retracts resources or public files.
+              await options.teamProjectCatalog!.setVisibility!(projectId, 'private', captured);
+              const key = scopedProjectKey(projectId, captured);
+              unshared.add(key);
+              published.delete(key);
+              syncStates.set(key, 'local_only');
+              scopedOwners.delete(key);
+              sharePrincipals.get(projectId)?.delete(captured.teamId);
+              if (!sharePrincipals.get(projectId)?.size) {
+                sharePrincipals.delete(projectId);
+                unshared.add(projectId);
+              }
+              options.onMetadataRefreshComplete?.({ projectId, principal: captured });
+              refreshProjectAggregate(projectId);
+            });
+          } finally {
+            transitioning.delete(projectId);
+          }
+        });
+      }
       const targets = principal
         ? [principal]
         : principalsForProject(projectId).length > 0

@@ -56,6 +56,7 @@ export interface CommentRelayOutboxStore {
 		},
 	): void;
 	isPublicationCurrent?(record: CommentRelayOutboxRecord): boolean;
+	isCurrent?(record: CommentRelayOutboxRecord): boolean;
 	listDue(now: number, limit?: number): CommentRelayOutboxRecord[];
 	/** Default acknowledgement is discard/cancel; only an explicit receipt is delivery. */
 	acknowledge(
@@ -75,6 +76,8 @@ export interface CommentRelayOutboxStore {
 	 * team-visible (see {@link commentRelayRecordPromotedToTeam}).
 	 */
 	rescopeToTeam?(record: CommentRelayOutboxRecord): boolean;
+	/** Only after fresh creator/exact-file authority; requires a current canonical mapping. */
+	rescopeToPersonal?(record: CommentRelayOutboxRecord): boolean;
 	count(): number;
 }
 
@@ -548,6 +551,39 @@ export function createCommentRelayOutboxStore(
 						now(),
 					);
 				return changed;
+			})();
+		},
+		isCurrent(record) {
+			return Boolean(db.prepare(`SELECT 1 FROM comment_relay_outbox
+        WHERE workspace_id=? AND workspace_member_id=? AND project_id=? AND comment_id=?
+          AND revision=? AND relay_scope=? AND team_id=?`).get(
+				record.workspaceId, record.workspaceMemberId, record.projectId, record.commentId,
+				record.revision, record.relayScope, record.teamId,
+			));
+		},
+		rescopeToPersonal(record) {
+			return db.transaction(() => {
+				if (record.relayScope !== "team" || !record.expectedOwnerMemberId
+					|| record.workspaceMemberId !== record.expectedOwnerMemberId) return false;
+				const publication = currentCommentRelayPublicationMapping(db, {
+					resourceTeamId: record.workspaceId, ownerMemberId: record.workspaceMemberId,
+					projectId: record.projectId, filePath: record.comment.filePath,
+				});
+				if (!publication || (record.publication && (
+					record.publication.slug !== publication.slug || record.publication.token !== publication.token
+					|| record.publication.publicFilePath !== publication.publicFilePath
+				))) return false;
+				// Never enqueue a reconstructed comment: deleted local rows have no
+				// source other than this payload. Rotate only the lane/revision fence.
+				const timestamp = now();
+				return db.prepare(`UPDATE comment_relay_outbox
+          SET relay_scope='personal', team_id=workspace_id, publication_json=?,
+            revision=revision+1, attempt_count=0, next_attempt_at=?, last_error=NULL, updated_at=?
+          WHERE workspace_id=? AND workspace_member_id=? AND project_id=? AND comment_id=?
+            AND revision=? AND relay_scope='team' AND team_id=?`).run(
+					JSON.stringify(publication), timestamp, timestamp, record.workspaceId,
+					record.workspaceMemberId, record.projectId, record.commentId, record.revision, record.teamId,
+				).changes > 0;
 			})();
 		},
 		rescopeToTeam(record) {

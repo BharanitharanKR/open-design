@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as deployPlanner from '../src/deploy.js';
 import express from 'express';
+import { publicFileResourceIdFor } from '../src/collab/public-file-resource-id.js';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { migrateCommentRelayOutbox } from '../src/collab/comment-relay-outbox.js';
@@ -328,6 +329,10 @@ async function publicShareFixture(options: {
     ensureProject: async scope => ({ projectId: scope.projectId, ownerMemberId: scope.ownerMemberId, sharedAt: '2026-01-01T00:00:00.000Z' }),
     prepare: async (scope, slug) => ({
       run: async args => {
+        if (args[0] === 'team-projects') {
+          expect(args).toEqual(['team-projects', 'register-resource', scope.projectId, publicFileResourceIdFor(scope)]);
+          return JSON.stringify({ ok: true });
+        }
         if (options.run) return options.run(args);
         if (args[0] === 'resource') return runVelaResourceCommand(args.slice(1), scope.resourceTeamId);
         if (args[0] !== 'share') throw new Error('unexpected command');
@@ -1500,7 +1505,7 @@ describe('collab sync routes', () => {
     expect(projectStore.projects.get('owned-shared-p')?.name).toBe('Real Owner Project');
   });
 
-  it('owner self-pull hitting a retracted hub resource heals the dangling catalog row instead of leaving a ghost', async () => {
+  it.each(['legacy', 'explicit-only'] as const)('owner tombstone heal uses %s cleanup without leaving a ghost', async policyMode => {
     // The reinstall-revival shape reproduced live on the feature-test hub
     // (2026-07-27, workspace res-wipe-0727): an unshare's two hub writes are
     // resource remove → team-projects catalog remove, and when only the first
@@ -1549,6 +1554,8 @@ describe('collab sync routes', () => {
       );
     });
     const catalogRemove = vi.fn(async (_projectId: string, _principal?: unknown) => ({}));
+    const setVisibility = vi.fn(async () => {});
+    const ensurePrivate = vi.fn(async () => { throw new Error('heal must not ensure a project'); });
     const ownedContentSync = {
       request: vi.fn(async () => ({
         state: 'up_to_date' as const,
@@ -1596,7 +1603,10 @@ describe('collab sync routes', () => {
           pull,
           unpublish,
         },
-        teamProjectCatalog: { upsert: async () => ({}), remove: catalogRemove },
+        teamProjectCatalog: {
+          upsert: async () => ({}), remove: catalogRemove,
+          ...(policyMode === 'explicit-only' ? { ensurePrivate, setVisibility } : {}),
+        },
       },
     );
 
@@ -1606,16 +1616,24 @@ describe('collab sync routes', () => {
     expect(ownedContentSync.request).toHaveBeenCalled();
     await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce());
 
-    // The heal finishes the half-landed retraction hub-side …
-    await vi.waitFor(() => {
-      expect(catalogRemove).toHaveBeenCalled();
-    });
-    expect(catalogRemove.mock.calls[0]?.[0]).toBe('ghost-shared-p');
+    // Legacy cleanup may finish the remote retraction. Paired explicit policy
+    // healing only forgets local ownership: opening a project is not a move.
+    if (policyMode === 'legacy') {
+      await vi.waitFor(() => expect(catalogRemove).toHaveBeenCalled());
+      expect(catalogRemove.mock.calls[0]?.[0]).toBe('ghost-shared-p');
+    }
     // … retires the contentless placeholder this same open registered …
     await vi.waitFor(() => {
       expect(retireUnmaterializedSharedPlaceholder).toHaveBeenCalledWith('ghost-shared-p');
     });
     expect(projectStore.projects.has('ghost-shared-p')).toBe(false);
+    if (policyMode === 'explicit-only') {
+      expect(catalogRemove).not.toHaveBeenCalled();
+      expect(unpublish).not.toHaveBeenCalled();
+      expect(setVisibility).not.toHaveBeenCalled();
+      expect(ensurePrivate).not.toHaveBeenCalled();
+      expect(runtime!.projectOwnerMemberId('ghost-shared-p', contextToResourceHubPrincipal(await fixedShareContextProvider(true).current({}))!)).toBeNull();
+    }
     // … and drops the cached catalog so the ghost card leaves the list now,
     // not one stale-while-revalidate TTL later.
     expect(invalidateTeamProjectCatalog).toHaveBeenCalled();
@@ -1743,6 +1761,27 @@ describe('collab sync routes', () => {
     // Idempotent: the now-known project is not re-registered on the next poll.
     await api.json('/api/projects/shared-owned/collab/status', { headers: ownerHeaders });
     expect(projectStore.registerCalls).toBe(1);
+  });
+
+  it.each(['project_team_share_requested', 'project_team_unshare_requested'])('dev sync-intent %s cannot write paired project policy', async event => {
+    const publish = vi.fn();
+    const unpublish = vi.fn();
+    const ensurePrivate = vi.fn(async () => { throw new Error('must use move'); });
+    const setVisibility = vi.fn(async () => {});
+    const upsert = vi.fn();
+    const remove = vi.fn();
+    const api = await startSyncServer(fixedShareContextProvider(true), undefined, {
+      adapter: { publish, unpublish },
+      teamProjectCatalog: { ensurePrivate, setVisibility, upsert, remove },
+    });
+    const response = await api.json('/api/projects/p1/collab/sync-intent', {
+      method: 'POST', body: { event, projectId: 'p1' },
+    });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe('PROJECT_VISIBILITY_REQUIRES_MOVE');
+    for (const mutation of [publish, unpublish, ensurePrivate, setVisibility, upsert, remove]) {
+      expect(mutation).not.toHaveBeenCalled();
+    }
   });
 
   it('drives the visibility-to-sync team-share intent through to synced', async () => {
@@ -2179,7 +2218,13 @@ describe('collab sync routes', () => {
           ensureProject: async scope => ({ projectId: scope.projectId, ownerMemberId: scope.ownerMemberId, sharedAt: '2026-01-01T00:00:00.000Z' }),
           complete: createSharePublicationCompletion(db, createPublicFilePublicationRecorder(db, store, () => ({ enqueued: 0, skippedInbound: 0 })), outbox, true),
           prepare: async scope => ({
-            run: async args => runVelaResourceCommand(args.slice(1), scope.resourceTeamId),
+            run: async args => {
+              if (args[0] === 'team-projects') {
+                expect(args).toEqual(['team-projects', 'register-resource', scope.projectId, publicFileResourceIdFor(scope)]);
+                return JSON.stringify({ ok: true });
+              }
+              return runVelaResourceCommand(args.slice(1), scope.resourceTeamId);
+            },
           }),
           retry: vi.fn(),
         },

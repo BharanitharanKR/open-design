@@ -61,19 +61,21 @@ export interface CollabCloudServiceDeps {
 		identity: CommentRelayOutboxIdentity,
 		options: { fresh: true },
 	) => Promise<WorkspaceCollabContext | null>;
+	/** A bounded move/reconciliation fence: false means retry, never discard staging. */
+	captureCommentRelayProjectBinding?: () => (projectId: string) => boolean;
 	/** Cheap local binding witness applied per queued record in a batch. */
 	validateCommentRelayProjectBinding?: (
 		record: CommentRelayOutboxRecord,
 	) => boolean;
 	/**
 	 * True when a personal record failed that witness only because its creator's
-	 * project became team-visible (a public link in a team workspace). Such a
-	 * record is re-queued as Team relay instead of being cancelled.
+	 * project was explicitly made team-visible. Such a record is re-queued as
+	 * Team relay instead of being cancelled.
 	 */
 	isCommentRelayRecordPromotedToTeam?: (
 		record: CommentRelayOutboxRecord,
 	) => boolean;
-	/** Separate creator-scoped eligibility for active public personal projects. */
+	/** Creator-scoped eligibility for active public files of private projects. */
 	commentRelayScope?: (
 		projectId: string,
 		filePath: string,
@@ -169,8 +171,8 @@ export interface CollabCloudServiceDeps {
 	 */
 	memberCommentStore?: CommentInboundStore;
 	/**
-	 * Local binding witness for member paging: false once this project is no
-	 * longer team-shared here (stop sharing flips visibility inside the same
+	 * Local binding witness for team pulls and member paging: false once this
+	 * project is no longer team-shared here (stop sharing flips visibility inside the same
 	 * workspace, so the workspace context alone cannot see it). False drops the
 	 * project's member cursors/ledgers and refuses in-flight pages. Omitted →
 	 * the workspace context is the only witness.
@@ -226,8 +228,6 @@ const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const MAX_MEMBER_PAGES_PER_DRAIN = 200;
 const COMMENT_OUTBOX_PUSH_CONCURRENCY = 4;
 
-/** ~10 min of relay backoff: far longer than the background catalog reconcile. */
-const AWAIT_TEAM_VISIBILITY_MAX_ATTEMPTS = 24;
 const MEMBER_PAGE_RETRY_BASE_MS = 10_000;
 const MEMBER_PAGE_RETRY_MAX_MS = 5 * 60_000;
 
@@ -521,7 +521,6 @@ export function createCollabCloudService(
 		context: WorkspaceCollabContext,
 	): PullIdentity | null {
 		if (
-			context.workspaceType !== "personal" ||
 			context.memberStatus !== "active" ||
 			context.lifecycleState === "deleted"
 		)
@@ -546,14 +545,18 @@ export function createCollabCloudService(
 		projectId: string,
 		context: WorkspaceCollabContext,
 	): PullIdentity | null {
+		// Creator/publication authority is independent of workspace type. Never
+		// widen a private project's pull just because its directory is a team.
+		const personal = personalPullIdentity(projectId, context);
+		if (personal) return personal;
 		const team = explicitTeamIdentity(context);
-		if (team)
-			return {
-				teamId: team.teamId,
-				memberId: team.memberId,
-				relayScope: "team",
-			};
-		return personalPullIdentity(projectId, context);
+		const shared = deps.isMemberSyncProjectShared?.(projectId)
+			?? (deps.commentRelayScope
+				? deps.commentRelayScope(projectId, "", context)?.relayScope === "team"
+				: true); // Legacy isolated callers have no local binding seam.
+		return team && shared
+			? { teamId: team.teamId, memberId: team.memberId, relayScope: "team" }
+			: null;
 	}
 
 	function relayIdentity(
@@ -748,8 +751,14 @@ export function createCollabCloudService(
 	async function pushOutboxRecord(
 		record: CommentRelayOutboxRecord,
 		identity: { teamId: string; memberId: string },
+		bindingCurrent?: (record: CommentRelayOutboxRecord) => boolean,
 	): Promise<void> {
 		try {
+			if (deps.commentOutbox?.isCurrent && !deps.commentOutbox.isCurrent(record)) return;
+			if (bindingCurrent && !bindingCurrent(record)) {
+				deferOutboxRecord(record, new Error("comment relay project binding unsettled; retry"));
+				return;
+			}
 			// Recheck each publication-bound record immediately before network I/O:
 			// an earlier record may have awaited while stop/re-publish changed the witness.
 			if (
@@ -808,6 +817,7 @@ export function createCollabCloudService(
 	async function pushOutboxProjectLanes(
 		records: CommentRelayOutboxRecord[],
 		identity: { teamId: string; memberId: string },
+		bindingCurrent?: (record: CommentRelayOutboxRecord) => boolean,
 	): Promise<void> {
 		const lanes = new Map<string, CommentRelayOutboxRecord[]>();
 		for (const record of records) {
@@ -824,7 +834,7 @@ export function createCollabCloudService(
 				if (!lane) continue;
 				// A project's relay sequence is user-visible comment order. Keep that
 				// lane strictly serial while unrelated projects use spare capacity.
-				for (const record of lane) await pushOutboxRecord(record, identity);
+				for (const record of lane) await pushOutboxRecord(record, identity, bindingCurrent);
 			}
 		};
 		await Promise.all(
@@ -891,10 +901,15 @@ export function createCollabCloudService(
 	): Promise<void> {
 		const representative = records[0];
 		if (!representative) return;
+		const settled = deps.captureCommentRelayProjectBinding?.() ?? (() => true);
+		const retryUnsettled = (record: CommentRelayOutboxRecord) => {
+			deferOutboxRecord(record, new Error("comment relay project binding unsettled; retry"));
+		};
 		let eligible = records;
 		if (deps.validateCommentRelayProjectBinding) {
 			eligible = [];
 			for (const record of records) {
+				if (!settled(record.projectId)) { retryUnsettled(record); continue; }
 				if (deps.validateCommentRelayProjectBinding(record))
 					eligible.push(record);
 				else if (
@@ -904,6 +919,10 @@ export function createCollabCloudService(
 					// Same comment, same readers, new relay path: deliver it in this
 					// drain's follow-up pass rather than dropping it.
 					outboxRerunRequested = true;
+				} else if (record.relayScope === "team" && deps.commentRelayScope) {
+					// Resolve fresh authenticated authority before considering the
+					// existing creator-only public-file lane after explicit demotion.
+					eligible.push(record);
 				} else {
 					// A local unshare/delete/re-home is authoritative and cannot become
 					// valid again for this queued revision. Cancel it even if the remote
@@ -927,6 +946,32 @@ export function createCollabCloudService(
 			for (const record of eligible) deferOutboxRecord(record, error);
 			return;
 		}
+		// A local mismatch alone cannot authorize a private relay. The queued
+		// principal, persisted creator, exact active file and canonical mapping
+		// must all still agree after fresh directory resolution. Unsettled moves
+		// are a bounded retry so their temporary staging/rollback cannot lose data.
+		if (context && context.workspaceId === representative.workspaceId
+			&& context.workspaceMemberId === representative.workspaceMemberId
+			&& context.memberStatus === "active" && context.lifecycleState !== "deleted") {
+			eligible = eligible.filter((record) => {
+				if (!settled(record.projectId)) { retryUnsettled(record); return false; }
+				if (!deps.validateCommentRelayProjectBinding || deps.validateCommentRelayProjectBinding(record)) return true;
+				const scope = deps.commentRelayScope?.(record.projectId, record.comment.filePath, context);
+				if (record.relayScope === "team" && record.expectedOwnerMemberId === record.workspaceMemberId
+					&& scope?.relayScope === "personal" && scope.workspaceId === record.workspaceId
+					&& scope.ownerMemberId === record.workspaceMemberId
+					&& deps.commentOutbox?.rescopeToPersonal?.(record)) {
+					outboxRerunRequested = true;
+				} else {
+					deps.commentOutbox?.acknowledge(record);
+				}
+				return false;
+			});
+			if (eligible.length === 0) return;
+		}
+		const bindingCurrent = (record: CommentRelayOutboxRecord) => settled(record.projectId)
+			&& (!deps.validateCommentRelayProjectBinding || deps.validateCommentRelayProjectBinding(record))
+			&& Boolean(context && relayIdentityMatches(context, record));
 		const identity = context
 			? representative.relayScope === "personal"
 				? personalBatchIdentityMatches(context, representative)
@@ -949,24 +994,7 @@ export function createCollabCloudService(
 			const deliverable: CommentRelayOutboxRecord[] = [];
 			for (const record of eligible) {
 				if (relayIdentityMatches(context, record)) deliverable.push(record);
-				else if (
-					context.workspaceType === "team" &&
-					record.attemptCount < AWAIT_TEAM_VISIBILITY_MAX_ATTEMPTS &&
-					deps.commentOutbox?.isPublicationCurrent?.(record) === true
-				) {
-					// The binding witness above still holds and the exact publication is
-					// still current: this is a creator's private project in a team
-					// workspace that has not been marked team-visible yet. That is a
-					// transient state (publishing registered it in the team catalog),
-					// not a stop, so retry with backoff; once the row turns `team` the
-					// record is re-queued as Team relay, and a stop cancels it. Bounded:
-					// a row the catalog reconcile never promotes (demoted, moved back to
-					// private) is cancelled as before instead of retrying forever.
-					deferOutboxRecord(
-						record,
-						new Error("comment relay awaiting team visibility"),
-					);
-				} else {
+				else {
 					// Fresh workspace authority is already proven for this identity
 					// batch. A failed exact-file scope check therefore means the local
 					// durable publication witness was removed (or its creator binding
@@ -980,7 +1008,7 @@ export function createCollabCloudService(
 					);
 				}
 			}
-			await pushOutboxProjectLanes(deliverable, identity);
+			await pushOutboxProjectLanes(deliverable, identity, bindingCurrent);
 			return;
 		}
 
@@ -1003,6 +1031,7 @@ export function createCollabCloudService(
 
 		const deliverable: CommentRelayOutboxRecord[] = [];
 		for (const record of eligible) {
+			if (!bindingCurrent(record)) { retryUnsettled(record); continue; }
 			const owners = remoteOwners.get(record.projectId);
 			const expectedOwner = record.expectedOwnerMemberId;
 			if (!owners || owners.size === 0) {
@@ -1021,7 +1050,7 @@ export function createCollabCloudService(
 			}
 			deliverable.push(record);
 		}
-		await pushOutboxProjectLanes(deliverable, identity);
+		await pushOutboxProjectLanes(deliverable, identity, bindingCurrent);
 	}
 
 	async function flushPendingComments(): Promise<void> {
@@ -1452,6 +1481,10 @@ export function createCollabCloudService(
 		// principal and active publication set after the async transport returns:
 		// an account/workspace switch or stop must never merge an in-flight reply.
 		const comments = result.comments;
+		// A same-workspace demotion must also revoke a pending full-team reply.
+		// It cannot be merged under the narrower creator/public-file cursor.
+		if (identity.relayScope === "team" && pullIdentity(projectId, requestContext)?.relayScope !== "team")
+			return false;
 		let responseIdentity = identity;
 		if (identity.relayScope === "personal") {
 			const freshContext =

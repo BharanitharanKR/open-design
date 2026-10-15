@@ -22,10 +22,10 @@ it.each([
 });
 
 it.each([
-  [{ status: 'published', receipt, url: 'https://viewer.example.test/s', madeTeamVisible: true }, { slug: 'stable', url: 'https://viewer.example.test/s', madeTeamVisible: true }],
+  [{ status: 'published', receipt, url: 'https://viewer.example.test/s', madeTeamVisible: true }, { slug: 'stable', url: 'https://viewer.example.test/s' }],
   [{ status: 'published', receipt, url: 'https://viewer.example.test/s' }, { slug: 'stable', url: 'https://viewer.example.test/s' }],
   [{ status: 'published', receipt, url: 'https://viewer.example.test/s', madeTeamVisible: 'yes' }, { slug: 'stable', url: 'https://viewer.example.test/s' }],
-])('carries only an explicit madeTeamVisible from the publish response', async (body, expected) => {
+])('does not turn publication response feedback into project visibility', async (body, expected) => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })));
   await expect(publishProjectFilePublic('p', 'index.html')).resolves.toEqual({
     ...expected, publicationObservation: { share_version: 1, published_at: 1 },

@@ -607,7 +607,8 @@ describe('workspace project routes', () => {
       id: moveProjectId,
       visibility: 'team',
       syncState: 'synced',
-      resourceHubResourceId: projectResourceIdFor(moveProjectId, workspacePrincipal('member-direct', workspaceId, 'admin')),
+      // Default dev transport does not return an authoritative root.
+      resourceHubResourceId: null,
       cloudTombstonedAt: null,
       createdByWorkspaceMemberId: 'member-direct',
     });
@@ -654,7 +655,7 @@ describe('workspace project routes', () => {
     expect(syncedProject).toMatchObject({
       id: moveProjectId,
       syncState: 'synced',
-      resourceHubResourceId: projectResourceIdFor(moveProjectId, workspacePrincipal('member-direct', workspaceId, 'admin')),
+      resourceHubResourceId: null,
       createdByWorkspaceMemberId: 'member-direct',
     });
     expect(syncedProject.pendingSyncIntent).toBeUndefined();
@@ -665,7 +666,7 @@ describe('workspace project routes', () => {
       body: JSON.stringify({ visibility: 'personal' }),
     });
     // An admin who shared the project can move it back out of the team; the
-    // project returns to personal/local-only and drops its resource binding.
+    // project returns to personal/local-only; this dev fixture has no root.
     expect(moveBackResp.status).toBe(200);
     const movedBack = await moveBackResp.json() as { project: any };
     expect(movedBack.project).toMatchObject({
@@ -1897,6 +1898,59 @@ describe('workspace project routes', () => {
   // `visibility: 'team'` card and the project re-shared itself a moment after
   // the user unshared it, with no way to undo (a remote summary is never
   // `canMoveToPersonal`). The local `cloudTombstonedAt` is the truth here.
+  it('a cached list during remote demotion cannot rebind the staged personal row to team', async () => {
+    const projectId = 'demotion-list-barrier';
+    const memberId = 'member-cleanup-fail';
+    const retainedRoot = 'arbitrary-demotion-root';
+    let entered!: () => void;
+    let release!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const remoteBarrier = new Promise<void>(resolve => { release = resolve; });
+    const rebindWorkspaceProject = vi.fn();
+    const updateWorkspaceProject = vi.fn();
+    const deps = workspaceProjectRouteDeps({ workspaceId, projectId,
+      dbDeleteProject: vi.fn(), removeProjectDir: vi.fn(), updateWorkspaceProject, rebindWorkspaceProject,
+      workspaceRowOverrides: { workspaceVisibility: 'team', resourceHubResourceId: retainedRoot,
+        syncState: 'synced', createdByWorkspaceMemberId: memberId },
+      teamProjectCatalog: { list: vi.fn(async () => [{ id: 'cached-row', workspaceId, projectId,
+        resourceId: retainedRoot, ownerMemberId: memberId, displayName: 'Cached team row',
+        syncState: 'synced', lastSyncedVersionId: 'v1', createdAt: new Date(1).toISOString(),
+        updatedAt: new Date(1).toISOString(), access: { canView: true, canComment: true, canEdit: true, frozen: false } }]), upsert: vi.fn() },
+      collabSync: { requestTeamShare: vi.fn(), requestTeamUnshare: async () => { entered(); await remoteBarrier; } },
+    });
+    const row = deps.projectStore.getWorkspaceProjectByProjectId(deps.db, projectId)!;
+    const applyPatch = (patch: Record<string, unknown>) => Object.assign(row, patch,
+      { workspaceVisibility: patch.visibility ?? row.workspaceVisibility });
+    updateWorkspaceProject.mockImplementation((_db, _ws, _id, patch) => applyPatch(patch));
+    rebindWorkspaceProject.mockImplementation((_db, _id, patch) => applyPatch(patch));
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, deps);
+    const routeServer = await listen(app);
+    const requestHeaders = headers(memberId, { 'x-od-workspace-type': 'team', 'x-od-workspace-role': 'admin' });
+    const move = fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`, {
+      method: 'POST', headers: requestHeaders, body: JSON.stringify({ visibility: 'personal' }),
+    });
+    try {
+      await started;
+      expect(row.workspaceVisibility).toBe('personal');
+      const list = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects?view=all`, { headers: requestHeaders });
+      expect(list.status).toBe(200);
+      await list.json();
+      release();
+      const moved = await move;
+      expect(moved.status).toBe(200);
+      expect(row.workspaceVisibility).toBe('personal');
+      expect(row.resourceHubResourceId).toBe(retainedRoot);
+      expect(rebindWorkspaceProject).not.toHaveBeenCalled();
+      expect(await moved.json()).toMatchObject({ project: { visibility: 'personal', resourceHubResourceId: retainedRoot } });
+    } finally {
+      release();
+      await move;
+      await close(routeServer.server);
+    }
+  });
+
   it('does not resurrect a project the member just unshared from a stale team catalog', async () => {
     const projectId = `workspace-unshare-tombstone-${Date.now()}`;
     const memberId = 'member-unshare-tombstone';
@@ -2221,6 +2275,44 @@ describe('workspace project routes', () => {
     } finally {
       await close(routeServer.server);
     }
+  });
+
+  it('retains the authoritative arbitrary root persisted by explicit share through batch move and demotion', async () => {
+    const projectId = 'batch-authoritative-root';
+    const serverRoot = 'server-root-unrelated-to-project-id';
+    const updateWorkspaceProject = vi.fn();
+    const deps = workspaceProjectRouteDeps({ workspaceId, projectId,
+      dbDeleteProject: vi.fn(), removeProjectDir: vi.fn(), updateWorkspaceProject });
+    const row = deps.projectStore.getWorkspaceProjectByProjectId(deps.db, projectId)!;
+    updateWorkspaceProject.mockImplementation((_db, _workspace, _project, patch) => {
+      Object.assign(row, patch, { workspaceVisibility: patch.visibility ?? row.workspaceVisibility });
+    });
+    // This is the supported runtime seam: ensure/retain completes before share
+    // returns. Returning a version alone does not register a ResourceHub root.
+    deps.collabSync = {
+      requestTeamShare: vi.fn(async () => {
+        updateWorkspaceProject(deps.db, workspaceId, projectId, { resourceHubResourceId: serverRoot });
+        return { version: 7 };
+      }),
+      requestTeamUnshare: vi.fn(async () => {}),
+      refreshTeamProjectMetadata: vi.fn(),
+    };
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, deps);
+    const routeServer = await listen(app);
+    try {
+      for (const visibility of ['team', 'personal']) {
+        const response = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/batch-move`, {
+          method: 'POST', headers: headers('member-cleanup-fail', { 'x-od-workspace-role': 'admin' }),
+          body: JSON.stringify({ projectIds: [projectId], visibility }),
+        });
+        expect(response.status).toBe(200);
+        const body = await response.json() as { projects: Array<{ visibility: string; resourceHubResourceId: string | null }> };
+        expect(body.projects[0]).toMatchObject({ visibility, resourceHubResourceId: serverRoot });
+        expect(row.resourceHubResourceId).toBe(serverRoot);
+      }
+    } finally { await close(routeServer.server); }
   });
 
   it('does not mark workspace projects as team-visible when durable team share publishing fails', async () => {
