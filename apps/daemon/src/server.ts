@@ -9711,6 +9711,8 @@ export async function startServer({
   });
   registerProjectFileRoutes(app, {
     db,
+    isProjectEditingBusy: (projectId) => design.runs.list().some((run) =>
+      run.projectId === projectId && !design.runs.isTerminal(run.status)),
     publicFileMutations,
     stopPublicFilesBeforeDelete,
     http: httpDeps,

@@ -12210,13 +12210,13 @@ describe('FileViewer tweaks toolbar', () => {
     expect(screen.getByTestId('comment-saved-marker-shared-title').textContent).toBe('2');
   });
 
-  it('orders side comments by creation time (newest first) while keeping activity timestamps', () => {
+  it('orders side comments by creation time (newest first) and displays creation age', () => {
     // recvq5BVsolIxi: default sidebar order is "newest CREATED first", not
     // "most recently ACTIVE first" — the comment updated most recently
     // (`createdFirstUpdatedLast`, note "Latest edit") is actually the OLDER
     // of the two by creation time, so it must sort SECOND despite its
-    // updatedAt being the most recent ("just now" still renders on it, just
-    // not first in the list).
+    // updatedAt being the most recent. Its displayed age must also stay at
+    // 20 minutes, independent of the latest edit.
     const createdFirstUpdatedLast: PreviewComment = {
       id: 'comment-updated-last',
       projectId: 'project-1',
@@ -12264,9 +12264,9 @@ describe('FileViewer tweaks toolbar', () => {
     // though ITS OWN last activity ("Older edit"'s updatedAt) is older.
     expect(firstItem!.textContent).toContain('Older edit');
     // Created earliest (20 minutes ago) → sorts second, despite being the
-    // most recently ACTIVE comment ("just now").
+    // most recently ACTIVE comment. Activity cannot reset its creation age.
     expect(secondItem!.textContent).toContain('Latest edit');
-    expect(secondItem!.textContent).toContain('just now');
+    expect(secondItem!.textContent).toContain('20m ago');
   });
 
   it('does not preload non-open element comments into the picker composer', async () => {

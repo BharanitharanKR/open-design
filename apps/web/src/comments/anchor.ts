@@ -1,3 +1,4 @@
+import { commentUuidFromElementId, commentIdentitySelector, commentSelectorClaimsIdentity } from '@open-design/contracts';
 import type {
   PreviewAnnotationStyle,
   PreviewComment,
@@ -56,6 +57,16 @@ export function resolveCommentAnchor(
   currentVersion?: number,
 ): CommentAnchorResolution {
   const exact = snapshots.get(comment.elementId);
+  if (comment.elementId.startsWith('cmt:') || commentSelectorClaimsIdentity(comment.selector)) {
+    const uuid = commentUuidFromElementId(comment.elementId);
+    const selector = uuid ? commentIdentitySelector(uuid) : null;
+    if (selector && !(typeof currentVersion === 'number' && typeof comment.anchoredVersion === 'number' && comment.anchoredVersion > currentVersion)
+      && comment.selector === selector && exact && exact.selector === selector
+      && exact.filePath === comment.filePath && (exact.slideIndex ?? -1) === (comment.slideIndex ?? -1)
+      && validPosition(exact.position)) return { state: anchoredOrReanchored(comment, currentVersion), snapshot: exact };
+    const ghostPos = validPosition(comment.lastGoodPosition) ?? validPosition(comment.position);
+    return { state: 'lost', snapshot: ghostPos ? ghostSnapshotFromComment(comment, ghostPos) : null };
+  }
   if (exact && exact.filePath === comment.filePath && validPosition(exact.position)) {
     return { state: anchoredOrReanchored(comment, currentVersion), snapshot: exact };
   }

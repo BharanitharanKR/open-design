@@ -56,7 +56,10 @@ describe('FileViewer real HTML export completion seam', () => {
     await exportHtml();
     await waitFor(() => expect(seam.complete).toHaveBeenCalledWith('failed'));
     expect(screen.queryByText('Share the link, invite feedback')).toBeNull();
-    expect(screen.getAllByText('export test failure').length).toBeGreaterThan(0);
+    expect(await screen.findByText('Export failed')).toBeVisible();
+    expect(screen.getByText('This export did not complete. Please try again.')).toBeVisible();
+    expect(screen.queryByText('export test failure')).toBeNull();
+    expect(screen.queryByText('Export complete')).toBeNull();
   });
   it('reports a synchronous exporter throw as failure', async () => {
     seam.exportHtml.mockImplementation(() => { throw new Error('sync export failure'); });

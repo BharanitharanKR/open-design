@@ -42,6 +42,13 @@ describe('after export share guide', () => {
     expect(events.onNeverShow).not.toHaveBeenCalled();
     expect(events.onOpenShare).not.toHaveBeenCalled();
   });
+  it('Escape dismisses this occurrence without persisting suppression', () => {
+    const events = callbacks();
+    render(<AfterExportShareGuide labels={labels} {...events} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(events.onDismiss).toHaveBeenCalledTimes(1);
+    expect(events.onNeverShow).not.toHaveBeenCalled();
+  });
   it('opens share without invoking permanent suppression', () => {
     const events = callbacks();
     render(<AfterExportShareGuide labels={labels} {...events} />);
@@ -97,6 +104,7 @@ describe('after export share guide', () => {
     const view = render(<AfterExportShareGuide labels={labels} {...events} />);
     view.unmount();
     act(() => vi.advanceTimersByTime(10_000));
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(events.onDismiss).not.toHaveBeenCalled();
   });
 });
@@ -225,6 +233,62 @@ describe('export completion controller', () => {
     const other = renderHook(() => useAfterExportShareGuide({ ...eligible, appUserId: 'other-account' }));
     act(() => other.result.current.beginExport()('success'));
     expect(other.result.current.noticeId).not.toBeNull();
+  });
+  it('rejects retained suppression callbacks after an account switch, including A→B→A', () => {
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: eligible });
+    act(() => result.current.beginExport()('success'));
+    const staleNeverShow = result.current.neverShow;
+    rerender({ ...eligible, appUserId: 'other-account' });
+    act(() => { expect(staleNeverShow()).toBe(false); });
+    expect(window.localStorage.length).toBe(0);
+    rerender(eligible);
+    act(() => { expect(staleNeverShow()).toBe(false); });
+    expect(window.localStorage.length).toBe(0);
+    act(() => result.current.beginExport()('success'));
+    expect(result.current.noticeId).not.toBeNull();
+  });
+  it.each(['scope', 'disabled', 'loading-identity'] as const)('rejects a retained suppression callback after %s', transition => {
+    const initial = { ...eligible, appUserId: 'account' as string | null };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    const staleNeverShow = result.current.neverShow;
+    rerender({ ...initial,
+      scopeKey: transition === 'scope' ? 'other-project/file' : initial.scopeKey,
+      enabled: transition !== 'disabled',
+      appUserId: transition === 'loading-identity' ? null : initial.appUserId,
+    });
+    expect(staleNeverShow()).toBe(false);
+    expect(window.localStorage.length).toBe(0);
+  });
+  it('keeps suppression through project changes and logout/relogin without affecting another user', () => {
+    const initial = { ...eligible, appUserId: 'account' as string | null };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    act(() => { expect(result.current.neverShow()).toBe(true); });
+    rerender({ ...initial, scopeKey: 'another-project/file' });
+    act(() => result.current.beginExport()('success'));
+    expect(result.current.noticeId).toBeNull();
+    rerender({ ...initial, appUserId: null });
+    act(() => { expect(result.current.neverShow()).toBe(false); });
+    rerender({ ...initial, appUserId: 'other-account' });
+    act(() => result.current.beginExport()('success'));
+    expect(result.current.noticeId).not.toBeNull();
+    rerender(initial);
+    act(() => result.current.beginExport()('success'));
+    expect(result.current.noticeId).toBeNull();
+    expect(window.localStorage.length).toBe(1);
+  });
+  it('allows the current suppression callback after StrictMode effect replay', () => {
+    const { result } = renderHook(() => useAfterExportShareGuide(eligible), {
+      wrapper: ({ children }) => <StrictMode>{children}</StrictMode>,
+    });
+    act(() => { expect(result.current.neverShow()).toBe(true); });
+    expect(window.localStorage.getItem('od:after-export-share-guide:v1:account')).toBe('1');
+  });
+  it('rejects retained suppression callbacks after unmount', () => {
+    const { result, unmount } = renderHook(() => useAfterExportShareGuide(eligible));
+    const neverShow = result.current.neverShow;
+    unmount();
+    expect(neverShow()).toBe(false);
+    expect(window.localStorage.length).toBe(0);
   });
   it('fences A→B→A completion even when the final string identity is equal', () => {
     const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: eligible });
