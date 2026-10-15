@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.8
+# OD Next Prototype Task Profile v3.1.9
 
 > Rollout: active
 
@@ -145,6 +145,10 @@ record them in the Design Spec:
   derive lists, filtered results, totals, availability, and chart labels from
   that committed state before showing success. Saving a copied list alone
   must not leave the visible list or its summary stale.
+  Refresh every mounted view of changed values, including a review page behind
+  a drawer or editor, and invalidate confirmations based on older values.
+  Closing an editor must not reveal a stale review; final confirmation uses
+  the same current values that the user sees in that review.
 - Derive status wording from the same values as the displayed totals. Distinguish
   no records, zero net, positive net, and negative net; zero must not be called
   a positive balance or growth. Empty periods show an honest empty state,
