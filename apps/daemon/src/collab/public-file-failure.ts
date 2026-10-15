@@ -94,23 +94,31 @@ export function classifyVelaCommandFailure(
   return { stage, reason: 'unknown' };
 }
 
+export type PublicShareBootstrapStage =
+  | 'bootstrap' | 'bootstrap_content_preflight' | 'bootstrap_directory_preflight'
+  | 'bootstrap_root_push' | 'bootstrap_root_version' | 'bootstrap_catalog_upsert' | 'bootstrap_catalog_readback';
+
 export type PublicShareDiagnosticStage =
+  | PublicShareBootstrapStage
   | 'remote_state' | 'resume_guard' | 'resume_command' | 'resume_record' | 'resume_prepare';
 
 /** Bounded share lifecycle failures only: never include command output, identities or URLs. */
 export function logPublicShareDiagnostic(entry: {
-  operation: 'state_read' | 'resume';
+  operation: 'state_read' | 'resume' | 'bootstrap';
   stage: PublicShareDiagnosticStage;
   status: number;
   errorCode: string;
   requestId: string | undefined;
   startedAt: number;
   staleFallback?: boolean;
+  failure?: Pick<ApiFailureDetail, 'reason' | 'upstreamStatus'>;
 }): void {
   console.warn('[od] public share diagnostic', JSON.stringify({
     operation: entry.operation, stage: entry.stage, status: entry.status, errorCode: entry.errorCode,
     ...(entry.requestId ? { requestId: entry.requestId } : {}),
     ...(entry.staleFallback !== undefined ? { staleFallback: entry.staleFallback } : {}),
+    ...(entry.failure ? { reason: entry.failure.reason,
+      ...(entry.failure.upstreamStatus !== undefined ? { upstreamStatus: entry.failure.upstreamStatus } : {}) } : {}),
     durationMs: Math.max(0, Date.now() - entry.startedAt),
   }));
 }
