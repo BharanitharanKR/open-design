@@ -5413,6 +5413,9 @@ function AppInner() {
             action,
             chipId: target.chipId,
             projectKind: target.projectKind,
+            asExample: target.asExample,
+            // Community records its own use click.
+            useTracked: true,
           }));
           navigate({ kind: 'home', view: 'home' });
         }}

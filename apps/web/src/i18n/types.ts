@@ -1384,6 +1384,9 @@ export interface Dict {
   'homeHero.chip.deck': string;
   'homeHero.chip.image': string;
   'homeHero.chip.video': string;
+  'homeHero.chip.motionDesign': string;
+  'homeHero.chip.motionDesignDesc': string;
+  'homeHero.chip.motionDesignHint': string;
   'homeHero.chip.hyperframes': string;
   'homeHero.chip.audio': string;
   'homeHero.chip.createBrandKit': string;
@@ -2932,6 +2935,7 @@ export interface Dict {
   'chat.runError.title.sessionExpired': string;
   'chat.runError.title.gitBashMissing': string;
   'chat.runError.title.cpuUnsupported': string;
+  'chat.runError.title.osUnsupported': string;
   'chat.runError.title.cliSessionRefused': string;
   'chat.runError.title.strategyTaskHalted': string;
   'chat.runError.title.agentReplyIncomplete': string;
@@ -2983,6 +2987,7 @@ export interface Dict {
   'chat.runError.sessionExpiredMessage': string;
   'chat.runError.gitBashMissingMessage': string;
   'chat.runError.cpuUnsupportedMessage': string;
+  'chat.runError.osUnsupportedMessage': string;
   'chat.runError.title.agentCrashed': string;
   'chat.runError.agentCrashedMessage': string;
   'chat.runError.title.accountSuspended': string;
@@ -4008,6 +4013,18 @@ export interface Dict {
   'fileViewer.versions.countMany': string;
   'fileViewer.versions.current': string;
   'fileViewer.versions.sourceAi': string;
+  'collab.contentUpdate.available': string;
+  'collab.contentUpdate.updating': string;
+  'collab.contentUpdate.askAgain': string;
+  'collab.contentUpdate.title': string;
+  'collab.contentUpdate.description': string;
+  'collab.contentUpdate.dontPrompt': string;
+  'collab.contentUpdate.later': string;
+  'collab.contentUpdate.replace': string;
+  'collab.contentUpdate.failed': string;
+  'collab.contentUpdate.busy': string;
+  'collab.contentUpdate.unsupported': string;
+  'fileViewer.versions.sourceSync': string;
   'fileViewer.versions.sourceManual': string;
   'fileViewer.versions.sourceRestore': string;
   'fileViewer.versions.restoredFrom': string;
