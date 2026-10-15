@@ -677,8 +677,20 @@ process.exit(127);
   // variable — that is what "configure it and it takes effect" has to mean for
   // a packaged install, where the saved mode is the only control a user has:
   // the packaged child environment allowlist carries no `OD_NEXT_*` key.
-  it.each(['marker-production', 'marker-production-suggestions'] as const)(
-    'marker protocol reuses a production claim with fresh host instructions and resumes Codex only once (%s)', async label => {
+  it('marker protocol automatically resumes Codex once and preserves files despite a missing canonical entry', async () => {
+    const fixture = await createPublicRolloutFixture('marker-production', 'design');
+    await verifyProductionHostProtocol(fixture, 'marker-production');
+  });
+
+  it('marker protocol persists production follow-up suggestions with the current run key', async () => {
+    const fixture = await createPublicRolloutFixture('marker-production-suggestions', 'design');
+    await verifyProductionHostProtocol(fixture, 'marker-production-suggestions');
+  });
+
+  async function verifyProductionHostProtocol(
+    fixture: Awaited<ReturnType<typeof createPublicRolloutFixture>>,
+    label: string,
+  ) {
     const prepareContinuation = automaticProduction.prepareAutomaticStrategyContinuation;
     let repeatPreparation: (() => ReturnType<typeof prepareContinuation>) | undefined;
     vi.spyOn(automaticProduction, 'prepareAutomaticStrategyContinuation').mockImplementation(input => {
@@ -691,7 +703,6 @@ process.exit(127);
       }
       return first;
     });
-    const fixture = await createPublicRolloutFixture(label, 'design');
     started = fixture.started; binDir = fixture.binDir;
     process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
     const created = await postRun(started.url, publicRunRequest(fixture, 'Create a landing page and a presentation.', label));
@@ -741,7 +752,7 @@ process.exit(127);
       .filter(event => event.kind === 'next_steps').map(event => event.suggestions));
     expect(persistedSuggestions).toEqual(suggestionsExpected ? [PRODUCTION_FOLLOW_UP_SUGGESTIONS] : []);
     expect(history.messages.some(message => message.strategyTaskDelivered)).toBe(false);
-  });
+  }
 
   it.each(['missing-session', 'expired-session'] as const)('marker production cold-starts with its plan when %s', async mode => {
     const fixture = await createPublicRolloutFixture(`marker-${mode}`, 'design');
