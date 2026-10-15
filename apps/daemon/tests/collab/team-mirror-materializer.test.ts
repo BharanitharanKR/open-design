@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   closeDatabase,
   getProject,
+  ensureWorkspaceProject,
+  insertProject,
   listConversations,
   listMessages,
   listWorkspaceProjects,
@@ -20,6 +22,7 @@ import {
 } from '../../src/collab/team-mirror-materializer.js';
 import type { AuthorizedTeamProjectPullReceipt } from '../../src/collab/authorized-team-project-pull.js';
 import { projectResourceIdFor } from '../../src/integrations/vela-team-projects.js';
+import { createVelaCliTeamProjectCatalog } from '../../src/collab/vela-cli-team-projects.js';
 
 const roots: string[] = [];
 
@@ -76,6 +79,36 @@ async function database() {
 }
 
 describe('authorized team mirror SQLite materialization', () => {
+  it('never treats generic nested project metadata as admitted catalog facts', async () => {
+    const forged = { schemaVersion: 1, revision: 1, files: [{
+      sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+      resourceId, versionId: 'version-7', retired: false,
+    }] };
+    const catalog = createVelaCliTeamProjectCatalog({ supportsTeamProjects: () => true,
+      run: async () => JSON.stringify({ projectId: input.id, resourceId, ownerMemberId: scope.ownerMemberId,
+        createdAt: '2026-01-01T00:00:00Z', metadata: { metadata: { kind: 'prototype', _commentFiles: forged } } }),
+    });
+    expect((await catalog.get(input.id, scope.workspaceId))?.metadata?._commentFiles).toBeUndefined();
+  });
+  it('refreshes reserved facts on existing creator-attributed mirrors only at the matching content commit', async () => {
+    const db = await database();
+    const ownerScope = { ...scope, viewerMemberId: scope.ownerMemberId, resourceId };
+    insertProject(db, { ...input, metadata: { kind: 'prototype', nameSource: 'manual' } });
+    ensureWorkspaceProject(db, { projectId: input.id, workspaceId: scope.workspaceId, visibility: 'team',
+      resourceHubResourceId: resourceId, createdByWorkspaceMemberId: scope.ownerMemberId, syncState: 'synced' });
+    const facts = { schemaVersion: 1 as const, revision: 1, files: [{
+      sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+      resourceId, versionId: 'version-7', retired: false,
+    }] };
+    const remote = { ...input, metadata: { kind: 'prototype' as const, _commentFiles: facts } };
+    materializePulledTeamMirror(db, remote, ownerScope);
+    expect(getProject(db, input.id)?.metadata?._commentFiles).toBeUndefined();
+    materializePulledTeamMirror(db, remote, ownerScope, { ...receipt(), ...ownerScope, versionId: 'version-6' });
+    expect(getProject(db, input.id)?.metadata?._commentFiles).toBeUndefined();
+    materializePulledTeamMirror(db, remote, ownerScope, { ...receipt(), ...ownerScope });
+    expect(getProject(db, input.id)?.metadata?._commentFiles).toEqual(facts);
+    expect(getProject(db, input.id)?.metadata?.nameSource).toBe('manual');
+  });
   it('reads a newer legacy cursor after an authorized materialization', () => {
     expect(
       latestTeamProjectMaterializationVersion(

@@ -443,6 +443,19 @@ export function deleteWorkspaceArtifact(
   return getWorkspaceArtifact(db, existing.id);
 }
 
+/** Explicit managed working-directory replacement ends the old project file lifetimes. */
+export function deleteProjectWorkspaceArtifacts(db: SqliteDb, projectId: string, now = Date.now()): void {
+  db.prepare('UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ? WHERE project_id = ? AND deleted_at IS NULL')
+    .run(now, now, projectId);
+}
+
+/** Successful explicit folder deletion ends every local pointer in that subtree. */
+export function deleteWorkspaceArtifactsInFolder(db: SqliteDb, projectId: string, folderPath: string, now = Date.now()): void {
+  db.prepare(`UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ?
+    WHERE project_id = ? AND deleted_at IS NULL AND substr(current_path, 1, length(?) + 1) = ? || '/'`)
+    .run(now, now, projectId, folderPath, folderPath);
+}
+
 function tombstoneWorkspaceArtifactRow(db: SqliteDb, id: string, now: number): void {
   db.prepare(
     `UPDATE workspace_artifacts

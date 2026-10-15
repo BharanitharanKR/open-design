@@ -111,7 +111,33 @@ export interface PreviewCommentTarget {
   anchoredVersion?: number;
 }
 
+export interface CommentFileFact {
+  sourceFileId: string;
+  sourceFilePath: string;
+  entryPath: string;
+  resourceId: string;
+  versionId: string;
+  retired: boolean;
+}
+
+/** Admitted server state; deliberately distinct from a CAS mutation. */
+export interface CommentFileState {
+  schemaVersion: 1;
+  revision: number;
+  files: CommentFileFact[];
+}
+
+export interface CommentFileMutation {
+  schemaVersion: 1;
+  baseRevision: number;
+  resourceId: string;
+  versionId: string;
+  files: Array<Pick<CommentFileFact, 'sourceFileId' | 'sourceFilePath' | 'entryPath' | 'retired'>>;
+}
+
 export interface PreviewComment {
+  /** Creator workspace_artifacts UUID, scoped to this project; never inferred for historical rows. */
+  sourceFileId?: string;
   id: string;
   projectId: string;
   conversationId: string;

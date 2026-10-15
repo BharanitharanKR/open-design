@@ -14,7 +14,8 @@ import {
 } from './vela-cli-resource-adapter.js';
 import type { OwnedContentScope } from './owned-content-store.js';
 
-async function contentFiles(directory: string): Promise<string[]> {
+/** The exact root snapshot roster, shared by upload checkpoints and HTML fact admission. */
+export async function contentFiles(directory: string): Promise<string[]> {
   const files: string[] = [];
   async function visit(current: string, prefix: string): Promise<void> {
     const entries = await readdir(current, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {

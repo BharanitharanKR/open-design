@@ -1,3 +1,4 @@
+import { ensureWorkspaceArtifactForPath } from '../src/chat-artifacts/store.js';
 import { expect, it, vi } from 'vitest';
 import express from 'express';
 import { createServer } from 'node:http';
@@ -55,7 +56,7 @@ it('publishing a private team-workspace project preserves personal visibility an
     insertConversation(db, { id: 'a', projectId: 'p', title: 'a', createdAt: 1, updatedAt: 1 });
     db.prepare(`INSERT INTO workspace_projects(project_id,workspace_id,visibility,resource_state,created_by_workspace_member_id,created_at,updated_at)
       VALUES('p','w','personal','active','owner',1,1)`).run();
-    for (const id of ['first', 'second']) upsertPreviewComment(db, 'p', 'a', { id, note: id, authorMemberId: 'owner', target });
+    for (const id of ['first', 'second']) upsertPreviewComment(db, 'p', 'a', { id, sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, note: id, authorMemberId: 'owner', target });
     migratePublicFilePublications(db);
     const store = createSqlitePublicFilePublicationStore(db);
     const queue = createCommentRelayOutboxStore(db);
@@ -117,7 +118,7 @@ it('publishing a private team-workspace project preserves personal visibility an
       // A comment written right after publishing is relay-eligible and queued.
       expect(commentRelayScope({ projectId: 'p', filePath: FILE, context,
         binding: getWorkspaceProjectByProjectId(db, 'p'), publications: store })).toMatchObject({ relayScope: 'personal' });
-      const fresh = upsertPreviewComment(db, 'p', 'a', { id: 'third', note: 'third', authorMemberId: 'owner', target },
+      const fresh = upsertPreviewComment(db, 'p', 'a', { id: 'third', sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, note: 'third', authorMemberId: 'owner', target },
         { pinPendingCloudConfirm: true }) as unknown as PreviewComment;
       expect(relay.enqueueComment(fresh, context)).toBe(true);
 
@@ -151,11 +152,11 @@ it('a personal backfill queued in a team workspace is delivered without changing
     insertConversation(db, { id: 'a', projectId: 'p', title: 'a', createdAt: 1, updatedAt: 1 });
     db.prepare(`INSERT INTO workspace_projects(project_id,workspace_id,visibility,resource_state,created_by_workspace_member_id,created_at,updated_at)
       VALUES('p','w','personal','active','owner',1,1)`).run();
-    for (const id of ['first', 'second']) upsertPreviewComment(db, 'p', 'a', { id, note: id, authorMemberId: 'owner', target });
+    for (const id of ['first', 'second']) upsertPreviewComment(db, 'p', 'a', { id, sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, note: id, authorMemberId: 'owner', target });
     migratePublicFilePublications(db);
     const store = createSqlitePublicFilePublicationStore(db);
     const queue = createCommentRelayOutboxStore(db);
-    const scope = { resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE };
+    const scope = { sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE };
     createPublicFilePublicationRecorder(db, store, enqueuePublishedFileComments)(
       scope, { slug: 'stable', url: 'https://viewer.example.test/s', fileName: FILE }, [{ sourcePath: FILE, publishedPath: 'index.html' }]);
     expect(queue.listDue(Date.now()).map(row => row.relayScope)).toEqual(['personal', 'personal']);
@@ -205,12 +206,12 @@ it('a stopped private-in-team publication is cancelled without waiting for team 
     insertConversation(db, { id: 'a', projectId: 'p', title: 'a', createdAt: 1, updatedAt: 1 });
     db.prepare(`INSERT INTO workspace_projects(project_id,workspace_id,visibility,resource_state,created_by_workspace_member_id,created_at,updated_at)
       VALUES('p','w','personal','active','owner',1,1)`).run();
-    upsertPreviewComment(db, 'p', 'a', { id: 'first', note: 'first', authorMemberId: 'owner', target });
+    upsertPreviewComment(db, 'p', 'a', { id: 'first', sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, note: 'first', authorMemberId: 'owner', target });
     migratePublicFilePublications(db);
     const store = createSqlitePublicFilePublicationStore(db);
     const queue = createCommentRelayOutboxStore(db);
     createPublicFilePublicationRecorder(db, store, enqueuePublishedFileComments)(
-      { resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE },
+      { sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: FILE, kind: 'html' }).id, resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE },
       { slug: 'stable', url: 'https://viewer.example.test/s', fileName: FILE }, [{ sourcePath: FILE, publishedPath: 'index.html' }]);
     // The publication witness, not workspace type or catalog promotion, owns
     // cancellation. A stopped file must never regain eligibility from retries.

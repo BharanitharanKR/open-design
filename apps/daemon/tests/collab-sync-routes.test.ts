@@ -20,6 +20,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   symlink,
   writeFile,
@@ -324,7 +325,14 @@ async function publicShareFixture(options: {
   let ids = 0;
   // Publish and read share one Viewer resolver, as server.ts wires them.
   const resolvePublicShareLink: NonNullable<RegisterCollabSyncRoutesDeps['resolvePublicShareLink']> = (projectId, slug, amr) => resolveShareLink(projectId, slug, amr, { OD_SHARE_VIEWER_URL: 'https://web.example.test' });
+  const syntheticSourceIds = new Map<string, string>();
   const sharePublishing: NonNullable<RegisterCollabSyncRoutesDeps['sharePublishing']> = {
+    sourceFileId: scope => {
+      const key = JSON.stringify([scope.projectId, scope.filePath]);
+      const id = syntheticSourceIds.get(key) ?? randomUUID();
+      syntheticSourceIds.set(key, id);
+      return id;
+    },
     reservations: createShareAliasReservations(db, () => ids++ === 0 ? fixtureSlug : randomUUID()),
     outbox,
     complete: createSharePublicationCompletion(db, record, outbox, true),
@@ -345,8 +353,8 @@ async function publicShareFixture(options: {
     }),
     retry: vi.fn(),
   };
-  const readProjectShareState = vi.fn(async (scope: { projectId: string }) => ({ projectId: scope.projectId, bindingExists: true, hasEverShared: true,
-    publications: [{ sourceFilePath: 'index.html', slug: fixtureSlug, status: 'active' as const }, { sourceFilePath: 'pages/local.html', slug: fixtureSlug, status: 'active' as const }] }));
+  const readProjectShareState = vi.fn(async (scope: { projectId: string }): Promise<import('../src/collab/vela-project-share-state.js').ProjectShareState> => ({ projectId: scope.projectId, bindingExists: true, hasEverShared: true,
+    publications: [{ sourceFilePath: 'index.html', ...(syntheticSourceIds.has(JSON.stringify([scope.projectId, 'index.html'])) ? { sourceFileId: syntheticSourceIds.get(JSON.stringify([scope.projectId, 'index.html']))! } : {}), slug: fixtureSlug, status: 'active' as const }, { sourceFilePath: 'pages/local.html', ...(syntheticSourceIds.has(JSON.stringify([scope.projectId, 'pages/local.html'])) ? { sourceFileId: syntheticSourceIds.get(JSON.stringify([scope.projectId, 'pages/local.html']))! } : {}), slug: fixtureSlug, status: 'active' as const }] }));
   return { publicFilePublicationStore: store, sharePublishing, readProjectShareState, resolvePublicShareLink };
 }
 
@@ -536,6 +544,39 @@ async function startSyncServer(
 }
 
 describe('collab sync routes', () => {
+  it.each([false, true])('admits the exact selected receipt before alias mutation without uploading root; unknown proof=%s', async unknown => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'od-comment-receipt-order-'));
+    tempDirs.push(dir);
+    await writeFile(path.join(dir, 'selected.html'), '<h1>SELECTED</h1>');
+    await writeFile(path.join(dir, 'private.html'), '<h1>PRIVATE</h1>');
+    const steps: string[] = [];
+    const share = await publicShareFixture({ run: async args => {
+      if (args[0] === 'resource') {
+        steps.push('selected-upload');
+        expect(args[1]).toBe('push');
+        expect(args[3]).toMatch(/^project-file-/);
+        expect(await readdir(args[4] ?? '')).not.toContain('private.html');
+        return JSON.stringify({ id: 'selected-v1', version: 1 });
+      }
+      expect(args.slice(0, 2)).toEqual(['share', 'publish']);
+      expect(steps).toEqual(['selected-upload', 'admitted']);
+      steps.push('alias');
+      return confirmedShareOutput(args);
+    } });
+    share.sharePublishing.sourceFileId = () => '11111111-1111-4111-8111-111111111111';
+    share.sharePublishing.admitFileReceipt = async (scope, resourceId, versionId, entryPath) => {
+      expect(scope).toMatchObject({ sourceFileId: '11111111-1111-4111-8111-111111111111', filePath: 'selected.html' });
+      expect(resourceId).toBe(publicFileResourceIdFor(scope));
+      expect(versionId).toBe('selected-v1');
+      expect(entryPath).toBe('index.html');
+      if (unknown) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+      steps.push('admitted');
+    };
+    const api = await startSyncServer(personalContextProvider(), { resolveProjectDir: () => dir, resolveSharedProject: async () => null, ...share });
+    const response = await api.json('/api/projects/p1/files/selected.html/publish-public', { method: 'POST' });
+    expect(response.status).toBe(unknown ? 502 : 200);
+    expect(steps).toEqual(unknown ? ['selected-upload'] : ['selected-upload', 'admitted', 'alias']);
+  });
   it('keeps publish callbacks scoped to every workspace sharing the same project', async () => {
     const onPublished = vi.fn();
     const publish = vi.fn(async (input: { principal?: { memberId?: string } }) => ({
@@ -1811,6 +1852,26 @@ describe('collab sync routes', () => {
     expect((await api.json('/api/projects/p1/collab/status')).status).toBe(403);
   });
 
+  it('selects current F2 status/resume instead of a retired F1 alias at the same path', async () => {
+    const fixture = await publicShareFixture();
+    const scope = { projectId: 'p1', filePath: 'index.html', resourceTeamId: 'team-1', ownerMemberId: 'wm-1' };
+    const sourceFileId = fixture.sharePublishing.sourceFileId?.(scope);
+    if (!sourceFileId) throw new Error('missing fixture lifetime');
+    const old = { sourceFilePath: scope.filePath, sourceFileId: '11111111-1111-4111-8111-111111111111', slug: fixtureSlug, status: 'stopped' as const };
+    fixture.readProjectShareState.mockResolvedValue({ projectId: 'p1', bindingExists: true, hasEverShared: true, publications: [old] });
+    const api = await startSyncServer(fixedShareContextProvider(true), { ...fixture, resolveSharedProject: async () => null });
+    const endpoint = '/api/projects/p1/files/index.html/publish-public';
+    expect((await api.json(endpoint)).body.status).toBe('none');
+    const resume = await api.json(endpoint, { method: 'POST', body: { mode: 'resume' } });
+    expect(resume.status).toBe(409);
+    expect(resume.body.error).toBe('SHARE_RESUME_NOT_STOPPED');
+    fixture.readProjectShareState.mockResolvedValue({ projectId: 'p1', bindingExists: true, hasEverShared: true,
+      publications: [old, { ...old, sourceFileId, slug: '22222222-2222-4222-8222-222222222222', status: 'active' }] });
+    expect((await api.json(endpoint)).body.status).toBe('active');
+    const history = await api.json('/api/projects/p1/share-state');
+    expect(history.body.publications[1].sourceFileId).toBe(sourceFileId);
+  });
+
   it.each(['none', 'active', 'stopped', 'unavailable'] as const)('reads authoritative project/file state without any local publication: %s', async state => {
     const history = { projectId: 'p1', bindingExists: state !== 'none', hasEverShared: state !== 'none',
       publications: state === 'none' || state === 'unavailable' ? [] : [{ sourceFilePath: 'index.html', slug: fixtureSlug, status: state }] };
@@ -2070,6 +2131,7 @@ describe('collab sync routes', () => {
         publicFilePublicationStore: store,
         recordPublicFilePublication: createPublicFilePublicationRecorder(db, store, () => ({ enqueued: 0, skippedInbound: 0 })),
         sharePublishing: {
+          sourceFileId: () => '11111111-1111-4111-8111-111111111111',
           reservations: createShareAliasReservations(db, () => receipt.slug), outbox,
           ensureProject: async scope => ({ projectId: scope.projectId, ownerMemberId: scope.ownerMemberId, sharedAt: '2026-01-01T00:00:00.000Z' }),
           complete: createSharePublicationCompletion(db, createPublicFilePublicationRecorder(db, store, () => ({ enqueued: 0, skippedInbound: 0 })), outbox, true),
@@ -2118,7 +2180,7 @@ describe('collab sync routes', () => {
         scope: typeof scope; publicationRevision: { slug: string; token: string }; publicFilePath: string;
       }) => {
         expect(connection).toBe(db); expect(db.inTransaction).toBe(true);
-        expect(input.scope).toEqual(scope); expect(input.publicFilePath).toBe('index.html');
+        expect(input.scope).toEqual({ ...scope, sourceFileId: expect.stringMatching(/^[a-f0-9-]{36}$/) }); expect(input.publicFilePath).toBe('index.html');
         expect(input.publicationRevision).toEqual(store.getRevision(scope));
         db.prepare('INSERT INTO test_publish_intents VALUES (?, ?, ?)').run(input.scope.filePath, input.publicFilePath, input.publicationRevision.token);
         if (fail) throw new Error('intent storage unavailable');
@@ -2609,7 +2671,7 @@ describe('collab sync routes', () => {
     try {
       await Promise.race([reached.promise, stop.then(() => { throw new Error('stop ended before barrier'); })]);
       // Explicit external witness replacement, not an ordinary update changing the stable alias.
-      fixture.readProjectShareState.mockResolvedValue({ projectId: 'p1', bindingExists: true, hasEverShared: true, publications: [{ sourceFilePath: 'index.html', slug, status: 'active' }] });
+      fixture.readProjectShareState.mockResolvedValue({ projectId: 'p1', bindingExists: true, hasEverShared: true, publications: [{ sourceFilePath: 'index.html', sourceFileId: fixture.sharePublishing.sourceFileId!({ projectId: 'p1', filePath: 'index.html', resourceTeamId: 'team-1', ownerMemberId: 'wm-1' }), slug, status: 'active' }] });
       fixture.publicFilePublicationStore.set({ resourceTeamId: 'team-1', ownerMemberId: 'wm-1', projectId: 'p1', filePath: 'index.html' }, newer);
     } finally { release.resolve(); }
     expect((await stop).status).toBe(200);

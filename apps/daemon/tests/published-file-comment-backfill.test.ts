@@ -1,3 +1,4 @@
+import { ensureWorkspaceArtifactForPath } from '../src/chat-artifacts/store.js';
 import { afterEach, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,17 +25,18 @@ function setup() {
   root = mkdtempSync(join(tmpdir(), 'od-backfill-'));
   const db = openDatabase(root);
   migratePublicFilePublications(db);
-  const scope = { resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: 'pages/work.html' };
+  const scope = { sourceFileId: '', resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: 'pages/work.html' };
   for (const projectId of ['p', 'other']) {
     insertProject(db, { id: projectId, name: projectId, createdAt: 1, updatedAt: 1 });
     for (const name of ['a', 'b', 'comment-anchor-inbound']) {
       insertConversation(db, { id: `${name}-${projectId}`, projectId, title: name, createdAt: 1, updatedAt: 1 });
     }
   }
+  scope.sourceFileId = ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: scope.filePath, kind: 'html' }).id;
   db.prepare(`INSERT INTO workspace_projects(project_id, workspace_id, visibility, resource_state,
     created_by_workspace_member_id, created_at, updated_at) VALUES('p','w','personal','active','owner',1,1)`).run();
   const add = (id: string, conversationId = 'a-p', filePath = scope.filePath, projectId = 'p', authorMemberId = 'original') =>
-    upsertPreviewComment(db, projectId, conversationId, { id, authorMemberId, note: id,
+    upsertPreviewComment(db, projectId, conversationId, { id, authorMemberId, note: id, sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId, path: filePath, kind: 'html' }).id,
       target: { filePath, elementId: 'hero', selector: '#hero', label: 'Hero', position: { x: 0, y: 0, width: 2, height: 2 } } });
   const publications = createSqlitePublicFilePublicationStore(db);
   const publication = { slug: 'stable', url: 'https://example.test/s/stable', fileName: scope.filePath };
@@ -45,6 +47,16 @@ function setup() {
   })();
   return { db, scope, add, publications, publication, outbox, publish };
 }
+it('includes only new-protocol comments on the current lifetime, never historical or retired-path rows', () => {
+  const s = setup();
+  s.add('current');
+  const target = { filePath: s.scope.filePath, elementId: 'e', selector: '#e', label: 'E', position: { x: 0, y: 0, width: 1, height: 1 } };
+  upsertPreviewComment(s.db, 'p', 'a-p', { id: 'historical', note: 'untouched', target });
+  upsertPreviewComment(s.db, 'p', 'a-p', { id: 'retired', sourceFileId: '11111111-1111-4111-8111-111111111111', note: 'F1', target });
+  s.publish();
+  expect(s.outbox.listDue(Date.now()).map(row => row.comment.id)).toEqual(['current']);
+  expect(s.db.prepare('SELECT source_file_id AS sourceFileId FROM preview_comments WHERE id = ?').get('historical')).toEqual({ sourceFileId: null });
+});
 it('composes the real publisher recorder, planner mapping and durable queue across stable-alias updates', () => {
   const s = setup(); s.add('a'); s.add('b', 'b-p'); s.add('private', 'a-p', 'private.html');
   const mapping = createShareFileMapping([{ sourcePath: s.scope.filePath, file: 'index.html' }]);

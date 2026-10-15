@@ -1,3 +1,4 @@
+import { ensureWorkspaceArtifactForPath } from '../src/chat-artifacts/store.js';
 import { expect, it } from 'vitest';
 import express from 'express';
 import { createServer } from 'node:http';
@@ -52,7 +53,7 @@ it.each(['personal', 'team', 'personal-failure-retry', 'personal-association-fai
       db.prepare(`INSERT INTO workspace_projects(project_id,workspace_id,visibility,resource_state,created_by_workspace_member_id,created_at,updated_at)
         VALUES('p','w',?,'active','owner',1,1)`).run(visibility);
       for (const [id, filePath] of [['public-comment', FILE], ['private-comment', 'private.html']]) {
-        upsertPreviewComment(db, 'p', 'a', { id, note: id, authorMemberId: 'owner',
+        upsertPreviewComment(db, 'p', 'a', { id, sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: filePath ?? FILE, kind: 'html' }).id, note: id, authorMemberId: 'owner',
           target: { filePath, elementId: 'hero', selector: 'h1', label: 'Hero', position: { x: 0, y: 0, width: 1, height: 1 } } });
       }
       migratePublicFilePublications(db);

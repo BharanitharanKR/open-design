@@ -10,7 +10,7 @@ import { publicFileResourceIdFor } from '../src/collab/public-file-resource-id.j
 import type { PublicFilePublicationStore } from '../src/collab/public-file-publication-store.js';
 import type { RegisterCollabSyncRoutesDeps } from '../src/routes/collab-sync.js';
 
-export type FixtureShareCloud = Map<string, { projectId: string; sourceFilePath: string; slug: string; status: 'active' | 'stopped' }>;
+export type FixtureShareCloud = Map<string, { projectId: string; sourceFilePath: string; sourceFileId?: string; slug: string; status: 'active' | 'stopped' }>;
 export const fixtureShareSlug = 'a863b8d7-cc55-465a-a359-435bd3ef4919';
 /** What the synthetic `vela share … --json` adds to an ACTIVE binding: AMR's
  * `url`, or `link: {status:'unavailable', code}` (AA5 shapes). Stopped
@@ -39,6 +39,18 @@ export function createPublicSharePublishingFixture(
     // The raw `vela share project-status --json` body, through the real parser.
     return parseProjectShareState(JSON.stringify({ projectId: scope.projectId, bindingExists: publications.length > 0, publications }), scope.projectId);
   }, sharePublishing: {
+    // Synthetic creator artifact pointer for this transport fixture only;
+    // production resolves workspace_artifacts, never an alias/path election.
+    sourceFileId: scope => {
+      const stored = db.prepare(`SELECT source_file_id AS id FROM share_alias_reservations
+        WHERE resource_team_id = ? AND owner_member_id = ? AND project_id = ? AND file_path = ? AND source_file_id <> ''`)
+        .get(scope.resourceTeamId, scope.ownerMemberId, scope.projectId, scope.filePath) as { id: string } | undefined;
+      if (stored) return stored.id;
+      const hasComments = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'preview_comments'").get();
+      const local = hasComments ? db.prepare('SELECT source_file_id AS id FROM preview_comments WHERE project_id = ? AND file_path = ? AND source_file_id IS NOT NULL LIMIT 1')
+        .get(scope.projectId, scope.filePath) as { id: string } | undefined : undefined;
+      return local?.id ?? randomUUID();
+    },
     reservations: createShareAliasReservations(db, () => ids++ === 0 ? fixtureShareSlug : randomUUID()),
     outbox,
     complete: input => {
@@ -62,7 +74,7 @@ export function createPublicSharePublishingFixture(
         if (args[1] === 'stop') {
           await options.beforeStop?.();
           if (options.failStop) throw new Error('remote stop unavailable');
-          cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, slug, status: 'stopped' });
+          cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, ...((scope.sourceFileId ?? cloud.get(scope.projectId + ':' + scope.filePath)?.sourceFileId) ? { sourceFileId: scope.sourceFileId ?? cloud.get(scope.projectId + ':' + scope.filePath)?.sourceFileId as string } : {}), slug, status: 'stopped' });
           return JSON.stringify({ status: 'stopped', projectId: scope.projectId, slug });
         }
         if (args[1] === 'resume-existing') {
@@ -78,7 +90,7 @@ export function createPublicSharePublishingFixture(
         if (args[1] === 'bind' || args[1] === 'resume') {
           if (args[1] === 'resume' && options.failResume) throw new Error('resume unavailable');
           if (args[1] === 'bind' && cloud.get(scope.projectId + ':' + scope.filePath)?.status === 'stopped') throw new Error('SHARE_BINDING_STOPPED');
-          cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, slug, status: 'active' });
+          cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, ...(scope.sourceFileId ? { sourceFileId: scope.sourceFileId } : {}), slug, status: 'active' });
           return JSON.stringify({ status: 'active', projectId: scope.projectId, slug, ...amrFields(scope.projectId, slug),
             verifiedVersion: Number(args[args.indexOf('--version') + 1]), verifiedVersionId: args[args.indexOf('--version-id') + 1] });
         }
@@ -89,7 +101,7 @@ export function createPublicSharePublishingFixture(
         const receipt = { slug, versionId, version: 1, publishedAt: 1, entryPath };
         lastReceipt = receipt;
         const pending = options.pending || cloud.get(scope.projectId + ':' + scope.filePath)?.status === 'stopped';
-        if (!pending) cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, slug, status: 'active' });
+        if (!pending) cloud.set(scope.projectId + ':' + scope.filePath, { projectId: scope.projectId, sourceFilePath: scope.filePath, ...(scope.sourceFileId ? { sourceFileId: scope.sourceFileId } : {}), slug, status: 'active' });
         return JSON.stringify({ status: pending ? 'binding_pending' : 'published', ...receipt, receipt, snapshot: { versionId },
           ...(pending ? { binding: { code: 'SHARE_BINDING_UNAVAILABLE' } } : amrFields(scope.projectId, slug)) });
       },
