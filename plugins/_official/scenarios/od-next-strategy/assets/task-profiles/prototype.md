@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.6
+# OD Next Prototype Task Profile v3.1.7
 
 > Rollout: active
 
@@ -130,10 +130,19 @@ record them in the Design Spec:
   and disabled states wherever the declared flow needs them.
 - Modals, menus, drawers, and page transitions have explicit enter, exit, and
   return paths.
+- Drive button-based view changes and success redirects from local state and
+  invoke the view renderer directly. Do not depend on assigning `location.hash`
+  or native document navigation to update the view in a sandbox. URL metadata
+  is optional; a rejected URL update must not block navigation, committed
+  results, or a return path that preserves the user's filters.
 - Commit each local mutation to the same state that renders the interface;
   derive lists, filtered results, totals, availability, and chart labels from
   that committed state before showing success. Saving a copied list alone
   must not leave the visible list or its summary stale.
+- Derive status wording from the same values as the displayed totals. Distinguish
+  no records, zero net, positive net, and negative net; zero must not be called
+  a positive balance or growth. Empty periods show an honest empty state,
+  without stale chart segments or invented percentages.
 - Hot-search suggestions and typed searches use the same matching rules.
   A visible suggestion must find its intended existing content, including
   when the suggestion abbreviates a longer title. Clearing search restores

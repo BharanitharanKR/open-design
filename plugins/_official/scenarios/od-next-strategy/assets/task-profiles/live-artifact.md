@@ -1,4 +1,4 @@
-# OD Next Live Artifact Task Profile v3.1.4
+# OD Next Live Artifact Task Profile v3.1.5
 
 Use for refreshable dashboards and synchronized reports with route=live-artifact and kind=live. Resolve the real data source and refresh method first, using user-authorized local data or existing connectors. Do not describe static examples as live synchronization.
 
@@ -36,6 +36,7 @@ Report registration failures honestly and retain source files. Rendering source 
 - JSON limits: depth 8, 100 keys per object, 500 items per array, 16KiB per string, and 256KiB total. Aggregate larger responses to the data needed for the preview; do not retain complete API responses.
 - Every displayed field that changes with its source must update through sourceJson/outputMapping. A source containing only a task array can be displayed directly as a list. Do not hard-code initial total/completed counts into data.json and claim they refresh live. Omit derived metrics that cannot be recomputed reliably.
 - Binding supports escaped text and single-level repeat only: no nested loops, filters, or script expressions. Do not interpolate into script/style, event attributes, tag names, or srcdoc. Design the empty state in the original template: for example, repeated `.task-row` elements inside `.task-list`, an adjacent `.empty-state`, and CSS that shows the empty state when `.task-list` has no `.task-row`. An empty source array must render zero previous rows without editing the template or substituting sample data. Show understandable stale-data and read-failure states.
+- User-facing filters must work within the script-free template contract. For structural CSS selection, keep each item's selector and its data row in the same repeated wrapper; hide only nonmatching data rows while keeping the selector controls available. A checked control in a separate filter bar does not satisfy `:has(:checked)` inside a data row. Do not add decorative filters that hide every row, assume unsupported binding expressions, or bypass script validation. Explain the specific limitation if a requested interaction cannot be represented with supported controls.
 - Initial registration and later updates both undergo host validation. Correct your input according to specific errors; do not bypass validation. Keep the last valid content when refresh fails, and do not label failure as synchronization success. Do not schedule refresh without user authorization.
 
 ## Stable list and empty-state structure

@@ -3,7 +3,7 @@
   "specVersion": "1.0.0",
   "name": "od-next-strategy",
   "title": "OD Next Strategy V2",
-  "version": "3.3.5",
+  "version": "3.3.6",
   "publishedAt": "2026-08-14T10:44:00Z",
   "description": "Bundled, inactive OD Next planning and Build strategy content.",
   "license": "MIT",
@@ -47,7 +47,7 @@
           {
             "taskType": "prototype",
             "path": "./assets/task-profiles/prototype.md",
-            "version": "3.1.6",
+            "version": "3.1.7",
             "rollout": "active",
             "projectKinds": [
               "prototype"
@@ -109,7 +109,7 @@
             "resources": [
               {
                 "path": "./assets/task-profiles/prototype.md",
-                "version": "3.1.6"
+                "version": "3.1.7"
               },
               {
                 "path": "./assets/task-profiles/ppt.md",
@@ -137,7 +137,7 @@
               },
               {
                 "path": "./assets/task-profiles/live-artifact.md",
-                "version": "3.1.4"
+                "version": "3.1.5"
               },
               {
                 "path": "./assets/task-profiles/video.md",
