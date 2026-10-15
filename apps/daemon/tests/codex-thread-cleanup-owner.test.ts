@@ -37,7 +37,7 @@ vi.mock('node:fs/promises', async importOriginal => {
 });
 
 const fixture = String.raw`
-import { appendFileSync, existsSync, renameSync, watchFile, unwatchFile } from 'node:fs';
+import { appendFileSync, existsSync, renameSync, watch } from 'node:fs';
 import { createInterface } from 'node:readline';
 const send = frame => process.stdout.write(JSON.stringify(frame) + '\n');
 createInterface({ input: process.stdin }).on('line', line => {
@@ -53,15 +53,10 @@ createInterface({ input: process.stdin }).on('line', line => {
     if (process.env.ROLL_FILES) for (const [source, target] of JSON.parse(process.env.ROLL_FILES)) renameSync(source, target);
     if (process.env.ARCHIVE === 'refuse') send({ id: frame.id, error: { code: -32600, message: 'thread already has an active writer' } });
     else if (process.env.ARCHIVE_GATE) {
-      // The gate tests archive ordering, independently of OS event delivery.
-      const acknowledge = () => {
-        if (existsSync(process.env.ARCHIVE_GATE)) {
-          unwatchFile(process.env.ARCHIVE_GATE, acknowledge);
-          send({ id: frame.id, result: {} });
-        }
-      };
-      watchFile(process.env.ARCHIVE_GATE, { interval: 10 }, acknowledge);
-      acknowledge();
+      const watcher = watch(process.cwd(), () => {
+        if (existsSync(process.env.ARCHIVE_GATE)) { watcher.close(); send({ id: frame.id, result: {} }); }
+      });
+      if (existsSync(process.env.ARCHIVE_GATE)) { watcher.close(); send({ id: frame.id, result: {} }); }
     } else send({ id: frame.id, result: {} });
   } else if (frame.method !== 'initialized') process.exit(3);
 });

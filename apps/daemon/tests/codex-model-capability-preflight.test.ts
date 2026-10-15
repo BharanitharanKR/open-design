@@ -3,21 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { startServer } from '../src/server.js';
-
-vi.mock('../src/runtimes/invocation.js', async importOriginal => {
-  const actual = await importOriginal<typeof import('../src/runtimes/invocation.js')>();
-  return { ...actual, execAgentFile: (...args: Parameters<typeof actual.execAgentFile>) => {
-    // The CLI fixtures describe an unmanaged machine, regardless of the host's
-    // macOS enterprise preference probe permissions.
-    if (args[0] === '/usr/bin/defaults') {
-      return Promise.reject(new Error('Domain/default pair (com.openai.codex, config_toml_base64) does not exist'));
-    }
-    return actual.execAgentFile(...args);
-  } };
-});
 
 type StartedServer = {
   url: string;

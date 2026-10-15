@@ -30,18 +30,6 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/runtimes/invocation.js', async importOriginal => {
-  const actual = await importOriginal<typeof import('../../src/runtimes/invocation.js')>();
-  return { ...actual, execAgentFile: (...args: Parameters<typeof actual.execAgentFile>) => {
-    // Version fixtures describe an unmanaged machine. Keep real fixture CLI
-    // execution while isolating the host's macOS enterprise preferences.
-    if (args[0] === '/usr/bin/defaults') {
-      return Promise.reject(new Error('Domain/default pair (com.openai.codex, config_toml_base64) does not exist'));
-    }
-    return actual.execAgentFile(...args);
-  } };
-});
-
 describe('Codex model capability preflight', () => {
   const tempDirs: string[] = [];
 
