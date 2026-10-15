@@ -4,7 +4,11 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { inferBaselineHtmlEntry, validateRunDeliverable } from '../src/run-deliverable-validation.js';
+import {
+  inferBaselineHtmlEntry,
+  validateProjectDeliverable,
+  validateRunDeliverable,
+} from '../src/run-deliverable-validation.js';
 
 const temporaryRoots: string[] = [];
 
@@ -35,6 +39,56 @@ afterEach(async () => {
 });
 
 describe('run deliverable validation', () => {
+  it('recognizes a current independent image without changing the existing prototype entry', async () => {
+    const fixture = await projectFixture({ 'index.html': '<main>Existing page</main>', 'assets/dog.png': 'image' });
+    const input = { ...fixture, runStatus: 'succeeded' as const, artifactCount: 1,
+      projectMetadata: { kind: 'prototype' as const, entryFile: 'index.html' }, touchedPaths: ['assets/dog.png'] };
+    expect(await validateRunDeliverable(input)).toMatchObject({ valid: false, validation: 'entry_not_touched' });
+    expect(await validateRunDeliverable({ ...input, allowIndependentOutput: true })).toMatchObject({
+      valid: true, entryFile: 'assets/dog.png', artifactKind: 'image',
+    });
+    expect(input.projectMetadata.entryFile).toBe('index.html');
+  });
+
+  it('does not count an old image or an ambiguous set of files as an independent delivery', async () => {
+    const fixture = await projectFixture({ 'dog.png': 'image', 'cat.png': 'image' });
+    const input = { ...fixture, runStatus: 'succeeded' as const, artifactCount: 1,
+      projectMetadata: { kind: 'prototype' as const }, allowIndependentOutput: true };
+    for (const touchedPaths of [[], ['../dog.png'], ['missing.png'], ['dog.png', 'cat.png']]) {
+      expect((await validateRunDeliverable({ ...input, touchedPaths })).valid).toBe(false);
+    }
+    expect((await validateRunDeliverable(input)).valid).toBe(false);
+  });
+
+  it('keeps HTML as the entry when the current run integrates an image into a page', async () => {
+    const fixture = await projectFixture({ 'index.html': '<img src="dog.png">', 'dog.png': 'image' });
+    expect(await validateRunDeliverable({ ...fixture, runStatus: 'succeeded', artifactCount: 2,
+      projectMetadata: { kind: 'prototype' }, touchedPaths: ['index.html', 'dog.png'], allowIndependentOutput: true,
+    })).toMatchObject({ valid: true, entryFile: 'index.html', artifactKind: 'html' });
+  });
+
+  it.each(['prototype', 'deck', 'image', 'video'] as const)(
+    'allows a real standalone image in a %s project only with current-run evidence', async (kind) => {
+      const fixture = await projectFixture({ 'dog.png': 'image' });
+      const input = { ...fixture, artifactCount: 1, projectMetadata: { kind },
+        touchedPaths: ['dog.png'], allowIndependentOutput: true };
+      expect(await validateRunDeliverable({ ...input, runStatus: 'succeeded' }))
+        .toMatchObject({ valid: true, entryFile: 'dog.png' });
+      for (const runStatus of ['failed', 'canceled'] as const) {
+        expect((await validateRunDeliverable({ ...input, runStatus })).valid).toBe(false);
+      }
+      expect((await validateRunDeliverable({ ...input, runStatus: 'succeeded', artifactCount: 0 })).valid).toBe(false);
+    },
+  );
+
+  it('does not accept an independent output symlink outside the project', async () => {
+    const fixture = await projectFixture({});
+    await fs.writeFile(path.join(fixture.projectsRoot, 'outside.png'), 'external');
+    await fs.symlink('../outside.png', path.join(fixture.projectsRoot, fixture.projectId, 'dog.png'));
+    expect((await validateRunDeliverable({ ...fixture, runStatus: 'succeeded', artifactCount: 1,
+      projectMetadata: { kind: 'prototype' }, touchedPaths: ['dog.png'], allowIndependentOutput: true,
+    })).valid).toBe(false);
+  });
   it('accepts a readable entry whose file kind matches the project kind', async () => {
     const fixture = await projectFixture({
       'index.html': '<!doctype html><title>Ready</title>',
@@ -348,5 +402,72 @@ describe('prototype delivery boundaries', () => {
     await expect(validateRunDeliverable({ ...fixture, runStatus: 'succeeded', artifactCount: 1,
       touchedPaths: ['catalog.html'], projectMetadata: { kind: 'prototype', entryFile: 'index.html' } }))
       .resolves.toMatchObject({ valid: false, validation: 'entry_not_touched' });
+  });
+});
+
+
+// A completed project can be presented after a later run that writes nothing.
+// Keep this project-state check separate from the strict run acceptance gate.
+describe('project deliverable validation', () => {
+  it('resolves the entry a run did not touch this round', async () => {
+    const fixture = await projectFixture({
+      'qingdao-travel-guide.html': '<!doctype html><title>Done</title>',
+    });
+    const metadata = { kind: 'deck' as const };
+
+    await expect(validateRunDeliverable({
+      ...fixture,
+      runStatus: 'succeeded',
+      artifactCount: 0,
+      touchedPaths: [],
+      projectMetadata: metadata,
+    })).resolves.toMatchObject({ valid: false, validation: 'no_artifact' });
+
+    await expect(validateProjectDeliverable({ ...fixture, projectMetadata: metadata }))
+      .resolves.toMatchObject({
+        valid: true,
+        validation: 'valid',
+        entryFile: 'qingdao-travel-guide.html',
+        artifactKind: 'html',
+      });
+  });
+
+  it('still refuses a project with no compatible entry', async () => {
+    const fixture = await projectFixture({ 'notes.md': '# nothing runnable' });
+    await expect(validateProjectDeliverable({
+      ...fixture,
+      projectMetadata: { kind: 'deck' },
+    })).resolves.toMatchObject({ valid: false, validation: 'type_mismatch' });
+  });
+
+  it('still refuses a declared entry that is gone', async () => {
+    const fixture = await projectFixture({
+      'other.html': '<!doctype html><title>Not the entry</title>',
+    });
+    await expect(validateProjectDeliverable({
+      ...fixture,
+      projectMetadata: { kind: 'deck', entryFile: 'index.html' },
+    })).resolves.toMatchObject({ valid: false, validation: 'entry_missing' });
+  });
+
+  it('refuses a project it cannot identify', async () => {
+    const fixture = await projectFixture({ 'index.html': '<!doctype html>' });
+    await expect(validateProjectDeliverable({
+      projectsRoot: fixture.projectsRoot,
+      projectId: null,
+      projectMetadata: { kind: 'deck' },
+    })).resolves.toMatchObject({ valid: false, validation: 'project_missing' });
+  });
+});
+
+
+describe('motion output facts without a planning-contract gate', () => {
+  it('recognizes nested editable source without requiring model-authored plan fields', async () => {
+    const fixture = await projectFixture({ 'motion-source/film/index.html': '<main>Editable film source</main>', 'film.mp4': 'video' });
+    expect(await validateRunDeliverable({ ...fixture, projectMetadata: { kind: 'video', intent: 'motion-design', videoModel: 'hyperframes-html' }, runStatus: 'succeeded', artifactCount: 2 })).toMatchObject({ valid: true, entryFile: 'motion-source/film/index.html' });
+  });
+  it('keeps file evidence separate from missing video export', async () => {
+    const fixture = await projectFixture({ 'index.html': '<main>Partial editable source</main>' });
+    expect((await validateRunDeliverable({ ...fixture, projectMetadata: { kind: 'video', intent: 'motion-design', videoModel: 'hyperframes-html' }, runStatus: 'succeeded', artifactCount: 1 })).valid).toBe(true);
   });
 });

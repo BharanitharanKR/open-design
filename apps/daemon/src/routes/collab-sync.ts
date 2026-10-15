@@ -12,7 +12,9 @@ import {
   type ProjectSyncIntentEvent,
   type TeamProject,
   type WorkspaceCollabContext,
+  type OwnedProjectContentUpdateRequest,
 } from '@open-design/contracts';
+import type { OwnedContentSync } from '../collab/owned-content-sync.js';
 import type {
   ProjectContentTransferToken,
 } from '../collab/project-content-transfer-state.js';
@@ -56,6 +58,8 @@ import {
   type PublicFilePublicationStore,
 } from '../collab/public-file-publication-store.js';
 import { readVelaControlApiContext } from '../integrations/vela.js';
+import { classifyVelaCommandFailure, logPublicFileFailure } from '../collab/public-file-failure.js';
+import { clientRequestIdFor } from '../http/client-request-id.js';
 import { isAbortedOperationError } from '../integrations/aborted-error.js';
 import { readProjectManifest } from '../project-locations.js';
 import { redactSecrets } from '../redact.js';
@@ -122,6 +126,7 @@ type CollabSyncPullTimingStatus =
   | 'failed';
 
 export interface RegisterCollabSyncRoutesDeps {
+  ownedContentSync?: OwnedContentSync;
   collab: Pick<
     CollabRuntime,
     | 'scheduler'
@@ -1173,6 +1178,15 @@ export function registerCollabSyncRoutes(
       );
       if (!scope) return;
       try {
+        if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
+          const update = await deps.ownedContentSync.request(
+            { projectId, ...scope },
+            { action: 'check' },
+            undefined,
+            true,
+          );
+          if (update.state !== 'up_to_date' || update.latestVersion != null || update.localVersion != null) return;
+        }
         await pullSharedProjectCoalesced(projectId, resourcePrincipal, scope);
       } catch (error) {
         // Retracted-share heal (飞书 recvqA6qhV7St1): the catalog names this
@@ -1235,6 +1249,8 @@ export function registerCollabSyncRoutes(
   });
 
   app.post(/^\/api\/projects\/([^/]+)\/files\/(.+)\/publish-public$/u, async (req, res) => {
+    const startedAt = Date.now();
+    const requestId = clientRequestIdFor(req);
     const params = req.params as unknown as { 0?: string; 1?: string };
     const projectId = String(params[0] ?? '');
     const filePath = normalizePublicFilePath(String(params[1] ?? ''));
@@ -1288,6 +1304,7 @@ export function registerCollabSyncRoutes(
 
     const resourceId = publicFileResourceIdFor(projectId, filePath, principal);
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'od-public-file-'));
+    let stage: 'push' | 'snapshot' | 'persist' = 'push';
     try {
       const targetFile = path.join(tempDir, filePath);
       await mkdir(path.dirname(targetFile), { recursive: true });
@@ -1308,6 +1325,7 @@ export function registerCollabSyncRoutes(
         JSON.stringify(metadata),
         '--json',
       ], principal.teamId);
+      stage = 'snapshot';
       const snapshot = parseVelaResourceSnapshot(await runVelaResourceCommand([
         'snapshot',
         resourceId,
@@ -1318,13 +1336,18 @@ export function registerCollabSyncRoutes(
         '--json',
       ], principal.teamId));
       if (!snapshot) {
-        return res.status(502).json({ error: 'PUBLIC_SNAPSHOT_UNAVAILABLE' });
+        const failure = { stage, reason: 'empty_response' } as const;
+        logPublicFileFailure({
+          action: 'publish', errorCode: 'PUBLIC_SNAPSHOT_UNAVAILABLE', failure, requestId, startedAt,
+        });
+        return res.status(502).json({ error: 'PUBLIC_SNAPSHOT_UNAVAILABLE', failure });
       }
       const publication: PublicProjectFilePublication = {
         url: publicSnapshotFileUrl(baseUrl, snapshot.slug, filePath),
         slug: snapshot.slug,
         fileName: filePath,
       };
+      stage = 'persist';
       try {
         publicFilePublicationStore.set(
           publicFilePublicationScope(projectId, filePath, principal),
@@ -1362,13 +1385,21 @@ export function registerCollabSyncRoutes(
       return res.json(publication);
     } catch (error) {
       console.warn('[od] failed to publish public project file:', error);
-      return res.status(502).json({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE' });
+      const failure = stage === 'persist'
+        ? { stage, reason: 'internal' as const }
+        : classifyVelaCommandFailure(stage, error);
+      logPublicFileFailure({
+        action: 'publish', errorCode: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure, requestId, startedAt,
+      });
+      return res.status(502).json({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure });
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
   });
 
   app.delete(/^\/api\/projects\/([^/]+)\/files\/(.+)\/publish-public$/u, async (req, res) => {
+    const startedAt = Date.now();
+    const requestId = clientRequestIdFor(req);
     const params = req.params as unknown as { 0?: string; 1?: string };
     const projectId = String(params[0] ?? '');
     const filePath = normalizePublicFilePath(String(params[1] ?? ''));
@@ -1417,7 +1448,11 @@ export function registerCollabSyncRoutes(
       return res.json({ ok: true, slug, fileName: filePath });
     } catch (error) {
       console.warn('[od] failed to unpublish public project file:', error);
-      return res.status(502).json({ error: 'PUBLIC_FILE_UNPUBLISH_UNAVAILABLE' });
+      const failure = classifyVelaCommandFailure('redact', error);
+      logPublicFileFailure({
+        action: 'unpublish', errorCode: 'PUBLIC_FILE_UNPUBLISH_UNAVAILABLE', failure, requestId, startedAt,
+      });
+      return res.status(502).json({ error: 'PUBLIC_FILE_UNPUBLISH_UNAVAILABLE', failure });
     }
   });
 
@@ -2253,6 +2288,14 @@ export function registerCollabSyncRoutes(
     if (!principal || !scope) {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_PULL_DENIED' });
     }
+    if (scope.ownerMemberId === scope.viewerMemberId && deps.ownedContentSync) {
+      const update = await deps.ownedContentSync.request({ projectId, ...scope }, { action: 'check', manual: true });
+      if (update.state === 'confirmation_required' || update.state === 'ignored' || update.state === 'suppressed') {
+        return res.status(409).json({ error: 'COLLAB_OVERWRITE_CONFIRMATION_REQUIRED', update });
+      }
+      if (update.state !== 'up_to_date') return res.status(update.state === 'busy' ? 409 : 502).json({ error: update.errorCode ?? 'PROJECT_SYNC_FAILED', update });
+      return res.json({ ok: true, version: update.localVersion });
+    }
     const outcome = await pullSharedProjectCoalesced(projectId, principal, scope);
     if (outcome.status === 'revoked') {
       return res.status(403).json({ error: 'WORKSPACE_PROJECT_PULL_DENIED' });
@@ -2261,6 +2304,24 @@ export function registerCollabSyncRoutes(
       return res.status(502).json({ error: 'TEAM_PROJECT_PULL_REGISTER_UNAVAILABLE' });
     }
     res.json({ ok: true, version: outcome.version });
+  });
+
+  app.post('/api/projects/:id/collab/update', async (req, res) => {
+    const input = req.body as OwnedProjectContentUpdateRequest | undefined;
+    if (!input || !['check', 'accept', 'dismiss', 'reset-preference'].includes(input.action)
+      || (input.version !== undefined && (!Number.isSafeInteger(input.version) || input.version < 0))
+      || ((input.action === 'accept' || input.action === 'dismiss') && input.version === undefined)
+      || (input.dontPromptFor24h !== undefined && typeof input.dontPromptFor24h !== 'boolean')
+      || (input.manual !== undefined && typeof input.manual !== 'boolean')) {
+      return res.status(400).json({ error: 'INVALID_CONTENT_UPDATE_REQUEST' });
+    }
+    const projectId = req.params.id;
+    const { verification, scope } = await pullAccessForRequest(projectId, req);
+    if (!verification.ok) return sendWorkspaceVerificationFailure(res, verification);
+    if (!scope || scope.ownerMemberId !== scope.viewerMemberId) return res.status(403).json({ error: 'WORKSPACE_PROJECT_PULL_DENIED' });
+    if (!deps.ownedContentSync) return res.status(503).json({ error: 'PROJECT_SYNC_UNAVAILABLE' });
+    const update = await deps.ownedContentSync.request({ projectId, ...scope }, input);
+    return res.json({ update });
   });
 
   app.put('/api/projects/:id/collab/bootstrap', async (req, res) => {
@@ -2490,9 +2551,12 @@ export function registerCollabSyncRoutes(
             ownerMemberId,
           }
         : null;
+    const ownedContentUpdate = callerIsOwner && transferScope && deps.ownedContentSync
+      ? deps.ownedContentSync.read({ projectId, ...transferScope }) : null;
     res.json({
-      publishedVersion: headResult.head,
-      materializedVersion,
+      ...(ownedContentUpdate ? { ownedContentUpdate } : {}),
+      publishedVersion: ownedContentUpdate?.latestVersion ?? headResult.head,
+      materializedVersion: ownedContentUpdate?.localVersion ?? materializedVersion,
       contentTransferState:
         transferScope
           ? deps.readContentTransferState?.(projectId, transferScope) ?? null

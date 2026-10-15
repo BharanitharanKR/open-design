@@ -1,3 +1,4 @@
+import { persistStrategyResumeText } from '../../src/strategies/task-store.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,12 +7,12 @@ import { createHash } from 'node:crypto';
 import { strategyPackageHashFromDigests } from '@open-design/plugin-runtime';
 import {
   OD_NEXT_REQUEST_TURN_SCHEMA_V1,
-  type OpenDesignPlanContractV2,
 } from '@open-design/contracts';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { closeDatabase, openDatabase, upsertMessage } from '../../src/db.js';
+
 import { createSnapshot } from '../../src/plugins/snapshots.js';
 import {
   createTaskObservationRolloutService,
@@ -68,60 +69,6 @@ function strategyBinding() {
     },
     taskProfileVersions: ['2.0.0'],
     promptRecipe: 'od-next-plan-build-v2' as const,
-  };
-}
-
-function planContractFixture(snapshotId: string): OpenDesignPlanContractV2 {
-  const strategy = strategyBinding();
-  return {
-    schema: 'open-design.plan-contract/v2',
-    strategy: {
-      id: strategy.id,
-      version: strategy.version,
-      packageHash: strategy.packageHash,
-      snapshotId,
-    },
-    taskProfile: {
-      schemaVersion: '2',
-      taskType: 'prototype',
-      taskProfileVersion: strategy.selectedTaskProfile.version,
-      goal: 'Build a synthetic prototype',
-      contextAndAudience: 'Synthetic test',
-      inputsAndReferences: [],
-      constraints: [],
-      canonicalDeliverable: { id: 'prototype', kind: 'prototype', format: 'html' },
-      requiredDeliverables: [{ id: 'prototype', kind: 'prototype' }],
-      designSpec: {
-        source: 'resolved-baseline',
-        version: '1',
-        decisions: { palette: 'neutral' },
-      },
-      buildRequirements: [{ id: 'build-1', text: 'Build the synthetic prototype.' }],
-      assumptions: [],
-      risks: [],
-      taskSpecific: {},
-    },
-    fullPlan: {
-      executionMode: 'simple',
-      steps: [{ id: 'step-1', objective: 'Build', outputs: ['prototype'] }],
-      readinessArtifacts: [],
-      buildPackages: [],
-    },
-    runManifest: {
-      selectedAgentId: 'codex',
-      capabilitySnapshotHash: 'c'.repeat(64),
-      inputRefs: [],
-      productionRoutes: ['html'],
-      preflight: { intake: 'passed', execution: 'passed' },
-    },
-    decisionSummary: {
-      goal: 'Build a synthetic prototype',
-      deliverables: ['prototype'],
-      keyConstraints: [],
-      assumptions: [],
-      risks: [],
-      openDecisions: [],
-    },
   };
 }
 
@@ -682,6 +629,24 @@ describe('task observation rollout', () => {
     expect(serialized).not.toContain('private artifact body');
   });
 
+  it('exports the incremental text actually sent instead of the full recovery bundle', async () => {
+    const exact = persistStrategyResumeText(db, 'run-1', 'Incremental request sentinel.');
+    const promptTelemetry = bindOdNextExactSendPromptEvidence({
+      telemetry: buildPromptStackTelemetry({ composedPrompt: exact.text,
+        sections: [{ kind: 'odNextExactFinalText', content: exact.text }] }),
+      finalText: exact.text, persisted: exact, stage: 'request',
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async () => acceptedResponse());
+    await expect(service({ mode: 'send', fetchImpl,
+      getRun: (runId) => runId === 'run-1' ? { ...syntheticRun(), promptTelemetry } : null,
+    }).finalizeForRun('run-1')).resolves.toMatchObject({ action: 'sent' });
+    const batch = JSON.parse(String(fetchImpl.mock.calls[0]![1]!.body)).batch as Array<{
+      body: { name?: string; input?: Record<string, unknown> };
+    }>;
+    expect(batch.find(event => event.body.name === 'strategy-stage:request')?.body.input)
+      .toMatchObject({ kind: 'turn', sha256: exact.sha256, utf8Bytes: exact.utf8Bytes });
+  });
+
   it('exports the mapped raw hostComposed identity and bounded exact-text payload', async () => {
     const mapping = getStrategyTaskExecution(db, 'task-1')!.runs[0]!;
     const promptTelemetry = bindOdNextExactSendPromptEvidence({
@@ -950,7 +915,7 @@ describe('task observation rollout', () => {
     expect(byId.get(childToolId)?.parentObservationId).toBe(childId);
   });
 
-  it('exports one root with the durable request/clarification/repair/production run chain', async () => {
+  it.each(['resume', 'cold_start'])('exports one root with the durable request/clarification/repair/production run chain (%s)', async transport => {
     db.prepare(`
       UPDATE strategy_task_executions
          SET revision = 0, route = NULL, input_stage = 'request', outcome = 'running',
@@ -965,6 +930,7 @@ describe('task observation rollout', () => {
       expectedRevision: task.revision,
       to: {
         route: 'full_plan',
+        executionIntent: 'produce',
         inputStage: 'clarification',
         outcome: 'running',
         executionMode: null,
@@ -1019,11 +985,12 @@ describe('task observation rollout', () => {
       nextRun: {
         runId: 'run-production',
         sourceRunId: 'run-repair',
+        ...(transport === 'cold_start' ? { coldStartText: TEST_PROMPT_BUNDLE } : {}),
         finalText: strategyTaskTurnText({
           taskExecutionId: 'task-1', inputStage: 'production', taskRunIndex: 3,
         }),
       },
-      planContract: planContractFixture(task.snapshotId),
+
       updatedAt: 1_300,
     });
     compareAndTransitionStrategyTaskExecution(db, {
@@ -1035,6 +1002,8 @@ describe('task observation rollout', () => {
         outcome: 'completed',
         executionMode: 'simple',
       },
+      settlementReason: 'ended',
+      settlementFacts: { physicalStatus: 'succeeded', deliverableValid: true, todoUnfinished: true },
       updatedAt: 2_000,
     });
     const fetchImpl = vi.fn<typeof fetch>(async () => acceptedResponse());
@@ -1045,13 +1014,14 @@ describe('task observation rollout', () => {
         const mapping = getStrategyTaskExecution(db, 'task-1')!.runs.find(
           (candidate) => candidate.runId === runId,
         )!;
+        const exact = mapping.coldStartFinalText ?? mapping.finalText;
         const promptTelemetry = bindOdNextExactSendPromptEvidence({
           telemetry: buildPromptStackTelemetry({
-            composedPrompt: mapping.finalText.text,
-            sections: [{ kind: 'odNextExactFinalText', content: mapping.finalText.text }],
+            composedPrompt: exact.text,
+            sections: [{ kind: 'odNextExactFinalText', content: exact.text }],
           }),
-          finalText: mapping.finalText.text,
-          persisted: mapping.finalText,
+          finalText: exact.text,
+          persisted: exact,
           stage: mapping.inputStage,
         });
         return {
@@ -1074,6 +1044,7 @@ describe('task observation rollout', () => {
       body: { name?: string };
     }>;
     expect(batch.filter((event) => event.type === 'trace-create')).toHaveLength(1);
+    expect(batch.find(event => event.type === 'trace-create')?.body).toMatchObject({ metadata: { roundSettlements: [{ runId: 'run-production', reason: 'ended', facts: { physicalStatus: 'succeeded', deliverableValid: true, todoUnfinished: true } }] } });
     expect(batch.filter((event) => event.type === 'span-create').map((event) => event.body.name))
       .toEqual([
         'strategy-stage:request',

@@ -59,7 +59,8 @@ export type ProjectScenarioTaskProfile =
   | 'prototype'
   | 'ppt'
   | 'marketing'
-  | 'hyperframes';
+  | 'hyperframes'
+  | 'motion-design';
 
 /**
  * Daemon-owned identity for the scenario currently pinned to a project.
@@ -216,7 +217,8 @@ export interface ProjectMetadata {
     | 'webgl-experience'
     | 'worker-visualizer'
     | 'marketing'
-    | 'hyperframes';
+    | 'hyperframes'
+    | 'motion-design';
   fidelity?: 'wireframe' | 'high-fidelity';
   speakerNotes?: boolean;
   slideCount?: string;

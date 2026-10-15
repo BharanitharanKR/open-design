@@ -56,6 +56,9 @@ StrategyTaskExecutionRecord {
     inputStage: 'production',
     outcome,
     executionMode: 'simple',
+    // This historical production fixture predates the intent-resolution policy.
+    executionIntent: 'produce',
+    intentResolution: null,
     planContractHash: 'sha256:plan-fixture',
     clarificationCount: 0,
     planContractRepairAttempts: 0,
@@ -430,6 +433,17 @@ const OTLP_OBSERVATION_METADATA_FIELDS = [
   'langfuse.observation.metadata.runtime_companion_version',
   'langfuse.observation.metadata.runtime_adapter_version',
 ] as const;
+
+it('exports settlement action and concurrent facts through OTLP without masking failure', () => {
+  const source = aggregate();
+  source.root.status = 'failed';
+  source.root.roundSettlements = [{ runId: RUN_ID, reason: 'ended',
+    facts: { physicalStatus: 'failed', deliverableValid: true, truncated: true, todoUnfinished: true } }];
+  const root = spanFor(buildOtlpTaskObservationPayload(source), source.root.observationId);
+  expect(stringAttribute(root, 'langfuse.observation.level')).toBe('ERROR');
+  expect(JSON.parse(stringAttribute(root, 'langfuse.trace.metadata.round_settlements')!))
+    .toEqual(source.root.roundSettlements);
+});
 
 describe('task observation OTLP exporter', () => {
   it.each([0, 1, undefined] as const)('preserves optional warning count %s on legacy and OTLP Task and Run metadata', (count) => {

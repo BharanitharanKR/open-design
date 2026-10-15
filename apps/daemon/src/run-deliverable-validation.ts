@@ -40,8 +40,11 @@ interface ValidateRunDeliverableInput {
   /** Exact artifact paths changed by this run. Undefined means the runtime
    *  could not produce a reliable per-file diff (for example contention). */
   touchedPaths?: string[];
-  /** Unambiguous HTML entry observed by the host before this Run wrote files. */
+  /** Unambiguous HTML entry observed by the host before this run wrote files. */
   baselineEntryFile?: string;
+  /** New marker tasks may deliver a separate file without changing the project entry.
+   * Requires exact current-run touched paths; never enables project-wide inference. */
+  allowIndependentOutput?: boolean;
 }
 
 export function inferBaselineHtmlEntry(projectRoot: string, paths: Iterable<string>): string | undefined {
@@ -161,20 +164,91 @@ function matchesAcceptedKinds(
 }
 
 /**
+ * The two questions a caller can ask about a project's canonical deliverable.
+ *
+ * `'run'` — did THIS run produce it? Strict on purpose: the answer decides
+ * whether the host may accept an Agent's completion claim, so a turn must not
+ * be able to pass by pointing at a file an earlier turn wrote.
+ *
+ * `'project'` — does the user have it, right now? The same filesystem checks
+ * without the run-scoped gates. It answers a presentation question ("is there
+ * anything to tell the user they lost?"), where the earlier turn's file counts
+ * precisely because the user can open it.
+ *
+ * Splitting them is the whole point: one predicate used to answer both, and
+ * the strict answer is the WRONG answer to the loose question. A "继续" turn
+ * that verifies finished work and correctly changes nothing scores
+ * `no_artifact` under `'run'` — true, and irrelevant to whether the user got
+ * their deck.
+ */
+export type DeliverableValidationScope = 'run' | 'project';
+
+/** Values `validateProjectDeliverable` can actually produce, narrowed to the
+ *  wire union. Run-scoped outcomes are unreachable there; returning null for
+ *  one keeps a future enum addition from being reported as a wire value the
+ *  client's type does not admit. */
+export function projectDeliverableValidation(
+  validation: RunDeliverableValidation,
+): 'valid' | 'project_missing' | 'entry_missing' | 'entry_unreadable' | 'type_mismatch' | null {
+  switch (validation) {
+    case 'valid':
+    case 'project_missing':
+    case 'entry_missing':
+    case 'entry_unreadable':
+    case 'type_mismatch':
+      return validation;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Does this project hold a usable canonical deliverable right now?
+ *
+ * Same entry resolution, kind contract and readability check as
+ * `validateRunDeliverable`, minus every gate that asks about a particular run.
+ * Never use it to accept a completion claim — see `DeliverableValidationScope`.
+ */
+export async function validateProjectDeliverable(
+  input: Omit<ValidateRunDeliverableInput, 'runStatus' | 'artifactCount' | 'touchedPaths'>,
+): Promise<RunDeliverableValidationResult> {
+  return resolveDeliverable({
+    ...input,
+    runStatus: 'succeeded',
+    artifactCount: 1,
+    scope: 'project',
+  });
+}
+
+/**
  * Resolve and verify the one canonical file a successful run can deliver.
  *
  * `artifactCount` proves this run touched output; it does not prove the
- * project's declared entry still exists. For prototypes, a changed local page
- * reachable from that entry also updates the deliverable. The filesystem-backed
- * file list and a direct readability check are authoritative.
+ * project's declared entry still exists. The filesystem-backed file list and
+ * a direct readability check are therefore authoritative.
  */
 export async function validateRunDeliverable(
   input: ValidateRunDeliverableInput,
 ): Promise<RunDeliverableValidationResult> {
-  if (input.runStatus !== 'succeeded') {
+  const primary = await resolveDeliverable({ ...input, scope: 'run' });
+  if (primary.valid || !input.allowIndependentOutput || !input.touchedPaths?.length
+    || !['entry_missing', 'entry_not_touched', 'type_mismatch'].includes(primary.validation)) {
+    return primary;
+  }
+  return resolveDeliverable({ ...input, scope: 'run', independentOutput: true });
+}
+
+async function resolveDeliverable(
+  input: ValidateRunDeliverableInput & { scope: DeliverableValidationScope; independentOutput?: boolean },
+): Promise<RunDeliverableValidationResult> {
+  const runScoped = input.scope === 'run';
+  if (runScoped && input.runStatus !== 'succeeded') {
     return { valid: false, validation: 'not_succeeded' };
   }
-  if (!Number.isFinite(input.artifactCount) || input.artifactCount <= 0) {
+  if (
+    runScoped
+    && (!Number.isFinite(input.artifactCount) || input.artifactCount <= 0)
+  ) {
     return { valid: false, validation: 'no_artifact' };
   }
   if (!input.projectId) {
@@ -196,16 +270,27 @@ export async function validateRunDeliverable(
     return { valid: false, validation: 'project_missing' };
   }
 
-  const acceptedKinds = acceptedDeliverableKinds(input.projectMetadata);
+  const touched = new Set((input.touchedPaths ?? []).flatMap((candidate) => {
+    if (typeof candidate !== 'string' || !candidate) return [];
+    const relative = path.relative(projectRoot, path.resolve(projectRoot, candidate));
+    return !relative || relative.startsWith('..') || path.isAbsolute(relative)
+      ? [] : [relative.replaceAll(path.sep, '/')];
+  }));
+  if (input.independentOutput) files = files.filter(file => touched.has(filePath(file)));
+  const acceptedKinds = input.independentOutput ? null : acceptedDeliverableKinds(input.projectMetadata);
   const isPrototype = projectKind(input.projectMetadata) === 'prototype';
-  const declared = safeRelativeFile(input.projectMetadata?.entryFile);
-  const baselineEntry = isPrototype && input.touchedPaths
+  const declared = input.independentOutput ? null : safeRelativeFile(input.projectMetadata?.entryFile);
+  const baselineEntry = !input.independentOutput && isPrototype && input.touchedPaths
     ? safeRelativeFile(input.baselineEntryFile)
     : null;
+  const motionSources = input.projectMetadata?.intent === 'motion-design'
+    ? files.filter((file) => file.kind === 'html')
+    : [];
+  const motionSource = motionSources.length === 1 ? motionSources[0] : null;
   const selected = declared
     ? files.find((file) => filePath(file) === declared) ?? null
     : (baselineEntry ? files.find((file) => filePath(file) === baselineEntry) ?? null : null)
-      ?? inferredEntry(files, acceptedKinds);
+      ?? motionSource ?? inferredEntry(files, acceptedKinds);
   if (!selected) {
     return { valid: false, validation: 'entry_missing' };
   }
@@ -216,24 +301,7 @@ export async function validateRunDeliverable(
     artifactKind: selected.kind,
   };
   let linkedPage: string | null = null;
-  if (input.touchedPaths) {
-    const touched = new Set(
-      input.touchedPaths.flatMap((candidate) => {
-        if (typeof candidate !== 'string' || !candidate) return [];
-        const absolute = path.isAbsolute(candidate)
-          ? path.resolve(candidate)
-          : path.resolve(projectRoot, candidate);
-        const relative = path.relative(projectRoot, absolute);
-        if (
-          !relative
-          || relative.startsWith('..')
-          || path.isAbsolute(relative)
-        ) {
-          return [];
-        }
-        return [relative.replaceAll(path.sep, '/')];
-      }),
-    );
+  if (runScoped && input.touchedPaths) {
     if (!touched.has(entryFile)) {
       if (isPrototype && selected.kind === 'html') {
         linkedPage = await findTouchedLinkedPage({
@@ -261,6 +329,12 @@ export async function validateRunDeliverable(
     const relative = path.relative(projectRoot, target);
     if (relative.startsWith('..') || path.isAbsolute(relative)) {
       return { valid: false, validation: 'entry_unreadable', ...facts };
+    }
+    if (input.independentOutput) {
+      const realRelative = path.relative(await fs.realpath(projectRoot), await fs.realpath(target));
+      if (realRelative.startsWith('..') || path.isAbsolute(realRelative)) {
+        return { valid: false, validation: 'entry_unreadable', ...facts };
+      }
     }
     const stat = await fs.stat(target);
     if (!stat.isFile()) {
