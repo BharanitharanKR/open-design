@@ -101,3 +101,25 @@ it('stops opaque media request failures without unrelated diagnostic generations
   expect(video).toContain('HTTP 400 invalid_request');
   expect(video).toContain('do not probe another media surface for connectivity');
 });
+
+// Prompt transport only: adherence is checked separately on frozen live cases.
+it('delivers local-state, explicit-renderer and prototype action safeguards through Discovery', async () => {
+  const resolved = await resolvePluginFolder({ folder, folderId: 'od-next-strategy', sourceKind: 'bundled', source: folder, trust: 'bundled' });
+  if (!resolved.ok) throw Error(resolved.errors.join(';'));
+  const binding = createBundledStrategyBindingV2({ plugin: resolved.record, taskType: 'discovery' });
+  const assets = loadBundledStrategyPromptAssetsV2({ plugin: resolved.record, binding });
+  expect(assets.taskSkill).toContain('Saving user edits or deriving totals from in-memory or browser-local state does not make a prototype a live-artifact');
+  expect(assets.taskSkill).toContain('For explicitly requested HyperFrames source, read hyperframes only');
+  const resources = await loadOdNextTaskResourcesForSnapshot({ bundledPluginsDir, snapshot: { pluginId: 'od-next-strategy', strategy: binding } });
+  const prototype = resources.find(resource => resource.path.endsWith('/prototype.md'));
+  const audio = resources.find(resource => resource.path.endsWith('/audio.md'));
+  expect(prototype).toBeDefined();
+  expect(audio).toBeDefined();
+  const prototypeBody = prototype!.text;
+  expect(prototypeBody).toContain('Commit each local mutation to the same state that renders the interface');
+  expect(prototypeBody).toContain('Hot-search suggestions and typed searches use the same matching rules');
+  expect(prototypeBody).toContain('Set both foreground and background on primary controls');
+  expect(prototypeBody).toContain('do not relabel an unrelated image as the requested place or object');
+  const audioBody = audio!.text;
+  expect(audioBody).toContain('A request for an audio file alone does not authorize a local synthesis fallback');
+});

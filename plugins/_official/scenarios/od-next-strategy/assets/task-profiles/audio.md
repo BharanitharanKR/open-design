@@ -1,4 +1,4 @@
-# OD Next Audio Task Profile v3.1.2
+# OD Next Audio Task Profile v3.1.3
 
 Deliver actual playable audio with route=media-audio and kind=audio; a script or prose is not audio. Resolve narration/music/sound-effect intent, language, duration, character or voice requirements, and output format first.
 
@@ -11,6 +11,8 @@ Before reporting completion, verify the actual audio file rather than just a tas
 During planning, query registered models with `"$OD_NODE_BIN" "$OD_BIN" media models --json`. Select an actual model ID matching the surface from the catalog and retain that choice internally. Use the same model in production; do not silently switch providers.
 
 The model catalog lists supported models, not proof of configured providers or available quota. Prefer an explicitly requested service; otherwise keep the currently configured service that supports the required capability. Do not switch providers because of catalog order. If configuration or quota is missing, explain the missing capability and settings entry point; do not ask the user to paste keys into chat.
+
+A request for an audio file alone does not authorize a local synthesis fallback. When the registered service is unavailable or unconfigured, stop that output and report the blocker; do not use operating-system speech commands or a different synthesis route merely because they can produce a playable container. Explicitly authorized local synthesis remains the exception described above.
 
 ## Voice and script rules
 

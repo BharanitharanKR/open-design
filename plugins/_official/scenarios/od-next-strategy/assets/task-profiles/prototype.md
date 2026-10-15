@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.2
+# OD Next Prototype Task Profile v3.1.3
 
 > Rollout: active
 
@@ -115,6 +115,14 @@ record them in the Design Spec:
   and disabled states wherever the declared flow needs them.
 - Modals, menus, drawers, and page transitions have explicit enter, exit, and
   return paths.
+- Commit each local mutation to the same state that renders the interface;
+  derive lists, filtered results, totals, availability, and chart labels from
+  that committed state before showing success. Saving a copied list alone
+  must not leave the visible list or its summary stale.
+- Hot-search suggestions and typed searches use the same matching rules.
+  A visible suggestion must find its intended existing content, including
+  when the suggestion abbreviates a longer title. Clearing search restores
+  the applicable list and filters.
 - Prototype actions must work inside the product's sandboxed preview without
   native form submission or navigation. For local add/save actions use a
   `type="button"` click handler and an Enter key handler that invoke the same
@@ -312,6 +320,7 @@ Treat functional inline SVGs as one component contract before writing markup:
   and states consistent.
 - Images, icons, and illustrations match the content's meaning and keep a
   unified style.
+- Match localized images to their visible subjects: do not relabel an unrelated image as the requested place or object. If an exact image is unavailable, use a clearly disclosed neutral placeholder rather than a misleading photograph. User-approved placeholders still distinguish the kinds of objects shown.
 - Never fabricate brand facts, feature promises, or business data the user
   has not provided or confirmed.
 - **Imagery:** real entities appearing in the interface (book covers,
@@ -353,6 +362,9 @@ Meet the following in one pass, while writing the source:
   scrolling; fixed bars reserve padding for the content they cover.
 - Pick colors for ≥4.5:1 body-text-to-background contrast; pick dark-mode
   colors independently.
+- Set both foreground and background on primary controls, including hover,
+  focus, and disabled states; inherited body text must not disappear into a
+  dark action fill. Keep supporting text readable in inverse-color sections.
 - Primary interactions are keyboard-reachable, with focus styles and focus
   order explicitly defined in the source.
 - Locked content, user-specified assets, and non-target regions stay
