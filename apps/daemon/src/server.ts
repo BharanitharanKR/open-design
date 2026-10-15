@@ -4359,7 +4359,7 @@ export async function startServer({
       };
       const coordinated = () => ownedContentSync ? ownedContentSync.withPublication(projectId, principal, operation) : operation();
       return principal && velaCliTeamProjectCatalog
-        ? publicFileMutations.run(projectId, () => commentFilePublications.run(projectId, principal, coordinated)) : coordinated();
+        ? publicFileMutations.run(projectId, () => commentFilePublications.run(projectId, principal, coordinated), { joinCurrent: true }) : coordinated();
     },
     workspaceContext: workspaceContextProvider,
     ...(velaCliTeamProjectCatalog ? {
@@ -5626,7 +5626,8 @@ export async function startServer({
           updatedAt: input.updatedAt,
         });
       },
-      materializeTeamMirror: (input, scope) => materializePulledTeamMirror(db, input, scope),
+      materializeTeamMirror: (input, scope, fileReceipt) =>
+        materializePulledTeamMirror(db, input, scope, undefined, { fileReceipt }),
       materializeTeamPlaceholder: (input, scope) =>
         materializePulledTeamMirror(db, input, scope, undefined, { placeholder: true }),
       materializeAuthorizedTeamMirror: (input, scope, receipt) =>

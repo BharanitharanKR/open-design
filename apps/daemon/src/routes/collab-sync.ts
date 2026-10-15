@@ -125,6 +125,7 @@ export interface PulledProjectStore {
   materializeTeamMirror?: (
     input: RegisterPulledProjectInput,
     scope: TeamMirrorPullScope,
+    fileReceipt?: { resourceId: string; versionId: string },
   ) => { localRecordChanged: boolean };
   /** Atomically create a stamped, creator-less Team-bound first-open row. */
   materializeTeamPlaceholder?: (
@@ -1080,6 +1081,7 @@ export function registerCollabSyncRoutes(
     scope: TeamMirrorPullScope | null,
     teamProject: TeamProject | null,
     receipt?: AuthorizedTeamProjectPullReceipt,
+    fileReceipt?: { resourceId: string; versionId: string },
   ): boolean {
     if (!prepared || !projectStore) return false;
     const { existing, fallbackName, manifest, now, projectId } = prepared;
@@ -1114,7 +1116,9 @@ export function registerCollabSyncRoutes(
       if (!projectStore.materializeTeamMirror) {
         throw new Error('team mirror materializer unavailable');
       }
-      return projectStore.materializeTeamMirror(input, scope).localRecordChanged;
+      return (fileReceipt
+        ? projectStore.materializeTeamMirror(input, scope, fileReceipt)
+        : projectStore.materializeTeamMirror(input, scope)).localRecordChanged;
     }
     if (existing) {
       if (!projectStore.update) return false;
@@ -2129,6 +2133,12 @@ export function registerCollabSyncRoutes(
               scope,
               staged.stageDir,
             );
+            const selectedCatalogProject = resolveSharedProject
+              ? await resolveSharedProject(projectId, scope)
+              : null;
+            if (resolveSharedProject && (!selectedCatalogProject || selectedCatalogProject.ownerMemberId !== scope.ownerMemberId)) {
+              throw new Error('authorized team project catalog changed before promotion');
+            }
             if (!(await authorizedInvocationIsStillValid())) {
               throw new Error(
                 'authorized team project scope changed before promotion',
@@ -2160,7 +2170,7 @@ export function registerCollabSyncRoutes(
                   localRecordChanged: registerPreparedPulledProject(
                     prepared,
                     scope,
-                    null,
+                    selectedCatalogProject,
                     staged!.receipt,
                   ),
                 };
@@ -2391,6 +2401,10 @@ export function registerCollabSyncRoutes(
           prepared,
           scope,
           authoritativeSharedProject,
+          undefined,
+          result.resourceId?.trim() && result.versionId?.trim()
+            ? { resourceId: result.resourceId.trim(), versionId: result.versionId.trim() }
+            : undefined,
         );
       } catch (error) {
         console.warn('[od] failed to register pulled team project:', error);

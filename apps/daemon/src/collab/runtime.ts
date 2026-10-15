@@ -125,7 +125,7 @@ export interface CollabRuntime {
   /** The member who shared this project, or null if not shared here. */
   projectOwnerMemberId(projectId: string, principal?: ResourceHubPrincipal | null): string | null;
   /** Materialize the published tree into the local member copy. */
-  pullLatest(projectId: string, principal?: ResourceHubPrincipal | null): Promise<{ version: number | null }>;
+  pullLatest(projectId: string, principal?: ResourceHubPrincipal | null): Promise<{ version: number | null; versionId?: string; resourceId?: string }>;
   dispose(): void;
 }
 
@@ -973,7 +973,11 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
           projectId,
           ...(principal ? { principal } : {}),
         });
-        return { version: materialized?.version ?? null };
+        return {
+          version: materialized?.version ?? null,
+          ...(materialized?.versionId ? { versionId: materialized.versionId } : {}),
+          ...(materialized?.resourceId ? { resourceId: materialized.resourceId } : {}),
+        };
       }
       const head = baseAdapter.syncLatest
         ? await baseAdapter.syncLatest({ projectId, ...(principal ? { principal } : {}) })

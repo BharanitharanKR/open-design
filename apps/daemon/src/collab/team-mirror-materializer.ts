@@ -171,7 +171,7 @@ export function materializePulledTeamMirror(
   input: RegisterPulledProjectInput,
   scope: TeamMirrorPullScope,
   receipt?: AuthorizedTeamProjectPullReceipt,
-  options: { placeholder?: boolean } = {},
+  options: { placeholder?: boolean; fileReceipt?: { resourceId: string; versionId: string } } = {},
 ): MaterializePulledTeamMirrorResult {
   if (
     receipt &&
@@ -258,8 +258,11 @@ export function materializePulledTeamMirror(
     const previousFacts = parseCommentFileState(existing?.metadata?._commentFiles);
     const incomingFacts = parseCommentFileState(input.metadata?._commentFiles);
     if (input.metadata?._commentFiles !== undefined && !incomingFacts) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
-    const adoptedFacts = receipt && !options.placeholder
-      ? commentFilesAtReceipt(previousFacts, incomingFacts, receipt, { authorizedCatalogRootId: resourceHubResourceId }) : previousFacts;
+    // A normal native pull proves landed bytes, not an authorized-stage cursor.
+    // Keep those two witnesses distinct while matching facts to the exact root/version.
+    const fileReceipt = receipt ?? options.fileReceipt;
+    const adoptedFacts = fileReceipt && !options.placeholder
+      ? commentFilesAtReceipt(previousFacts, incomingFacts, fileReceipt, { authorizedCatalogRootId: resourceHubResourceId }) : previousFacts;
     if (adoptedFacts) metadata._commentFiles = adoptedFacts;
     input = { ...input, metadata };
     let localRecordChanged = false;

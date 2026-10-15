@@ -79,6 +79,20 @@ async function database() {
 }
 
 describe('authorized team mirror SQLite materialization', () => {
+  it('adopts manual-pull file facts only at the actual byte receipt without inventing an authorized cursor', async () => {
+    const db = await database();
+    const facts = { schemaVersion: 1 as const, revision: 1, files: [{
+      sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+      resourceId, versionId: 'version-7', retired: false,
+    }] };
+    const remote = { ...input, metadata: { kind: 'prototype' as const, _commentFiles: facts } };
+    materializePulledTeamMirror(db, remote, scope, undefined, { fileReceipt: { resourceId, versionId: 'version-6' } });
+    expect(getProject(db, input.id)?.metadata?._commentFiles).toBeUndefined();
+    materializePulledTeamMirror(db, remote, scope, undefined, { fileReceipt: { resourceId, versionId: 'version-7' } });
+    expect(getProject(db, input.id)?.metadata?._commentFiles).toEqual(facts);
+    expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
+  });
+
   it('never treats generic nested project metadata as admitted catalog facts', async () => {
     const forged = { schemaVersion: 1, revision: 1, files: [{
       sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
