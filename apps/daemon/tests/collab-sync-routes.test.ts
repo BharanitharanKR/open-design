@@ -3096,6 +3096,45 @@ describe('collab sync routes', () => {
     });
   });
 
+  it('materializes a native retained-catalog-root receipt through the manual route and SQLite store', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'od-native-retained-root-'));
+    tempDirs.push(root);
+    const db = openDatabase(root, { dataDir: root });
+    const projectId = 'native-retained-root';
+    const scope: TeamMirrorPullScope = {
+      workspaceId: 'ws-1', resourceTeamId: 'team-1', viewerMemberId: 'wm-1', ownerMemberId: 'wm-owner',
+    };
+    const facts = { schemaVersion: 1 as const, revision: 1, files: [{
+      sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+      resourceId: 'retained-catalog-root', versionId: 'landed-version-7', retired: false,
+    }] };
+    const materializeTeamMirror = vi.fn<NonNullable<PulledProjectStore['materializeTeamMirror']>>(
+      (input, scope, fileReceipt) => materializePulledTeamMirror(db, input, scope, undefined, fileReceipt ? { fileReceipt } : {}),
+    );
+    try {
+      const api = await startSyncServer(fixedShareContextProvider(true), {
+        projectStore: {
+          get: id => getProject(db, id), has: id => getProject(db, id) != null,
+          register: () => { throw new Error('must use scoped materializer'); },
+          materializeTeamMirror,
+        },
+        resolvePullDir: () => root,
+        resolveSharedProject: async () => ({ projectId, ownerMemberId: scope.ownerMemberId,
+          sharedAt: '2026-07-25T00:00:00.000Z', metadata: { kind: 'prototype', _commentFiles: facts } }),
+      }, {
+        adapter: { publish: async () => ({ version: 7 }),
+          pull: async () => ({ version: 7, resourceId: 'retained-catalog-root', versionId: 'landed-version-7' }) },
+      });
+      expect(await api.handle.pullSharedProject(projectId, scope)).toEqual({ status: 'pulled', version: 7 });
+      expect(materializeTeamMirror).toHaveBeenCalledWith(expect.objectContaining({ id: projectId }), scope,
+        { resourceId: 'retained-catalog-root', versionId: 'landed-version-7' });
+      expect(getProject(db, projectId)?.metadata?._commentFiles).toEqual(facts);
+      expect(getTeamProjectMaterialization(db, scope.workspaceId, projectId)).toBeNull();
+    } finally {
+      closeDatabase();
+    }
+  });
+
   it('refuses to pull a project that is no longer team-shared (revocation)', async () => {
     // The team catalog no longer lists this project (the owner moved it out of
     // the team). A stale local copy on a former member's daemon must not be able

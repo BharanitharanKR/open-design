@@ -200,8 +200,12 @@ export function materializePulledTeamMirror(
       : scope.ownerMemberId === scope.viewerMemberId
         ? scope.viewerMemberId
         : null;
-    const resourceHubResourceId =
-      receipt?.resourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
+    // Native manual pulls carry the trusted root whose bytes actually landed.
+    // Retained catalog roots need not equal the current owner-derived ID. Use
+    // that root for binding checks too, without granting staged-pull authority.
+    const resourceHubResourceId = receipt?.resourceId
+      ?? (!options.placeholder ? options.fileReceipt?.resourceId : undefined)
+      ?? projectResourceIdFor(input.id, ownerPrincipal);
     if (
       receipt &&
       receipt.resourceId !== projectResourceIdFor(input.id, ownerPrincipal)

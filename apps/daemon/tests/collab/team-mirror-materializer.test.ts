@@ -79,7 +79,7 @@ async function database() {
 }
 
 describe('authorized team mirror SQLite materialization', () => {
-  it('adopts manual-pull file facts only at the actual byte receipt without inventing an authorized cursor', async () => {
+  it.each([resourceId, 'retained-catalog-root'])('adopts manual-pull file facts only at the actual byte receipt without inventing an authorized cursor (%s)', async (resourceId) => {
     const db = await database();
     const facts = { schemaVersion: 1 as const, revision: 1, files: [{
       sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
@@ -90,6 +90,19 @@ describe('authorized team mirror SQLite materialization', () => {
     expect(getProject(db, input.id)?.metadata?._commentFiles).toBeUndefined();
     materializePulledTeamMirror(db, remote, scope, undefined, { fileReceipt: { resourceId, versionId: 'version-7' } });
     expect(getProject(db, input.id)?.metadata?._commentFiles).toEqual(facts);
+    expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
+    expect(listWorkspaceProjects(db, scope.workspaceId)[0]?.resourceHubResourceId).toBe(resourceId);
+  });
+
+  it('rejects a manual byte receipt incompatible with an existing root binding without mutation', async () => {
+    const db = await database();
+    materializePulledTeamMirror(db, input, scope);
+    const before = getProject(db, input.id);
+    expect(() => materializePulledTeamMirror(db, { ...input, name: 'Must not land', updatedAt: 3 }, scope, undefined, {
+      fileReceipt: { resourceId: 'retained-catalog-root', versionId: 'version-7' },
+    })).toThrow('team mirror binding conflict');
+    expect(getProject(db, input.id)).toEqual(before);
+    expect(listWorkspaceProjects(db, scope.workspaceId)[0]?.resourceHubResourceId).toBe(resourceId);
     expect(getTeamProjectMaterialization(db, scope.workspaceId, input.id)).toBeNull();
   });
 
