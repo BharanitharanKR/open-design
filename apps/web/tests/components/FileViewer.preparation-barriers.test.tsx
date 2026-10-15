@@ -297,3 +297,22 @@ it.each(['cmt:fake', 'cmt:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'])('untrusted com
   expect(window.confirm).not.toHaveBeenCalled();
   await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' })));
 });
+it('explicit Generate retry removes a stale publication alert only after the reopened source has its frame witness', async () => {
+  const route = setup({ prior: true, currentPrepared: true });
+  await screen.findByTestId('comment-identity-revalidate');
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  const generate = await screen.findByRole('menuitem', { name: 'Generate and copy link' });
+  await waitFor(() => expect(generate).toBeEnabled());
+  await act(async () => fireEvent.click(generate));
+  expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('COMMENT_PREVIEW_NOT_READY');
+  expect(route.writes).not.toHaveBeenCalled();
+  await acknowledge();
+  await waitFor(() => expect(screen.queryByTestId('comment-identity-revalidate')).toBeNull());
+  expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('COMMENT_PREVIEW_NOT_READY');
+  await waitFor(() => expect(generate).toBeEnabled());
+  await act(async () => fireEvent.click(generate));
+  // Mock endpoint receipt only: no real S3, provider, or A1–E3 acceptance claim.
+  await waitFor(() => expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(1));
+  expect(screen.getByTestId('comment-identity-preparation')).not.toHaveTextContent('COMMENT_PREVIEW_NOT_READY');
+  expect(screen.queryByRole('alert')).toBeNull();
+});

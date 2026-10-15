@@ -123,3 +123,59 @@ it('successful source-version save applies once and remains a source version, no
   expect(options.apply).toHaveBeenCalledExactlyOnceWith(saved);
   expect(result.current.saved?.version.id).toBe('source-version-2');
 });
+it('explicit current publication retry clears only its old guard error, never a frame event alone', () => {
+  const publish = vi.fn(); // Controlled consumer, not a real publication acceptance witness.
+  const initial = { ...options, verifiedDocument: { source: saved.source }, document: { source: saved.source, key: 'frame', ready: false } };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  const attempt = () => { if (result.current.validatePublication()) publish(); };
+  act(attempt);
+  expect(publish).not.toHaveBeenCalled();
+  expect(result.current.error).toBe('COMMENT_PREVIEW_NOT_READY');
+  rerender({ ...initial, document: { ...initial.document, ready: true } });
+  expect(result.current.documentPending()).toBe(false);
+  expect(result.current.error).toBe('COMMENT_PREVIEW_NOT_READY');
+  act(attempt);
+  expect(publish).toHaveBeenCalledOnce();
+  expect(result.current.error).toBeNull();
+});
+it.each(['COMMENT_PREVIEW_NOT_READY', 'COMMENT_PREPARATION_PROOF_UNAVAILABLE', 'COMMENT_PREPARATION_FAILED', 'COMMENT_PREPARATION_STALE'])('publication success preserves independently reported %s', code => {
+  const { result } = renderHook(() => useCommentPreparation({ ...options, document: { source: saved.source, key: 'ready', ready: true } }));
+  act(() => result.current.reportBlocked(code));
+  act(() => expect(result.current.validatePublication()).toBe(true));
+  expect(result.current.error).toBe(code);
+});
+it.each(['revision', 'scope', 'account'] as const)('retained %s publication callback cannot clear a current independently reported error or publish', change => {
+  const initial = { ...options, document: { source: saved.source, key: 'ready', ready: true } };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  const retained = result.current.validatePublication;
+  rerender({ ...initial, ...(change === 'scope' ? { fileName: 'other.html' } : { inputKey: 'new-input' }) });
+  if (change === 'account') advanceWorkspaceAccountGeneration('other-account');
+  const publish = vi.fn();
+  act(() => result.current.reportBlocked('COMMENT_PREPARATION_PROOF_UNAVAILABLE'));
+  act(() => { if (retained()) publish(); });
+  expect(publish).not.toHaveBeenCalled();
+  // Account-generation invalidation hides the old scope's error entirely.
+  if (change !== 'account') expect(result.current.error).not.toBeNull();
+});
+it('successful retry retires only the validated error snapshot, preserving a newer pending-intent failure', () => {
+  const initial = { ...options, document: { source: saved.source, key: 'frame', ready: false } };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  act(() => expect(result.current.validatePublication()).toBe(false));
+  rerender({ ...initial, document: { ...initial.document, ready: true } });
+  act(() => {
+    result.current.reportBlocked('COMMENT_PREPARATION_PROOF_UNAVAILABLE');
+    expect(result.current.validatePublication()).toBe(true);
+  });
+  expect(result.current.error).toBe('COMMENT_PREPARATION_PROOF_UNAVAILABLE');
+});
+it('publication validation in another file and live-only validation do not retire the original publication alert', () => {
+  const initial = { ...options, document: { source: saved.source, key: 'frame', ready: false } };
+  const { result, rerender } = renderHook((props: typeof initial) => useCommentPreparation(props), { initialProps: initial });
+  act(() => expect(result.current.validatePublication()).toBe(false));
+  rerender({ ...initial, fileName: 'other.html', document: { ...initial.document, ready: true } });
+  act(() => expect(result.current.validatePublication()).toBe(true));
+  expect(result.current.error).toBeNull(); // Hidden, not cleared, in the other file.
+  rerender({ ...initial, document: { ...initial.document, ready: true } });
+  act(() => expect(result.current.validateLiveRevision()).toBe(true));
+  expect(result.current.error).toBe('COMMENT_PREVIEW_NOT_READY');
+});

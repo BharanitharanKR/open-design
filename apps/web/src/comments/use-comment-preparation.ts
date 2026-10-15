@@ -48,21 +48,28 @@ export function useCommentPreparation(options: {
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; live.current.revision++; }; }, []);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ scope: string; code: string } | null>(null);
+  const [error, setError] = useState<{ scope: string; code: string; origin: 'preparation' | 'publication' } | null>(null);
   const [saved, setSaved] = useState<{ key: string; result: PrepareCommentIdentityResponse } | null>(null);
   const currentAttempt = () => alive.current && live.current.scope === scope && live.current.revision === renderRevision
     && currentWorkspaceAccountGeneration() === accountGeneration;
   const documentPending = () => !alive.current || live.current.scope !== scope || currentWorkspaceAccountGeneration() !== accountGeneration
     || pending.current?.scope === scope;
-  const reportBlocked = (code: string) => { if (alive.current && live.current.scope === scope) setError({ scope, code }); };
+  const reportError = (code: string, origin: 'preparation' | 'publication') => {
+    if (alive.current && live.current.scope === scope) setError({ scope, code, origin });
+  };
+  const reportBlocked = (code: string) => reportError(code, 'preparation');
   function validateLiveRevision() {
     if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
     return true;
   }
   function validatePublication(requirePreparedDocument = true) {
-    if (!currentAttempt()) { reportBlocked('COMMENT_PREPARATION_STALE'); return false; }
-    if (!options.authorized || !options.settled) { reportBlocked('COMMENT_EDITING_UNSETTLED'); return false; }
-    if (confirming.current || running.current || proofBusy() || documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportBlocked('COMMENT_PREVIEW_NOT_READY'); return false; }
+    if (!currentAttempt()) { reportError('COMMENT_PREPARATION_STALE', 'publication'); return false; }
+    if (!options.authorized || !options.settled) { reportError('COMMENT_EDITING_UNSETTLED', 'publication'); return false; }
+    if (confirming.current || running.current || proofBusy() || documentPending() || (requirePreparedDocument && !options.document?.ready)) { reportError('COMMENT_PREVIEW_NOT_READY', 'publication'); return false; }
+    // Only an explicit, current publication retry retires its own guard alert.
+    // Frame readiness alone and unrelated preparation/proof errors must survive.
+    // Retire the validated snapshot, not a newer pending intent's queued error.
+    setError(previous => previous === error && previous?.scope === scope && previous.origin === 'publication' ? null : previous);
     return true;
   }
   async function prepare() {
