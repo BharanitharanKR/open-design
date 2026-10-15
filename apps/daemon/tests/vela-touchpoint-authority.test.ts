@@ -265,6 +265,10 @@ describe('pending 410 authority', () => {
 });
 
 describe('revocation history eviction through the real proxy sequence', () => {
+  // These 257-request cases cross the real durable cache capacity boundary.
+  // Keep all fsyncs and assertions; allow the same macOS I/O headroom as the
+  // durable scope-eviction tests instead of relaxing the whole suite timeout.
+  const durableRequestSequenceTimeoutMs = 60_000;
   it('serves a late online response but never persists withdrawn authority after 257 subsequent receipts', async () => {
     await answer(200, { ...decision(), deploymentId: 'other-delivery' }); attempts.at(-1)!.request.emit('close');
     // start executes the real route held -> ticket path before the upstream is answered.
@@ -279,17 +283,49 @@ describe('revocation history eviction through the real proxy sequence', () => {
     expect((await answer(503, {}, { locale: 'zh-TW' })).status).toBe(503); attempts.at(-1)!.request.emit('close');
     await answer(200, decision(), { locale: 'zh-TW' }); attempts.at(-1)!.request.emit('close');
     expect((await answer(503, {}, { locale: 'zh-TW' })).offline).toBe('1');
-  });
-  it('releases request capacity on close so sequential attempts keep caching', async () => {
+  }, durableRequestSequenceTimeoutMs);
+  it('releases request capacity after response classification so sequential attempts keep caching', async () => {
     for (let i = 0; i < 257; i++) {
       await answer(200, decision()); attempts.at(-1)!.request.emit('close');
     }
     await answer(404, {}); attempts.at(-1)!.request.emit('close');
     await answer(200, decision()); attempts.at(-1)!.request.emit('close');
     expect((await answer(503, {})).offline).toBe('1');
-  });
+  }, durableRequestSequenceTimeoutMs);
 });
 
+
+describe('request ticket survives body classification', () => {
+  it('records a full grant when request close arrives before response end', async () => {
+    const grant = decision();
+    const call = await start();
+    const stream = respond(call.attempt, 200);
+    const payload = JSON.stringify(grant);
+    stream.write(payload.slice(0, 20));
+    // Controlled adversarial ordering, not a claim about native Node's normal order.
+    call.attempt.request.emit('close');
+    stream.end(payload.slice(20));
+    expect((await call.done).body).toEqual(grant);
+    const offline = await answer(503, {});
+    expect(offline.offline).toBe('1');
+    expect(offline.body.endsAt).toBe(grant.endsAt);
+  });
+
+  it('persists a shortened trimmed renewal despite request close before response end', async () => {
+    await answer(200, decision());
+    const renewal = decision({ startsIn: -HOUR, endsIn: 300_000 });
+    const { content: _content, ...envelope } = renewal;
+    const call = await start();
+    expect(call.attempt.url).toContain('heldContentId=version-1');
+    const stream = respond(call.attempt, 200);
+    call.attempt.request.emit('close');
+    stream.end(JSON.stringify({ ...envelope, contentOmitted: true }));
+    expect((await call.done).body.endsAt).toBe(renewal.endsAt);
+    const offline = await answer(503, {});
+    expect(offline.offline).toBe('1');
+    expect(offline.body.endsAt).toBe(renewal.endsAt);
+  });
+});
 
 describe('pre-dispatch durability and route shutdown', () => {
   it.each(['write', 'rename', 'file-fsync', 'directory-fsync'] as const)('never dispatches when pre-marker %s fails', async fault => {

@@ -527,8 +527,11 @@ describe("ProductionCampaignModal", () => {
 		);
 		vi.stubGlobal("fetch", fetchMock);
 		render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
-		await screen.findByTestId("campaign-custom-element");
-		window.dispatchEvent(new Event("focus"));
+		// Insertion precedes async mounting; renew only after the lease is visible.
+		await screen.findByRole("dialog");
+		await act(async () => {
+			window.dispatchEvent(new Event("focus"));
+		});
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 		expect(fetchMock.mock.calls[1]?.[0]).toContain(
 			`activeDecisionId=${active.touchpointDecisionId}`,

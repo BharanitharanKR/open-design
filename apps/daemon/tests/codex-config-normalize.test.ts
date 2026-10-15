@@ -41,6 +41,13 @@ import {
   type CodexConfigIO,
 } from '../src/codex-config-normalize.js';
 
+const testHome = vi.hoisted(() => ({ value: undefined as string | undefined }));
+vi.mock('node:os', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  const homedir = () => testHome.value ?? actual.homedir();
+  return { ...actual, homedir, default: { ...actual, homedir } };
+});
+
 // ---------------------------------------------------------------------------
 // normalizeCodexConfigContent — pure string-level normalization (remove-only)
 // ---------------------------------------------------------------------------
@@ -500,7 +507,9 @@ describe('normalizeCodexConfigFile', () => {
   });
 
   it('FIX 3 tilde regression: patches config.toml at the EXPANDED location when CODEX_HOME contains a tilde prefix', async () => {
-    const home = homedir();
+    // Exercise the real tilde expansion and disk write under an isolated home.
+    const home = tmpDir;
+    testHome.value = home;
     const tildeTmpDir = mkdtempSync(join(home, '.od-codex-config-test-'));
     const configPath = join(tildeTmpDir, 'config.toml');
     try {
@@ -520,6 +529,7 @@ describe('normalizeCodexConfigFile', () => {
       expect(after).not.toContain('"priority"');
       expect(after).toContain('model = "gpt-5.5"');
     } finally {
+      testHome.value = undefined;
       rmSync(tildeTmpDir, { recursive: true, force: true });
     }
   });

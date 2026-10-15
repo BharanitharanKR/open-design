@@ -330,16 +330,16 @@ describe("OPEND-3436 Test channel", () => {
     expect(probe.result.current?.decisions.size).toBe(4);
     expect(probe.result.current?.isAuthorized()).toBe(true);
   });
-  it("AC3/10 Test stops automatic rechecks after failure without extending expired display authority", async () => {
+  it("AC3/10 Test keeps polling after failure without extending expired display authority", async () => {
     const { fetchMock, probe, fail, recover } = setupTest(); await step();
     expect(probe.result.current?.decisions.size).toBe(4);
     fail(); await step(30_000);
     const calls = fetchMock.mock.calls.length;
     await step(120_000);
-    expect(fetchMock.mock.calls.length).toBe(calls);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(calls);
     expect(probe.result.current?.decisions.size ?? 0).toBe(0);
     expect(probe.result.current?.isAuthorized() ?? false).toBe(false);
-    recover(); wake("online"); await step();
+    recover(); await step(30_000);
     expect(probe.result.current?.decisions.size).toBe(4);
     expect(probe.result.current?.isAuthorized()).toBe(true);
   });
@@ -365,7 +365,7 @@ describe("OPEND-3436 Test channel", () => {
     expect(probe.result.current?.decisions.size ?? 0).toBe(0);
     expect(probe.result.current?.isAuthorized() ?? false).toBe(false);
   });
-  it("remount after twenty seconds preserves only the original forty seconds and stops failed requests", async () => {
+  it("remount after twenty seconds preserves only the original forty seconds while failed polls continue", async () => {
     const { probe, fetchMock, fail, restart } = setupTest(); await step(); await step(20_000);
     fail(); restart(); await step();
     expect(probe.result.current?.decisions.size).toBe(4);
@@ -374,7 +374,7 @@ describe("OPEND-3436 Test channel", () => {
     await step(1); expect(fetchMock.mock.calls.length).toBe(requests);
     await step(38_999); expect(probe.result.current?.decisions.size).toBe(4);
     await step(1); expect(probe.result.current?.decisions.size ?? 0).toBe(0);
-    expect(fetchMock.mock.calls.length).toBe(requests);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(requests);
   });
   it("restored placements independently retire at their original fifteen-second boundaries", async () => {
     const { probe, fail, restart } = setupTest([15_000, 30_000, 45_000, 60_000]); await step(); await step(10_000);
@@ -423,7 +423,7 @@ describe("OPEND-3436 Test channel", () => {
       if (placement === placements[0]) return new Response(null, { status });
       return new Promise<Response>((resolve) => pending.push(() => resolve(json({ ...decision(placement), authorizationExpiresAt: at(60_000), testContext: { deploymentId: "deployment-1", scenario: "realtime", updatedAt: at(0), scheduleState: "active" } }))));
     });
-    await step(30_000); expect(pending).toHaveLength(3);
+    await step(TOUCHPOINT_POLL_MS); expect(pending).toHaveLength(3);
     await act(async () => { pending.forEach((resolve) => resolve()); });
     expect(probe.result.current?.decisions.size ?? 0).toBe(0);
     fetchMock.mockRejectedValue(new TypeError("DNS unavailable")); restart(); await step();
@@ -437,7 +437,7 @@ describe("OPEND-3436 Test channel", () => {
       if (!String(url).includes("placementKey")) return original(url);
       return new Promise<Response>((resolve) => pending.push(() => void original(url).then(resolve)));
     });
-    await step(30_000); expect(pending).toHaveLength(4);
+    await step(TOUCHPOINT_POLL_MS); expect(pending).toHaveLength(4);
     fetchMock.mockImplementation(async () => json({ deployments: [] })); restart(); await step();
     expect(probe.result.current?.decisions.size ?? 0).toBe(0);
     await act(async () => { pending.forEach((resolve) => resolve()); });

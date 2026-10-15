@@ -56,7 +56,7 @@ function appFor() {
 beforeEach(() => {
   directory = mkdtempSync(path.join(tmpdir(), 'od-load-route-'));
   vi.stubEnv('AMR_HOME', directory);
-  env = { VELA_PROFILE: 'local', VELA_CONTROL_KEY: 'ck-fixture', VELA_API_URL: 'http://127.0.0.1:8111' };
+  env = { OD_APP_VERSION: '0.23.1', VELA_PROFILE: 'local', VELA_CONTROL_KEY: 'ck-fixture', VELA_API_URL: 'http://127.0.0.1:8111' };
   calls = []; status = 202; payload = { accepted: 1 }; gzip = false; upstreamMetadata = undefined;
   vi.spyOn(http, 'request').mockImplementation(((url: URL, options: http.RequestOptions, callback: (res: IncomingMessage) => void) => {
     const call = { url, headers: options.headers as http.OutgoingHttpHeaders, body: '' }; calls.push(call);

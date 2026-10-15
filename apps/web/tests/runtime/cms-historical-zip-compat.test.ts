@@ -12,9 +12,13 @@ import ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TouchpointComponentV2ManifestSchema as currentManifestSchema, type TouchpointDiagnostic, type TouchpointSdk, } from "@open-design/contracts";
 import { verifyWebTouchpoint as currentVerify, type WebTouchpointContent, type WebTouchpointContext, type WebTouchpointHostContext, } from "../../src/components/touchpoint-component";
-import producer from "../fixtures/cms/historical-client/v0.23.0/amr-runtime-api1.json";
+import producerMetadata from "../fixtures/cms/historical-client/v0.23.0/amr-runtime-api1.json";
+import producerPlacements from "../fixtures/cms/historical-client/v0.23.0/amr-runtime-api1-placements.json";
 import roleProducer from "../fixtures/cms/historical-client/v0.23.0/amr-role-runtime-api1.json";
 import binding from "../fixtures/cms/historical-client/v0.23.0/source-manifest.json";
+// Keep each fixture file below the static gate's 1 MiB limit. Restoring the
+// original key preserves the producer payload hash and all exact runtime bytes.
+const producer = { ...producerMetadata, placements: producerPlacements };
 /**
  * This is an OD consumer regression, not an AMR compiler reimplementation.
  * The immutable fixture includes the original ZIP and actual getPreviewVersion
@@ -1142,9 +1146,11 @@ describe("source-pinned v0.23.0 consumption of actual AMR ZIP build DTOs", () =>
       expect(sha(readFileSync(new URL(source.snapshot, fixtureRoot)))).toBe(
         source.sha256,
       );
-    const bytes = readFileSync(
-      new URL(binding.producerFixture.file, fixtureRoot),
-    );
+    // Reassemble the original serialized bytes as well as the imported object;
+    // the pinned file digest still covers every byte in both storage parts.
+    const metadata = readFileSync(new URL(binding.producerFixture.file, fixtureRoot), "utf8");
+    const placements = readFileSync(new URL("amr-runtime-api1-placements.json", fixtureRoot), "utf8").trimEnd();
+    const bytes = Buffer.from(metadata.replace('  "placements": []', `  "placements": ${placements}`));
     expect(sha(bytes)).toBe(
       "7aead54bcd4643054704ee25e4c312d02a42e8a4b1c380d0d383e65b25755128",
     );

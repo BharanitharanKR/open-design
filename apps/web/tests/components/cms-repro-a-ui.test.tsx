@@ -20,7 +20,6 @@ import {
 } from "../../src/components/TestCampaignModal";
 import * as component from "../../src/components/touchpoint-component";
 import * as navigation from "../../src/components/touchpoint-navigation";
-import { TEST_TOUCHPOINT_POLL_MS } from "../../src/components/touchpoint-lifecycle";
 
 const cmsTrack = vi.hoisted(() => vi.fn());
 vi.mock("../../src/analytics/provider", () => ({
@@ -520,26 +519,22 @@ describe("OPEND-3298 context recovery and remaining P1", () => {
     let hanging = true;
     decisionReply = (key, locale, id) => key === modal && hanging
       ? new Promise<Response>(() => {}) : Response.json(decision(key, locale, oldGeneration, id));
-    // No focus refresh: the first timeout is discovered by the ordinary poll at t=40s.
+    // No focus refresh: failed presentations retry on cadence while siblings
+    // renew without remounting. Recovery must need no focus/online event.
     for (let second = 1; second <= 150; second += 1) {
       await settle(1_000);
       expect(visibleEntry(), `hover at t=${second}s`).toBe(true);
       expect(hoverMounts(), `hover mounts at t=${second}s`).toBe(initialMounts);
       expect(latest?.decisions.get(entry)).toBe(originalEntry);
-      if (Date.now() < modalDeadline) expect(screen.queryByRole("dialog", { name: zhTW["campaign.testDialogLabel"] })).not.toBeNull();
-      else {
+      if (Date.now() < modalDeadline || second >= 110) expect(screen.queryByRole("dialog", { name: zhTW["campaign.testDialogLabel"] })).not.toBeNull();
+      else if (second <= 90) {
         expect(screen.queryByRole("dialog", { name: zhTW["campaign.testDialogLabel"] })).toBeNull();
         expect(latest?.decisions.has(modal)).toBe(false);
       }
-      // Failed presentations stop automatic requests; only the healthy pair
-      // keeps polling. Merely changing the mock response cannot wake recovery.
-      if (Date.now() - epoch >= TEST_TOUCHPOINT_POLL_MS + TEST_PLACEMENT_REQUEST_TIMEOUT_MS)
-        expect(modalRequests(), `modal requests at t=${second}s`).toBe(2);
+      if (second >= 40)
+        expect(modalRequests(), `modal requests at t=${second}s`).toBeGreaterThan(2);
       if (second === 90) hanging = false;
     }
-    act(() => window.dispatchEvent(new Event("focus")));
-    await settle(32);
-    expect(modalRequests()).toBe(3);
     expect(latest?.decisions.has(modal)).toBe(true);
     expect(visibleEntry()).toBe(true);
     expect(hoverMounts()).toBe(initialMounts);
@@ -610,16 +605,21 @@ describe("OPEND-3311 return-home timing", () => {
     expect(visibleEntry()).toBe(true);
   });
 
-  it("stops catalog retries and polling after a failed remount discovery", async () => {
+  it("keeps catalog polling after a failed remount discovery and recovers on cadence", async () => {
     const view = await start();
     view.rerender(<Home home={false} />);
     await settle(100);
     let catalogs = 0;
     catalogReply = () => { catalogs += 1; return new Response(null, { status: 500 }); };
+    decisionReply = () => new Response(null, { status: 503 });
     view.rerender(<Home />);
     await settle(120_000);
-    expect(catalogs).toBe(1);
+    expect(catalogs).toBe(5);
     expect(visibleEntry()).toBe(false);
+    catalogReply = () => Response.json({ deployments: [deployment()] });
+    decisionReply = (key, locale, id) => Response.json(decision(key, locale, oldGeneration, id));
+    await settle(30_000);
+    expect(visibleEntry()).toBe(true);
   });
 
   it("focus wakes failed catalog discovery immediately instead of waiting for its poll", async () => {

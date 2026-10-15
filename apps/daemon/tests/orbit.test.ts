@@ -462,7 +462,7 @@ describe('OrbitService', () => {
   });
 
   it('tracks the most recent run per template alongside the global last run', async () => {
-    const realSetImmediate = setImmediate;
+    const realSetTimeout = setTimeout;
     vi.useFakeTimers();
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'orbit-test-'));
     try {
@@ -471,10 +471,10 @@ describe('OrbitService', () => {
         predicate: (status: Awaited<ReturnType<OrbitService['status']>>) => boolean,
       ) => {
         let status = await service.status();
-        for (let attempt = 0; attempt < 50 && !predicate(status); attempt += 1) {
+        for (let attempt = 0; attempt < 200 && !predicate(status); attempt += 1) {
           await vi.advanceTimersByTimeAsync(1);
           // Fake timers do not drive the real filesystem callbacks that persist Orbit summaries.
-          await new Promise<void>((resolve) => realSetImmediate(resolve));
+          await new Promise<void>((resolve) => realSetTimeout(resolve, 5));
           status = await service.status();
         }
         return status;

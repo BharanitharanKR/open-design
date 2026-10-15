@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Socks5ProxyAgent } from 'undici';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as platform from '@open-design/platform';
 
 const { resolveSystemProxyEnvMock } = vi.hoisted(() => ({
@@ -211,9 +211,15 @@ beforeAll(async () => {
   server = started.server;
 });
 
+beforeEach(() => {
+  // Tests opt into custom endpoints explicitly; never inherit the host proxy.
+  vi.stubEnv('ANTHROPIC_BASE_URL', '');
+});
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   amrModelLoadingCache.resetForTests();
 });
 
