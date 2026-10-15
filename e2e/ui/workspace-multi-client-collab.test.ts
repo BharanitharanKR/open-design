@@ -505,6 +505,11 @@ test('[P0] two isolated clients converge live content, presence, and owner unsha
       ).toContain(COLLAB_COMMENT_NOTE);
       expect(Date.now() - commentStartedAt).toBeLessThan(T.medium);
 
+      // Restored panel state may mark comments read during navigation, before
+      // the toolbar is usable. Observe the receipt before that navigation.
+      const initialRead = ownerPage.waitForResponse((response) =>
+        isProjectCommentReadResponse(response, projectId),
+      );
       await ownerPage.goto(`/projects/${projectId}/files/index.html`, {
         waitUntil: 'domcontentloaded',
       });
@@ -512,9 +517,6 @@ test('[P0] two isolated clients converge live content, presence, and owner unsha
         timeout: T.long,
       });
       await clickPreviewToolbarAction(ownerPage, 'board-mode-toggle', /^Comment$/);
-      const initialRead = ownerPage.waitForResponse((response) =>
-        isProjectCommentReadResponse(response, projectId),
-      );
       await clickPreviewToolbarAction(
         ownerPage,
         'comment-panel-toggle',
