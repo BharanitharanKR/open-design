@@ -95,3 +95,9 @@ it('keeps Motion export checks out of the planning protocol and exposes unsuppor
   const live = await readFile(path.join(folder, 'assets/task-profiles/live-artifact.md'), 'utf8');
   expect(live).toContain('ask before converting or substituting the format');
 });
+
+it('stops opaque media request failures without unrelated diagnostic generations', async () => {
+  const video = await readFile(path.join(folder, 'assets/task-profiles/video.md'), 'utf8');
+  expect(video).toContain('HTTP 400 invalid_request');
+  expect(video).toContain('do not probe another media surface for connectivity');
+});
