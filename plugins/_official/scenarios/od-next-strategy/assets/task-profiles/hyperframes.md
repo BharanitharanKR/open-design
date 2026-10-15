@@ -1,4 +1,4 @@
-# OD Next HyperFrames Task Profile v2.0.3
+# OD Next HyperFrames Task Profile v2.0.4
 
 > Rollout: active
 
@@ -27,10 +27,10 @@ captions, and required source and rendered outputs. Freeze palette, type,
 composition, scene language, motion timing, transitions, safe areas, and
 audio rules in the Design Spec.
 
-Resolve every missing field per the general orchestration Skill: ask when
-essential, otherwise adopt a reasonable assumption for the work. Disclose
-assumptions and risks that materially affect the result or its use; routine
-implementation choices need no separate explanation.
+Never silently omit a missing field: decide per the general orchestration
+Skill whether to enter the clarification stage, or convert the gap into an
+explicit assumption with its risk. Follow the Core communication guidance
+when explaining material assumptions and risks to the user.
 
 Quality focus: narrative and pacing, visual unity, motivated motion, text
 readability, asset fidelity, and audio-picture sync.

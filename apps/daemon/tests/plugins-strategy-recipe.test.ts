@@ -1,4 +1,4 @@
-import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -129,6 +129,9 @@ describe('OD Next V2 request recipe wiring', () => {
     // This proves the real asset reaches both composers and the serialized
     // runtime tree; model adherence needs separate observed-output evidence.
     const core = bundle.coreSystemPrompt.coreStrategy;
+    expect(core).toContain('Freeze the relevant decisions in the Task Profile Design Spec before Build');
+    expect(core).toContain('All Build Packages share that same version');
+    expect(core).not.toContain('Resolve routine implementation\nparameters while building');
     expect(core).toContain('all user-visible prose: plans, progress updates, and final replies');
     expect(core).toContain('Never assume\nan unknown connection is real or simulated');
     expect(core).toContain('When the user asks about sources, design specifications, implementation,');
@@ -141,7 +144,7 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(bundle.coreSystemPrompt.outputContract).toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.outputContract).not.toContain('design direction, implementation steps');
     expect(bundle.sessionSkills.taskTypeSkill.body).toContain('They are work specifications, not');
-    expect(bundle.sessionSkills.taskTypeSkill.body).toContain('materially affect the result or its use');
+    expect(bundle.sessionSkills.taskTypeSkill.body).toContain('Never silently omit a missing field');
     expect(bundle.sessionSkills.generalOrchestrationSkill.body)
       .toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.nativeExecution.profile).toBe(executionProfile);
@@ -150,6 +153,26 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(daemonPrompt).toBe(composeContractsSystemPrompt({ odNextStrategyRecipe: recipe }));
     expect(daemonPrompt).toContain(core);
     expect(recipe.activeStages.map((stage) => stage.name)).toEqual(['discovery', 'plan', 'generate']);
+  });
+
+  it('composes the canonical motion skill with Core and orchestration for the motion route', async () => {
+    const binding = createBundledStrategyBindingV2({ plugin, taskType: 'motion-design' });
+    const motionSnapshot = applyPlugin({
+      plugin, inputs: {}, registry: EMPTY_REGISTRY, internalStrategyBinding: binding,
+    }).result.appliedPlugin;
+    const recipe = await resolveRecipe({ activeSnapshot: { ...motionSnapshot, snapshotId: 'snapshot-motion-recipe' } });
+    if (!recipe) throw new Error('expected motion recipe');
+    const prompt = composeSystemPrompt({ agentId: 'codex', sessionMode: 'design', odNextStrategyRecipe: recipe });
+    const source = await readFile(path.resolve(BUNDLED_ROOT, '../../skills/motion-design/SKILL.md'), 'utf8');
+    expect(prompt).toContain(source);
+    expect(prompt).toContain('OD Next Core Strategy');
+    expect(prompt).toContain('General Orchestration');
+    expect(prompt).not.toContain('# OD Next Task Profile: HyperFrames');
+    expect(prompt).not.toContain('<open-design-plan-contract>');
+    expect(prompt).not.toContain('<open-design-runtime-state>');
+    expect(prompt).not.toContain('planContractHash=');
+    expect(prompt).toContain('keyed');
+    expect(prompt).toContain('selected scenario or a loaded');
   });
 
   it.each(['prototype', 'ppt', 'marketing', 'hyperframes'] as const)(
@@ -165,6 +188,10 @@ describe('OD Next V2 request recipe wiring', () => {
       expect(prompt).not.toContain('propose a task-type\n   switch and wait for confirmation');
       expect(prompt).not.toContain('is rejected as an invalid\ncanonical deliverable');
       expect(prompt).toContain('Apply this profile only to the parts of the current request');
+      expect(prompt).not.toContain('<open-design-plan-contract>');
+      expect(prompt).not.toContain('planContractHash=');
+      expect(prompt).not.toContain('od-motion-audio');
+      expect(prompt).not.toContain('media generate --project');
     },
   );
 

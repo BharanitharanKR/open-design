@@ -399,7 +399,7 @@ describe('OD Next V2 prompt recipe', () => {
       taskExecutionId: 'task-communication', taskRunIndex: 1,
     });
     expect(production).toContain('not a new user request or a change of audience');
-    expect(production).toContain('original user request for all user-facing progress and final replies');
+    expect(production).toContain('current user request for all user-facing progress and final replies');
     expect(production).toContain('Follow the Core communication guidance');
   });
 

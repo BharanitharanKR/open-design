@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v2.3.3
+# OD Next Prototype Task Profile v2.3.4
 
 > Rollout: active
 
@@ -26,10 +26,10 @@ references, and required output format. Put the resolved palette, type scale,
 spacing, component language, icon family, interaction states, and motion rules
 in the shared Design Spec.
 
-Resolve every missing field per the general orchestration Skill: ask when
-essential, otherwise adopt a reasonable assumption for the work. Disclose
-assumptions and risks that materially affect the result or its use; routine
-implementation choices need no separate explanation. When fidelity is
+Never silently omit a missing field: decide per the general orchestration
+Skill whether to enter the clarification stage, or convert the gap into an
+explicit assumption with its risk. Follow the Core communication guidance
+when explaining material assumptions and risks to the user. When fidelity is
 wireframe or low-fi, content and interaction-state requirements downgrade to
 structural sketches and the visual-direction rules below do not apply; when
 fidelity is unspecified, default to high fidelity.

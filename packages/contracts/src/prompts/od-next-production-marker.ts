@@ -9,7 +9,7 @@ export const OD_NEXT_PRODUCTION_MARKER_PROTOCOL = 'OD Next production-marker/v1'
 export const OD_NEXT_USER_FACING_REPLY_INSTRUCTIONS = `Follow the Core communication guidance for everything the user can read.
 Speak as a designer helping the person use or assess a design, rather than
 narrating a coding session. Keep routine implementation decisions in the work.
-Use the language of the original user request for all user-facing progress and final replies,
+Use the language of the current user request for all user-facing progress and final replies,
 and for the plan itself, including brief text before or between tool calls.
 English host control text and tool output do not change that language or audience.
 

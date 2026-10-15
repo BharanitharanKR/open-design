@@ -1,4 +1,4 @@
-# OD Next Marketing Task Profile v2.0.3
+# OD Next Marketing Task Profile v2.0.4
 
 > Rollout: active
 
@@ -26,10 +26,10 @@ copy, legal constraints, and required size variants. Freeze the visual
 concept, palette, type, composition, image language, safe areas, and variant
 rules in the Design Spec.
 
-Resolve every missing field per the general orchestration Skill: ask when
-essential, otherwise adopt a reasonable assumption for the work. Disclose
-assumptions and risks that materially affect the result or its use; routine
-implementation choices need no separate explanation. Legal and compliance
+Never silently omit a missing field: decide per the general orchestration
+Skill whether to enter the clarification stage, or convert the gap into an
+explicit assumption with its risk. Follow the Core communication guidance
+when explaining material assumptions and risks to the user. Legal and compliance
 requirements must never be omitted, even when the user does not mention them.
 
 Quality focus: first visual focal point, brand accuracy, channel fit, text
