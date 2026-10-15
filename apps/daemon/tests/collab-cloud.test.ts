@@ -653,6 +653,81 @@ function fakeClient() {
 }
 
 describe('createCollabCloudService', () => {
+  it('OPEND-3870: a member without publisher-local mappings receives public comments on their source HTML', async () => {
+    const db = seededDb();
+    const { client, seed } = fakeClient();
+    // Both public artifacts use index.html, but belong to different source files.
+    for (const source of ['pages/a.html', 'pages/b.html']) {
+      seed({ ...cloudComment(source), authorKind: 'user', publicationSlug: `share-${source}`,
+        sourceFilePath: source });
+    }
+    const context = teamContext({ role: 'member' });
+    const localMapping = vi.fn(() => null);
+    const cliClient = createVelaCliCollabClient({ run: async args => {
+      const since = Number(args[args.indexOf('--since-seq') + 1]);
+      return JSON.stringify(await client.pullComments('ws-1', 'p1', since));
+    } });
+    const service = createCollabCloudService({
+      client: cliClient, workspaceContext: fixedContextProvider(context), listProjectIds: () => [],
+      resolveLocalConversationId: () => 'conv-local',
+      resolvePublishedCommentSourcePath: localMapping,
+      mergeComment: ({ projectId, conversationId, comment }) =>
+        mergeSyncedPreviewComment(db, projectId, conversationId, comment),
+    });
+    try {
+      await expect(service.pullProject('p1', context)).resolves.toBe(true);
+      await expect(service.pullProject('p1', context)).resolves.toBe(true);
+      expect(listPreviewComments(db, 'p1', 'conv-local').map(c => c.filePath).sort())
+        .toEqual(['pages/a.html', 'pages/b.html']);
+      expect(localMapping).not.toHaveBeenCalled();
+    } finally { service.dispose(); }
+  });
+
+  it('OPEND-3870: restarting the client catches comments skipped by the old local mapping and preserves their author', async () => {
+    const db = seededDb();
+    const context = teamContext({ role: 'member' });
+    let sourceFilePath: string | undefined;
+    const cli = createVelaCliCollabClient({ run: async args => {
+      const since = Number(args[args.indexOf('--since-seq') + 1]);
+      return JSON.stringify({ latestSeq: 7, comments: since >= 7 ? [] : [{
+        ...cloudComment('viewer'), seq: 7, publicationSlug: 'share-a', sourceFilePath,
+        authorKind: 'user', authorDisplayName: 'Visitor', authorAppUserId: 'visitor-account',
+      }] });
+    } });
+    const makeService = () => createCollabCloudService({
+      client: cli, listProjectIds: () => [], resolveLocalConversationId: () => 'conv-local',
+      resolvePublishedCommentSourcePath: () => null,
+      mergeComment: ({ projectId, conversationId, comment }) => mergeSyncedPreviewComment(db, projectId, conversationId, comment),
+    });
+    const old = makeService();
+    await old.pullProject('p1', context);
+    expect(old.readMergedCommentCursor('p1', context)).toBe(7);
+    expect(listPreviewComments(db, 'p1', 'conv-local')).toHaveLength(0);
+    old.dispose();
+    sourceFilePath = 'pages/a.html';
+    const restarted = makeService();
+    try {
+      await restarted.pullProject('p1', context);
+      await restarted.pullProject('p1', context);
+      expect(listPreviewComments(db, 'p1', 'conv-local')).toEqual([expect.objectContaining({
+        id: 'viewer', filePath: 'pages/a.html', authorKind: 'user', authorDisplayName: 'Visitor',
+      })]);
+    } finally { restarted.dispose(); }
+  });
+
+  it.each(['../secret.html', '/absolute.html', 'a\\b.html', ''])('rejects invalid server source path %j without consuming the cursor', async sourceFilePath => {
+    const { client, seed } = fakeClient();
+    seed(cloudComment('bad-path', { publicationSlug: 'share', sourceFilePath, authorKind: 'user' }));
+    const mergeComment = vi.fn(() => 'changed' as const);
+    const service = createCollabCloudService({ client, listProjectIds: () => [], resolveLocalConversationId: () => 'conv-local', mergeComment });
+    const context = teamContext({ role: 'member' });
+    try {
+      await expect(service.pullProject('p1', context)).resolves.toBe(false);
+      expect(mergeComment).not.toHaveBeenCalled();
+      expect(service.readMergedCommentCursor('p1', context)).toBeNull();
+    } finally { service.dispose(); }
+  });
+
   it('repairs a dedicated comment anchor for every active Team project and is idempotent', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-collab-cloud-anchor-repair-'));
     const db = openDatabase(tempDir);

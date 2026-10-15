@@ -1507,15 +1507,26 @@ export function createCollabCloudService(
 				if (typeof publicationSlug !== "string" || !publicationSlug.trim()) {
 					throw new Error("Invalid server publication identity");
 				}
-				if (!deps.resolvePublishedCommentSourcePath)
-					throw new Error("Publication mapping lookup is unavailable");
-				const filePath = deps.resolvePublishedCommentSourcePath({
-					projectId,
-					publicationSlug,
-					publishedPath: incoming.filePath,
-					context: requestContext,
-				});
+				// The authenticated cloud resolves this for every project member.
+				// Publisher-local mappings are only a fallback for older servers.
+				let filePath = incoming.sourceFilePath;
+				if (filePath === undefined) {
+					if (!deps.resolvePublishedCommentSourcePath)
+						throw new Error("Publication mapping lookup is unavailable");
+					filePath = deps.resolvePublishedCommentSourcePath({
+						projectId,
+						publicationSlug,
+						publishedPath: incoming.filePath,
+						context: requestContext,
+					});
+				}
 				if (filePath === null) continue;
+				if (
+					typeof filePath !== "string" || !filePath || filePath !== filePath.trim() ||
+					/[\\\u0000-\u001f\u007f]/.test(filePath) ||
+					filePath.split("/").some(part => !part || part === "." || part === "..")
+				)
+					throw new Error("Invalid server publication source path");
 				comment = { ...incoming, filePath };
 			}
 			if (responseIdentity.relayScope === "personal") {

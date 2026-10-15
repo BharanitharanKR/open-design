@@ -1185,6 +1185,10 @@ export interface CollabCloudComment {
   filePath: string;
   /** Server-asserted alias identity for public-file relays; clients do not supply it. */
   publicationSlug?: string;
+  /** Authenticated cloud pull's source HTML path. null means no current mapping;
+   * absent means an older server, so the receiver may use its local mapping.
+   * Never accepted as publication authority from a comment writer. */
+  sourceFilePath?: string | null;
   elementId: string;
   selector: string;
   label: string;
