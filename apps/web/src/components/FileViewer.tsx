@@ -4437,8 +4437,7 @@ function FileVersionManagerModal({
 // O7: 刚刚 / N 分钟前 / N 小时前（同一天）/ 昨天 / 短日期（跨年补年份）. The hour
 // bucket is keyed on calendar day, not elapsed duration, so a same-day
 // comment never reads as "N 天前"; days-ago/weeks-ago buckets are dropped.
-function formatCommentTime(ts: number, t: TranslateFn): string {
-  const now = Date.now();
+function formatCommentTime(ts: number, now: number, t: TranslateFn): string {
   const diff = now - ts;
   if (diff < 60_000) return t('common.justNow');
   const mins = Math.floor(diff / 60_000);
@@ -4477,6 +4476,7 @@ function commentActivityAt(comment: PreviewComment): number {
   );
 }
 
+/** Comment age is creation age; edits, resolution and synchronization cannot reset it. */
 function commentCreatedAt(comment: PreviewComment): number {
   return Number.isFinite(comment.createdAt) ? comment.createdAt : commentActivityAt(comment);
 }
@@ -4803,6 +4803,16 @@ export function CommentSidePanel({
   const { workspaceContext } = useProjectCollabContext();
   const [newCommentDraft, setNewCommentDraft] = useState('');
   const [dragState, setDragState] = useState<CommentSideDragState | null>(null);
+  const [commentClock, setCommentClock] = useState(() => Date.now());
+  const showCommentAge = !collapsed && comments.length > 0;
+  useEffect(() => {
+    if (!showCommentAge) return;
+    // Creation age advances even when no new comment or sync event arrives.
+    // Keep the clock in the panel, not the preview/iframe rendering pipeline.
+    setCommentClock(Date.now());
+    const timer = window.setInterval(() => setCommentClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [showCommentAge]);
   const sorted = comments;
   // recvq5BVsolIxi: the inline "N." prefix must match the canvas pin number
   // (comment.pinSeq) so the two surfaces always agree, even when this panel
@@ -5044,8 +5054,8 @@ export function CommentSidePanel({
                     {t('fileViewer.speakerNotesSlide', { current: comment.slideIndex + 1, total: deckSlideCount })}
                   </span>
                 ) : null}
-                <span className="comment-side-time" title={formatAbsoluteDateTime(commentActivityAt(comment)) ?? undefined}>
-                  {formatCommentTime(commentActivityAt(comment), t)}
+                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment)) ?? undefined}>
+                  {formatCommentTime(commentCreatedAt(comment), commentClock, t)}
                 </span>
                 {sendable ? (
                   <button
