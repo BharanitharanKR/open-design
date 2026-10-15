@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.3
+# OD Next Prototype Task Profile v3.1.4
 
 > Rollout: active
 
@@ -47,6 +47,13 @@ than acting as decoration.
 The default delivery is a prototype that opens, runs, and remains editable:
 core flows genuinely work end-to-end from the entry point, and buttons,
 navigation, and key controls are never mere decoration.
+
+While composing source, keep DOM lookup cardinality explicit: `querySelector`
+returns one element or null; `querySelectorAll` returns a collection. Do not
+iterate a single-element lookup or mix the return types of selector helpers.
+An initialization error must not leave seeded content and controls unbound.
+When toggling `hidden`, ensure authored display rules do not override it;
+results and their empty state must never appear at the same time.
 
 Writing the primary HTML deliverable to disk IS the delivery: no opening, no
 previewing, no walkthroughs, no second pass of any kind after the write. Meet

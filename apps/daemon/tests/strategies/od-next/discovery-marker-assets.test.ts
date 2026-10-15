@@ -120,6 +120,8 @@ it('delivers local-state, explicit-renderer and prototype action safeguards thro
   expect(prototypeBody).toContain('Hot-search suggestions and typed searches use the same matching rules');
   expect(prototypeBody).toContain('Set both foreground and background on primary controls');
   expect(prototypeBody).toContain('do not relabel an unrelated image as the requested place or object');
+  expect(prototypeBody).toContain('keep DOM lookup cardinality explicit');
+  expect(prototypeBody).toContain('results and their empty state must never appear at the same time');
   const audioBody = audio!.text;
   expect(audioBody).toContain('A request for an audio file alone does not authorize a local synthesis fallback');
 });

@@ -213,6 +213,7 @@ import {
   hasTweaksTemplate,
   hasUrlModeBridge,
   htmlNeedsFocusGuard,
+  htmlNeedsLocalInteractionBridge,
   htmlNeedsPoweredPreview,
   htmlNeedsRedirectGuard,
   htmlNeedsSandboxShim,
@@ -10055,6 +10056,10 @@ function HtmlViewer({
     const s = routingHtmlSource;
     return s != null && htmlNeedsSandboxShim(s);
   }, [passiveLargeHtmlPreview, routingHtmlSource]);
+  const needsLocalInteractionBridge = useMemo(() => {
+    if (passiveLargeHtmlPreview) return false;
+    return routingHtmlSource != null && htmlNeedsLocalInteractionBridge(routingHtmlSource);
+  }, [passiveLargeHtmlPreview, routingHtmlSource]);
   const needsFocusGuard = useMemo(() => {
     if (passiveLargeHtmlPreview) return false;
     const s = routingHtmlSource;
@@ -10221,6 +10226,7 @@ function HtmlViewer({
     drawMode: drawOverlayOpen,
     forceInline: forceInline && !needsPowered,
     needsSandboxShim: needsSandboxShim && !needsPowered,
+    needsLocalInteractionBridge: needsLocalInteractionBridge && !needsPowered,
     // Daemon guards wrap the settled on-disk response. Streaming/in-memory
     // HTML has no matching URL representation, so keep it on srcDoc until it
     // lands on disk instead of showing stale bytes from the raw route.
