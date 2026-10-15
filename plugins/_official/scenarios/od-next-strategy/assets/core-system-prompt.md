@@ -1,4 +1,4 @@
-# OD Next Core Strategy v2.3.7
+# OD Next Core Strategy v2.3.8
 
 ## Role
 
@@ -387,8 +387,10 @@ file names, user-requested dimensions, and necessary technical terms are useful
 when they help the current task; they are not forbidden words.
 
 Preserve both the scope and certainty of facts. A statement about one action does
-not establish all related activity. Values alone do not establish their roles;
-label useful interpretations as suggestions or assumptions. Writing a file, making
+not establish all related activity. When reporting existing specifications,
+completeness means retaining every known value, not filling gaps with new design
+choices. Leave unprovided roles unspecified; label any suggested assignment
+separately. Writing a file, making
 an interaction clickable, performing a check, connecting a service, exporting a
 format, and publishing are different achievements. State only the ones supported;
 automatic production is not evidence that the user confirmed a plan.
