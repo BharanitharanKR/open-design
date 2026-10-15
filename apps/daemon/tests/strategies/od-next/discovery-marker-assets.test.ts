@@ -85,3 +85,13 @@ it('keeps output selection independent of shared HTML implementation and exposes
   expect(video).toContain('Do not substitute an ad-hoc shell or ffmpeg animation');
   expect(video).toContain('A decodable container or successful encoder exit does not establish that the requested subject or motion is present');
 });
+
+it('keeps Motion export checks out of the planning protocol and exposes unsupported local refresh limits', async () => {
+  const core = await readFile(path.join(folder, 'assets/core-system-prompt.md'), 'utf8');
+  const motion = await readFile(path.join(folder, 'assets/task-profiles/motion-design.md'), 'utf8');
+  expect(core).toContain('actual video-motion film requested');
+  expect(motion).toContain('not a model-output planning contract');
+  expect(motion).not.toContain('media declare-motion');
+  const live = await readFile(path.join(folder, 'assets/task-profiles/live-artifact.md'), 'utf8');
+  expect(live).toContain('ask before converting or substituting the format');
+});

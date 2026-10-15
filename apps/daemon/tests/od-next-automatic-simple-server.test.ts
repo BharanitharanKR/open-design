@@ -38,7 +38,7 @@ vi.mock('node:crypto', async (importOriginal) => {
   };
 });
 
-import { closeDatabase, openDatabase } from '../src/db.js';
+import { closeDatabase, listMessages, openDatabase, upsertMessage } from '../src/db.js';
 import { AGENT_DEFS } from '../src/runtimes/registry.js';
 import { agentBinEnvKey } from '../src/runtimes/executables.js';
 import { execAgentFile } from '../src/runtimes/invocation.js';

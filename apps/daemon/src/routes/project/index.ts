@@ -1,4 +1,4 @@
-import { injectMotionSourcePlayer } from '@open-design/contracts/runtime/motion-source-player';
+import { injectMotionSourcePlayer, isMotionVideoComposition, MOTION_PREVIEW_OUTPUT_HEADER } from '@open-design/contracts/runtime/motion-source-player';
 import { createHash, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -7009,6 +7009,12 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       );
       const skipHtmlPreviewBridge =
         /^text\/html(?:;|$)/i.test(meta.mime) && meta.size > PREVIEW_URL_GUARD_MAX_HTML_BYTES;
+      // Large HTML keeps its original streamed GET path. The existing cover
+      // HEAD still needs actual identity, including self-contained video sources.
+      if (skipHtmlPreviewBridge && req.method === 'HEAD') {
+        const file = await readProjectFile(PROJECTS_DIR, projectId, relPath, project?.metadata);
+        res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(file.buffer.toString('utf8')) ? 'video' : 'html');
+      }
 
       await sendProjectFile(
         req,
@@ -7026,6 +7032,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
+          if (/^text\/html(?:;|$)/i.test(file.mime)) {
+            const html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : String(transformed);
+            res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(html) ? 'video' : 'html');
+          }
           const bridged = applyUrlPreviewBridgesToHtml(
             transformed,
             file.mime,
@@ -7128,6 +7138,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       );
       const skipPoweredTransform =
         /^text\/html(?:;|$)/i.test(meta.mime) && meta.size > PREVIEW_URL_GUARD_MAX_HTML_BYTES;
+      if (skipPoweredTransform && req.method === 'HEAD') {
+        const file = await readProjectFile(PROJECTS_DIR, projectId, relPath, project?.metadata);
+        res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(file.buffer.toString('utf8')) ? 'video' : 'html');
+      }
       await sendProjectFile(
         req,
         res,
@@ -7144,6 +7158,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             projectsRoot: PROJECTS_DIR,
             readProjectFile,
           });
+          if (/^text\/html(?:;|$)/i.test(file.mime)) {
+            const html = Buffer.isBuffer(transformed) ? transformed.toString('utf8') : String(transformed);
+            res.setHeader(MOTION_PREVIEW_OUTPUT_HEADER, isMotionVideoComposition(html) ? 'video' : 'html');
+          }
           return applyUrlPreviewBridgesToHtml(transformed, file.mime, req.query.odPreviewBridge, req.query.odMotionPreview);
         },
       );

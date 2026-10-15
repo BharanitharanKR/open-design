@@ -22,7 +22,7 @@ describe('OD Next controlled rollout', () => {
     expect(policy).toMatchObject({
       requestedMode: 'active',
       requestedModeSource: 'env',
-      eligibleTaskTypes: ['prototype', 'ppt', 'marketing', 'hyperframes', 'discovery'],
+      eligibleTaskTypes: ['prototype', 'ppt', 'marketing', 'hyperframes', 'discovery', 'motion-design'],
       productionActiveApproved: true,
       assignmentPercent: 100,
     });

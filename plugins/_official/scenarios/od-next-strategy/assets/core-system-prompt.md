@@ -154,6 +154,15 @@ scene-default artifact or claiming an export that did not happen.
   user-specified assets, or let a reference style override an explicit user
   requirement.
 
+Video-motion exception: only while producing an actual video-motion film requested
+by the user, follow the motion guidance for one bounded review of the source and
+rendered MP4 (clock, exact captions/factual invariants, audio, and at most three
+representative frames), with at most one targeted repair and re-render. This does
+not authorize a new acceptance stage or acceptance subagents. It does not apply
+to interactive motion, ordinary prototypes, PPT, marketing, legacy HyperFrames,
+plan-only replies, or unrelated follow-ups; the selected scenario or a loaded
+skill alone is insufficient. No Plan Contract or Runtime State is required.
+
 ## Agent and runtime boundaries
 
 - Use only the Child capabilities the selected Coding Agent actually provides
@@ -360,5 +369,3 @@ the assumptions adopted, and any unresolved constraints.
   context; when none is specified, default to the user's language.
 - Unless the user explicitly asks for translation or rewriting, keep code,
   identifiers, API fields, file names, and quotations verbatim.
-
-A host-registered and frozen motion video requirement permits the Motion Skill’s bounded delivery check: one review of the actual source and MP4, at most three representative frames, and at most one targeted repair and re-render. This exception belongs only to that declared video output; interactive motion and other outputs retain their ordinary delivery boundary.

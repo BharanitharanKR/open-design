@@ -152,10 +152,11 @@ describe('hyperframes-html media renderer preflight', () => {
     await writeFile(path.join(compDir, 'hyperframes.json'), '{}', 'utf8');
     await writeFile(path.join(compDir, 'meta.json'), '{}', 'utf8');
     await writeFile(path.join(compDir, 'index.html'), `<!doctype html>
-${withAudio ? '<meta name="od-motion-output" content="video">' : ''}
+<meta name="od-motion-output" content="video"><meta name="od-motion-audio" content="${withAudio ? 'required' : 'silent'}"><link rel="alternate" type="video/mp4" href="../../electron.mp4">
 <main data-composition-id="main" data-duration="0.1" data-width="320" data-height="180" data-fps="30"></main>
 ${withAudio ? '<audio src="tone.wav" data-start="0" data-duration="0.1"></audio>' : ''}
-<script>window.__timelines={main:{duration(){return .1},seek(){}}};</script>`, 'utf8');
+<script src="gsap.min.js"></script><script>window.__timelines={main:gsap.timeline({paused:true}).to({}, {duration:.1}, 0)};</script>`, 'utf8');
+    await writeFile(path.join(compDir, 'gsap.min.js'), await readFile(require.resolve('gsap/dist/gsap.min.js')));
 
     const sourceFrame = path.join(root, 'source-frame.png');
     if (withAudio) await execFileAsync(ffmpegInstaller.path, [
@@ -197,6 +198,10 @@ ${withAudio ? '<audio src="tone.wav" data-start="0" data-duration="0.1"></audio>
     expect(receivedHtml).not.toContain('<audio');
     const bytes = await readFile(path.join(projectsRoot, 'project-1', 'electron.mp4'));
     expect(bytes.subarray(4, 8).toString('ascii')).toBe('ftyp');
+    const editable = await readFile(path.join(compDir, 'index.html'), 'utf8');
+    expect(editable).toContain('data-od-motion-source-player');
+    expect(editable).toContain('href="../../electron.mp4"');
+    expect(editable).toContain('gsap.timeline');
     if (withAudio) {
       const decoded = await execFileAsync(ffmpegInstaller.path, [
         '-i', path.join(projectsRoot, 'project-1', 'electron.mp4'), '-map', '0:a', '-f', 's16le', '-ac', '1', '-',

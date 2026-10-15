@@ -1,6 +1,5 @@
 import type {
   DeliverableSyntaxMetrics,
-  MotionDeliveryContract,
   DeliverableSyntaxRepairState,
   ProjectMetadata,
 } from '@open-design/contracts';
@@ -30,12 +29,10 @@ export function deliverableSyntaxFinalizerEnabled(
 
 /**
  * Resolve the canonical output and run the syntax finalizer for every
- * successful physical Run. Only a frozen, explicit motion output contract adds paired video validation;
- * ordinary HTML delivery keeps its existing boundary.
+ * successful physical Run. Media export validity is owned by the exporter,
+ * independent of task orchestration and model-authored plans.
  */
 export async function finalizeSuccessfulRunDeliverable(input: {
-  motionDelivery?: MotionDeliveryContract;
-  motionDeliveries?: MotionDeliveryContract[];
   artifactCount: number;
   previousMetrics?: DeliverableSyntaxMetrics;
   processTreeQuiescent: boolean;
@@ -50,26 +47,19 @@ export async function finalizeSuccessfulRunDeliverable(input: {
   allowMultipleOutputCandidates?: boolean;
   syntaxFinalizerEnabled?: boolean;
 }): Promise<SuccessfulRunDeliverableFinalizationResult> {
-  let deliverable = await validateRunDeliverable({
+  const deliverable = await validateRunDeliverable({
     projectsRoot: input.projectsRoot,
     projectId: input.projectId,
     ...(input.projectMetadata !== undefined
       ? { projectMetadata: input.projectMetadata }
       : {}),
     runStatus: 'succeeded',
-    ...(input.motionDelivery ? { motionDelivery: input.motionDelivery } : {}),
     artifactCount: input.artifactCount,
     ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}),
     ...(input.baselineEntryFile ? { baselineEntryFile: input.baselineEntryFile } : {}),
     ...(input.allowIndependentOutput ? { allowIndependentOutput: true } : {}),
     ...(input.allowMultipleOutputCandidates ? { allowMultipleOutputCandidates: true } : {}),
   });
-  for (const contract of input.motionDeliveries ?? []) {
-    const motion = await validateRunDeliverable({ projectsRoot: input.projectsRoot, projectId: input.projectId,
-      ...(input.projectMetadata === undefined ? {} : { projectMetadata: input.projectMetadata }), runStatus: 'succeeded', artifactCount: input.artifactCount,
-      ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}), motionDelivery: contract });
-    if (!motion.valid) { deliverable = motion; break; }
-  }
   if (
     !deliverable.valid
     || !input.projectId

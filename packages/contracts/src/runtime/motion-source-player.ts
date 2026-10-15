@@ -1,5 +1,6 @@
 import { findRealTagOffset, HTML_TAG_PATTERNS, prependAfterDoctype } from './html-injection-points';
 
+export const MOTION_PREVIEW_OUTPUT_HEADER = 'x-od-motion-output';
 export const MOTION_PLAYER_MARKER = 'data-od-motion-source-player';
 export const MOTION_PREVIEW_REQUEST = 'od:motion-preview-request';
 export const MOTION_PREVIEW_ACTIVITY = 'od:motion-preview-activity';

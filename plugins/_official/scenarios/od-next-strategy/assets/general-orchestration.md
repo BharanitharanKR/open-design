@@ -15,24 +15,30 @@ are planning aids, not an output schema to fill out.
 Apply the Core instruction order first. These workflow restrictions are defaults
 for unrequested work; an explicit user request for an action takes precedence,
 subject to safety, permission, and actual tool availability. A Skill or model
-assumption cannot authorize that exception.
+assumption cannot authorize that exception. The Core explicitly authorizes
+the bounded video-motion production exception; all other tasks keep this default.
 
-Finish the actual requested output before delivery. A media task ID, an HTML
-composition awaiting rendering, or unregistered live source files are work in
-progress. Generation, bounded waits for completion, rendering the requested
-final file, and live registration are production. Handle their tool errors and
-missing outputs as production failures, not successful delivery.
+Writing the requested deliverables to disk IS the delivery. For standalone
+media this is the real media file; for a page or deck it includes the requested
+source and its assets. A task ID alone is not a delivered file. Never perform
+any post-generation action on a generated artifact for the purpose of quality
+checking:
 
-Once all requested outputs exist, deliver immediately. Do not add an unrequested
-quality-review loop: screenshots or frame extraction for scoring, opening players
-or browsers for acceptance, validation scripts, acceptance Children, or repeated
-regeneration based on those reviews. Rendering to produce a requested MP4 is
-production; rendering it again to score appearance is a quality-review loop.
+- Screen captures, rendering, render review, or frame extraction.
+- Opening or previewing the artifact: web viewers, headless runtimes
+  (Playwright, Puppeteer, etc.), simulators, or players.
+- Running validation scripts, tests, or format checks against a generated
+  artifact.
+- Validating export results after exporting.
+- Spawning acceptance Children or performing formal acceptance of any kind.
+- Any fix round initiated on the basis of the checks above.
 
-Reading existing source or probing an input asset to perform an authorized edit
-is input preparation. Confirming a generation/registration tool's completion and
-output reference is part of production. Neither permits unrelated checks or
-invented claims of playback, appearance, or export quality.
+Allowed actions, for boundary clarity: reading an existing artifact's source
+to continue editing it, and probing its technical form and design language,
+are Build inputs and outside this section's scope; routine code reading and
+modification during Build writing are Build itself. What is forbidden is any
+action taken after the artifact hits disk whose purpose is checking quality,
+confirming the result, or collecting evidence.
 
 Quality is not guaranteed by post-generation checks but by generation-time
 discipline: every quality requirement in the Task Profile, Design Spec,
@@ -187,7 +193,7 @@ round based on any check. Never claim the artifact went through actions that did
 
 Build's self-discipline happens only during writing: organize the source
 against the completion standards and the task type's quality requirements;
-writing all required outputs, including contracted renders, is finalization.
+writing every requested output, including a requested media render, is finalization.
 
 ### Source reads and writes
 
@@ -238,5 +244,3 @@ explain unresolved failures in ordinary language.
 
 Reuse existing session context rather than repeating it. Do not create unrequested
 variants or send overlapping production work to multiple agents.
-
-For selected Motion video outputs, register each exact source/MP4 pair and required/silent audio decision through `od media declare-motion` during an authorized production plan. Registration changes task metadata only, not files. The host freezes it when production continues. Rendering and waiting are production; HTML alone is not a completed motion film. Only those registered video outputs permit the Motion Skill’s one bounded review and repair. An ordinary motion helper, template or hand-selected type does not authorize another output.

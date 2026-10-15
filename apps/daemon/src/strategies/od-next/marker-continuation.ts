@@ -1,4 +1,3 @@
-import { freezeTaskMotionDeliveries } from './motion-delivery-store.js';
 import { composeColdProductionBundle } from './cold-production.js';
 import type { MarkerCompletionEvidence } from './marker-settlement.js';
 import type { OdNextReply } from './protocol.js';
@@ -45,7 +44,6 @@ export function prepareMarkerContinuation<TMeta extends InternalRunCreateInput, 
     beforeClaimCommit: nextRun => {
       const accepted = settle();
       if (accepted.action !== 'plan_ready') throw new Error('Production marker no longer eligible.');
-      freezeTaskMotionDeliveries(input.db, accepted.task.taskExecutionId);
       const task = compareAndTransitionStrategyTaskExecution(input.db, {
         taskExecutionId: accepted.task.taskExecutionId, expectedRevision: accepted.task.revision,
         to: { route: 'full_plan', inputStage: 'production', outcome: 'running', executionMode: accepted.task.executionMode },

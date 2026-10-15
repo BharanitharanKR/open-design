@@ -62,6 +62,7 @@ function parkIframeElement(frame: HTMLIFrameElement) {
   frame.onload = null;
   frame.removeAttribute('data-testid');
   frame.setAttribute('data-od-active', 'false');
+  frame.setAttribute('data-od-motion-active', 'false');
   frame.setAttribute('aria-hidden', 'true');
   frame.setAttribute('tabindex', '-1');
 }

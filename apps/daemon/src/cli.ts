@@ -232,9 +232,9 @@ const AMR_STRING_FLAGS = new Set(['daemon-url']);
 const AMR_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'refresh']);
 const COLLAB_STRING_FLAGS = new Set([
   'daemon-url', 'project', 'member', 'name', 'role', 'client-id', 'sequence', 'design-system',
-  'workspace', 'workspace-member',
+  'workspace', 'workspace-member', 'version',
 ]);
-const COLLAB_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
+const COLLAB_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'dont-prompt-24h']);
 const MESSAGE_CENTER_STRING_FLAGS = new Set([
   'daemon-url',
   'locale',
@@ -438,13 +438,10 @@ function printStrategyHelp() {
 
 Report which OD Next mode this daemon is running and which authority chose it.
 
-OD Next runs by default; this installation opts out of it here:
-
-  od config set odNextStrategyMode off       Opt out; takes effect next run.
-  od config set odNextStrategyMode active    Opt back in.
-
-Status names the authority in effect (env / app_config / default), which the
-mode alone does not: leaving it unset and saving 'off' produce opposite routes.
+OD Next is active by default. Historical personal odNextStrategyMode values
+are ignored; saving 'off' does not opt out. Status reports the effective mode
+and its authority. Process-level OD_NEXT_STRATEGY_ROLLOUT controls engineering
+rollouts separately from personal settings.
 
 Options:
   --json                   Emit the daemon response as JSON.
@@ -484,8 +481,7 @@ async function runStrategy(args) {
     console.error(
       'od strategy rollout reset was removed: the daemon-instance stop latch it '
       + 'cleared no longer exists, so there is nothing to reset.\n'
-      + 'OD Next now runs unless this installation opts out. To opt out:\n'
-      + '  od config set odNextStrategyMode off\n'
+      + 'OD Next is active by default; historical personal off values are ignored.\n'
       + 'To check which authority decides the mode:\n'
       + '  od strategy rollout status',
     );
@@ -1224,6 +1220,10 @@ function printCollabHelp() {
   od collab publish <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab share <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab pull <projectId> --workspace <id> --workspace-member <id> [--json]
+  od collab check <projectId> --workspace <id> --workspace-member <id> [--json]
+  od collab accept <projectId> --version <n> [--dont-prompt-24h] --workspace <id> --workspace-member <id> [--json]
+  od collab dismiss <projectId> --version <n> [--dont-prompt-24h] --workspace <id> --workspace-member <id> [--json]
+  od collab ask-again <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab share-resource <design-systems|plugins|skills> <id> --workspace <id> --workspace-member <id> [--json]
   od collab team-resources <design-systems|plugins|skills> --workspace <id> --workspace-member <id> [--json]
   od collab share-design-system <designSystemId> --workspace <id> --workspace-member <id> [--json]
@@ -1390,6 +1390,32 @@ async function runCollab(args) {
   };
 
   switch (sub) {
+    case 'check':
+    case 'accept':
+    case 'dismiss':
+    case 'ask-again': {
+      const version = flags.version === undefined ? undefined : Number(flags.version);
+      if ((sub === 'accept' || sub === 'dismiss') && (version == null || !Number.isSafeInteger(version) || version < 0)) {
+        console.error('pass --version <n> naming the offered cloud version');
+        process.exit(2);
+      }
+      const body = await request('POST', '/collab/update', {
+        action: sub === 'ask-again' ? 'reset-preference' : sub,
+        ...(version !== undefined ? { version } : {}),
+        ...(sub === 'check' ? { manual: true } : {}),
+        ...(sub === 'accept' || sub === 'dismiss' ? { dontPromptFor24h: Boolean(flags['dont-prompt-24h']) } : {}),
+      });
+      emit(body, () => {
+        const update = body.update;
+        console.log(`state\t${update?.state ?? '-'}`);
+        console.log(`latestVersion\t${update?.latestVersion ?? '-'}`);
+        console.log(`localVersion\t${update?.localVersion ?? '-'}`);
+        console.log(`promptSuppressedUntil\t${update?.promptSuppressedUntil ?? '-'}`);
+        if (update?.state === 'confirmation_required') console.log('The cloud version replaces local project content. HTML history can be recovered; other overwritten files may be lost. Use od collab accept --version <n> to approve.');
+      });
+      if (['failed', 'busy', 'unsupported'].includes(body.update?.state)) process.exitCode = 3;
+      return;
+    }
     case 'status': {
       const body = await request('GET', '/collab/status');
       return emit(body, () => {
@@ -1739,7 +1765,7 @@ async function runMedia(args) {
     printMediaHelp();
     return;
   }
-  if (sub !== 'declare-motion' && sub !== 'generate' && sub !== 'wait' && sub !== 'scaffold' && sub !== 'models') {
+  if (sub !== 'generate' && sub !== 'wait' && sub !== 'scaffold' && sub !== 'models') {
     console.error(`unknown subcommand: od media ${sub}`);
     printMediaHelp();
     process.exit(1);
@@ -1754,20 +1780,6 @@ async function runMedia(args) {
     const response = await fetch(`${daemonUrl.replace(/\/$/, '')}/api/media/models`);
     if (!response.ok) throw new Error(`Media catalog request failed (${response.status})`);
     console.log(JSON.stringify(await response.json()));
-    return;
-  }
-  if (sub === 'declare-motion') {
-    const flags = parseFlags(subArgs, { string: ['daemon-url', 'mode', 'source', 'output', 'audio'], boolean: ['json'] });
-    const token = process.env.OD_TOOL_TOKEN;
-    if (!token) throw new Error('Motion declarations require the active host tool token.');
-    const contract = { mode: flags.mode, sourcePath: flags.source,
-      ...(flags.output ? { videoPath: flags.output } : {}), ...(flags.audio ? { audio: flags.audio } : {}) };
-    const response = await fetch(`${(await cliDaemonUrl(flags)).replace(/\/$/, '')}/api/tools/media/motion-delivery`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(contract),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error?.message ?? result.error ?? 'Motion declaration rejected');
-    console.log(JSON.stringify(result));
     return;
   }
   if (sub === 'wait') return runMediaWait(subArgs);
@@ -2269,7 +2281,6 @@ async function cliDaemonBaseUrl(flags) {
 
 function printMediaHelp() {
   console.log(`Usage: od media models --json
-       od media declare-motion --mode video|interactive --source <html> [--output <mp4> --audio required|silent] --json
        od media scaffold --composition-dir .hyperframes-cache/<id> [opts]
        od media generate --surface <image|video|audio> --model <id> [opts]
        "$OD_NODE_BIN" "$OD_BIN" media generate --surface <image|video|audio> --model <id> [opts]

@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { readTaskMotionDeliveries } from './strategies/od-next/motion-delivery-store.js';
 import { observeDiscoveryEvent } from './strategies/od-next/discovery-observation.js';
 
 import { usesProductionMarker, composeResumedRequest } from './strategies/od-next/request-resume.js';
@@ -1043,6 +1042,9 @@ import { createAccountBillingSummaryCache } from './collab/account-billing-summa
 import { createEventRefreshCoordinator } from './collab/event-refresh-coordinator.js';
 import { createWorkspaceExactAuthorityCache } from './collab/workspace-exact-authority-cache.js';
 import { createCollabPublishWatcher } from './collab/collab-publish-watcher.js';
+import { createOwnedContentSync, type OwnedContentSync } from './collab/owned-content-sync.js';
+import { createSqliteOwnedContentStore, type OwnedContentScope } from './collab/owned-content-store.js';
+import { applyOwnedProjectContent, ownedContentFingerprint } from './collab/owned-content-files.js';
 import {
   isUnmaterializedSharedPlaceholder,
   SHARED_PROJECT_PLACEHOLDER_METADATA_KEY,
@@ -4278,10 +4280,15 @@ export async function startServer({
     _projectId: string,
     _workspaceId?: string,
   ): void => {};
+  let ownedContentSync: OwnedContentSync | null = null;
+  let ownerProjectHasActiveRun = (_projectId: string): boolean => true;
   const collab = createCollabRuntime({
+    coordinatePublication: (projectId, principal, publish) => ownedContentSync
+      ? ownedContentSync.withPublication(projectId, principal, publish)
+      : publish(),
     workspaceContext: workspaceContextProvider,
     canPublishProjectContent: (projectId) =>
-      !projectIsUnmaterializedSharedPlaceholder(projectId),
+      !projectIsUnmaterializedSharedPlaceholder(projectId) && !ownedContentSync?.isApplying(projectId),
     resolveProjectDir: async (projectId) => {
       const project = getProject(db, projectId);
       if (project) await ensureProject(PROJECTS_DIR, projectId, project.metadata);
@@ -4990,8 +4997,13 @@ export async function startServer({
   // pulled copy is never watched, so an inbound pull can't loop into a publish and
   // a member can't publish edits to someone else's project.
   const collabPublishWatcher = createCollabPublishWatcher({
-    notifyChanged: (projectId, principal) =>
-      collab.scheduler.notifyChanged(projectId, 'file-change', principal),
+    publishInitialContent: false,
+    notifyChanged: (projectId, principal) => {
+      if (!ownedContentSync) return;
+      void ownedContentSync.shouldPublish(projectId, principal).then((changed) => {
+        if (changed) collab.scheduler.notifyChanged(projectId, 'file-change', principal);
+      }).catch(() => console.warn('[od] could not check local project changes'));
+    },
     listProjectIds: () => listProjects(db).map((project: { id: string }) => project.id),
     shouldPublish: async (projectId) => {
       if (projectIsUnmaterializedSharedPlaceholder(projectId)) return false;
@@ -5181,6 +5193,75 @@ export async function startServer({
         && item.workspaceId === scope.resourceTeamId,
     );
   };
+  const ownedContentStore = createSqliteOwnedContentStore(db);
+  const ownedProjectDirectory = (scope: OwnedContentScope): string => resolveProjectDir(PROJECTS_DIR, scope.projectId);
+  ownedContentSync = createOwnedContentSync({
+    store: ownedContentStore,
+    head: (scope) => collab.publishedHead(scope.projectId, {
+      teamId: scope.resourceTeamId, memberId: scope.ownerMemberId,
+      role: 'member', lifecycleState: 'active', workspaceType: 'team',
+    }),
+    hasContent: async (scope) => {
+      const project = getProject(db, scope.projectId);
+      if (!project || isUnmaterializedSharedPlaceholder(project)) return false;
+      const entry = await fs.promises.lstat(ownedProjectDirectory(scope)).catch(() => null);
+      return Boolean(entry?.isDirectory() && !entry.isSymbolicLink());
+    },
+    isSupported: (scope) => !getProject(db, scope.projectId)?.metadata?.baseDir,
+    isBusy: (projectId) => ownerProjectHasActiveRun(projectId),
+    fingerprint: (scope) => ownedContentFingerprint(ownedProjectDirectory(scope)),
+    publicationScope: (projectId, principal) => {
+      const binding = getWorkspaceProjectByProjectId(db, projectId);
+      if (!binding?.workspaceId || !binding.createdByWorkspaceMemberId) return null;
+      const memberId = principal?.memberId ?? binding.createdByWorkspaceMemberId;
+      const teamId = principal?.teamId ?? binding.workspaceId;
+      if (memberId !== binding.createdByWorkspaceMemberId || teamId !== binding.workspaceId) return null;
+      return { projectId, workspaceId: binding.workspaceId, resourceTeamId: teamId,
+        viewerMemberId: memberId, ownerMemberId: memberId };
+    },
+    apply: async (scope, expectedVersion) => {
+      let remoteProject: Awaited<ReturnType<typeof resolveSharedProject>> = null;
+      const authorize = async () => {
+        if (!(await verifiedTeamMirrorScope(scope))) throw new Error('owner workspace is unavailable');
+        remoteProject = await resolveSharedProject(scope.projectId, scope);
+        if (!remoteProject || remoteProject.ownerMemberId !== scope.viewerMemberId) throw new Error('owner project is no longer shared');
+        if (remoteProject.metadata?.baseDir) throw Object.assign(new Error('imported project content is not supported'), { code: 'PROJECT_DIRECTORY_UNSUPPORTED' });
+        const binding = getWorkspaceProjectByProjectId(db, scope.projectId);
+        if (binding && (binding.workspaceId !== scope.workspaceId || binding.visibility !== 'team'
+          || (binding.createdByWorkspaceMemberId != null && binding.createdByWorkspaceMemberId !== scope.ownerMemberId))) {
+          throw new Error('owner project binding does not match');
+        }
+      };
+      return applyOwnedProjectContent({
+        projectsRoot: PROJECTS_DIR, scope, expectedVersion, authorize,
+        isBusy: () => ownerProjectHasActiveRun(scope.projectId),
+        commit: () => {
+          if (!remoteProject) throw new Error('owner project authority is unavailable');
+          materializePulledTeamMirror(db, {
+            id: scope.projectId, name: remoteProject.name ?? scope.projectId,
+            skillId: remoteProject.skillId ?? null, designSystemId: remoteProject.designSystemId ?? null,
+            metadata: remoteProject.metadata ?? undefined,
+            createdAt: remoteProject.createdAt ?? Date.now(), updatedAt: remoteProject.updatedAt ?? Date.now(),
+          }, scope);
+          const project = getProject(db, scope.projectId);
+          if (project?.metadata?.sharedProjectPlaceholderAt) {
+            const metadata = { ...project.metadata };
+            delete metadata.sharedProjectPlaceholderAt;
+            updateProject(db, scope.projectId, { metadata, updatedAt: SYNC_KEEPS_UPDATED_AT });
+          }
+        },
+      });
+    },
+    onChange: (scope) => emitProjectEvent(scope.projectId, {
+      type: 'project-content-transfer-state', projectId: scope.projectId, at: Date.now(),
+    }),
+    onApplied: async (scope) => {
+      await collabPublishWatcher.refresh(scope.projectId);
+      emitProjectEvent(scope.projectId, { type: 'file-changed', path: '', kind: 'change' });
+      emitProjectEvent(scope.projectId, { type: 'project-metadata-changed', projectId: scope.projectId, at: Date.now() });
+      emitWorkspaceEvent(scope.workspaceId, { type: 'team-project-content-ready', projectId: scope.projectId, workspaceId: scope.workspaceId, at: Date.now() });
+    },
+  });
   const projectContentTransferStates =
     createProjectContentTransferStateStore({
       onChange: (scope, state) => {
@@ -5198,6 +5279,7 @@ export async function startServer({
   ): Promise<void> => {};
   const collabSyncRoutes = registerCollabSyncRoutes(app, {
     collab,
+    ownedContentSync,
     publicFilePublicationStore: createSqlitePublicFilePublicationStore(db),
     verifyWorkspaceRequest: verifiedWorkspaceContextForRequest,
     verifyWorkspaceReadRequest: verifiedWorkspaceReadContextForRequest,
@@ -5433,6 +5515,9 @@ export async function startServer({
       ),
   });
   const proactiveContentPull = createProactiveContentPull({
+    observeOwnedContent: async (scope, version) => {
+      await ownedContentSync!.request(scope, { action: 'check' }, version);
+    },
     assessBackgroundContentPull: (target, version) =>
       backgroundPullSizeGuard.assess(target, version),
     getLocalBinding: (projectId) => {
@@ -8076,6 +8161,7 @@ export async function startServer({
   // client, an OD Next automatic continuation, a scheduled Automation, or a
   // live-artifact refresh. Starting a Run any other way drops its analytics
   // silently, which is what OPEND-2365 was.
+  ownerProjectHasActiveRun = (projectId) => design.runs.list({ projectId, status: 'active' }).length > 0;
   const runAnalyticsLifecycle = createRunAnalyticsLifecycle({
     db,
     design,
@@ -8385,6 +8471,7 @@ export async function startServer({
       revokedTeamProjectMirrors.has(projectId),
     isProjectUnmaterializedPlaceholder: (_db, projectId) =>
       projectIsUnmaterializedSharedPlaceholder(projectId),
+    isProjectReceivingContent: (projectId) => ownedContentSync?.isApplying(projectId) ?? false,
     sendApiError,
   });
   // Legacy registrars still receive the historical bound mutation-gate shape,
@@ -13419,6 +13506,9 @@ export async function startServer({
       ));
     };
 
+    // The catalog default an AMR turn switches to when vela rejects the
+    // selected model, e.g. one that has left the catalog since it was saved.
+    let amrFallbackModel = null;
     if (def.id === 'amr' && resolvedBin && agentLaunch.launchPath) {
       const launchPath = agentLaunch.launchPath ?? resolvedBin;
       const modelProbeEnv = launchPath
@@ -13537,6 +13627,7 @@ export async function startServer({
         ));
         return finishStrategyAwarePhysicalRun('failed', 1, null);
       }
+      amrFallbackModel = defaultRunModel && defaultRunModel !== safeModel ? defaultRunModel : null;
       // NOTE: when the selected model is absent from the (possibly preset-only
       // or stale) catalog we intentionally do NOT fail-close. The cached/preset
       // catalog can lag the live one, and a logged-in user picked a concrete
@@ -13954,9 +14045,10 @@ export async function startServer({
     };
     let forcedChildShutdownTimers = [];
     let acpAttemptTermination = null;
+    let acpCompletionShutdownRequested = false;
     const beginAcpAttemptTermination = (
       reason = 'acp_terminal',
-      { gracefulWaitMs = 0 } = {},
+      { gracefulWaitMs = 0, onChildSignal = undefined as (() => void) | undefined } = {},
     ) => {
       if (acpAttemptTermination) return acpAttemptTermination;
       acpAttemptTermination = design.runs.terminateProcessTree(
@@ -13968,6 +14060,7 @@ export async function startServer({
           termGraceMs: inactivityKillGraceMs,
           killGraceMs: inactivityKillGraceMs,
           reason,
+          onChildSignal,
         },
       );
       return acpAttemptTermination;
@@ -14467,8 +14560,9 @@ export async function startServer({
       }
       lifecycle.mark('launch_preflight_end');
       lifecycle.mark('process_spawn_start');
-      // A plain-text stdin prompt is handed over as a complete file at spawn;
-      // framed stdin protocols (stream-json, JSON-RPC) keep the pipe. The
+      // A whole-prompt stdin prompt (plain text, or the runtime's own
+      // one-shot framing) is handed over as a complete file at spawn; live
+      // stdin protocols (Claude stream-json, JSON-RPC) keep the pipe. The
       // agent stays on record until its process group is gone, so a daemon
       // started after this one dies can reap it. See runtimes/agent-process.ts.
       const spawnedAgent = spawnAgentProcess({
@@ -15670,6 +15764,7 @@ export async function startServer({
         executionProfile,
         completePromptOnTurnEnd: def.acpTurnEndCompletesPrompt === true,
         ...(def.id === 'amr' ? { modelUnavailableErrorCode: 'AMR_MODEL_UNAVAILABLE' } : {}),
+        ...(def.id === 'amr' && amrFallbackModel ? { fallbackModel: amrFallbackModel } : {}),
         // Resume the prior upstream session (drives `session/load`) when the
         // resume-identity guard says it is safe; otherwise a fresh session/new.
         ...(def.resumesSessionViaAcpLoad === true && agentResumePromptPolicy.resumeSessionId
@@ -15681,7 +15776,15 @@ export async function startServer({
         onPromptComplete: () => clearFirstOutputWatchdog(),
         onTerminal: (kind) => beginAcpAttemptTermination(
           `acp_${kind}`,
-          { gracefulWaitMs: kind === 'completed' ? 500 : 0 },
+          kind === 'completed'
+            ? {
+              gracefulWaitMs: 500,
+              // Only an exit the daemon causes speaks for the completed
+              // turn; vela exiting non-zero on its own during the grace
+              // wait is still its own failure.
+              onChildSignal: () => { acpCompletionShutdownRequested = true; },
+            }
+            : { gracefulWaitMs: 0 },
         ),
         send: (event, data, meta) => {
           if (event === 'error') {
@@ -16362,12 +16465,12 @@ export async function startServer({
       // signal exit). `completedSuccessfully()` reports whether the ACP
       // session resolved without a fatal error or abort.
       //
-      // Scope the override narrowly to the exact forced-shutdown shape this
-      // PR introduces: code is null AND signal is SIGTERM AND the ACP
-      // session reported clean completion. Any other post-response failure
-      // (non-zero exit code, SIGKILL, SIGSEGV, etc.) still propagates as
-      // `failed`, preserving the existing close-status behavior for genuine
-      // post-response process problems.
+      // The override covers SIGTERM (or vela's code 130) after clean
+      // completion, and any exit after the daemon itself signalled the
+      // completed attempt (`acpCompletionShutdownRequested`; Windows reports
+      // that kill as code 1 with no signal). Other post-response failures,
+      // including a non-zero exit during the grace wait, still propagate as
+      // `failed`.
       const acpCleanCompletion =
         typeof acpSession?.completedSuccessfully === 'function' &&
         acpSession.completedSuccessfully();
@@ -16377,6 +16480,7 @@ export async function startServer({
         code,
         signal,
         acpCleanCompletion,
+        acpCompletionShutdownRequested,
         artifactQuietShutdownRequested,
         turnCompletedCleanly: !!run.turnCompletedCleanly,
         artifactProducedThisRun:
@@ -16698,9 +16802,7 @@ export async function startServer({
           processTreeQuiescentForFinalization = termination?.quiescent === true;
         }
         await resolveRunArtifactOutcomeBeforeFinishAsync();
-        const motionDeliveries = readTaskMotionDeliveries(db, strategyTaskAtStart?.taskExecutionId);
         const deliverableFinalization = await finalizeSuccessfulRunDeliverable({
-          motionDeliveries,
           allowIndependentOutput: Boolean(strategyTaskAtStart),
           allowMultipleOutputCandidates: run.strategyRolloutDecision?.taskType === 'discovery',
           ...(run.artifactOutcome?.diff && baselineEntryFile ? { baselineEntryFile } : {}),

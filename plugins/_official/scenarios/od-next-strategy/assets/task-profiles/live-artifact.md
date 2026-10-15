@@ -4,6 +4,8 @@ Use for refreshable dashboards and synchronized reports with route=live-artifact
 
 When a connector is needed, first run `"$OD_NODE_BIN" "$OD_BIN" tools connectors list --format compact` and read through connected, read-only tools. Do not ask again for known sources, bypass permissions, or hold provider tokens directly. Clarify the specific gap when a source is disconnected or the request is unclear. Do not create scheduled refreshes or external writes on your own.
 
+The current local refresh tool reads JSON files only. If the user explicitly requires CSV or another unsupported refresh source, explain the exact limitation and ask before converting or substituting the format. Do not create a JSON replacement, claim the original format is supported, or mark the requested live delivery complete without that agreement.
+
 Create template.html, data.json, artifact.json, and provenance.json. Templates use only escaped {{data.path}} and single-level data-od-repeat="item in data.items", never unescaped HTML injection. Retain only fields, sources, and timestamps needed for the preview; do not store credentials, request headers, or complete raw responses.
 
 Example artifact.json structure:

@@ -96,6 +96,9 @@ syntax checks, validation scripts, screenshots, playback, or review loops.
 Waiting for generation, rendering a requested final format, and registering a
 live artifact are still production. A user's explicit request for testing takes
 precedence; do not claim testing or playback that did not occur.
+The sole default exception is the Core-authorized bounded check during actual
+user-requested video-motion production; it does not apply to a loaded helper,
+plan-only response, interactive animation, or unrelated follow-up.
 Never claim that a plan, a tool invocation, or an absent file is delivery.`,
   });
 }

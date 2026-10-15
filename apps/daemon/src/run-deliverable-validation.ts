@@ -4,14 +4,12 @@ import path from 'node:path';
 import { HYPERFRAMES_VIDEO_MODEL } from '@open-design/contracts';
 import type {
   ChatRunStatus,
-  MotionDeliveryContract,
   ProjectFile,
   ProjectFileKind,
   ProjectMetadata,
 } from '@open-design/contracts';
 
 import { listFiles, resolveProjectDir } from './projects.js';
-import { validateMotionDelivery } from './artifacts/motion-delivery.js';
 import { findTouchedLinkedPage } from './artifacts/linked-page-delivery.js';
 
 export type RunDeliverableValidation =
@@ -34,7 +32,6 @@ export interface RunDeliverableValidationResult {
 }
 
 interface ValidateRunDeliverableInput {
-  motionDelivery?: MotionDeliveryContract;
   projectsRoot: string;
   projectId: string | null;
   projectMetadata?: Partial<ProjectMetadata> | Record<string, unknown> | null;
@@ -48,7 +45,6 @@ interface ValidateRunDeliverableInput {
   /** New marker tasks may deliver a separate file without changing the project entry.
    * Requires exact current-run touched paths; never enables project-wide inference. */
   allowIndependentOutput?: boolean;
-  /** Discovery may produce several independent files without one project entry. */
   allowMultipleOutputCandidates?: boolean;
 }
 
@@ -236,7 +232,7 @@ export async function validateRunDeliverable(
   input: ValidateRunDeliverableInput,
 ): Promise<RunDeliverableValidationResult> {
   const primary = await resolveDeliverable({ ...input, scope: 'run' });
-  if (input.motionDelivery || primary.valid || !input.allowIndependentOutput || !input.touchedPaths?.length
+  if (primary.valid || !input.allowIndependentOutput || !input.touchedPaths?.length
     || !['entry_missing', 'entry_not_touched', 'type_mismatch'].includes(primary.validation)) {
     return primary;
   }
@@ -304,9 +300,7 @@ async function resolveDeliverable(
     ? files.filter((file) => file.kind === 'html')
     : [];
   const motionSource = motionSources.length === 1 ? motionSources[0] : null;
-  const contractedSource = input.motionDelivery
-    ? files.find((file) => filePath(file) === input.motionDelivery!.sourcePath) ?? null : null;
-  const selected = input.motionDelivery ? contractedSource : declared
+  const selected = declared
     ? files.find((file) => filePath(file) === declared) ?? null
     : (baselineEntry ? files.find((file) => filePath(file) === baselineEntry) ?? null : null)
       ?? motionSource ?? inferredEntry(files, acceptedKinds);
@@ -363,16 +357,6 @@ async function resolveDeliverable(
     await handle.close();
   } catch {
     return { valid: false, validation: 'entry_unreadable', ...facts };
-  }
-
-  if (input.motionDelivery) {
-    const validMotion = selected.kind === 'html' && await validateMotionDelivery({
-      projectRoot,
-      sourceFile: entryFile,
-      contract: input.motionDelivery,
-      ...(runScoped && input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}),
-    });
-    if (!validMotion) return { valid: false, validation: 'type_mismatch', ...facts };
   }
 
   return {

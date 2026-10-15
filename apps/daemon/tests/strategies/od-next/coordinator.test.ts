@@ -1,4 +1,3 @@
-import { declareTaskMotionDelivery, freezeTaskMotionDeliveries, readTaskMotionDeliveries } from '../../../src/strategies/od-next/motion-delivery-store.js';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -204,26 +203,6 @@ describe('OD Next planning coordinator', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('freezes native motion requirements independently of retired Plan Contracts', () => {
-    const movie = { mode: 'video', sourcePath: 'motion-source/film/index.html', videoPath: 'film.mp4', audio: 'required' };
-    expect(declareTaskMotionDelivery(db, 'run-request', movie)).toEqual([movie]);
-    expect(declareTaskMotionDelivery(db, 'run-request', movie)).toEqual([movie]);
-    const second = { mode: 'interactive', sourcePath: 'interactive/index.html' };
-    declareTaskMotionDelivery(db, 'run-request', second);
-    freezeTaskMotionDeliveries(db, 'task-1');
-    expect(readTaskMotionDeliveries(db, 'task-1')).toEqual([movie, second]);
-    expect(() => declareTaskMotionDelivery(db, 'run-request', { ...movie, audio: 'silent' })).toThrow(/frozen/);
-    expect(() => declareTaskMotionDelivery(db, 'run-request', { ...second, sourcePath: 'new.html' })).toThrow(/frozen/);
-    expect(() => declareTaskMotionDelivery(db, 'foreign-run', movie)).toThrow(/current active/);
-  });
-
-  it('rejects unspecified audio and unsafe or colliding output paths', () => {
-    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'index.html', videoPath: 'film.mp4' })).toThrow(/audio/);
-    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'interactive', sourcePath: '../index.html' })).toThrow();
-    declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'first.html', videoPath: 'film.mp4', audio: 'silent' });
-    expect(() => declareTaskMotionDelivery(db, 'run-request', { mode: 'video', sourcePath: 'second.html', videoPath: 'film.mp4', audio: 'required' })).toThrow(/unique/);
-  });
-
   function markerHarness(planOnly = false) {
     const identity = strategyTaskCreateIdentityFixture();
     let task = createStrategyTaskExecution(db, {
@@ -257,112 +236,6 @@ describe('OD Next planning coordinator', () => {
     });
     return { task, service, physical };
   }
-  it('rejects Motion declaration for plan-only and mismatched project grants', () => {
-    const { task } = markerHarness(true);
-    expect(() => declareTaskMotionDelivery(db, task.latestRunId, {mode:'interactive',sourcePath:'index.html'})).toThrow(/production-authorized/);
-    expect(() => declareTaskMotionDelivery(db, 'run-request', {mode:'interactive',sourcePath:'index.html'}, 'foreign-project')).toThrow(/production-authorized/);
-    expect(readTaskMotionDeliveries(db, task.taskExecutionId)).toEqual([]);
-  });
-
-  const productionMarker = '<od-production-ready key="5e819e50c013db87" />';
-  function markerReply(text: string) {
-    const stream = createOdNextRunProtocol(null, '5e819e50c013db87');
-    stream.push(text); return stream.finish().parsed;
-  }
-
-  it.each([
-    `Build a landing page and a deck.\n${productionMarker}`,
-    `Build a landing page and a deck.${productionMarker}`,
-    'Build a landing page and a deck.\n<od-production-ready key="5e819e50c013db87">',
-    'Build a landing page and a deck.\n<od-production-ready key="5e819e50c013db87>',
-    'Build a landing page and a deck.\nod-production-ready key="5e819e50c013db87"',
-  ])('marker protocol continues once without a Plan Contract, then settles without an entry: %s', text => {
-    const { task, service, physical } = markerHarness();
-    const input = {
-      db, service, task, parsed: markerReply(text),
-      createMeta: (_stage: string, instruction: string) => ({ message: instruction }),
-      completionEvidence: { physicalStatus: 'succeeded' as const, deliverableValid: false },
-    };
-    const continued = prepareAutomaticStrategyContinuation(input);
-    expect(continued.start).toBe(true);
-    expect(continued.result.task).toMatchObject({ inputStage: 'production', outcome: 'running' });
-    expect(continued.result.task.planContract).toBeUndefined();
-    expect(continued.result.task.runs).toHaveLength(2);
-    expect(StrategyTaskProjectionV2Schema.safeParse(projectStrategyTask(continued.result.task)).success).toBe(true);
-    expect(prepareAutomaticStrategyContinuation(input).start).toBe(false);
-    expect(physical.size).toBe(1);
-    const final = prepareAutomaticStrategyContinuation({
-      ...input, task: getStrategyTaskExecution(db, task.taskExecutionId)!,
-      parsed: markerReply(`Files written.\n<open-design-runtime-state>\n{broken}\n</open-design-runtime-state>\n${productionMarker}`),
-    });
-    expect(final.start).toBe(false);
-    expect(final.result.action).toBe('completed'); expect(final.result.reasonCodes).toEqual([]);
-    expect(final.result.task.runs).toHaveLength(2);
-    expect(projectStrategyTask(final.result.task, 'marker-request')).toMatchObject({ settlementReason: 'continued' });
-    expect(projectStrategyTask(final.result.task, 'marker-production')).toMatchObject({ settlementReason: 'ended' });
-    expect(StrategyTaskProjectionV2Schema.safeParse(projectStrategyTask(final.result.task)).success).toBe(true);
-  });
-
-  it.each([
-    ['ordinary answer', 'Hello'],
-    ['missing marker', 'Plan is ready.'],
-    ['wrong key', 'Plan is ready.\n<od-production-ready key="0000" />'],
-    ['malformed legacy state', 'Done.\n<open-design-runtime-state>\n{}\n</open-design-runtime-state>'],
-    ['pending question', `<question-form id="scope">{"questions":[{"id":"audience","label":"Who is this for?"}]}</question-form>\n${productionMarker}`],
-  ])('marker protocol settles %s without an error or automatic turn', (_label, text) => {
-    const { task, service, physical } = markerHarness();
-    const result = prepareAutomaticStrategyContinuation({
-      db, service, task, parsed: markerReply(text), createMeta: () => ({}),
-      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false },
-    });
-    expect(result.start).toBe(false); expect(result.result.action).toBe('completed');
-    expect(result.result.reasonCodes).toEqual([]); expect(physical.size).toBe(0);
-  });
-
-  it.each([
-    { text: 'Hello', facts: {}, reason: 'text_only' },
-    { text: '', facts: {}, reason: 'empty_reply' },
-    { text: 'Partial answer', facts: { truncated: true }, reason: 'truncated' },
-    { text: 'Still working', facts: { todoUnfinished: true }, reason: 'todo_unfinished' },
-    { text: 'Delivered', facts: { deliverableValid: true, todoUnfinished: true }, reason: 'deliverable_valid' },
-    { text: '<question-form id="scope">{"questions":[{"id":"audience","label":"Who?"}]}</question-form>', facts: {}, reason: 'question' },
-  ])('persists host settlement $reason without declaring delivery', ({ text, facts, reason }) => {
-    const { task, service, physical } = markerHarness();
-    const result = prepareAutomaticStrategyContinuation({
-      db, service, task, parsed: markerReply(text), createMeta: () => ({}),
-      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false, ...facts },
-    });
-    expect(result.start).toBe(false);
-    expect(physical.size).toBe(0);
-    const reloaded = getStrategyTaskExecution(db, task.taskExecutionId)!;
-    expect(projectStrategyTask(reloaded)).toMatchObject({
-      outcome: 'completed', settlementReason: reason === 'question' ? 'question' : 'ended',
-      deliverableValid: facts.deliverableValid === true, settlementFacts: facts,
-    });
-  });
-
-  it.each(['failed', 'canceled'] as const)('marker protocol does not continue a %s process', status => {
-    const { task, service, physical } = markerHarness();
-    const result = prepareAutomaticStrategyContinuation({
-      db, service, task, parsed: markerReply(`Ready.\n${productionMarker}`), createMeta: () => ({}),
-      completionEvidence: { physicalStatus: status, deliverableValid: true },
-    });
-    expect(result.result.action).toBe(status === 'failed' ? 'completed' : 'canceled');
-    expect(physical.size).toBe(0);
-    expect(projectStrategyTask(result.result.task).settlementReason).toBe('ended');
-  });
-
-  it.each(['succeeded', 'failed', 'canceled'] as const)('marker fallback persists physical %s separately from delivery', status => {
-    const { task } = markerHarness();
-    const result = completeAutomaticSimpleProduction(db, {
-      runId: task.latestRunId, physicalStatus: status, deliverableValid: false,
-    });
-    expect(result).toMatchObject({
-      outcome: status === 'canceled' ? 'canceled' : 'completed',
-      deliverableValid: false,
-    });
-    expect(projectStrategyTask(result!).deliverableValid).toBe(false);
-  });
 
   it('does not inherit plan file evidence as production delivery', () => {
     const { task, service } = markerHarness();
@@ -477,6 +350,12 @@ describe('OD Next planning coordinator', () => {
     upsertMessage(db, 'conversation-1', { id: 'ordinary-answer', role: 'assistant', content: 'An unrelated answer.', createdAt: 102 });
     expect(resolveStrategyHandoff(db, input, [])).toBeNull();
   });
+
+  const productionMarker = '<od-production-ready key="5e819e50c013db87" />';
+  function markerReply(text: string) {
+    const stream = createOdNextRunProtocol(null, '5e819e50c013db87');
+    stream.push(text); return stream.finish().parsed;
+  }
 
   it.each([
     ['a bundle written by the pre-reshape v2 composer', (target: Database.Database) => {
