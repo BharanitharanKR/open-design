@@ -13,10 +13,20 @@ export function commentSelectorsMatch(left: string, right: string): boolean {
   return Boolean(left.trim() && right.trim()) && normalize(left) === normalize(right);
 }
 
+/** New comment identities require current-DOM resolution even without team collaboration. */
+export function commentUsesIdentity(comment: Pick<PreviewComment, 'elementId' | 'selector'>): boolean {
+  return comment.elementId.startsWith('cmt:') || commentSelectorClaimsIdentity(comment.selector);
+}
+
+export function ownerCommentNeedsLocation(comment: PreviewComment, collabEnabled: boolean): boolean {
+  return (collabEnabled || commentUsesIdentity(comment))
+    && !comment.elementId.startsWith('pin-') && comment.selectionKind !== 'pod';
+}
+
 /** Owner targets describe the current DOM. A matching structural selector takes priority
  * over an annotation id reused by a different element after publication. */
 export function resolveOwnerCommentAnchor(comment: PreviewComment, targets: Map<string, PreviewCommentSnapshot>, version?: number) {
-  if (comment.elementId.startsWith('cmt:') || commentSelectorClaimsIdentity(comment.selector)) return resolveCommentAnchor(comment, targets, version);
+  if (commentUsesIdentity(comment)) return resolveCommentAnchor(comment, targets, version);
   const selector = comment.selector?.trim();
   // Attribute anchors keep the portable resolver's identity/drift semantics.
   if (!selector || !/^body\s*>/.test(selector)) return resolveCommentAnchor(comment, targets, version);

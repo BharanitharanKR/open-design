@@ -1,4 +1,4 @@
-import { commentSelectorsMatch, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
+import { commentSelectorsMatch, commentUsesIdentity, ownerCommentNeedsLocation, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
 import { indexCommentTargets } from '../comments/target-index';
 import { useCommentPreparation } from '../comments/use-comment-preparation';
 import { useCommentPreparationConfirmation } from './CommentPreparationConfirmation';
@@ -6120,10 +6120,15 @@ function CommentPreviewOverlays({
             const resolution = resolveOwnerCommentAnchor(comment, liveTargets, currentVersion);
             return { comment, markerNumber, snapshot: resolution.snapshot, anchorState: resolution.state };
           }
+          // Personal/local comments do not enable team drift persistence. New
+          // identities still require a unique current target, never a ghost box.
+          const resolution = commentUsesIdentity(comment)
+            ? resolveOwnerCommentAnchor(comment, liveTargets, currentVersion) : null;
           return {
             comment,
             markerNumber,
-            snapshot: liveSnapshotForComment(comment, liveTargets),
+            snapshot: resolution ? (resolution.state === 'lost' ? null : resolution.snapshot)
+              : liveSnapshotForComment(comment, liveTargets),
             anchorState: 'anchored' as PreviewCommentAnchorState,
           };
         })
@@ -6169,7 +6174,7 @@ function CommentPreviewOverlays({
   // comments reuses the whole subtree and React skips reconciling it.
   const savedMarkers = useMemo(
     () =>
-      visibleComments.filter(({ comment }) => !driftLadder || comment.id !== activeExistingCommentId || Boolean(activeTarget)).map(({ comment, markerNumber, snapshot, anchorState }) => {
+      visibleComments.filter(({ comment }) => !(driftLadder || commentUsesIdentity(comment)) || comment.id !== activeExistingCommentId || Boolean(activeTarget)).map(({ comment, markerNumber, snapshot, anchorState }) => {
         const bounds = overlayBoundsFromSnapshot(snapshot, scale, overlayOffset);
         const label = commentTargetDisplayName(comment);
         const drifted = anchorState !== 'anchored';
@@ -12869,6 +12874,13 @@ function HtmlViewer({
         });
         return;
       }
+      if (data.type === 'od:comment-active-target-update' && commentUsesIdentity({ elementId: String(data.elementId || ''), selector: String(data.selector || '') })) {
+        // A tracking/locate reply cannot resurrect an absent or ambiguous cmt
+        // identity rejected by this document's authoritative target report.
+        const indexed = liveCommentTargetsRef.current.get(String(data.elementId || ''));
+        if (commentTargetsReadyKey !== commentTargetsKey || !indexed || indexed.selector !== data.selector
+          || (indexed.slideIndex ?? -1) !== (data.slideIndex ?? -1)) return;
+      }
       if (data.type === 'od:comment-location-missing' || (data.type === 'od:comment-active-target-update' && data.requestId)) {
         const request = commentLocateRequestRef.current;
         if (!request || request.requestId !== data.requestId || request.previewKey !== commentTargetsKey) return;
@@ -12879,8 +12891,8 @@ function HtmlViewer({
         }
         const snapshot = snapshotFromData(data);
         if (!snapshot.elementId || !isValidCommentOverlayPosition(snapshot.position)) return;
-        if (request.targetId?.startsWith('cmt:')
-          && (snapshot.elementId !== request.targetId || snapshot.selector !== request.selector)) return;
+        if (commentUsesIdentity({ elementId: request.targetId ?? '', selector: request.selector })
+          && (!request.targetId || snapshot.elementId !== request.targetId || snapshot.selector !== request.selector)) return;
         if (snapshot.elementId !== request.targetId && !commentSelectorsMatch(snapshot.selector, request.selector)) return;
         request.targetId = snapshot.elementId;
         // A tagged reply acknowledges srcDoc's completed locate/scroll. Later
@@ -12900,11 +12912,15 @@ function HtmlViewer({
         // existing scroll protocol, without changing daemon or its contract.
         if (request && request.previewKey === commentTargetsKey && snapshot.elementId === request.targetId) {
           const height = iframeRef.current?.clientHeight ?? 0;
-          if (!request.scrolled && height > 0 && (snapshot.position.y < 0 || snapshot.position.y + snapshot.position.height > height)) {
+          if (!request.scrolled && height > 0) {
+            // The first measurable reply consumes this locate intent even if
+            // already visible. Later tracking must respect the owner's scroll.
             request.scrolled = true;
-            iframeRef.current?.contentWindow?.postMessage({ type: 'od:preview-scroll-by',
-              left: 0, top: snapshot.position.y + snapshot.position.height / 2 - height / 2 }, '*');
-            return;
+            if (snapshot.position.y < 0 || snapshot.position.y + snapshot.position.height > height) {
+              iframeRef.current?.contentWindow?.postMessage({ type: 'od:preview-scroll-by',
+                left: 0, top: snapshot.position.y + snapshot.position.height / 2 - height / 2 }, '*');
+              return;
+            }
           }
           setActiveCommentTarget(snapshot);
           setHoveredCommentTarget(snapshot);
@@ -13025,13 +13041,13 @@ function HtmlViewer({
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, isActivePreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
+  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, commentTargetsKey, commentTargetsReadyKey, isActivePreviewIframeSource, previewComments, requestComposerRetarget, scheduleHoverCardDismiss, workspaceActive]);
 
   useEffect(() => {
     commentLocateRequestRef.current = null;
-    if (!workspaceActive || !boardMode || !collab.enabled || !activePreviewCommentId) return;
+    if (!workspaceActive || !boardMode || !activePreviewCommentId) return;
     const comment = previewComments.find(item => item.id === activePreviewCommentId && item.filePath === file.name);
-    if (!comment || comment.elementId.startsWith('pin-') || comment.selectionKind === 'pod') return;
+    if (!comment || !ownerCommentNeedsLocation(comment, collab.enabled)) return;
     setActiveCommentTarget(null);
     setHoveredCommentTarget(null);
     if (commentTargetsReadyKey !== commentTargetsKey) return;
@@ -16938,7 +16954,7 @@ function HtmlViewer({
           ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
         };
         requestComposerRetarget(() => {
-          const needsLocation = collab.enabled && !comment.elementId.startsWith('pin-') && comment.selectionKind !== 'pod';
+          const needsLocation = ownerCommentNeedsLocation(comment, collab.enabled);
           if (needsLocation) setCommentLocationIntent(intent => intent + 1);
           setActiveCommentTarget(needsLocation ? null : snapshot);
           setHoveredCommentTarget(needsLocation ? null : snapshot);
@@ -18206,7 +18222,7 @@ function HtmlViewer({
                       setCommentSidePanelCollapsed(false);
                       setCommentCreateMode(true);
                       setBoardMode(true);
-                      const needsLocation = collab.enabled && !comment.elementId.startsWith('pin-') && comment.selectionKind !== 'pod';
+                      const needsLocation = ownerCommentNeedsLocation(comment, collab.enabled);
                       if (needsLocation) setCommentLocationIntent(intent => intent + 1);
                       setActiveCommentTarget(needsLocation ? null : snapshot);
                       setHoveredCommentTarget(needsLocation ? null : snapshot);
