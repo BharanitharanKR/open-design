@@ -505,30 +505,30 @@ test('[P0] two isolated clients converge live content, presence, and owner unsha
       ).toContain(COLLAB_COMMENT_NOTE);
       expect(Date.now() - commentStartedAt).toBeLessThan(T.medium);
 
-      // Restored panel state may mark comments read during navigation, before
-      // the toolbar is usable. Observe the receipt before that navigation.
-      const initialRead = ownerPage.waitForResponse((response) =>
-        isProjectCommentReadResponse(response, projectId),
-      );
-      await ownerPage.goto(`/projects/${projectId}/files/index.html`, {
-        waitUntil: 'domcontentloaded',
-      });
-      await expect(ownerPage.getByTestId('file-workspace')).toBeVisible({
-        timeout: T.long,
-      });
-      await clickPreviewToolbarAction(ownerPage, 'board-mode-toggle', /^Comment$/);
-      await clickPreviewToolbarAction(
-        ownerPage,
-        'comment-panel-toggle',
-        /^Comments \(\d+\)$/,
-      );
-      await expect(
-        ownerPage
-          .getByTestId('comment-side-panel')
-          .getByTestId('comment-side-item')
-          .filter({ hasText: COLLAB_COMMENT_NOTE }),
-      ).toBeVisible({ timeout: T.medium });
-      expect((await initialRead).ok()).toBeTruthy();
+      // Observe from before navigation, and bind the waiter immediately so a
+      // failed UI assertion is not masked by an unhandled page-close rejection.
+      const [initialRead] = await Promise.all([
+        ownerPage.waitForResponse((response) =>
+          isProjectCommentReadResponse(response, projectId), { timeout: T.long }),
+        (async () => {
+          await ownerPage.goto(`/projects/${projectId}/files/index.html`, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(ownerPage.getByTestId('file-workspace')).toBeVisible({ timeout: T.long });
+          await clickPreviewToolbarAction(ownerPage, 'board-mode-toggle', /^Comment$/);
+          await clickPreviewToolbarAction(ownerPage, 'comment-panel-toggle', /^Comments \(\d+\)$/);
+          // This real authored file has legacy targets. Creating comments now
+          // requires explicit source-version consent and a fresh frame witness.
+          const consent = ownerPage.getByRole('alertdialog', { name: 'Prepare static comments · save source version' });
+          await expect(consent).toBeVisible();
+          await consent.getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(ownerPage.getByTestId('comment-identity-preparation')).toContainText('Preview ready', { timeout: T.long });
+          await clickPreviewToolbarAction(ownerPage, 'comment-panel-toggle', /^Comments \(\d+\)$/);
+          await expect(ownerPage.getByTestId('comment-side-panel').getByTestId('comment-side-item')
+            .filter({ hasText: COLLAB_COMMENT_NOTE })).toBeVisible({ timeout: T.medium });
+        })(),
+      ]);
+      expect(initialRead.ok()).toBeTruthy();
 
       await test.step('keep the collapsed rail unread until it is expanded', async () => {
         const collapsedReadRequests: string[] = [];
