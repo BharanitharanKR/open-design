@@ -693,10 +693,14 @@ test('[P0] two isolated clients converge live content, presence, and owner unsha
       (entry) =>
         entry.memberId === OWNER.memberId &&
         entry.args[0] === 'team-projects' &&
-        entry.args[1] === 'remove' &&
-        entry.args[2] === projectId,
+        entry.args[1] === 'visibility' &&
+        entry.args[2] === projectId &&
+        entry.args[3] === 'private',
       T.long,
     );
+    expect(hub.commandLog.some(entry => entry.memberId === OWNER.memberId
+      && entry.args[0] === 'team-projects' && entry.args[1] === 'remove'
+      && entry.args[2] === projectId)).toBe(false);
 
     // A non-creator's local copy is a Team mirror, not their own draft. Once
     // the owner unshares it, quarantine that mirror: it must disappear from
