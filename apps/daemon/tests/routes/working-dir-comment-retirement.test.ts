@@ -55,8 +55,9 @@ it.each(['local-rejection', 'remote-rejection'] as const)('working-root replacem
       }
       return JSON.stringify({ projectId: 'p', workspaceId: 'w', ownerMemberId: 'creator', resourceId: 'root', metadata: { _commentFiles: catalog } });
     });
+    const stopPublicFiles = vi.fn(async () => {});
     const deletion = createCommentFileDeletion({ db, localFiles: local, hasActiveRun: () => false,
-      stopPublicFiles: async () => {}, runForWorkspace: () => run, isPresent: async () => true });
+      stopPublicFiles, runForWorkspace: () => run, isPresent: async () => true });
     const app = express(); app.use(express.json());
     registerImportRoutes(app, {
       db, publicFileMutations: createPublicFileMutations(), stopPublicFilesBeforeDelete: deletion,
@@ -102,6 +103,9 @@ it.each(['local-rejection', 'remote-rejection'] as const)('working-root replacem
     expect(getWorkspaceArtifact(db, localOnlyId)?.deletedAt).not.toBeNull();
     expect(local.identity('p', 'b.html')).not.toBe(localOnlyId);
     if (replacementLocalId) expect(local.identity('p', 'b.html')).toBe(replacementLocalId);
+    // A metadata-only retry finishes captured retirement, not another broad
+    // stop of links published for genuine new-root files since the first call.
+    expect(stopPublicFiles).toHaveBeenCalledTimes(failure === 'remote-rejection' ? 1 : 2);
     expect(store.listPreviewComments(db, 'p', 'c').some(note => note.id === localNote.id)).toBe(false);
     expect(store.getProject(db, 'p')?.metadata?.unrelated).toBe('keep');
     expect(store.getProject(db, 'p')?.metadata?._commentFiles).toEqual(catalog);

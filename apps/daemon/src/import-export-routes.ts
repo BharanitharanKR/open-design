@@ -346,7 +346,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
           if (!replacing) return false;
           deleteProjectWorkspaceArtifacts(db, projectId);
         })();
-      });
+      }, replacing ? undefined : 'committed-retry');
       // Retirement adopts reserved metadata after the root mutation commits.
       updated = getProject(db, projectId);
       if (!updated) {

@@ -9,12 +9,13 @@ import { matchesPublicFileDeleteTarget, type PublicFileDeleteTarget } from './pr
 
 /** A metadata-only working-root retry returns false: no new local lifetime ended. */
 export type CommentFileDeletion = (projectId: string, target?: PublicFileDeleteTarget,
-  mutate?: () => Promise<void | false>) => Promise<void>;
+  mutate?: () => Promise<void | false>, mode?: 'committed-retry') => Promise<void>;
 
 /** Optional route adapters still perform their ordinary local mutation. */
 export async function withCommentFileDeletion(deletion: CommentFileDeletion | undefined,
-  projectId: string, target: PublicFileDeleteTarget | undefined, mutate: () => Promise<void | false>): Promise<void> {
-  if (deletion) await deletion(projectId, target, mutate);
+  projectId: string, target: PublicFileDeleteTarget | undefined, mutate: () => Promise<void | false>,
+  mode?: 'committed-retry'): Promise<void> {
+  if (deletion) await deletion(projectId, target, mutate, mode);
   else await mutate();
 }
 
@@ -32,7 +33,7 @@ export function createCommentFileDeletion(input: {
   stopPublicFiles: (scope: { resourceTeamId: string; ownerMemberId: string; projectId: string }, target?: PublicFileDeleteTarget) => Promise<void>;
   isPresent: (projectId: string, filePath: string) => Promise<boolean>;
 }): CommentFileDeletion {
-  return async (projectId, target, mutate) => {
+  return async (projectId, target, mutate, mode) => {
     const selected = (fact: CommentFileFact) => matchesPublicFileDeleteTarget(fact.sourceFilePath, target);
     const rawState = getProject(input.db, projectId)?.metadata?._commentFiles;
     const state = parseCommentFileState(rawState);
@@ -59,8 +60,12 @@ export function createCommentFileDeletion(input: {
         throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
       }
     }
-    await input.stopPublicFiles({ resourceTeamId: binding.workspaceId,
-      ownerMemberId: binding.createdByWorkspaceMemberId, projectId }, target);
+    if (mode === 'committed-retry') {
+      if (!mutate || pending.some(row => !row.committed)) throw new Error('COMMENT_FILE_RETIREMENT_PENDING');
+    } else {
+      await input.stopPublicFiles({ resourceTeamId: binding.workspaceId,
+        ownerMemberId: binding.createdByWorkspaceMemberId, projectId }, target);
+    }
     // Permanent project removal owns its catalog/project tombstone separately.
     if (!mutate) return;
     const clear = (originals: readonly CommentFileFact[]) => {
@@ -71,6 +76,13 @@ export function createCommentFileDeletion(input: {
       await input.localFiles.retireMany({ ...scope, facts: originals });
       clear(originals);
     };
+    // A same-root retry completes only already-committed intents. It must not
+    // repeat broad public stops or end lifetimes created on the new root.
+    if (mode === 'committed-retry') {
+      await reconcile(pending.map(row => row.fact));
+      await mutate();
+      return;
+    }
     // Reconcile only this captured scope, even when bytes were already recreated.
     await reconcile(pending.flatMap(row => row.committed ? [row.fact] : []));
     const originals = [...new Map([
