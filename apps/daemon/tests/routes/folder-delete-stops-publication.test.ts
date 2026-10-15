@@ -28,7 +28,7 @@ it.each([false, true])('folder deletion revokes descendants only; failure=%s pre
   registerProjectFileRoutes(app,{
    db,paths:{PROJECTS_DIR:projects},http:{sendApiError:(res:express.Response,status:number,code:string)=>res.status(status).json({error:code})},
    projectStore:{getProject,getWorkspaceProject,getWorkspaceProjectByProjectId},projectFiles,node:{fs:nodeFs},uploads:{},documents:{},artifacts:{},projectPreviewScopes:{},
-   publicFileMutations:createPublicFileMutations(),stopPublicFilesBeforeDelete:(id:string,target:Parameters<typeof stop>[1])=>stop({...scope,projectId:id},target),
+   publicFileMutations:createPublicFileMutations(),stopPublicFilesBeforeDelete:async(id:string,target:Parameters<typeof stop>[1],mutate?:()=>Promise<void>)=>{await stop({...scope,projectId:id},target);await mutate?.();},
    verifyWorkspaceRequestAuthority:async()=>({ok:true,context:workspaceContextFromDirectoryItem({workspaceId:scope.resourceTeamId,workspaceMemberId:scope.ownerMemberId,workspaceName:'W',workspaceType:'personal',role:'owner',memberStatus:'active',lifecycleState:'active'})}),
   } as unknown as Parameters<typeof registerProjectFileRoutes>[1]);
   server=app.listen(0);await new Promise<void>(resolve=>server!.once('listening',resolve));const address=server.address();if(!address||typeof address==='string')throw new Error('missing port');

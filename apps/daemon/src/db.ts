@@ -1,3 +1,4 @@
+import { pendingCommentFileRetirements } from './collab/comment-file-retirements.js';
 // SQLite-backed persistence for projects, conversations, messages, and the
 // per-project set of open workspace tabs. The on-disk project folder under
 // .od/projects/<id>/ is still the single owner of the user's actual files
@@ -3779,6 +3780,7 @@ interface PreviewCommentReadOptions {
 
 function currentPreviewCommentFilter(db: SqliteDb, projectId: string): (comment: PreviewComment) => boolean {
   const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
+  const pending = new Set(pendingCommentFileRetirements(db, projectId).map(row => row.fact.sourceFileId));
   const facts = new Map(state?.files.map(fact => [fact.sourceFileId, fact]));
   // A creator may comment before any receipt/share exists. The existing
   // workspace pointer proves only that local lifetime, never remote admission.
@@ -3786,6 +3788,7 @@ function currentPreviewCommentFilter(db: SqliteDb, projectId: string): (comment:
     .all(projectId) as Array<{ id: string; path: string }>).map(row => [row.id, row.path]));
   return comment => {
     if (!comment.sourceFileId) return true; // Historical rows are never assigned a guessed identity.
+    if (pending.has(comment.sourceFileId)) return false;
     const fact = facts.get(comment.sourceFileId);
     return fact ? !fact.retired && fact.sourceFilePath === comment.filePath : pointers.get(comment.sourceFileId) === comment.filePath;
   };

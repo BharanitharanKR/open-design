@@ -1,6 +1,7 @@
+import { assertCommentFileNotPending } from './comment-file-retirements.js';
 import type Database from 'better-sqlite3';
 import type { CommentFileFact } from '@open-design/contracts';
-import { ensureWorkspaceArtifactForPath, getLiveWorkspaceArtifactByPath } from '../chat-artifacts/store.js';
+import { ensureWorkspaceArtifactForPath } from '../chat-artifacts/store.js';
 import { getProject, getWorkspaceProjectByProjectId, updateProject } from '../db.js';
 import type { runVelaCommand } from '../integrations/vela-command.js';
 import { commitCommentFileFacts, retiredCommentFileMutation } from './comment-file-authority.js';
@@ -33,6 +34,7 @@ export function createLocalCommentFiles(db: Database.Database) {
     return binding;
   }
   function identity(projectId: string, filePath: string): string {
+    assertCommentFileNotPending(db, projectId, { filePath });
     if (!canonicalCommentFilePath(filePath)) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
     const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
     const admitted = state?.files.find(fact => !fact.retired && fact.sourceFilePath === filePath);
@@ -66,12 +68,6 @@ export function createLocalCommentFiles(db: Database.Database) {
     const first = originals[0];
     if (!first) return;
     creator(input.projectId, input.workspaceId, input.creatorMemberId);
-    const before = parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles);
-    const captured = originals.map(original => {
-      const current = before?.files.find(fact => !fact.retired && fact.sourceFilePath === original.sourceFilePath);
-      return { original, artifactId: current?.sourceFileId === original.sourceFileId
-        ? getLiveWorkspaceArtifactByPath(db, input.projectId, original.sourceFilePath)?.id : null };
-    });
     const state = await commitCommentFileFacts({ ...input, resourceId: first.resourceId,
       versionId: first.versionId, files: originals.flatMap(original => retiredCommentFileMutation(original, first)) });
     creator(input.projectId, input.workspaceId, input.creatorMemberId);
@@ -85,9 +81,9 @@ export function createLocalCommentFiles(db: Database.Database) {
         _commentFiles: { schemaVersion: 1, revision: Math.max(previous.revision, state.revision),
           files: previous.files.map(fact => retired.get(fact.sourceFileId) ?? fact) } } });
       // Conditional artifact tombstones cannot delete concurrent F2 pointers.
-      for (const { original, artifactId } of captured) {
-        db.prepare('UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ? WHERE project_id = ? AND id = ? AND deleted_at IS NULL')
-          .run(Date.now(), Date.now(), input.projectId, artifactId ?? original.sourceFileId);
+      for (const original of originals) {
+        db.prepare('UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ? WHERE project_id = ? AND id = ? AND current_path = ? AND deleted_at IS NULL')
+          .run(Date.now(), Date.now(), input.projectId, original.sourceFileId, original.sourceFilePath);
       }
     })();
   }

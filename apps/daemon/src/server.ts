@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { assertCommentFileNotPending } from './collab/comment-file-retirements.js';
 import { captureJsonBodySize } from './http/json-body-size.js';
 
 import { usesProductionMarker, composeResumedRequest } from './strategies/od-next/request-resume.js';
@@ -746,6 +747,7 @@ import {
   searchProjectFiles,
   stageProjectDirsForDelete,
   resolveProjectFilePath,
+  resolveProjectDeletePath,
   writeProjectFile,
   reconcileHtmlArtifactManifest,
 } from './projects.js';
@@ -4600,6 +4602,7 @@ export async function startServer({
         },
         captureCommentRelayProjectBinding: publicFileMutations.captureReconciliation,
         validateCommentRelayFile: (record) => {
+          assertCommentFileNotPending(db, record.projectId, { sourceFileId: record.comment.sourceFileId });
           const state = parseCommentFileState(getProject(db, record.projectId)?.metadata?._commentFiles);
           const fact = state?.files.find(item => item.sourceFileId === record.comment.sourceFileId);
           if (!fact || fact.sourceFilePath !== (record.comment.sourceFilePath ?? record.comment.filePath)) {
@@ -4654,6 +4657,7 @@ export async function startServer({
         resolveLocalConversationId: (projectId) =>
           getProjectCommentAnchorConversationId(db, projectId),
         mergeComment: ({ projectId, conversationId, comment, stream }) => {
+          if (!comment.deleted) assertCommentFileNotPending(db, projectId, { sourceFileId: comment.sourceFileId });
           const normalized = normalizeCurrentFileComment(
             parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles), comment,
           );
@@ -8845,6 +8849,7 @@ export async function startServer({
     readProjectFile,
     resolveProjectDir,
     resolveProjectFilePath,
+    resolveProjectDeletePath,
     parseByteRange,
     renameProjectFile,
     deleteProjectFile,
@@ -9118,6 +9123,16 @@ export async function startServer({
     db, localFiles: localCommentFiles,
     hasActiveRun: ownerProjectHasActiveRun, runForWorkspace: commentFileRun,
     stopPublicFiles: stopProjectPublicFiles,
+    isPresent: async (projectId, filePath) => {
+      try {
+        const target = await resolveProjectFilePath(PROJECTS_DIR, projectId, filePath, getProject(db, projectId)?.metadata);
+        await fs.promises.lstat(target.filePath);
+        return true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return false;
+        throw error;
+      }
+    },
   });
   registerProjectRoutes(app, {
     db,
@@ -9249,6 +9264,7 @@ export async function startServer({
     // status change, tombstone) to the cross-daemon relay.
     prepareCommentFile: async (projectId, filePath, context) => {
       if (!/\.html?$/i.test(filePath)) return undefined;
+      assertCommentFileNotPending(db, projectId, { filePath });
       const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
       const current = state?.files.find(fact => !fact.retired && fact.sourceFilePath === filePath);
       if (current) return current.sourceFileId;

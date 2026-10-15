@@ -1,3 +1,4 @@
+import { assertNoPendingCommentFileRetirements } from './comment-file-retirements.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
@@ -22,6 +23,7 @@ export function createCommentFilePublisher(input: {
   return async <Result extends { versionId?: string } | null>(
     projectId: string, principal: ResourceHubPrincipal | null | undefined, publish: () => Promise<Result>,
   ): Promise<Result> => {
+    assertNoPendingCommentFileRetirements(input.db, projectId);
     if (!principal) return publish();
     const root = await input.resolveRoot(projectId);
     const facts = parseCommentFileState(getProject(input.db, projectId)?.metadata?._commentFiles)?.files ?? [];

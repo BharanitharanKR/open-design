@@ -1,3 +1,5 @@
+import { pendingCommentFileRetirements } from './collab/comment-file-retirements.js';
+import { withCommentFileDeletion, type CommentFileDeletion } from './collab/comment-file-deletion.js';
 import type { Express, Response } from 'express';
 import { publicFileMutationHandler } from './routes/public-file-mutation-handler.js';
 import type { PublicFileMutations } from './collab/public-file-mutations.js';
@@ -54,7 +56,7 @@ import type { BoundWorkspaceResourceMutationGate } from './collab/workspace-reso
 
 export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'uploads' | 'node' | 'ids' | 'paths' | 'imports' | 'auth' | 'projectStore' | 'conversations' | 'projectFiles' | 'validation'> {
   publicFileMutations?: PublicFileMutations;
-  stopPublicFilesBeforeDelete?: (projectId: string) => Promise<void>;
+  stopPublicFilesBeforeDelete?: CommentFileDeletion;
   fetchProjectCreationWorkspaceDirectory?: () => Promise<WorkspaceDirectoryFetchResult>;
   enforceWorkspaceProjectMutation?: BoundWorkspaceResourceMutationGate;
 }
@@ -318,23 +320,30 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
       const entryFile = await detectEntryFile(normalizedPath);
       const previousRoot = await fs.promises.realpath(existing.metadata?.baseDir ?? projectDir(PROJECTS_DIR, projectId)).catch(() => null);
       const replacing = previousRoot !== normalizedPath;
-      if (replacing) await ctx.stopPublicFilesBeforeDelete?.(projectId);
-      // Retirement is a reserved metadata CAS; never restore the pre-retirement snapshot.
-      const existingMeta = getProject(db, projectId)?.metadata ?? {};
-      const { orchestratorWorkspace: _existingOrchestratorWorkspace, ...preservedMeta } =
-        existingMeta;
-      const nextMeta = {
-        ...preservedMeta,
-        kind: existingMeta.kind ?? 'prototype',
-        baseDir: normalizedPath,
-        importedFrom: 'folder' as const,
-        entryFile,
-        ...(normalizedOrchestratorWorkspace
-          ? { orchestratorWorkspace: normalizedOrchestratorWorkspace }
-          : {}),
-        ...(trustedPickerImport ? { fromTrustedPicker: true as const } : {}),
-      };
-      const updated = updateProject(db, projectId, { metadata: nextMeta });
+      const pendingRetirements = pendingCommentFileRetirements(db, projectId);
+      if (!replacing && pendingRetirements.some(row => !row.committed)) throw new Error('COMMENT_FILE_RETIREMENT_PENDING');
+      let updated: ReturnType<typeof updateProject> = null;
+      await withCommentFileDeletion(replacing || pendingRetirements.length ? ctx.stopPublicFilesBeforeDelete : undefined, projectId, undefined, async () => {
+        const existingMeta = getProject(db, projectId)?.metadata ?? {};
+        const { orchestratorWorkspace: _existingOrchestratorWorkspace, ...preservedMeta } =
+          existingMeta;
+        const nextMeta = {
+          ...preservedMeta,
+          kind: existingMeta.kind ?? 'prototype',
+          baseDir: normalizedPath,
+          importedFrom: 'folder' as const,
+          entryFile,
+          ...(normalizedOrchestratorWorkspace
+            ? { orchestratorWorkspace: normalizedOrchestratorWorkspace }
+            : {}),
+          ...(trustedPickerImport ? { fromTrustedPicker: true as const } : {}),
+        };
+        updated = updateProject(db, projectId, { metadata: nextMeta });
+        if (!updated) throw new Error('PROJECT_NOT_FOUND');
+        if (!replacing) return false;
+      });
+      // Retirement adopts reserved metadata after the root mutation commits.
+      updated = getProject(db, projectId);
       if (!updated) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
