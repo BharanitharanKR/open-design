@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { CommentPreparationError, prepareCommentIdentity } from '../../services/comment-preparation.js';
 import { ProjectPublicFileStopPendingError, type PublicFileDeleteTarget } from '../../collab/project-public-file-stop.js';
 import type { ProjectDeleteResponse } from '@open-design/contracts';
 import { publicFileMutationHandler } from '../public-file-mutation-handler.js';
@@ -42,6 +43,7 @@ import {
 } from '@open-design/contracts/runtime/preview-runtime-state';
 import {
   ANNOTATED_SELECTOR_HELPERS,
+  COMMENT_IDENTITY_HELPERS,
   automaticStrategyTaskProfileForProjectMetadata,
   defaultScenarioPluginIdForProjectMetadata,
   type ChatSessionMode,
@@ -897,6 +899,7 @@ const URL_PREVIEW_SELECTION_BRIDGE = `<script data-od-url-selection-bridge>
   }
   function active(){ return commentEnabled; }
 ${ANNOTATED_SELECTOR_HELPERS}
+${COMMENT_IDENTITY_HELPERS}
   function domSelectorFor(el){
     if (!el || !el.tagName || el === document.documentElement || el === document.body) return null;
     var parts = [];
@@ -928,6 +931,13 @@ ${ANNOTATED_SELECTOR_HELPERS}
       if (cs.display === 'none' || cs.visibility === 'hidden' || cs.pointerEvents === 'none') return false;
     } catch (_) { return false; }
     return true;
+  }
+  function visibleCommentTarget(el){
+    try {
+      var rect = el.getBoundingClientRect();
+      var cs = window.getComputedStyle(el);
+      return rect.width >= 1 && rect.height >= 1 && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) !== 0;
+    } catch (_) { return false; }
   }
   function meaningfulDomFallbackTarget(el){
     if (!visibleTarget(el)) return false;
@@ -973,13 +983,21 @@ ${ANNOTATED_SELECTOR_HELPERS}
   }
   function targetFrom(el, allowDomFallback, clickedEl, clickPoint){
     var id = annotatedElementIdFor(el);
-    if (allowDomFallback && id && generatedRootAnnotation(el, id)) return null;
     var selector = annotatedSelectorFor(el, esc);
+    if ((!clickedEl || clickedEl === el) && el && el.hasAttribute('data-od-comment-id')) {
+      var identity = ownCommentIdentity(el);
+      if (!identity) return null;
+      id = identity.elementId;
+      selector = identity.selector;
+    }
+    if (allowDomFallback && id && generatedRootAnnotation(el, id)) return null;
     if (!id && allowDomFallback && meaningfulDomFallbackTarget(el)) {
       selector = domSelectorFor(el);
       if (selector) id = 'dom:' + selector;
     }
-    if (!id || !selector) return null;
+    // Identity uniqueness has already counted the whole document, including
+    // hidden duplicates. Visibility is a separate location/geometry gate.
+    if (!id || !selector || !visibleCommentTarget(el)) return null;
     var rect = el.getBoundingClientRect();
     var tag = el.tagName ? el.tagName.toLowerCase() : 'element';
     var cls = typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
@@ -1011,7 +1029,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
   }
   function allTargets(){
     var includeDomFallback = commentEnabled && mode === 'picker';
-    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label]');
+    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id]');
     var items = [];
     var seen = Object.create(null);
     for (var i = 0; i < nodes.length; i++) {
@@ -1040,6 +1058,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     }, 120);
   }
   function findCommentTargetByIdentity(elementId, selector){
+    if (String(elementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(selector)) return strictCommentNode(elementId, selector);
     var el = null;
     if (selector) {
       try { el = document.querySelector(String(selector)); } catch (_) { el = null; }
@@ -1098,6 +1117,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     for (var i = 0; i < candidates.length; i++) {
       var clicked = candidates[i];
       var el = clicked;
+      if (clicked && clicked.hasAttribute('data-od-comment-id')) return { target: clicked, clicked: clicked };
       while (el && el !== document.documentElement) {
         if (allowDomFallback && meaningfulDomFallbackTarget(el)) return { target: el, clicked: clicked };
         if (el.getAttribute && (el.hasAttribute('data-od-id') || el.hasAttribute('data-screen-label'))) {
@@ -1337,6 +1357,18 @@ ${ANNOTATED_SELECTOR_HELPERS}
     if (data.type === 'od:comment-active-target') {
       activeCommentElementId = data.elementId ? String(data.elementId) : null;
       activeCommentSelector = data.selector ? String(data.selector) : null;
+      if ((String(activeCommentElementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(activeCommentSelector)) && data.locate && typeof data.requestId === 'string') {
+        var target = findCommentTargetByIdentity(activeCommentElementId, activeCommentSelector);
+        var payload = target && targetFrom(target, true);
+        if (payload) {
+          try { target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }); } catch (_) {}
+          payload = targetFrom(target, true);
+        }
+        window.parent.postMessage(payload
+          ? Object.assign({}, payload, { type: 'od:comment-active-target-update', requestId: data.requestId })
+          : { type: 'od:comment-location-missing', requestId: data.requestId }, '*');
+        return;
+      }
       schedulePostActiveCommentTarget();
     }
   });
@@ -1344,7 +1376,7 @@ ${ANNOTATED_SELECTOR_HELPERS}
     if (!commentEnabled || mode !== 'picker') return;
     var result = closestTarget(ev);
     if (!result) return;
-    var payload = targetFrom(result.target, true);
+    var payload = targetFrom(result.target, true, result.clicked);
     if (!payload || payload.elementId === hoveredId) return;
     hoveredId = payload.elementId;
     window.parent.postMessage(Object.assign({}, payload, { type: 'od:comment-hover' }), '*');
@@ -5801,6 +5833,7 @@ export function registerProjectArtifactRoutes(app: Express, ctx: RegisterProject
 }
 
 export interface RegisterProjectFileRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'uploads' | 'node' | 'projectStore' | 'projectFiles' | 'documents' | 'artifacts' | 'projectPreviewScopes'> {
+  isProjectEditingBusy?: (projectId: string) => boolean;
   publicFileMutations?: PublicFileMutations;
   stopPublicFilesBeforeDelete?: (projectId: string, target?: PublicFileDeleteTarget) => Promise<void>;
   verifyWorkspaceRequestAuthority?: VerifyWorkspaceRequestAuthority;
@@ -7298,7 +7331,9 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       // one would only manufacture history that never existed, inside a
       // project the member is told they cannot modify. The read itself is
       // never refused: browsing history stays open (飞书 recvq56vFjQKfT).
-      if (workingFileContent !== null && versions.length === 0
+      // Passive preparation-proof reads must never manufacture history.
+      // Default history browsing retains the existing authorized bootstrap.
+      if (req.query.bootstrap !== '0' && workingFileContent !== null && versions.length === 0
         && await requestCanWriteWorkspaceProject(
           req,
           getWorkspaceProject,
@@ -7429,6 +7464,39 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST',
         String(err?.message || err),
       );
+    }
+  });
+
+  // Explicit authorized source mutation; preview/comment permissions never call this.
+  app.post(/^\/api\/projects\/([^/]+)\/files\/(.+)\/comment-identities\/prepare$/u, async (req, res) => {
+    try {
+      if (!req.get('x-od-workspace-id')?.trim() || !req.get('x-od-workspace-member-id')?.trim()) {
+        return sendApiError(res, 403, 'WORKSPACE_CONTEXT_REQUIRED', 'Authenticated workspace source-edit authority required');
+      }
+      const projectId = String(req.params[0] ?? '');
+      const fileName = String(req.params[1] ?? '');
+      if (rejectInternalVersionPath(res, fileName)) return;
+      const project = getProject(db, projectId);
+      if (!project) return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      const authority = await ctx.verifyWorkspaceRequestAuthority?.(req);
+      if (!authority) return sendApiError(res, 503, 'WORKSPACE_AUTHORITY_UNAVAILABLE', 'Source-edit authority could not be verified');
+      if (!authority.ok) return sendApiError(res, authority.status, authority.code, authority.message);
+      const verified = authority.context;
+      const resource = getWorkspaceProject(db, verified.workspaceId, project.id);
+      if (!resource || verified.workspaceId !== req.get('x-od-workspace-id')?.trim() ||
+          verified.workspaceMemberId !== req.get('x-od-workspace-member-id')?.trim() ||
+          !workspaceResourceAccess(resource, workspaceResourceContextFromVerified(verified)).canMutate) {
+        return sendApiError(res, 403, 'WORKSPACE_PROJECT_PERMISSION_DENIED', 'Verified source-write permission required');
+      }
+      if (!await enforceWorkspaceProjectMutation(
+        req, res, sendApiError, getWorkspaceProject, getWorkspaceProjectByProjectId,
+        db, project.id, 'writeFiles',
+      )) return;
+      const busy = () => ctx.isProjectEditingBusy?.(project.id) ?? true;
+      res.json(await prepareCommentIdentity(PROJECTS_DIR, project.id, fileName, req.body, project.metadata, busy));
+    } catch (err) {
+      if (err instanceof CommentPreparationError) return sendApiError(res, err.status, err.code, err.message);
+      sendApiError(res, 500, 'COMMENT_PREPARATION_FAILED', 'Source save or version verification failed; reload source before explicitly retrying. No rollback was attempted.');
     }
   });
 

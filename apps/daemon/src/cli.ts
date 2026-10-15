@@ -8774,6 +8774,8 @@ async function runFiles(args) {
   od files delete <projectId> <name> [--json]  Delete a project file.
   od files diff   <projectId> <relpathA> [<relpathB> | --against -]
                                                Print a unified diff.
+  od files prepare-comments <projectId> <relpath> --prompt-file <source-path|->
+                                               Explicit source identity edit; settle drafts first.
   od files versions <projectId> <relpath>      List saved HTML versions.
   od files version-read <projectId> <relpath> <versionId>
                                                Stream one saved HTML version.
@@ -8957,6 +8959,24 @@ Common options:
           : '-';
         console.log(`${marker}\tv${version.version ?? '-'}\t${version.source ?? '-'}\t${createdAt}\t${version.id ?? '-'}\t${prompt}`);
       }
+      return;
+    }
+    case 'prepare-comments': {
+      const [id, rel] = positionalArgs(rest, PROJECT_RESOURCE_STRING_FLAGS);
+      if (!id || !rel || !flags['prompt-file']) {
+        console.error('Usage: od files prepare-comments <projectId> <relpath> --prompt-file <expected-source|-> [--json]');
+        process.exit(2);
+      }
+      const expectedSource = await readFileFlagOrStdin(flags['prompt-file']);
+      const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}/files/${encodeProjectRelpath(rel)}/comment-identities/prepare`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...workspaceHeaders },
+        body: JSON.stringify({ expectedSource, editingSettled: true }),
+      });
+      if (!resp.ok) return structuredHttpFailure(resp, 'project-not-found');
+      const data = await resp.json();
+      if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+      console.log(`[files] prepared ${data.preparedTargets} targets; version ${data.version.id}; changed=${data.changed}`);
       return;
     }
     case 'version-read': {
