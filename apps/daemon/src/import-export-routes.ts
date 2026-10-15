@@ -338,16 +338,20 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
             : {}),
           ...(trustedPickerImport ? { fromTrustedPicker: true as const } : {}),
         };
-        updated = updateProject(db, projectId, { metadata: nextMeta });
-        if (!updated) throw new Error('PROJECT_NOT_FOUND');
-        if (!replacing) return false;
+        // End every old local pointer with the root switch, including local-only
+        // notes with no admitted fact. Remote retirement may fail afterward.
+        return db.transaction((): void | false => {
+          updated = updateProject(db, projectId, { metadata: nextMeta });
+          if (!updated) throw new Error('PROJECT_NOT_FOUND');
+          if (!replacing) return false;
+          deleteProjectWorkspaceArtifacts(db, projectId);
+        })();
       });
       // Retirement adopts reserved metadata after the root mutation commits.
       updated = getProject(db, projectId);
       if (!updated) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (replacing) deleteProjectWorkspaceArtifacts(db, projectId);
       // Folder imports should land on Design Files so users can choose from
       // the imported folder's artifacts. Persist an empty saved tab state so
       // ProjectView does not auto-open the detected primary file on hydration.

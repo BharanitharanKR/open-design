@@ -11,7 +11,7 @@ import { registerImportRoutes } from '../../src/import-export-routes.js';
 import { createCommentFileDeletion } from '../../src/collab/comment-file-deletion.js';
 import { createLocalCommentFiles } from '../../src/collab/local-comment-files.js';
 import { createPublicFileMutations } from '../../src/collab/public-file-mutations.js';
-import { ensureWorkspaceArtifactForPath } from '../../src/chat-artifacts/store.js';
+import { ensureWorkspaceArtifactForPath, getWorkspaceArtifact } from '../../src/chat-artifacts/store.js';
 import { pendingCommentFileRetirements } from '../../src/collab/comment-file-retirements.js';
 
 it.each(['local-rejection', 'remote-rejection'] as const)('working-root replacement retires after the local metadata commit, with exact retry: %s', async failure => {
@@ -25,11 +25,20 @@ it.each(['local-rejection', 'remote-rejection'] as const)('working-root replacem
     fs.mkdirSync(nextRoot);
     fs.writeFileSync(path.join(projectsRoot, 'p', 'index.html'), 'original');
     fs.writeFileSync(path.join(nextRoot, 'index.html'), 'replacement');
+    fs.writeFileSync(path.join(projectsRoot, 'p', 'b.html'), 'old local-only file');
+    fs.writeFileSync(path.join(nextRoot, 'b.html'), 'different replacement file');
     const db = store.openDatabase(dataRoot, { dataDir: dataRoot });
     store.insertProject(db, { id: 'p', name: 'P', createdAt: 1, updatedAt: 1 });
     store.ensureWorkspaceProject(db, { projectId: 'p', workspaceId: 'w', visibility: 'personal', createdByWorkspaceMemberId: 'creator', resourceHubResourceId: 'root' });
     const local = createLocalCommentFiles(db);
     const oldId = ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: 'index.html', kind: 'html' }).id;
+    const localOnlyId = local.identity('p', 'b.html');
+    store.insertConversation(db, { id: 'c', projectId: 'p', title: 'C', createdAt: 1, updatedAt: 1 });
+    const localNote = store.upsertPreviewComment(db, 'p', 'c', { sourceFileId: localOnlyId,
+      authorMemberId: 'creator', note: 'belongs only to the old root', target: { filePath: 'b.html',
+        elementId: 'hero', selector: '#hero', label: 'Hero', position: { x: 0, y: 0, width: 1, height: 1 } } });
+    if (!localNote) throw new Error('missing local note');
+    let replacementLocalId: string | undefined;
     const fact = { sourceFileId: oldId, sourceFilePath: 'index.html', entryPath: 'index.html', resourceId: 'selected', versionId: 'v1', retired: false };
     let catalog: CommentFileState = { schemaVersion: 1, revision: 1, files: [fact] };
     store.updateProject(db, 'p', { metadata: { unrelated: 'keep', _commentFiles: catalog } });
@@ -74,15 +83,26 @@ it.each(['local-rejection', 'remote-rejection'] as const)('working-root replacem
       expect(pendingCommentFileRetirements(db, 'p')).toEqual([]);
       expect(local.identity('p', 'index.html')).toBe(oldId);
       expect(store.getProject(db, 'p')?.metadata?.baseDir).toBeUndefined();
+      expect(getWorkspaceArtifact(db, localOnlyId)?.deletedAt).toBeNull();
+      expect(local.identity('p', 'b.html')).toBe(localOnlyId);
+      expect(store.listPreviewComments(db, 'p', 'c').some(note => note.id === localNote.id)).toBe(true);
     } else {
       expect(pendingCommentFileRetirements(db, 'p')[0]?.committed).toBe(true);
       expect(() => local.identity('p', 'index.html')).toThrow('COMMENT_FILE_RETIREMENT_PENDING');
+      expect.soft(getWorkspaceArtifact(db, localOnlyId)?.deletedAt).not.toBeNull();
+      replacementLocalId = local.identity('p', 'b.html');
+      expect.soft(replacementLocalId).not.toBe(localOnlyId);
+      expect.soft(store.listPreviewComments(db, 'p', 'c').some(note => note.id === localNote.id)).toBe(false);
     }
     rejectLocal = false; rejectRemote = false;
     expect((await replace()).status).toBe(200);
     expect(catalog.files).toEqual([{ ...fact, retired: true }]);
     expect(pendingCommentFileRetirements(db, 'p')).toEqual([]);
     expect(local.identity('p', 'index.html')).not.toBe(oldId);
+    expect(getWorkspaceArtifact(db, localOnlyId)?.deletedAt).not.toBeNull();
+    expect(local.identity('p', 'b.html')).not.toBe(localOnlyId);
+    if (replacementLocalId) expect(local.identity('p', 'b.html')).toBe(replacementLocalId);
+    expect(store.listPreviewComments(db, 'p', 'c').some(note => note.id === localNote.id)).toBe(false);
     expect(store.getProject(db, 'p')?.metadata?.unrelated).toBe('keep');
     expect(store.getProject(db, 'p')?.metadata?._commentFiles).toEqual(catalog);
   } finally {
