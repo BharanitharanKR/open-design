@@ -306,6 +306,9 @@ test('[P1] local-agent send from Home still enters the pending frame within a fr
 });
 
 test('[P0] funding confirmation only updates the cache and billing events expire it without auto-send', async ({ page }, testInfo) => {
+  // This case exercises event invalidation, not TTL expiry during slow UI steps.
+  const generatedAt = new Date().toISOString();
+  await page.clock.setFixedTime(generatedAt);
   await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
   const create = await holdProjectCreate(page);
   const confirmation = deferred();
@@ -313,7 +316,6 @@ test('[P0] funding confirmation only updates the cache and billing events expire
   const { workspaceId, workspaceMemberId } = AMR_PERSONAL_WORKSPACE_CONTEXT;
   await routeSuccessfulRuns(page, { runId: 'home-funding-cache-event-run' });
   await page.route('**/api/workspace/billing?**', async (route) => {
-    const generatedAt = new Date().toISOString();
     await route.fulfill({ json: {
       summary: null,
       workspaceBalance: { workspaceId, workspaceMemberId, balanceUsd: '0', billingScopeVersion: 2, updatedAt: generatedAt, expiresAt: null },
@@ -324,8 +326,16 @@ test('[P0] funding confirmation only updates the cache and billing events expire
       },
     } });
   });
+  let billingEventsDelivered = false;
   await page.route('**/api/workspace/events?**', async (route) => {
     await billingEvent.promise;
+    // A finite SSE response reconnects. Do not replay the same changes and
+    // invalidate the new positive hint again before the user's next click.
+    if (billingEventsDelivered) {
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    billingEventsDelivered = true;
     await route.fulfill({ contentType: 'text/event-stream', body: Array.from({ length: 8 }, (_, i) =>
       `event: wallet-balance-changed\ndata: ${JSON.stringify({ type: 'wallet-balance-changed', workspaceId, workspaceMemberId, revision: String(i + 1) })}\n\n`,
     ).join('') });
@@ -341,7 +351,7 @@ test('[P0] funding confirmation only updates the cache and billing events expire
     await route.fulfill({ json: { preflight: {
       schemaVersion: 1, workspaceId: url.searchParams.get('workspaceId'),
       workspaceMemberId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceMemberId,
-      modelId: url.searchParams.get('modelId'), generatedAt: new Date().toISOString(), balanceUsd: '0',
+      modelId: url.searchParams.get('modelId'), generatedAt, balanceUsd: '0',
       fundingCheck: confirming ? 'available' : 'insufficient',
     } } });
   });
