@@ -37,7 +37,7 @@ describe('bundled OD Next Strategy V2 package', () => {
   it('declares the active versioned asset set and exact planning recipe identity', () => {
     expect(manifest).toMatchObject({
       name: 'od-next-strategy',
-      version: '3.3.4',
+      version: '3.3.5',
       od: {
         kind: 'scenario',
         hidden: true,
@@ -144,9 +144,9 @@ describe('bundled OD Next Strategy V2 package', () => {
     const ruleCard = readFileSync(`${pluginRoot}/assets/task-profiles/prototype.md`, 'utf8');
     const primitives = readFileSync(`${pluginRoot}/assets/task-profiles/prototype/layout.css`, 'utf8');
 
-    expect(prototype?.version).toBe('3.1.5');
+    expect(prototype?.version).toBe('3.1.6');
     expect(prototype?.resources?.find((resource) => resource.path.endsWith('/layout.css'))?.version)
-      .toBe('1.1.0');
+      .toBe('1.1.1');
     expect(ruleCard).toContain('### Bound functional icon geometry');
     expect(ruleCard).toContain('`.od-icon`');
     expect(ruleCard).toContain('`--od-icon-size`');

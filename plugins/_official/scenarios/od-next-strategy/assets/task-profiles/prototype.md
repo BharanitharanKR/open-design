@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.5
+# OD Next Prototype Task Profile v3.1.6
 
 > Rollout: active
 
@@ -52,8 +52,12 @@ While composing source, keep DOM lookup cardinality explicit: `querySelector`
 returns one element or null; `querySelectorAll` returns a collection. Do not
 iterate a single-element lookup or mix the return types of selector helpers.
 An initialization error must not leave seeded content and controls unbound.
-When toggling `hidden`, ensure authored display rules do not override it;
-results and their empty state must never appear at the same time.
+When toggling `hidden`, preserve the native hidden-state rule shipped in
+`layout.css`, including its `until-found` exception. Component flex/grid display
+rules must not reveal hidden dialogs, validation messages, or empty states.
+Keep untouched and successfully reset forms free of error messages; show a
+field error only after the user validates an invalid value. Results and their
+empty state must never appear at the same time.
 Keep handler, label, and validation-feedback selectors consistent with the IDs
 actually rendered in the markup. Do not derive feedback IDs by mixing input
 and field naming schemes. Optional feedback nodes must be null-safe; a missing
@@ -214,7 +218,9 @@ quotes it in the `layout-primitives` context fact. It is structure only —
 display, flex/grid, overflow, wrapping, ratio, and opt-in icon geometry — and
 sets no palette, type, spacing scale, or component look. Put the whole block
 into the document's own `<style>` as its first rule set (`@layer od-layout`
-must come first so the product's CSS always wins), keep the
+must come first so the product's ordinary layout CSS wins). Its native hidden
+rule deliberately takes precedence over component display declarations; keep
+that rule intact along with the
 `OD-LAYOUT-PRIMITIVES v1` marker comments, and compose the shapes below from it
 instead of re-deriving them per card, row, tile, or chip.
 
