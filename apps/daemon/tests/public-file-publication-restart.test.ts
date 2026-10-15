@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -18,6 +19,7 @@ import { closeDatabase, openDatabase } from '../src/db.js';
 import { createShareContentFingerprints, type ShareContentFingerprints } from '../src/collab/share-content-fingerprint.js';
 import { buildDeployFilePlan } from '../src/deploy.js';
 import { createPublicSharePublishingFixture, fixtureShareSlug, type FixtureShareCloud } from './public-share-publishing-fixture.js';
+import { createShareAliasReservations } from '../src/collab/share-alias-reservation.js';
 
 const vela = vi.hoisted(() => ({
   runResourceCommand: vi.fn(),
@@ -224,11 +226,18 @@ describe('public file publication restart lifecycle', () => {
     expect(cloudCommands.at(-1)).toEqual(['share', 'stop', fixtureShareSlug, '--project-id', 'project-1', '--json']);
   });
 
-  it('never compensates by stopping an existing cloud alias when its local witness is missing', async () => {
+  it.each(['bound', 'unbound'] as const)('never compensates by stopping an existing cloud alias when its local publication witness is missing: %s', async identity => {
     const projectDir = await mkdtemp(path.join(tmpdir(), 'od-existing-publication-'));
     tempDirs.push(projectDir);
     await writeFile(path.join(projectDir, 'index.html'), '<h1>Updated</h1>');
-    cloud.set('project-1:index.html', { projectId: 'project-1', sourceFilePath: 'index.html', slug: fixtureShareSlug, status: 'active' });
+    const sourceFileId = randomUUID();
+    // A creator identity/reservation is not a successful publication witness.
+    // The transport fixture reads this UUID, rather than electing it from cloud history.
+    createShareAliasReservations(openDatabase(projectDir, { dataDir: projectDir }), () => fixtureShareSlug).reserve({
+      resourceTeamId: 'team-1', ownerMemberId: 'member-1', projectId: 'project-1', filePath: 'index.html', sourceFileId,
+    });
+    cloud.set('project-1:index.html', { projectId: 'project-1', sourceFilePath: 'index.html',
+      ...(identity === 'bound' ? { sourceFileId } : {}), slug: fixtureShareSlug, status: 'active' });
     vela.runResourceCommand.mockResolvedValue(JSON.stringify({ id: 'version-2', version: 2 }));
     const store: PublicFilePublicationStore = {
       get: () => null, getRevision: () => null, deleteIfRevisionMatches: () => false, updateLink: () => false,
@@ -236,9 +245,16 @@ describe('public file publication restart lifecycle', () => {
     };
     const daemon = await startDaemon(projectDir, store);
     const response = await daemon.request('POST');
-    expect(response.status).toBe(502);
-    expect(response.body).toMatchObject({ error: { code: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED' } });
-    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['team-projects', 'register-resource'], ['resource', 'push'], ['share', 'publish']]);
+    if (identity === 'bound') {
+      expect(response.status).toBe(502);
+      expect(response.body).toMatchObject({ error: { code: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED' } });
+      expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['team-projects', 'register-resource'], ['resource', 'push'], ['share', 'publish']]);
+    } else {
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'SHARE_FILE_IDENTITY_UNAVAILABLE' });
+      expect(cloudCommands).toEqual([]);
+      expect(vela.runResourceCommand).not.toHaveBeenCalled();
+    }
     expect(cloud.get('project-1:index.html')?.status).toBe('active');
   });
 
