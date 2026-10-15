@@ -68,6 +68,39 @@ describe('independent AMR funding feedback', () => {
     finish(new Response(JSON.stringify({ preflight })));
     expect(await result).toBe('unknown');
   });
+  it('serializes invalidated reads and coalesces a burst into one latest follow-up', async () => {
+    const { scope, preflight, fetchMock } = fixture('insufficient');
+    await checkAmrFundingFeedback(scope, 'model');
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const old = checkAmrFundingFeedback(scope, 'model');
+    const followups = Array.from({ length: 8 }, () => {
+      invalidateAmrFundingFeedback();
+      return checkAmrFundingFeedback(scope, 'model');
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    finish(new Response(JSON.stringify({ preflight: { ...preflight, fundingCheck: 'available' } })));
+    expect(await old).toBe('unknown');
+    expect(await Promise.all(followups)).toEqual(Array(8).fill('insufficient'));
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
+  });
+  it.each(['leave-home', 'account-change'] as const)('cancels a queued background read on %s', async (change) => {
+    const { scope, preflight, fetchMock } = fixture('insufficient');
+    await checkAmrFundingFeedback(scope, 'model');
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const old = checkAmrFundingFeedback(scope, 'model');
+    invalidateAmrFundingFeedback();
+    let active = true;
+    const queued = checkAmrFundingFeedback(scope, 'model', () => active);
+    if (change === 'leave-home') active = false;
+    else advanceWorkspaceAccountGeneration('queued-new-account');
+    finish(new Response(JSON.stringify({ preflight })));
+    expect(await old).toBe('unknown');
+    expect(await queued).toBe('unknown');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
   it('leaves network failure unknown', async () => {
     const { scope, fetchMock } = fixture('insufficient');
     fetchMock.mockRejectedValue(new Error('offline'));
@@ -174,9 +207,10 @@ describe('Home cached funding gate', () => {
     fetchMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const old = checkAmrFundingFeedback(scope, 'model');
     invalidateAmrFundingFeedback();
-    expect(await checkAmrFundingFeedback(scope, 'model')).toBe('insufficient');
+    const current = checkAmrFundingFeedback(scope, 'model');
     finish(new Response(JSON.stringify({ preflight: { ...preflight, fundingCheck: 'available' } })));
     expect(await old).toBe('unknown');
+    expect(await current).toBe('insufficient');
     expect(cachedHomeAmrFundingBlock(scope, 'model')).not.toBeNull();
   });
   it('billing invalidation prevents an older in-flight read from restoring the block', async () => {

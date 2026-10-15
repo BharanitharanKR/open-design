@@ -394,10 +394,52 @@ describe('Home memory funding gate', () => {
     });
     await checkAmrFundingFeedback(context, 'default');
     return { ...h,
+      fundingReads: () => reads,
       confirm: (fundingCheck: string) => finishConfirmation(jsonResponse({ preflight: { ...preflight, fundingCheck } })),
       confirmResponse: (response: Response | Error) => finishConfirmation(response),
     };
   }
+
+  it('refreshes a retained Home block after billing refresh without another send', async () => {
+    const h = await primeHomeFunding();
+    const before = billingReads;
+    // Move beyond the existing billing fetch burst window without sleeping.
+    const now = vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 1_000);
+    try {
+      await act(async () => {
+        window.dispatchEvent(new Event('od:workspace-billing-refresh'));
+      });
+      await waitFor(() => expect(billingReads).toBeGreaterThan(before));
+      await waitFor(() => expect(h.fundingReads()).toBe(2));
+      expect(cachedHomeAmrFundingBlock(personalContext(), 'default')).not.toBeNull();
+      await act(async () => h.confirm('available'));
+      expect(cachedHomeAmrFundingBlock(personalContext(), 'default')).toBeNull();
+      expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+      await submitHome('Send only after the user asks.');
+      await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+    } finally { now.mockRestore(); }
+  });
+
+
+  it('retries unknown on the next billing publication without a fixed cooldown, then stops after recovery', async () => {
+    const h = await primeHomeFunding();
+    let tick = performance.now();
+    const now = vi.spyOn(performance, 'now').mockImplementation(() => tick);
+    try {
+      for (const [index, verdict] of ['unknown', 'available'].entries()) {
+        tick += 1_000; // Only advance the existing display-fetch burst clock.
+        await act(async () => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
+        await waitFor(() => expect(h.fundingReads()).toBe(index + 2));
+        await act(async () => h.confirm(verdict));
+        expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+      }
+      const reads = billingReads;
+      tick += 1_000;
+      await act(async () => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
+      await waitFor(() => expect(billingReads).toBeGreaterThan(reads));
+      expect(h.fundingReads()).toBe(3);
+    } finally { now.mockRestore(); }
+  });
 
   it('restores #8240 from the displayed wallet and plan without an independent hint', async () => {
     const context = personalContext();

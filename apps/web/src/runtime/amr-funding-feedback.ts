@@ -3,7 +3,7 @@ import { currentWorkspaceAccountGeneration } from '../collab/workspace-identity'
 import type { AmrBalanceGateScope } from './amr-balance-gate';
 
 type FundingFeedback = 'available' | 'insufficient' | 'unknown';
-const pending = new Map<string, Promise<FundingFeedback>>();
+const pending = new Map<string, { generation: number; promise: Promise<FundingFeedback> }>();
 let positive: { key: string; expiresAt: number } | null = null;
 const homeBlocks = new Map<string, AmrWalletSnapshot>();
 let blockAccountGeneration = currentWorkspaceAccountGeneration();
@@ -43,15 +43,21 @@ export function invalidateAmrFundingFeedback(): void {
 export function checkAmrFundingFeedback(
   scope: AmrBalanceGateScope | undefined,
   modelId: string | null,
+  isCurrent: () => boolean = () => true,
 ): Promise<FundingFeedback> {
-  if (!scope) return Promise.resolve('unknown');
+  if (!scope || !isCurrent()) return Promise.resolve('unknown');
   const generation = currentWorkspaceAccountGeneration();
   const key = fundingKey(scope, modelId);
   if (positive?.key === key && positive.expiresAt > Date.now()) return Promise.resolve('available');
   const requestGeneration = cacheGeneration;
-  const requestKey = JSON.stringify([requestGeneration, key]);
-  const existing = pending.get(requestKey);
-  if (existing) return existing;
+  const existing = pending.get(key);
+  if (existing) {
+    if (existing.generation === requestGeneration) return existing.promise;
+    // A newer billing publication supersedes this read. Wait for it to settle
+    // before checking again; all queued callers then share the latest read.
+    return existing.promise.then(() => generation === currentWorkspaceAccountGeneration()
+      ? checkAmrFundingFeedback(scope, modelId, isCurrent) : 'unknown');
+  }
   const request = (async (): Promise<FundingFeedback> => {
     try {
       const query = new URLSearchParams({ workspaceId: scope.workspaceId });
@@ -62,7 +68,7 @@ export function checkAmrFundingFeedback(
       if (!response.ok) return 'unknown';
       const { preflight } = await response.json() as WorkspaceBillingPreflightResponse;
       const age = Date.now() - Date.parse(preflight?.generatedAt);
-      if (generation !== currentWorkspaceAccountGeneration() || requestGeneration !== cacheGeneration || !preflight ||
+      if (!isCurrent() || generation !== currentWorkspaceAccountGeneration() || requestGeneration !== cacheGeneration || !preflight ||
         preflight.schemaVersion !== 1 || preflight.workspaceId !== scope.workspaceId ||
         preflight.workspaceMemberId !== scope.workspaceMemberId || preflight.modelId !== modelId ||
         !Number.isFinite(age) || age < -5_000 || age > 30_000) return 'unknown';
@@ -87,7 +93,7 @@ export function checkAmrFundingFeedback(
       return 'unknown';
     }
   })();
-  pending.set(requestKey, request);
-  void request.finally(() => pending.delete(requestKey));
+  pending.set(key, { generation: requestGeneration, promise: request });
+  void request.finally(() => pending.delete(key));
   return request;
 }

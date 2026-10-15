@@ -780,6 +780,21 @@ export function EntryShell({
     // trigger more requests on unrelated composer renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [homeFundingIdentity]);
+  useEffect(() => {
+    // Reuse successful scoped billing publications (SSE, focus or fallback).
+    // Only an existing Home block needs this extra model-specific recovery read.
+    if (!homeFundingIdentity || !homeFundingScope || !workspaceBillingResponse ||
+      workspaceBillingBalanceUsd(workspaceBillingResponse, homeFundingContext) == null ||
+      !cachedHomeAmrFundingBlock(homeFundingScope, homeFundingModelId)) return;
+    let active = true;
+    invalidateAmrFundingFeedback();
+    void checkAmrFundingFeedback(homeFundingScope, homeFundingModelId,
+      () => active && homeFundingIdentityRef.current === homeFundingIdentity);
+    return () => { active = false; };
+    // Billing response identity changes only when the shared hook publishes a
+    // new read. Unrelated composer renders must not schedule recovery requests.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeFundingIdentity, workspaceBillingResponse]);
   const [goPlanSunsetMessagePending, setGoPlanSunsetMessagePending] = useState(false);
   const deepSeekCampaignVisibility = useDeepSeekV4FlashCampaignVisibility();
   // Same personal-vs-team accountPlan rule as App's `resolvedAmrPlan`.

@@ -405,6 +405,66 @@ test('[P0] funding confirmation only updates the cache and billing events expire
   }
 });
 
+test('[P0] a billing refresh recovers blocked Home funding without another send', async ({ page }, testInfo) => {
+  const generatedAt = new Date().toISOString();
+  await page.clock.setFixedTime(generatedAt);
+  await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
+  const create = await holdProjectCreate(page);
+  const runs = await routeSuccessfulRuns(page, { runId: 'home-funding-auto-refresh-run' });
+  const billingEvent = deferred();
+  const { workspaceId, workspaceMemberId } = AMR_PERSONAL_WORKSPACE_CONTEXT;
+  let available = false;
+  let hintReads = 0;
+  let delivered = false;
+  await page.route('**/api/workspace/events?**', async (route) => {
+    await billingEvent.promise;
+    if (delivered) return route.fulfill({ status: 204 });
+    delivered = true;
+    await route.fulfill({ contentType: 'text/event-stream', body: Array.from({ length: 8 }, (_, i) =>
+      `event: wallet-balance-changed\ndata: ${JSON.stringify({ type: 'wallet-balance-changed', workspaceId, workspaceMemberId, revision: String(i + 1) })}\n\n`,
+    ).join('') });
+  });
+  await page.route('**/api/workspace/billing/preflight?**', async (route) => {
+    hintReads++;
+    const url = new URL(route.request().url());
+    await route.fulfill({ json: { preflight: { schemaVersion: 1, workspaceId, workspaceMemberId,
+      modelId: url.searchParams.get('modelId'), generatedAt, balanceUsd: available ? '10' : '0',
+      fundingCheck: available ? 'available' : 'insufficient' } } });
+  });
+  const warmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?')
+    && new URL(response.url()).searchParams.get('modelId') === 'glm-5');
+  try {
+    await gotoEntryHome(page);
+    await (await warmed).finished();
+    const checked = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+    await sendFromHome(page, 'Recover after external recharge without resubmitting.');
+    await (await checked).finished();
+    const dialog = page.getByTestId('amr-balance-dialog');
+    await expect(dialog).toBeVisible();
+    available = true;
+    const recovered = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+    billingEvent.resolve();
+    await (await recovered).finished();
+    await expect(dialog).toBeVisible();
+    expect(create.requested()).toBe(false);
+    await testInfo.attach('billing-refresh-recovers-without-auto-submit', { body: await page.screenshot(), contentType: 'image/png' });
+    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+    await sendFromHome(page, 'Recover after external recharge without resubmitting.');
+    await expect.poll(() => create.requested()).toBe(true);
+    create.release();
+    await runs.expectCount(1);
+    await expect(page.getByTestId('chat-composer')).toBeVisible();
+    const before = hintReads;
+    const refreshed = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/workspace/billing');
+    await page.evaluate(() => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
+    await (await refreshed).finished();
+    expect(hintReads).toBe(before);
+  } finally {
+    billingEvent.resolve();
+    create.release();
+  }
+});
+
 test('[P0] twenty Home sends stay blocked across expiry, billing events and failed confirmation', async ({ page }, testInfo) => {
   const start = Date.now();
   await page.clock.setFixedTime(start);
