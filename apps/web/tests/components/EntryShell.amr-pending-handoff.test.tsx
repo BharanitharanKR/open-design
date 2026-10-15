@@ -33,7 +33,8 @@ import type {
 } from '../../src/components/EntryShell';
 import { I18nProvider } from '../../src/i18n';
 import { checkAmrBalanceGate } from '../../src/runtime/amr-balance-gate';
-import { checkAmrFundingFeedback, invalidateAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
+import { cachedHomeAmrFundingBlock, checkAmrFundingFeedback, invalidateAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
+import { useWorkspaceInvalidation } from '../../src/collab/workspace-events';
 import { advanceWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 import type { AgentInfo, AppConfig } from '../../src/types';
 import { EntryShellWithGateHost } from '../helpers/entry-shell-gate-host';
@@ -43,6 +44,11 @@ import { workspaceDirectoryFixture } from '../helpers/workspace-context';
 vi.mock('../../src/runtime/amr-balance-gate', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/runtime/amr-balance-gate')>();
   return { ...actual, checkAmrBalanceGate: vi.fn() };
+});
+
+vi.mock('../../src/collab/workspace-events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/collab/workspace-events')>();
+  return { ...actual, useWorkspaceInvalidation: vi.fn(actual.useWorkspaceInvalidation) };
 });
 
 vi.mock('../../src/components/AmrBalanceDialog', () => ({
@@ -427,12 +433,17 @@ describe('Home memory funding gate', () => {
     expect(screen.getByTestId('home-hero-input')).toHaveTextContent('Keep this draft on Home.');
   });
 
-  it('releases a provisional cache block only on available confirmation', async () => {
+  it('updates available funding without submitting until the user sends again', async () => {
     const h = await primeHomeFunding();
     await submitHome('Continue this draft.');
     await screen.findByTestId('amr-balance-dialog');
     expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
-    h.confirm('available');
+    await act(async () => { h.confirm('available'); });
+    expect(screen.getByTestId('amr-balance-dialog')).toBeTruthy();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('home-hero-submit')).toBeEnabled());
+    await submitHome('Continue this draft.');
     await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
     expect(h.calls).toEqual(['begin', 'gate', 'create']);
     expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
@@ -456,9 +467,45 @@ describe('Home memory funding gate', () => {
     await submitHome('Keep this draft until funding is confirmed.');
     await screen.findByTestId('amr-balance-dialog');
     expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
-    h.confirm('available');
+    await act(async () => { h.confirm('available'); });
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('home-hero-submit')).toBeEnabled());
+    await submitHome('Keep this draft until funding is confirmed.');
     await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
   });
+
+  it.each(['billing-changed', 'billing-subscription-changed', 'wallet-balance-changed', 'coding-plan-usage-changed'] as const)(
+    '%s invalidates the scoped hint without fetching or submitting', async (type) => {
+      const h = await primeHomeFunding();
+      const context = personalContext();
+      const handlers = [...vi.mocked(useWorkspaceInvalidation).mock.calls].reverse().find(
+        ([handlers]) => handlers['team-project-content-ready'],
+      )![0];
+      const invalidate = handlers[type]!;
+      const event = {
+        type, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+        revision: '2', eventId: 'quota-2',
+      };
+      const readCount = vi.mocked(globalThis.fetch).mock.calls.length;
+      await act(async () => {
+        invalidate({ ...event, workspaceId: 'other-workspace' } as never);
+      });
+      expect(cachedHomeAmrFundingBlock(context, 'default')).not.toBeNull();
+      if (type === 'wallet-balance-changed' || type === 'coding-plan-usage-changed') {
+        await act(async () => { invalidate({ ...event, workspaceMemberId: 'other-member' } as never); });
+        expect(cachedHomeAmrFundingBlock(context, 'default')).not.toBeNull();
+      }
+      await act(async () => {
+        // Repeated notifications only invalidate memory; they do not create a
+        // new funding request per event.
+        for (let i = 0; i < 8; i++) invalidate(event as never);
+      });
+      expect(cachedHomeAmrFundingBlock(context, 'default')).toBeNull();
+      expect(vi.mocked(globalThis.fetch).mock.calls.length).toBe(readCount);
+      expect(h.onCreateProject).not.toHaveBeenCalled();
+    },
+  );
 
   it('does not continue an old send after the account changes during confirmation', async () => {
     const h = await primeHomeFunding();

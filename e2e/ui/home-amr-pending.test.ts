@@ -305,10 +305,31 @@ test('[P1] local-agent send from Home still enters the pending frame within a fr
   await expect(pending).toBeHidden({ timeout: T.medium });
 });
 
-test('[P0] cached backend insufficiency stays on Home and dismiss preserves the draft', async ({ page }, testInfo) => {
+test('[P0] funding confirmation only updates the cache and billing events expire it without auto-send', async ({ page }, testInfo) => {
   await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
   const create = await holdProjectCreate(page);
   const confirmation = deferred();
+  const billingEvent = deferred();
+  const { workspaceId, workspaceMemberId } = AMR_PERSONAL_WORKSPACE_CONTEXT;
+  await routeSuccessfulRuns(page, { runId: 'home-funding-cache-event-run' });
+  await page.route('**/api/workspace/billing?**', async (route) => {
+    const generatedAt = new Date().toISOString();
+    await route.fulfill({ json: {
+      summary: null,
+      workspaceBalance: { workspaceId, workspaceMemberId, balanceUsd: '0', billingScopeVersion: 2, updatedAt: generatedAt, expiresAt: null },
+      preflight: {
+        schemaVersion: 1, workspaceId, workspaceMemberId, modelId: null, generatedAt,
+        balanceUsd: '0', funding: 'gateway', modelCovered: null,
+        codingPlan: { workspaceId, generatedAt, eligible: false, tier: null, windows: [] },
+      },
+    } });
+  });
+  await page.route('**/api/workspace/events?**', async (route) => {
+    await billingEvent.promise;
+    await route.fulfill({ contentType: 'text/event-stream', body: Array.from({ length: 8 }, (_, i) =>
+      `event: wallet-balance-changed\ndata: ${JSON.stringify({ type: 'wallet-balance-changed', workspaceId, workspaceMemberId, revision: String(i + 1) })}\n\n`,
+    ).join('') });
+  });
   let hintReads = 0;
   let sending = false;
   const warmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?') && new URL(response.url()).searchParams.get('modelId') === 'glm-5' && response.ok());
@@ -338,16 +359,38 @@ test('[P0] cached backend insufficiency stays on Home and dismiss preserves the 
     expect(create.requested()).toBe(false);
     await expect.poll(() => hintReads).toBe(warmReads + 1);
     await testInfo.attach('home-cached-funding-block', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
-    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
     const confirmed = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
     confirmation.resolve();
-    await confirmed;
-    await expect(dialog).toBeHidden();
-    await expect(page.getByTestId('home-hero-input')).toHaveText(prompt);
-    await expect(page.getByTestId('home-hero-submit')).toBeEnabled();
+    await (await confirmed).finished();
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    await expect(dialog).toBeVisible();
     expect(create.requested()).toBe(false);
+    await testInfo.attach('home-available-confirmation-stays-blocked', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+
+    // The existing SSE billing subscriber reads the projection after the event;
+    // the Home hint subscriber only expires memory, with no extra funding read.
+    const billingRefreshed = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/workspace/billing');
+    billingEvent.resolve();
+    await (await billingRefreshed).finished();
+    expect(hintReads).toBe(warmReads + 1);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+    await expect(page.getByTestId('home-hero-input')).toHaveText(prompt);
+    // The event invalidated the positive hint, so this explicit send rechecks.
+    const rechecked = page.waitForResponse((response) => response.url().includes('/api/workspace/billing/preflight?'));
+    await sendFromHome(page, prompt);
+    await (await rechecked).finished();
+    await expect(dialog).toBeVisible();
+    expect(hintReads).toBe(warmReads + 2);
+    expect(create.requested()).toBe(false);
+    await dialog.getByRole('button', { name: /not now|later|暂不|稍后/i }).click();
+    await expect(page.getByTestId('home-hero-submit')).toBeEnabled();
+    // The new positive hint is consumed only by a new user send.
+    await sendFromHome(page, prompt);
+    await expect.poll(() => create.requested(), { timeout: T.medium }).toBe(true);
   } finally {
     confirmation.resolve();
+    billingEvent.resolve();
     create.release();
   }
 });
