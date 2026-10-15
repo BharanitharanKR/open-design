@@ -35,6 +35,9 @@ export function commentFileSourceKey(projectId: string, sourceFileId: string): s
 export function normalizeCurrentFileComment(state: CommentFileState | null, comment: CollabCloudComment): CollabCloudComment | null {
   // Compact tombstones use only the exact project/comment-id stored target.
   if (comment.deleted) return comment;
+  // Unsupported identity-less wire rows cannot acquire a guessed lifetime or
+  // hold newer protocol rows behind them. Partial/unknown identities still abort.
+  if (comment.sourceFileId === undefined && comment.sourceFilePath === undefined) return null;
   const fact = state?.files.find(item => item.sourceFileId === comment.sourceFileId);
   if (!fact || fact.sourceFilePath !== comment.sourceFilePath) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
   if (fact.retired) return null;

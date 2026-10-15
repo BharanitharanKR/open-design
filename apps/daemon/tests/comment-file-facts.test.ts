@@ -26,6 +26,14 @@ describe('one synchronous current-file guard for both inbound lanes', () => {
     const tombstone = { id: 'c', deleted: true } as CollabCloudComment;
     expect(normalizeCurrentFileComment(null, tombstone)).toBe(tombstone);
   });
+  it('skips only identity-less unsupported wire rows without guessing an identity', () => {
+    const { sourceFileId: _id, sourceFilePath: _path, ...legacy } = comment;
+    expect(normalizeCurrentFileComment(state(), legacy)).toBeNull();
+    expect(normalizeCurrentFileComment(null, legacy)).toBeNull();
+    expect(() => normalizeCurrentFileComment(state(), { ...legacy, sourceFileId: f1 })).toThrow('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+    expect(() => normalizeCurrentFileComment(state(), { ...legacy, sourceFilePath: fact.sourceFilePath })).toThrow('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+    expect(() => normalizeCurrentFileComment(state(), { ...comment, sourceFileId: f2 })).toThrow('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+  });
 });
 describe('receipt-bound reserved adoption', () => {
   it('does not install future facts before local content commits; refreshes selected without root', () => {

@@ -132,7 +132,10 @@ export interface CommentFileMutation {
   baseRevision: number;
   resourceId: string;
   versionId: string;
-  files: Array<Pick<CommentFileFact, 'sourceFileId' | 'sourceFilePath' | 'entryPath' | 'retired'>>;
+  files: Array<Pick<CommentFileFact, 'sourceFileId' | 'sourceFilePath' | 'entryPath' | 'retired'> & {
+    /** Retirement-only original receipt; omitted for a shared top-level receipt. Never admitted state. */
+    receipt?: Pick<CommentFileFact, 'resourceId' | 'versionId'>;
+  }>;
 }
 
 export interface PreviewComment {

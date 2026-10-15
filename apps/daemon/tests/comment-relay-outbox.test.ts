@@ -2181,3 +2181,37 @@ it('new file guard retries unknown and retirement cancels only the exact capture
     expect(outbox.count()).toBe(0);
   } finally { service.dispose(); }
 });
+
+it('retains exact lifetime identity in compact tombstones across store/service restart and guarded delivery', async () => {
+  const db = seededDb();
+  const queuedContext = context('member');
+  const id = '11111111-1111-4111-8111-111111111111';
+  const outbox = createCommentRelayOutboxStore(db, () => 100);
+  const push = vi.fn(async (..._args: Parameters<CollabCloudClient['pushComment']>) => ({ seq: 8 }));
+  const dependencies = {
+    client: clientWithPush(push),
+    resolveLocalProjectRelayBinding: () => ({ workspaceId: 'workspace-a', ownerMemberId: 'project-owner' }),
+    resolveRemoteProjectOwnerMemberId: async () => 'project-owner',
+    listProjectIds: () => [], resolveProjectWorkspaceContext: async () => queuedContext,
+    resolveLocalConversationId: () => 'conv-local', mergeComment: () => 'unchanged' as const,
+    now: () => 100, retryDelayMs: () => 0,
+    validateCommentRelayFile: (record: { comment: { sourceFileId?: string; sourceFilePath?: string } }) => {
+      if (record.comment.sourceFileId !== id || record.comment.sourceFilePath !== 'index.html') {
+        throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+      }
+      return 'current' as const;
+    },
+  };
+  const first = createCollabCloudService({ ...dependencies, commentOutbox: outbox });
+  first.enqueueCommentDeletion(comment({ sourceFileId: id, authorMemberId: 'member-member', note: 'x'.repeat(70_000) }), queuedContext);
+  first.dispose();
+  expect.soft(outbox.listDue(100)[0]?.comment).toMatchObject({ sourceFileId: id, sourceFilePath: 'index.html', deleted: true, note: '' });
+  const reopened = createCommentRelayOutboxStore(db, () => 100);
+  const second = createCollabCloudService({ ...dependencies, commentOutbox: reopened });
+  try {
+    await second.flushPendingComments();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls[0]?.[2]).toMatchObject({ sourceFileId: id, sourceFilePath: 'index.html', deleted: true, note: '' });
+    expect(reopened.count()).toBe(0);
+  } finally { second.dispose(); }
+});

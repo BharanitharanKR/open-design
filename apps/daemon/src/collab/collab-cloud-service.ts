@@ -341,6 +341,8 @@ function commentRelayPayload(comment: CollabCloudComment): CollabCloudComment {
 		createdAt: comment.createdAt,
 		updatedAt: comment.updatedAt,
 		deleted: true,
+		...(comment.sourceFileId !== undefined ? { sourceFileId: comment.sourceFileId } : {}),
+		...(comment.sourceFilePath !== undefined ? { sourceFilePath: comment.sourceFilePath } : {}),
 		note: '',
 		elementId: '',
 		selector: '',

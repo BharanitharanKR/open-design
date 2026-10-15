@@ -278,6 +278,8 @@ import { isAbortedOperationError } from './integrations/aborted-error.js';
 import { projectResourceIdFor } from './integrations/vela-team-projects.js';
 import { normalizeCurrentFileComment, parseCommentFileState } from './collab/comment-file-facts.js';
 import { createLocalCommentFiles } from './collab/local-comment-files.js';
+import { createCommentFileDeletion } from './collab/comment-file-deletion.js';
+import { createCommentFilePublisher } from './collab/comment-file-publisher.js';
 import { createCommentFilePublicationCoordination } from './collab/comment-file-publication-coordination.js';
 import { runVelaCommand, velaWorkspaceCommandOptions } from './integrations/vela-command.js';
 import {
@@ -943,7 +945,7 @@ import { createShareBindingOutbox } from './collab/share-binding-outbox.js';
 import { createShareBindingStartup } from './collab/share-binding-startup.js';
 import { createVelaShareBindingPrepare } from './collab/vela-share-binding-prepare.js';
 import { cleanupAbandonedPinnedVelaSessions } from './collab/vela-pinned-command.js';
-import { createProjectPublicFileStop, matchesPublicFileDeleteTarget, type PublicFileDeleteTarget } from './collab/project-public-file-stop.js';
+import { createProjectPublicFileStop } from './collab/project-public-file-stop.js';
 import { createPublicFileMutations } from './collab/public-file-mutations.js';
 import { resolveLocalProjectCommentWorkspaceContext } from './collab/project-comment-workspace-context.js';
 import { commentRelayScope, personalCommentRelayFilePaths } from './collab/comment-relay-scope.js';
@@ -4327,36 +4329,15 @@ export async function startServer({
       collab.scheduler.runBoundary(projectId, principal);
     },
   });
+  const publishWithCommentFiles = createCommentFilePublisher({
+    db, localFiles: localCommentFiles, runForWorkspace: commentFileRun,
+    resolveRoot: projectId => resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir),
+    listFiles: contentFiles,
+  });
   const collab = createCollabRuntime({
     coordinatePublication: (projectId, principal, publish) => {
-      const operation = async () => {
-        if (principal && velaCliTeamProjectCatalog) {
-          const root = await resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir);
-          const facts = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles)?.files ?? [];
-          for (const fact of facts.filter(item => !item.retired)) {
-            let missing = false;
-            try { fs.lstatSync(path.join(root, fact.sourceFilePath)); }
-            catch (error) { if (error?.code !== 'ENOENT') throw error; missing = true; }
-            if (missing) await localCommentFiles.retire({ projectId, workspaceId: principal.teamId,
-              creatorMemberId: principal.memberId, fact, run: commentFileRun(principal.teamId) });
-          }
-          // The outer publication reservation excludes new physical starters
-          // through admission. A queued Run may now be visible as busy but
-          // cannot write this cwd until this operation's finally releases it.
-        }
-        const result = await publish();
-        if (result?.versionId && principal && velaCliTeamProjectCatalog) {
-          const binding = getWorkspaceProjectByProjectId(db, projectId);
-          if (!binding?.resourceHubResourceId) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
-          const root = await resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir);
-          const paths = (await contentFiles(root)).filter(name => /\.html?$/i.test(name))
-            .map(name => ({ sourceFilePath: name, entryPath: name }));
-          await localCommentFiles.admit({ projectId, workspaceId: principal.teamId,
-            creatorMemberId: principal.memberId, resourceId: binding.resourceHubResourceId,
-            versionId: result.versionId, paths, run: commentFileRun(principal.teamId) });
-        }
-        return result;
-      };
+      const operation = () => velaCliTeamProjectCatalog
+        ? publishWithCommentFiles(projectId, principal, publish) : publish();
       const coordinated = () => ownedContentSync ? ownedContentSync.withPublication(projectId, principal, operation) : operation();
       return principal && velaCliTeamProjectCatalog
         ? publicFileMutations.run(projectId, () => commentFilePublications.run(projectId, principal, coordinated), { joinCurrent: true }) : coordinated();
@@ -9104,31 +9085,11 @@ export async function startServer({
     publicFilePublicationStore,
     createVelaPublicFileStop({ configuredEnv: configuredAmrEnv, dataRoot: RUNTIME_DATA_DIR }),
   );
-  const stopPublicFilesBeforeDelete = async (projectId: string, target?: PublicFileDeleteTarget) => {
-      const binding = getWorkspaceProjectByProjectId(db, projectId);
-      if (!binding?.workspaceId || !binding.createdByWorkspaceMemberId) {
-        // An orphaned publication cannot borrow the current user's identity.
-        const publication = (db.prepare('SELECT file_path FROM public_file_publications WHERE project_id = ?').all(projectId) as Array<{ file_path: string }>).some(row => matchesPublicFileDeleteTarget(row.file_path, target));
-        if (publication) throw new Error('PUBLIC_FILE_STOP_PENDING');
-        return;
-      }
-      const facts = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles)?.files
-        .filter(fact => !fact.retired && matchesPublicFileDeleteTarget(fact.sourceFilePath, target)) ?? [];
-      if (facts.length && ownerProjectHasActiveRun(projectId)) throw new Error('COMMENT_FILE_PROJECT_BUSY');
-      for (const fact of facts) {
-        const scope = { resourceTeamId: binding.workspaceId, ownerMemberId: binding.createdByWorkspaceMemberId,
-          projectId, filePath: fact.sourceFilePath };
-        const revision = publicFilePublicationStore.getRevision(scope);
-        await localCommentFiles.retire({ projectId, workspaceId: binding.workspaceId,
-          creatorMemberId: binding.createdByWorkspaceMemberId, fact, run: commentFileRun(binding.workspaceId) });
-        if (revision) publicFilePublicationStore.deleteIfRevisionMatches(scope, revision);
-      }
-      await stopProjectPublicFiles({
-        resourceTeamId: binding.workspaceId,
-        ownerMemberId: binding.createdByWorkspaceMemberId,
-        projectId,
-      }, target);
-  };
+  const stopPublicFilesBeforeDelete = createCommentFileDeletion({
+    db, localFiles: localCommentFiles,
+    hasActiveRun: ownerProjectHasActiveRun, runForWorkspace: commentFileRun,
+    stopPublicFiles: stopProjectPublicFiles,
+  });
   registerProjectRoutes(app, {
     db,
     publicFileMutations,

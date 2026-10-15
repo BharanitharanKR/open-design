@@ -57,30 +57,44 @@ export function createLocalCommentFiles(db: Database.Database) {
     const adopted = commentFilesAtReceipt(parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles), state, input);
     updateProject(db, input.projectId, { metadata: { ...getProject(db, input.projectId)?.metadata, _commentFiles: adopted } });
   }
-  async function retire(input: {
-    projectId: string; workspaceId: string; creatorMemberId: string; fact: CommentFileFact; run: typeof runVelaCommand;
+  /** One catalog CAS and one local adoption for the captured original lifetimes.
+   * A failed later receipt must not retire an earlier file in a folder operation. */
+  async function retireMany(input: {
+    projectId: string; workspaceId: string; creatorMemberId: string; facts: readonly CommentFileFact[]; run: typeof runVelaCommand;
   }) {
+    const originals = input.facts.map(fact => ({ ...fact }));
+    const first = originals[0];
+    if (!first) return;
     creator(input.projectId, input.workspaceId, input.creatorMemberId);
-    // The original ID/receipt is captured before I/O. Never resolve by reused path after awaiting.
-    const original = { ...input.fact };
-    const current = parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles)
-      ?.files.find(fact => !fact.retired && fact.sourceFilePath === original.sourceFilePath);
-    const localArtifactId = current?.sourceFileId === original.sourceFileId
-      ? getLiveWorkspaceArtifactByPath(db, input.projectId, original.sourceFilePath)?.id : null;
-    const state = await commitCommentFileFacts({ ...input, resourceId: original.resourceId,
-      versionId: original.versionId, files: retiredCommentFileMutation(original) });
+    const before = parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles);
+    const captured = originals.map(original => {
+      const current = before?.files.find(fact => !fact.retired && fact.sourceFilePath === original.sourceFilePath);
+      return { original, artifactId: current?.sourceFileId === original.sourceFileId
+        ? getLiveWorkspaceArtifactByPath(db, input.projectId, original.sourceFilePath)?.id : null };
+    });
+    const state = await commitCommentFileFacts({ ...input, resourceId: first.resourceId,
+      versionId: first.versionId, files: originals.flatMap(original => retiredCommentFileMutation(original, first)) });
     creator(input.projectId, input.workspaceId, input.creatorMemberId);
     db.transaction(() => {
       const previous = parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles);
-      const retired = state.files.find(fact => fact.sourceFileId === original.sourceFileId && fact.retired);
-      if (!previous || !retired) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+      const ids = new Set(originals.map(fact => fact.sourceFileId));
+      const retired = new Map<string, CommentFileFact>();
+      for (const fact of state.files) if (ids.has(fact.sourceFileId) && fact.retired) retired.set(fact.sourceFileId, fact);
+      if (!previous || retired.size !== originals.length) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
       updateProject(db, input.projectId, { metadata: { ...getProject(db, input.projectId)?.metadata,
         _commentFiles: { schemaVersion: 1, revision: Math.max(previous.revision, state.revision),
-          files: previous.files.map(fact => fact.sourceFileId === original.sourceFileId ? retired : fact) } } });
-      // Conditional artifact tombstone cannot delete a concurrent F2 pointer.
-      db.prepare('UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ? WHERE project_id = ? AND id = ? AND deleted_at IS NULL')
-        .run(Date.now(), Date.now(), input.projectId, localArtifactId ?? original.sourceFileId);
+          files: previous.files.map(fact => retired.get(fact.sourceFileId) ?? fact) } } });
+      // Conditional artifact tombstones cannot delete concurrent F2 pointers.
+      for (const { original, artifactId } of captured) {
+        db.prepare('UPDATE workspace_artifacts SET current_path = NULL, deleted_at = ?, updated_at = ? WHERE project_id = ? AND id = ? AND deleted_at IS NULL')
+          .run(Date.now(), Date.now(), input.projectId, artifactId ?? original.sourceFileId);
+      }
     })();
   }
-  return { identity, admit, retire };
+  async function retire(input: {
+    projectId: string; workspaceId: string; creatorMemberId: string; fact: CommentFileFact; run: typeof runVelaCommand;
+  }) {
+    await retireMany({ ...input, facts: [input.fact] });
+  }
+  return { identity, admit, retire, retireMany };
 }
