@@ -2144,3 +2144,40 @@ describe("durable Team comment relay outbox", () => {
 		},
 	);
 });
+
+it('new file guard retries unknown and retirement cancels only the exact captured revision, not a concurrent edit', async () => {
+  const db = seededDb();
+  const queuedContext = context('member');
+  const outbox = createCommentRelayOutboxStore(db, () => 100);
+  const push = vi.fn(async () => ({ seq: 1 }));
+  let verdict: 'unknown' | 'retired' | 'current' = 'unknown';
+  const original = comment({ sourceFileId: '11111111-1111-4111-8111-111111111111' });
+  const service = createCollabCloudService({
+    client: clientWithPush(push), commentOutbox: outbox,
+    resolveLocalProjectRelayBinding: () => ({ workspaceId: 'workspace-a', ownerMemberId: 'project-owner' }),
+    resolveRemoteProjectOwnerMemberId: async () => 'project-owner',
+    listProjectIds: () => [], resolveProjectWorkspaceContext: async () => queuedContext,
+    resolveLocalConversationId: () => 'conv-local', mergeComment: () => 'unchanged',
+    now: () => 100, retryDelayMs: () => 0,
+    validateCommentRelayFile: () => {
+      if (verdict === 'unknown') throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+      if (verdict === 'retired') service.enqueueComment({ ...original, note: 'concurrent edit', updatedAt: 20 }, queuedContext);
+      return verdict;
+    },
+  });
+  try {
+    service.enqueueComment(original, queuedContext);
+    await service.flushPendingComments();
+    expect(push).not.toHaveBeenCalled();
+    expect(outbox.count()).toBe(1);
+    expect(outbox.listDue(100)[0]?.attemptCount).toBe(1);
+    verdict = 'retired';
+    await service.flushPendingComments();
+    expect(push).not.toHaveBeenCalled();
+    expect(outbox.listDue(100)[0]?.comment.note).toBe('concurrent edit');
+    verdict = 'current';
+    await service.flushPendingComments();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(outbox.count()).toBe(0);
+  } finally { service.dispose(); }
+});

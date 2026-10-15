@@ -1,3 +1,4 @@
+import { ensureWorkspaceArtifactForPath } from '../src/chat-artifacts/store.js';
 import { expect, it, vi } from "vitest";
 import express from "express";
 import { createServer } from "node:http";
@@ -126,6 +127,7 @@ it.each([false, true])(
 			]) {
 				upsertPreviewComment(db, "p", conversationId!, {
 					id: id!,
+					sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: "p", path: filePath!, kind: "html" }).id,
 					note: id!,
 					authorMemberId: "original-author",
 					target: {
@@ -503,6 +505,7 @@ it.each([false, true])(
 				expect(queue.count()).toBe(0); // No stopped mutation is sent or queued against the revoked witness.
 				upsertPreviewComment(db, "p", "b", {
 					id: "while-stopped",
+					sourceFileId: ensureWorkspaceArtifactForPath(db, { projectId: "p", path: scope.filePath, kind: "html" }).id,
 					note: "while-stopped",
 					authorMemberId: "original-author",
 					target: {

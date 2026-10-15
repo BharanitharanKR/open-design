@@ -88,3 +88,17 @@ it('cloud history for comment sync is read-only even for a personal project with
   expect((await read({ projectId: 'p', resourceTeamId: 'w', ownerMemberId: 'owner' })).bindingExists).toBe(false);
   expect(runCommand).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ args: ['share', 'project-status', 'p', '--json'] }));
 });
+
+it('K3 ignores retired F1 status when current F2 at the same path has no alias', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'od-k3-lifetime-'));
+  const db = openDatabase(root, { dataDir: root });
+  try {
+    insertProject(db, { id: 'p', name: 'P', metadata: { _commentFiles: { schemaVersion: 1, revision: 2, files: [
+      { sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: scope.filePath, entryPath: 'index.html', resourceId: 'selected', versionId: 'v1', retired: true },
+      { sourceFileId: '22222222-2222-4222-8222-222222222222', sourceFilePath: scope.filePath, entryPath: 'index.html', resourceId: 'selected2', versionId: 'v2', retired: false },
+    ] } }, createdAt: 1, updatedAt: 1 });
+    const service = createCommentSyncStateService(db, async () => true, { readProjectShareState: async () => ({ ...remote('stopped'),
+      publications: [{ ...remote('stopped').publications[0]!, sourceFileId: '11111111-1111-4111-8111-111111111111' }] }) });
+    expect((await service.read(scope))?.shareStopped).toBeNull();
+  } finally { closeDatabase(); rmSync(root, { recursive: true, force: true }); }
+});

@@ -95,6 +95,7 @@ export interface RegisterProjectCommentRoutesDeps extends RouteDeps<'db' | 'proj
   resolveAuthorMemberId?: (authorization: string | undefined) => Promise<string | undefined>;
   /** Trusted authenticated user name/email, never from request body or a member-id fallback. */
   resolveCurrentAuthorDisplayName?: () => string | null;
+  prepareCommentFile?: (projectId: string, filePath: string, context: WorkspaceCollabContext | null) => Promise<string | undefined>;
   /**
    * Resolve a shared project's OWNER workspaceMemberId (server-authoritative,
    * from the team hub). Used to let the project owner delete / send-to-agent on
@@ -601,6 +602,8 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       delete body.authorAppUserId;
       delete body.authorDisplayName;
       delete body.authorKey;
+      delete body.sourceFileId;
+      delete body.sourceFilePath;
       // This is a transport anti-abuse ceiling, not a product character limit.
       // Keep it server-side: CLI and UI must send the body unchanged and let the
       // route reject a pathological UTF-8 payload without creating a row.
@@ -636,6 +639,11 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
         body.authorMemberId = authorMemberId;
         const authorDisplayName = ctx.resolveCurrentAuthorDisplayName?.();
         if (authorDisplayName?.trim()) body.authorDisplayName = authorDisplayName.trim();
+      }
+      if (existing?.sourceFileId) body.sourceFileId = existing.sourceFileId;
+      else if (!requestedId && ctx.prepareCommentFile) {
+        const sourceFileId = await ctx.prepareCommentFile(req.params.id, body.target?.filePath ?? '', workspaceContext);
+        if (sourceFileId) body.sourceFileId = sourceFileId;
       }
       // Resolved BEFORE the upsert (not just before the push below) so a
       // genuinely new comment's pin_seq starts unconfirmed on a team-shared

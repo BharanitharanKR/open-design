@@ -36,7 +36,7 @@ it.skipIf(!process.env.OD_TEST_VELA_BIN)('keeps one reserved alias through atomi
     for (const attempt of [1, 2, 3]) {
       const db = new Database(path.join(root, 'state.sqlite'));
       try {
-        const pending = publishReservedVelaShareVersion({ scope: { resourceTeamId: 'workspace', ownerMemberId: 'owner', projectId: 'project', filePath: 'pages/local.html' },
+        const pending = publishReservedVelaShareVersion({ scope: { sourceFileId: '11111111-1111-4111-8111-111111111111', resourceTeamId: 'workspace', ownerMemberId: 'owner', projectId: 'project', filePath: 'pages/local.html' },
           resourceId: 'resource', entryPath: 'index.html', name: 'Design', versionId: `immutable-${attempt}` }, createShareAliasReservations(db),
         args => runPinnedVelaCommand({ args, session, dataRoot: cliRoot, workspaceId: 'workspace', configuredEnv: { VELA_BIN: binary } }));
         if (attempt !== 2) await expect(pending).rejects.toThrow('PUBLIC_SHARE_PUBLISH_FAILED');

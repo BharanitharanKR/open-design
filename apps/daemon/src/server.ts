@@ -276,6 +276,10 @@ import {
 } from './integrations/vela.js';
 import { isAbortedOperationError } from './integrations/aborted-error.js';
 import { projectResourceIdFor } from './integrations/vela-team-projects.js';
+import { normalizeCurrentFileComment, parseCommentFileState } from './collab/comment-file-facts.js';
+import { createLocalCommentFiles } from './collab/local-comment-files.js';
+import { createCommentFilePublicationCoordination } from './collab/comment-file-publication-coordination.js';
+import { runVelaCommand, velaWorkspaceCommandOptions } from './integrations/vela-command.js';
 import {
   getTeamProjectMaterialization,
   latestTeamProjectMaterializationVersion,
@@ -1067,7 +1071,7 @@ import { createCollabPublishWatcher } from './collab/collab-publish-watcher.js';
 import { createOwnedContentSync, type OwnedContentSync } from './collab/owned-content-sync.js';
 import { createProjectVisibilityTransitions } from './collab/project-visibility-transitions.js';
 import { createSqliteOwnedContentStore, type OwnedContentScope } from './collab/owned-content-store.js';
-import { applyOwnedProjectContent, ownedContentFingerprint } from './collab/owned-content-files.js';
+import { applyOwnedProjectContent, contentFiles, ownedContentFingerprint } from './collab/owned-content-files.js';
 import {
   isUnmaterializedSharedPlaceholder,
   SHARED_PROJECT_PLACEHOLDER_METADATA_KEY,
@@ -4313,10 +4317,51 @@ export async function startServer({
   ): void => {};
   let ownedContentSync: OwnedContentSync | null = null;
   let ownerProjectHasActiveRun = (_projectId: string): boolean => true;
+  const publicFileMutations = createPublicFileMutations();
+  const localCommentFiles = createLocalCommentFiles(db);
+  const commentFileRun = (workspaceId: string) => (args: string[]) =>
+    runVelaCommand(args, velaWorkspaceCommandOptions(workspaceId));
+  const commentFilePublications = createCommentFilePublicationCoordination({
+    isBusy: projectId => ownerProjectHasActiveRun(projectId),
+    wake: (projectId, principal) => {
+      collab.scheduler.notifyChanged(projectId, 'run-settled', principal);
+      collab.scheduler.runBoundary(projectId, principal);
+    },
+  });
   const collab = createCollabRuntime({
-    coordinatePublication: (projectId, principal, publish) => ownedContentSync
-      ? ownedContentSync.withPublication(projectId, principal, publish)
-      : publish(),
+    coordinatePublication: (projectId, principal, publish) => {
+      const operation = async () => {
+        if (principal && velaCliTeamProjectCatalog) {
+          const root = await resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir);
+          const facts = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles)?.files ?? [];
+          for (const fact of facts.filter(item => !item.retired)) {
+            let missing = false;
+            try { fs.lstatSync(path.join(root, fact.sourceFilePath)); }
+            catch (error) { if (error?.code !== 'ENOENT') throw error; missing = true; }
+            if (missing) await localCommentFiles.retire({ projectId, workspaceId: principal.teamId,
+              creatorMemberId: principal.memberId, fact, run: commentFileRun(principal.teamId) });
+          }
+          // The outer publication reservation excludes new physical starters
+          // through admission. A queued Run may now be visible as busy but
+          // cannot write this cwd until this operation's finally releases it.
+        }
+        const result = await publish();
+        if (result?.versionId && principal && velaCliTeamProjectCatalog) {
+          const binding = getWorkspaceProjectByProjectId(db, projectId);
+          if (!binding?.resourceHubResourceId) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+          const root = await resolveProjectShareDir(PROJECTS_DIR, projectId, getProject(db, projectId), resolveProjectDir);
+          const paths = (await contentFiles(root)).filter(name => /\.html?$/i.test(name))
+            .map(name => ({ sourceFilePath: name, entryPath: name }));
+          await localCommentFiles.admit({ projectId, workspaceId: principal.teamId,
+            creatorMemberId: principal.memberId, resourceId: binding.resourceHubResourceId,
+            versionId: result.versionId, paths, run: commentFileRun(principal.teamId) });
+        }
+        return result;
+      };
+      const coordinated = () => ownedContentSync ? ownedContentSync.withPublication(projectId, principal, operation) : operation();
+      return principal && velaCliTeamProjectCatalog
+        ? publicFileMutations.run(projectId, () => commentFilePublications.run(projectId, principal, coordinated)) : coordinated();
+    },
     workspaceContext: workspaceContextProvider,
     ...(velaCliTeamProjectCatalog ? {
       resolveResourceId: async (projectId: string, principal?: ResourceHubPrincipal | null) => {
@@ -4449,7 +4494,6 @@ export async function startServer({
     console.warn('[od] design-system workspace-resource backfill failed:', error);
   });
   const publicFilePublicationStore = createSqlitePublicFilePublicationStore(db);
-  const publicFileMutations = createPublicFileMutations();
   const collabCloudClient = velaCliCollabClient ?? createCollabCloudClientFromEnv();
   const resolveBoundProjectWorkspaceContext = async (
     projectId: string,
@@ -4576,6 +4620,14 @@ export async function startServer({
           return { workspaceId, ownerMemberId };
         },
         captureCommentRelayProjectBinding: projectVisibilityTransitions.captureReconciliation,
+        validateCommentRelayFile: (record) => {
+          const state = parseCommentFileState(getProject(db, record.projectId)?.metadata?._commentFiles);
+          const fact = state?.files.find(item => item.sourceFileId === record.comment.sourceFileId);
+          if (!fact || fact.sourceFilePath !== (record.comment.sourceFilePath ?? record.comment.filePath)) {
+            throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+          }
+          return fact.retired ? 'retired' : 'current';
+        },
         validateCommentRelayProjectBinding: (record) =>
           commentRelayLocalBindingMatches(
             record,
@@ -4622,8 +4674,12 @@ export async function startServer({
         resolveProjectWorkspaceContext: resolveBoundProjectWorkspaceContext,
         resolveLocalConversationId: (projectId) =>
           getProjectCommentAnchorConversationId(db, projectId),
-        mergeComment: ({ projectId, conversationId, comment, stream }) =>
-          mergeSyncedPreviewComment(db, projectId, conversationId, comment, { stream }),
+        mergeComment: ({ projectId, conversationId, comment, stream }) => {
+          const normalized = normalizeCurrentFileComment(
+            parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles), comment,
+          );
+          return normalized ? mergeSyncedPreviewComment(db, projectId, conversationId, normalized, { stream }) : 'unchanged';
+        },
         onError: (error) => console.warn('[od] collab cloud sync error:', error),
         onCommentPushed: ({ projectId, commentId, seq, memberId, authorKey }) => {
           confirmPreviewCommentPinSeq(db, projectId, commentId, seq);
@@ -5499,6 +5555,11 @@ export async function startServer({
     resolveLocalPublicShareOwner: resolveLocalProjectOwner,
     resolvePublicShareLink: (projectId, slug, amr) => resolvePublicShareLink(projectId, slug, amr, process.env, configuredAmrEnv()),
     sharePublishing: {
+      sourceFileId: scope => localCommentFiles.identity(scope.projectId, scope.filePath),
+      admitFileReceipt: (scope, resourceId, versionId, entryPath, run) => localCommentFiles.admit({
+        projectId: scope.projectId, workspaceId: scope.resourceTeamId, creatorMemberId: scope.ownerMemberId,
+        resourceId, versionId, paths: [{ sourceFilePath: scope.filePath, entryPath }], run,
+      }),
       ensureProject: (scope, principal, run) => ensurePublicShareProject({
         projectId: scope.projectId, principal, run, describeProject: describeCollabProject,
         retainRoot: registration => {
@@ -8275,7 +8336,21 @@ export async function startServer({
           const incidentId = automaticDiagnostics?.record(fault);
           if (incidentId) run.diagnosticIncidentIds = [...new Set([...(run.diagnosticIncidentIds ?? []), incidentId])].slice(-100);
         }
-        if (record.event === 'end') automaticDiagnostics?.finishRun(run.id);
+        if (record.event === 'end') {
+          automaticDiagnostics?.finishRun(run.id);
+          if (run.projectId) queueMicrotask(() => {
+            commentFilePublications.settled(run.projectId);
+            const binding = getWorkspaceProjectByProjectId(db, run.projectId);
+            if (!ownerProjectHasActiveRun(run.projectId) && binding?.visibility === 'team'
+              && binding.createdByWorkspaceMemberId && binding.resourceState === 'active'
+              && (getProject(db, run.projectId)?.metadata?._commentFiles || run.artifactPaths?.some(name => /\.html?$/i.test(name)))) {
+              const principal = { teamId: binding.workspaceId, memberId: binding.createdByWorkspaceMemberId,
+                role: 'member', lifecycleState: 'active', workspaceType: 'team' };
+              collab.scheduler.notifyChanged(run.projectId, 'run-settled', principal);
+              collab.scheduler.runBoundary(run.projectId, principal);
+            }
+          });
+        }
         if (record.event === 'run_retry_finished' && record.data?.retry_result === 'success') {
           automaticDiagnostics?.recovered(run.id, record.timestamp);
         }
@@ -8419,6 +8494,16 @@ export async function startServer({
   // live-artifact refresh. Starting a Run any other way drops its analytics
   // silently, which is what OPEND-2365 was.
   ownerProjectHasActiveRun = (projectId) => design.runs.list({ projectId, status: 'active' }).length > 0;
+  // Recover delayed root work without a UI subscriber. Existing persisted
+  // content checkpoints decide whether bytes changed; receipts/creator CAS,
+  // never snapshot equality, authorize the retirement before the next upload.
+  for (const share of listTeamWorkspaceProjectShares(db)) {
+    const restored = recoverPersistedTeamShareOwnership(share);
+    if (!restored || !getProject(db, restored.projectId)?.metadata?._commentFiles) continue;
+    void ownedContentSync?.shouldPublish(restored.projectId, restored.principal).then(changed => {
+      if (changed) collab.scheduler.notifyChanged(restored.projectId, 'comment-files-reopen', restored.principal);
+    }).catch(() => console.warn('[comments] startup content check deferred'));
+  }
   const runAnalyticsLifecycle = createRunAnalyticsLifecycle({
     db,
     design,
@@ -8436,6 +8521,7 @@ export async function startServer({
     claimAssistantMessage: (run, options) =>
       pinAssistantMessageOnRunCreate(db, run, options),
     analyticsLifecycle: runAnalyticsLifecycle,
+    coordinateStart: (run, starter) => commentFilePublications.start(run.projectId, starter),
   });
   // Runs are process-local, but their terminal obligations are durable. On a
   // fresh daemon boot, repair stale message rows and replay any PostHog or
@@ -9056,6 +9142,17 @@ export async function startServer({
         if (publication) throw new Error('PUBLIC_FILE_STOP_PENDING');
         return;
       }
+      const facts = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles)?.files
+        .filter(fact => !fact.retired && matchesPublicFileDeleteTarget(fact.sourceFilePath, target)) ?? [];
+      if (facts.length && ownerProjectHasActiveRun(projectId)) throw new Error('COMMENT_FILE_PROJECT_BUSY');
+      for (const fact of facts) {
+        const scope = { resourceTeamId: binding.workspaceId, ownerMemberId: binding.createdByWorkspaceMemberId,
+          projectId, filePath: fact.sourceFilePath };
+        const revision = publicFilePublicationStore.getRevision(scope);
+        await localCommentFiles.retire({ projectId, workspaceId: binding.workspaceId,
+          creatorMemberId: binding.createdByWorkspaceMemberId, fact, run: commentFileRun(binding.workspaceId) });
+        if (revision) publicFilePublicationStore.deleteIfRevisionMatches(scope, revision);
+      }
       await stopProjectPublicFiles({
         resourceTeamId: binding.workspaceId,
         ownerMemberId: binding.createdByWorkspaceMemberId,
@@ -9179,6 +9276,20 @@ export async function startServer({
     // server-authoritative author, gate status/delete on the caller vs the
     // comment author / project owner, and push the comment lifecycle (create/edit,
     // status change, tombstone) to the cross-daemon relay.
+    prepareCommentFile: async (projectId, filePath, context) => {
+      if (!/\.html?$/i.test(filePath)) return undefined;
+      const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
+      const current = state?.files.find(fact => !fact.retired && fact.sourceFilePath === filePath);
+      if (current) return current.sourceFileId;
+      if (!context || !velaCliTeamProjectCatalog) return localCommentFiles.identity(projectId, filePath);
+      const binding = getWorkspaceProjectByProjectId(db, projectId);
+      if (binding?.workspaceId !== context.workspaceId || binding.createdByWorkspaceMemberId !== context.workspaceMemberId) {
+        throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+      }
+      // New private annotations are local-first. Their UUID is durable now;
+      // only explicit publication admits a receipt, never this save path.
+      return localCommentFiles.identity(projectId, filePath);
+    },
     resolveWorkspaceContext: resolveProjectCommentWorkspaceContext,
     resolveCurrentAuthorDisplayName: () => {
       const user = readVelaControlApiContext(process.env, configuredAmrEnv())?.user;
@@ -9314,6 +9425,8 @@ export async function startServer({
   });
   registerImportRoutes(app, {
     db,
+    publicFileMutations,
+    stopPublicFilesBeforeDelete,
     http: httpDeps,
     uploads: uploadDeps,
     node: nodeDeps,

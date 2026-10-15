@@ -28,6 +28,7 @@ export function enqueuePublishedFileComments(
 ): { enqueued: number; skippedInbound: number } {
   if (!db.inTransaction) throw new Error('Publication backfill requires the publication transaction');
   const { scope, publicationRevision, publicFilePath } = input;
+  if (!scope.sourceFileId) throw new Error('COMMENT_FILE_SOURCE_REQUIRED');
   if (!publicFilePath || publicFilePath.startsWith('/') || publicFilePath.includes('\\')
     || publicFilePath.split('/').some(part => !part || part === '.' || part === '..')) {
     throw new Error('Publication backfill requires an exact mapped path');
@@ -47,12 +48,13 @@ export function enqueuePublishedFileComments(
     throw new Error('Publication comment anchor unavailable');
   }
   const outbox = createCommentRelayOutboxStore(db);
-  const pendingMutations = listPublishedCommentMutations(db, scope, publicationRevision.slug);
+  const pendingMutations = listPublishedCommentMutations(db, scope, publicationRevision.slug)
+    .filter(comment => comment.sourceFileId === scope.sourceFileId);
   const pendingMutationIds = new Set(pendingMutations.map(comment => comment.id));
   // Filter in SQL, not by scanning every file and later deciding to disclose it.
   const ids = db.prepare(`SELECT id FROM preview_comments
-    WHERE project_id = ? AND file_path = ? ORDER BY created_at, rowid`)
-    .all(scope.projectId, scope.filePath) as Array<{ id: string }>;
+    WHERE project_id = ? AND file_path = ? AND source_file_id = ? ORDER BY created_at, rowid`)
+    .all(scope.projectId, scope.filePath, scope.sourceFileId) as Array<{ id: string }>;
   const commentIds: string[] = [];
   let enqueued = 0;
   let skippedInbound = 0;

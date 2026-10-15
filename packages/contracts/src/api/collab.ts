@@ -31,7 +31,7 @@ export interface ProjectShareHistoryResponse {
   /** Includes stopped bindings; absence of a local link is irrelevant. */
   bindingExists: boolean;
   hasEverShared: boolean;
-  publications: Array<{ sourceFilePath: string; slug: string; status: 'active' | 'stopped' }>;
+  publications: Array<{ sourceFilePath: string; sourceFileId?: string; slug: string; status: 'active' | 'stopped' }>;
 }
 
 export interface PublicFileStopRetryRequest {
@@ -1165,6 +1165,9 @@ export interface CollabCloudMembersResponse {
  * last-writer-wins check for a revision the receiver has not seen yet.
  */
 export interface CollabCloudComment {
+  /** Server-admitted immutable creator file lifetime, not a permission. */
+  sourceFileId?: string;
+  sourceFilePath?: string;
   /**
    * The author daemon's local comment id — the GLOBAL dedup key. A receiver
    * merges idempotently by this id, so a member's own comment pulled back is a

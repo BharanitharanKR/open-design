@@ -192,6 +192,8 @@ export interface DesignSystemReviewEntry {
 }
 
 export interface ProjectMetadata {
+  /** Reserved admitted facts; installed only with the matching local content receipt. */
+  _commentFiles?: import('./comments.js').CommentFileState;
   kind: ProjectKind;
   // `live-artifact`: the data-backed live dashboard flow (drives the
   // live-artifact skill/system-prompt path). `web-clone`: website reproduction

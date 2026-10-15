@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 type SqliteDb = Database.Database;
 
 export interface PublicFilePublicationScope {
+  /** New-protocol lifetime; path-only records remain historical, never relinked. */
+  sourceFileId?: string;
   resourceTeamId: string;
   ownerMemberId: string;
   projectId: string;

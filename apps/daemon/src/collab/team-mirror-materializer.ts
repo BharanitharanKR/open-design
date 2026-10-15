@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { commentFilesAtReceipt, parseCommentFileState } from './comment-file-facts.js';
 
 import {
   ensureTeamProjectCommentConversations,
@@ -248,6 +249,15 @@ export function materializePulledTeamMirror(
       throw new Error(`team mirror binding conflict for ${input.id}`);
     }
 
+    const metadata = { kind: input.metadata?.kind ?? existing?.metadata?.kind ?? 'other' as const, ...(input.metadata ?? {}) };
+    delete metadata._commentFiles;
+    const previousFacts = parseCommentFileState(existing?.metadata?._commentFiles);
+    const incomingFacts = parseCommentFileState(input.metadata?._commentFiles);
+    if (input.metadata?._commentFiles !== undefined && !incomingFacts) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+    const adoptedFacts = receipt && !options.placeholder
+      ? commentFilesAtReceipt(previousFacts, incomingFacts, receipt, { authorizedCatalogRootId: resourceHubResourceId }) : previousFacts;
+    if (adoptedFacts) metadata._commentFiles = adoptedFacts;
+    input = { ...input, metadata };
     let localRecordChanged = false;
     const persistedInput = options.placeholder
       ? {
@@ -295,6 +305,15 @@ export function materializePulledTeamMirror(
         // Materialization is synchronization, not local activity. Preserve
         // the owner's content timestamp rather than stamping this daemon's
         // re-share observation time.
+        updatedAt: input.updatedAt,
+      });
+      localRecordChanged = true;
+    }
+    // Existing creator-attributed mirrors deliberately skip ordinary metadata
+    // refresh. Reserved receipt-backed fields still commit with their content.
+    if (existing && adoptedFacts && JSON.stringify(previousFacts) !== JSON.stringify(adoptedFacts)) {
+      updateProject(db, input.id, {
+        metadata: { ...(getProject(db, input.id)?.metadata ?? {}), _commentFiles: adoptedFacts },
         updatedAt: input.updatedAt,
       });
       localRecordChanged = true;

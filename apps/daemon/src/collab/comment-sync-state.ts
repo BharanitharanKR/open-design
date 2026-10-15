@@ -1,8 +1,11 @@
 import type Database from 'better-sqlite3';
 import type { CommentSyncState, CommentAlignResult } from '@open-design/contracts';
+import { getProject } from '../db.js';
+import { getLiveWorkspaceArtifactByPath } from '../chat-artifacts/store.js';
+import { parseCommentFileState } from './comment-file-facts.js';
 import { migrateCommentRelayOutbox } from './comment-relay-outbox.js';
 import { readPublishedCommentBackfill } from './published-comment-backfill-state.js';
-import type { ReadProjectShareState } from './vela-project-share-state.js';
+import { currentFileSharePublication, type ReadProjectShareState } from './vela-project-share-state.js';
 
 export interface CommentSyncScope { projectId: string; workspaceId: string; workspaceMemberId: string; filePath?: string }
 export interface CommentSyncStateService {
@@ -54,7 +57,10 @@ export function createCommentSyncStateService(db: Database.Database,
           projectId: scope.projectId, resourceTeamId: scope.workspaceId, ownerMemberId: scope.workspaceMemberId,
         });
         if (history.projectId === scope.projectId && history.bindingExists) {
-          const file = history.publications.find(item => item.sourceFilePath === scope.filePath);
+          const sourceFileId = parseCommentFileState(getProject(db, scope.projectId)?.metadata?._commentFiles)?.files
+            .find(fact => fact.sourceFilePath === scope.filePath && !fact.retired)?.sourceFileId
+            ?? getLiveWorkspaceArtifactByPath(db, scope.projectId, scope.filePath)?.id;
+          const file = currentFileSharePublication(history, scope.filePath, sourceFileId);
           if (file && sameCredential()) shareStopped = file.status === 'stopped';
         }
       } catch { /* Remote errors can contain credentials. Preserve unknown without logging. */ }

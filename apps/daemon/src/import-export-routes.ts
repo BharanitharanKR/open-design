@@ -1,4 +1,7 @@
 import type { Express, Response } from 'express';
+import { publicFileMutationHandler } from './routes/public-file-mutation-handler.js';
+import type { PublicFileMutations } from './collab/public-file-mutations.js';
+import { deleteProjectWorkspaceArtifacts } from './chat-artifacts/store.js';
 import {
   PROJECT_EXPORT_MANIFEST_SCHEMA,
   isExportFormat,
@@ -50,6 +53,8 @@ import type { WorkspaceDirectoryFetchResult } from './collab/vela-workspace-cont
 import type { BoundWorkspaceResourceMutationGate } from './collab/workspace-resource-mutation.js';
 
 export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'uploads' | 'node' | 'ids' | 'paths' | 'imports' | 'auth' | 'projectStore' | 'conversations' | 'projectFiles' | 'validation'> {
+  publicFileMutations?: PublicFileMutations;
+  stopPublicFilesBeforeDelete?: (projectId: string) => Promise<void>;
   fetchProjectCreationWorkspaceDirectory?: () => Promise<WorkspaceDirectoryFetchResult>;
   enforceWorkspaceProjectMutation?: BoundWorkspaceResourceMutationGate;
 }
@@ -195,9 +200,9 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
   // Replace an existing project's working directory in-place. Mirrors
   // the same trust-gate, realpath, and data-dir checks as folder import,
   // but updates metadata.baseDir on an existing project record.
-  app.post('/api/projects/:id/working-dir', async (req, res) => {
+  app.post('/api/projects/:id/working-dir', publicFileMutationHandler(ctx.publicFileMutations, async (req, res) => {
     try {
-      const projectId = req.params.id;
+      const projectId = typeof req.params.id === 'string' ? req.params.id : '';
       const existing = getProject(db, projectId);
       if (!existing) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
@@ -311,7 +316,11 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
       }
 
       const entryFile = await detectEntryFile(normalizedPath);
-      const existingMeta = existing.metadata ?? {};
+      const previousRoot = await fs.promises.realpath(existing.metadata?.baseDir ?? projectDir(PROJECTS_DIR, projectId)).catch(() => null);
+      const replacing = previousRoot !== normalizedPath;
+      if (replacing) await ctx.stopPublicFilesBeforeDelete?.(projectId);
+      // Retirement is a reserved metadata CAS; never restore the pre-retirement snapshot.
+      const existingMeta = getProject(db, projectId)?.metadata ?? {};
       const { orchestratorWorkspace: _existingOrchestratorWorkspace, ...preservedMeta } =
         existingMeta;
       const nextMeta = {
@@ -329,6 +338,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
       if (!updated) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
+      if (replacing) deleteProjectWorkspaceArtifacts(db, projectId);
       // Folder imports should land on Design Files so users can choose from
       // the imported folder's artifacts. Persist an empty saved tab state so
       // ProjectView does not auto-open the detected primary file on hydration.
@@ -339,7 +349,7 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
     } catch (err: any) {
       sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
     }
-  });
+  }));
 
   app.post('/api/import/folder', async (req, res) => {
     try {

@@ -26,6 +26,7 @@ import {
   stripNextStepMarkers,
   asPreviewCommentAnchorState,
 } from '@open-design/contracts';
+import { parseCommentFileState } from './collab/comment-file-facts.js';
 import { migrateCollabSyncSnapshots } from './collab/sync-snapshot-store.js';
 import { migrateCommentRelayOutbox } from './collab/comment-relay-outbox.js';
 import { migratePublicFilePublications } from './collab/public-file-publication-store.js';
@@ -606,6 +607,9 @@ function migrate(db: SqliteDb): void {
   // epoch). A seq from another stream is not comparable to it.
   if (!previewCommentAuthorCols.some((c: DbRow) => c.name === 'cloud_revision_stream')) {
     db.exec(`ALTER TABLE preview_comments ADD COLUMN cloud_revision_stream TEXT`);
+  }
+  if (!previewCommentAuthorCols.some((c: DbRow) => c.name === 'source_file_id')) {
+    db.exec('ALTER TABLE preview_comments ADD COLUMN source_file_id TEXT');
   }
   // Read markers are project-scoped; the viewer filters its current file.
   db.exec(`
@@ -3773,6 +3777,20 @@ interface PreviewCommentReadOptions {
   includeProjectAnchor?: boolean;
 }
 
+function currentPreviewCommentFilter(db: SqliteDb, projectId: string): (comment: PreviewComment) => boolean {
+  const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
+  const facts = new Map(state?.files.map(fact => [fact.sourceFileId, fact]));
+  // A creator may comment before any receipt/share exists. The existing
+  // workspace pointer proves only that local lifetime, never remote admission.
+  const pointers = new Map((db.prepare('SELECT id, current_path AS path FROM workspace_artifacts WHERE project_id = ? AND deleted_at IS NULL')
+    .all(projectId) as Array<{ id: string; path: string }>).map(row => [row.id, row.path]));
+  return comment => {
+    if (!comment.sourceFileId) return true; // Historical rows are never assigned a guessed identity.
+    const fact = facts.get(comment.sourceFileId);
+    return fact ? !fact.retired && fact.sourceFilePath === comment.filePath : pointers.get(comment.sourceFileId) === comment.filePath;
+  };
+}
+
 export function listPreviewComments(
   db: SqliteDb, projectId: string, conversationId: string,
   options: PreviewCommentReadOptions = {},
@@ -3780,7 +3798,7 @@ export function listPreviewComments(
   return (db
     .prepare(
       `SELECT id, project_id AS projectId, conversation_id AS conversationId,
-              file_path AS filePath, element_id AS elementId, selector, label,
+              file_path AS filePath, source_file_id AS sourceFileId, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
               pod_members_json AS podMembersJson, style_json AS styleJson,
@@ -3798,7 +3816,8 @@ export function listPreviewComments(
     )
     .all(projectId, conversationId, options.includeProjectAnchor
       ? getProjectCommentAnchorConversationId(db, projectId) : null) as DbRow[])
-    .map(normalizePreviewComment);
+    .map(normalizePreviewComment)
+    .filter(currentPreviewCommentFilter(db, projectId));
 }
 
 /**
@@ -3810,7 +3829,7 @@ export function listProjectPreviewComments(db: SqliteDb, projectId: string) {
   return (db
     .prepare(
       `SELECT id, project_id AS projectId, conversation_id AS conversationId,
-              file_path AS filePath, element_id AS elementId, selector, label,
+              file_path AS filePath, source_file_id AS sourceFileId, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
               pod_members_json AS podMembersJson, style_json AS styleJson,
@@ -3827,7 +3846,8 @@ export function listProjectPreviewComments(db: SqliteDb, projectId: string) {
         ORDER BY created_at ASC, rowid ASC`,
     )
     .all(projectId) as DbRow[])
-    .map(normalizePreviewComment);
+    .map(normalizePreviewComment)
+    .filter(currentPreviewCommentFilter(db, projectId));
 }
 
 export interface UpsertPreviewCommentOptions {
@@ -3934,11 +3954,11 @@ export function upsertPreviewComment(
   }
   db.prepare(
     `INSERT INTO preview_comments
-       (id, project_id, conversation_id, file_path, element_id, selector, label,
+       (id, project_id, conversation_id, file_path, source_file_id, element_id, selector, label,
         text, position_json, html_hint, selection_kind, member_count, pod_members_json,
         style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
         anchored_version, author_member_id, author_kind, author_display_name, pin_seq, pin_seq_confirmed, sort_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        selector = excluded.selector,
        label = excluded.label,
@@ -3963,6 +3983,7 @@ export function upsertPreviewComment(
     projectId,
     conversationId,
     filePath,
+    typeof input?.sourceFileId === 'string' ? input.sourceFileId : null,
     elementId,
     selector,
     label,
@@ -4531,10 +4552,14 @@ export function mergeSyncedPreviewComment(
     .prepare(`SELECT updated_at AS updatedAt, label, author_key AS authorKey,
                      author_kind AS authorKind, author_member_id AS authorMemberId,
                      author_app_user_id AS authorAppUserId,
+                     source_file_id AS sourceFileId,
                      cloud_revision_seq AS cloudRevisionSeq,
                      cloud_revision_stream AS cloudRevisionStream
                 FROM preview_comments WHERE id = ? AND project_id = ?`)
     .get(comment.id, projectId) as DbRow | undefined;
+  if (existing && existing.sourceFileId !== (comment.sourceFileId ?? null)) {
+    throw new Error('COMMENT_FILE_LIFETIME_CONFLICT');
+  }
   const label = syncedCommentLabel(comment.label, existing?.label, comment.elementId);
   if (existing) {
     // Keeps the existing row's conversation/created_at, refreshes mutable
@@ -4655,19 +4680,20 @@ export function mergeSyncedPreviewComment(
   const result = db
     .prepare(
       `INSERT INTO preview_comments
-         (id, project_id, conversation_id, file_path, element_id, selector, label,
+         (id, project_id, conversation_id, file_path, source_file_id, element_id, selector, label,
           text, position_json, html_hint, selection_kind, member_count, pod_members_json,
           style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
           anchor_state, anchored_version, author_member_id, author_kind, author_app_user_id,
           author_display_name, author_key, last_good_position_json, pin_seq, pin_seq_confirmed, sort_key,
           cloud_revision_seq, cloud_revision_stream)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       comment.id,
       projectId,
       conversationId,
       comment.filePath,
+      comment.sourceFileId ?? null,
       comment.elementId,
       comment.selector,
       label,
@@ -4730,7 +4756,7 @@ export function getPreviewComment(
   const row = db
     .prepare(
       `SELECT id, project_id AS projectId, conversation_id AS conversationId,
-              file_path AS filePath, element_id AS elementId, selector, label,
+              file_path AS filePath, source_file_id AS sourceFileId, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
               pod_members_json AS podMembersJson, style_json AS styleJson,
@@ -4755,7 +4781,7 @@ export function getProjectPreviewComment(db: SqliteDb, projectId: string, id: st
   const row = db
     .prepare(
       `SELECT id, project_id AS projectId, conversation_id AS conversationId,
-              file_path AS filePath, element_id AS elementId, selector, label,
+              file_path AS filePath, source_file_id AS sourceFileId, element_id AS elementId, selector, label,
               text, position_json AS positionJson, html_hint AS htmlHint,
               selection_kind AS selectionKind, member_count AS memberCount,
               pod_members_json AS podMembersJson, style_json AS styleJson,
@@ -4806,6 +4832,7 @@ function normalizePreviewComment(row: DbRow): PreviewComment {
     projectId: row.projectId,
     conversationId: row.conversationId,
     filePath: row.filePath,
+    sourceFileId: typeof row.sourceFileId === 'string' ? row.sourceFileId : undefined,
     elementId: row.elementId,
     selector: row.selector,
     label: row.label,

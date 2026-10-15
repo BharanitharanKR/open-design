@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from 'express';
-import type { ReadProjectShareState } from '../collab/vela-project-share-state.js';
+import { currentFileSharePublication, type ReadProjectShareState } from '../collab/vela-project-share-state.js';
 import { publishReservedVelaShareVersion } from '../collab/vela-share-publish.js';
 import type { createShareAliasReservations } from '../collab/share-alias-reservation.js';
 import type { createSharePublicationCompletion } from '../collab/share-publication-completion.js';
@@ -265,6 +265,8 @@ export interface RegisterCollabSyncRoutesDeps {
   recordPublicFilePublication?: RecordPublicFilePublication;
   sharePublishing?: {
     ensureProject?(scope: PublicFilePublicationScope, principal: ResourceHubPrincipal, run: typeof runVelaCommand): Promise<TeamProject>;
+    sourceFileId?(scope: PublicFilePublicationScope): string;
+    admitFileReceipt?(scope: PublicFilePublicationScope, resourceId: string, versionId: string, entryPath: string, run: typeof runVelaCommand): Promise<void>;
     reservations: ReturnType<typeof createShareAliasReservations>;
     outbox: ShareBindingOutbox;
     complete: ReturnType<typeof createSharePublicationCompletion>;
@@ -1394,6 +1396,7 @@ export function registerCollabSyncRoutes(
     const publisher = deps.sharePublishing;
     if (!publisher) return res.status(503).json({ error: 'PUBLIC_SHARE_PUBLISH_UNAVAILABLE' });
     const scope = publicFilePublicationScope(projectId, filePath, principal);
+    if (publisher.sourceFileId) scope.sourceFileId = publisher.sourceFileId(scope);
     // A stopped link cannot be reopened by the ordinary publish/update POST:
     // that path advances the alias and transfers fresh bytes. Only an explicit
     // request may reopen the immutable generation previously bound by Vela.
@@ -1416,7 +1419,8 @@ export function registerCollabSyncRoutes(
       if (!remoteState || remoteState.projectId !== projectId) {
         return fail(503, 'SHARE_STATE_UNAVAILABLE', 'remote_state');
       }
-      const stopped = remoteState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped');
+      const candidate = currentFileSharePublication(remoteState, filePath, scope.sourceFileId);
+      const stopped = candidate?.status === 'stopped' ? candidate : undefined;
       const localRevision = publicFilePublicationStore.getRevision(scope);
       if (!stopped || (localRevision && localRevision.slug !== stopped.slug)) {
         return fail(409, 'SHARE_RESUME_NOT_STOPPED');
@@ -1579,7 +1583,9 @@ export function registerCollabSyncRoutes(
     // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
     const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
     const stoppedSlug = previousState?.projectId === projectId
-      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped')?.slug
+      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped'
+        && (!scope.sourceFileId || item.sourceFileId === scope.sourceFileId)
+        && item.slug === publisher.reservations.reserve(scope).slug)?.slug
       : undefined;
     const resumed = await resumePendingShareBinding(scope, publicFilePublicationStore, publisher.outbox, prepared.run, stoppedSlug);
     if (resumed) {
@@ -1614,6 +1620,7 @@ export function registerCollabSyncRoutes(
         '--json',
       ]);
       const versionId = parseVelaPushVersionId(pushOutput);
+      await publisher.admitFileReceipt?.(scope, resourceId, versionId, sharePlan.entryPath, prepared.run);
       stage = 'snapshot';
       const result = await publishReservedVelaShareVersion({
         scope, resourceId, versionId, entryPath: sharePlan.entryPath,
@@ -1784,7 +1791,7 @@ export function registerCollabSyncRoutes(
       // The history DTO names lifecycle only; addresses go through the file read.
       const response: import('@open-design/contracts').ProjectShareHistoryResponse = {
         projectId: state.projectId, bindingExists: state.bindingExists, hasEverShared: state.hasEverShared,
-        publications: state.publications.map(({ sourceFilePath, slug, status }) => ({ sourceFilePath, slug, status })),
+        publications: state.publications.map(({ sourceFilePath, sourceFileId, slug, status }) => ({ sourceFilePath, ...(sourceFileId ? { sourceFileId } : {}), slug, status })),
       };
       return res.json(response);
     } catch {
@@ -1881,7 +1888,8 @@ export function registerCollabSyncRoutes(
       };
       return res.json(response);
     }
-    const remote = history.publications.find(item => item.sourceFilePath === filePath);
+    const sourceFileId = deps.sharePublishing?.sourceFileId?.(scope);
+    const remote = currentFileSharePublication(history, filePath, sourceFileId);
     let local = publicFilePublicationStore.get(scope);
     // A row that outlived a stop made elsewhere is not a live publication:
     // the owner should see the stopped state (and resume), not a dead link.
