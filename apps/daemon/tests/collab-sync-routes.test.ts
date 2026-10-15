@@ -1872,6 +1872,37 @@ describe('collab sync routes', () => {
     expect(history.body.publications[1].sourceFileId).toBe(sourceFileId);
   });
 
+  it.each(['legacy-active', 'unavailable'] as const)('fails closed before upload rather than creating a second alias when source history is %s', async mode => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'od-share-unbound-'));
+    tempDirs.push(dir);
+    await writeFile(path.join(dir, 'index.html'), '<h1>Current file</h1>');
+    const fixture = await publicShareFixture();
+    const legacy = { sourceFilePath: 'index.html', slug: fixtureSlug, status: 'active' as const };
+    const history = { projectId: 'p1', bindingExists: true, hasEverShared: true, publications: [legacy] };
+    if (mode === 'legacy-active') fixture.readProjectShareState.mockResolvedValue(history);
+    else fixture.readProjectShareState.mockRejectedValue(new Error('source history unavailable'));
+    vi.mocked(runVelaResourceCommand).mockResolvedValue(JSON.stringify({ id: 'v1', version: 1 }));
+    const api = await startSyncServer(personalContextProvider(), { ...fixture,
+      resolveProjectDir: () => dir, resolveSharedProject: async () => null });
+    const endpoint = '/api/projects/p1/files/index.html/publish-public';
+    const expected = mode === 'legacy-active' ? 'SHARE_FILE_IDENTITY_UNAVAILABLE' : 'SHARE_STATE_UNAVAILABLE';
+    const status = await api.json(endpoint);
+    expect.soft(status.status).toBe(mode === 'legacy-active' ? 409 : 503);
+    expect.soft(status.body.error).toBe(expected);
+    const publish = await api.json(endpoint, { method: 'POST' });
+    expect(publish.status).toBe(mode === 'legacy-active' ? 409 : 503);
+    expect(publish.body.error).toBe(expected);
+    expect(vi.mocked(runVelaResourceCommand)).not.toHaveBeenCalled();
+    if (mode === 'legacy-active') {
+      const projectHistory = await api.json('/api/projects/p1/share-state');
+      expect(projectHistory.body).toEqual(history);
+      expect(projectHistory.body.publications[0]).not.toHaveProperty('sourceFileId');
+      const resume = await api.json(endpoint, { method: 'POST', body: { mode: 'resume' } });
+      expect(resume.status).toBe(409);
+      expect(resume.body.error).toBe(expected);
+    }
+  });
+
   it.each(['none', 'active', 'stopped', 'unavailable'] as const)('reads authoritative project/file state without any local publication: %s', async state => {
     const history = { projectId: 'p1', bindingExists: state !== 'none', hasEverShared: state !== 'none',
       publications: state === 'none' || state === 'unavailable' ? [] : [{ sourceFilePath: 'index.html', slug: fixtureSlug, status: state }] };

@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from 'express';
-import { currentFileSharePublication, type ReadProjectShareState } from '../collab/vela-project-share-state.js';
+import { currentFileSharePublication, UnboundFileShareIdentityError, type ReadProjectShareState } from '../collab/vela-project-share-state.js';
 import { publishReservedVelaShareVersion } from '../collab/vela-share-publish.js';
 import type { createShareAliasReservations } from '../collab/share-alias-reservation.js';
 import type { createSharePublicationCompletion } from '../collab/share-publication-completion.js';
@@ -1389,7 +1389,12 @@ export function registerCollabSyncRoutes(
       if (!remoteState || remoteState.projectId !== projectId) {
         return fail(503, 'SHARE_STATE_UNAVAILABLE', 'remote_state');
       }
-      const candidate = currentFileSharePublication(remoteState, filePath, scope.sourceFileId);
+      let candidate: ReturnType<typeof currentFileSharePublication>;
+      try { candidate = currentFileSharePublication(remoteState, filePath, scope.sourceFileId); }
+      catch (error) {
+        if (error instanceof UnboundFileShareIdentityError) return fail(409, 'SHARE_FILE_IDENTITY_UNAVAILABLE');
+        throw error;
+      }
       const stopped = candidate?.status === 'stopped' ? candidate : undefined;
       const localRevision = publicFilePublicationStore.getRevision(scope);
       if (!stopped || (localRevision && localRevision.slug !== stopped.slug)) {
@@ -1555,6 +1560,15 @@ export function registerCollabSyncRoutes(
     // Absence must be observed remotely, not inferred from a lost local row.
     // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
     const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
+    if (scope.sourceFileId && (!previousState || previousState.projectId !== projectId)) {
+      return res.status(503).json({ error: 'SHARE_STATE_UNAVAILABLE' });
+    }
+    try {
+      if (previousState) currentFileSharePublication(previousState, filePath, scope.sourceFileId);
+    } catch (error) {
+      if (error instanceof UnboundFileShareIdentityError) return res.status(409).json({ error: 'SHARE_FILE_IDENTITY_UNAVAILABLE' });
+      throw error;
+    }
     const stoppedSlug = previousState?.projectId === projectId
       ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped'
         && (!scope.sourceFileId || item.sourceFileId === scope.sourceFileId)
@@ -1862,7 +1876,12 @@ export function registerCollabSyncRoutes(
       return res.json(response);
     }
     const sourceFileId = deps.sharePublishing?.sourceFileId?.(scope);
-    const remote = currentFileSharePublication(history, filePath, sourceFileId);
+    let remote: ReturnType<typeof currentFileSharePublication>;
+    try { remote = currentFileSharePublication(history, filePath, sourceFileId); }
+    catch (error) {
+      if (error instanceof UnboundFileShareIdentityError) return res.status(409).json({ error: 'SHARE_FILE_IDENTITY_UNAVAILABLE' });
+      throw error;
+    }
     let local = publicFilePublicationStore.get(scope);
     // A row that outlived a stop made elsewhere is not a live publication:
     // the owner should see the stopped state (and resume), not a dead link.

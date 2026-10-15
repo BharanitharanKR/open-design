@@ -90,3 +90,14 @@ it('does not infer the current lifetime from a lone historical alias or select t
   expect(currentFileSharePublication({ ...history, publications: [first, second] }, 'a.html', second.sourceFileId)).toEqual(second);
   expect(currentFileSharePublication({ ...history, publications: [first, second] }, 'a.html')).toBeUndefined();
 });
+
+it('never calls a live identity-less share absent or guesses it belongs to a new lifetime', () => {
+  const legacy = { sourceFilePath: 'a.html', slug, status: 'active' as const };
+  const history = { projectId: 'p', bindingExists: true, hasEverShared: true, publications: [legacy] };
+  expect(() => currentFileSharePublication(history, 'a.html', '22222222-2222-4222-8222-222222222222'))
+    .toThrow('SHARE_FILE_IDENTITY_UNAVAILABLE');
+  expect(currentFileSharePublication(history, 'a.html')).toEqual(legacy); // Existing project history/stop remains addressable.
+  expect(history.publications[0]).not.toHaveProperty('sourceFileId');
+  expect(currentFileSharePublication({ ...history, publications: [{ ...legacy, status: 'stopped' }] }, 'a.html', '22222222-2222-4222-8222-222222222222')).toBeUndefined();
+  expect(currentFileSharePublication(history, 'unrelated.html', '22222222-2222-4222-8222-222222222222')).toBeUndefined();
+});

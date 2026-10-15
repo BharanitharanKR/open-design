@@ -84,9 +84,16 @@ export function parseProjectShareState(output: string, projectId: string): Proje
   return { projectId, bindingExists: value.bindingExists, hasEverShared: hasEverShared({ bindingExists: value.bindingExists }), publications };
 }
 
+export class UnboundFileShareIdentityError extends Error {
+  constructor() { super('SHARE_FILE_IDENTITY_UNAVAILABLE'); }
+}
+
 /** History contains retired aliases at reused paths. Only the current lifetime
- * may drive file status/resume; an unbound path is never a lifetime proof. */
+ * may drive file status/resume; an unbound live share is neither absence nor
+ * authority to infer/migrate its identity. Existing project history/stop stays usable. */
 export function currentFileSharePublication(history: ProjectShareState, filePath: string, sourceFileId?: string) {
+  if (sourceFileId && history.publications.some(item => item.sourceFilePath === filePath
+    && item.sourceFileId === undefined && item.status === 'active')) throw new UnboundFileShareIdentityError();
   const matches = history.publications.filter(item => item.sourceFilePath === filePath
     && (sourceFileId ? item.sourceFileId === sourceFileId : item.sourceFileId === undefined));
   return matches.length === 1 ? matches[0] : undefined;
