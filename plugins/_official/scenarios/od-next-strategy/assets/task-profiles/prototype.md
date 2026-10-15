@@ -1,4 +1,4 @@
-# OD Next Prototype Task Profile v3.1.4
+# OD Next Prototype Task Profile v3.1.5
 
 > Rollout: active
 
@@ -54,6 +54,10 @@ iterate a single-element lookup or mix the return types of selector helpers.
 An initialization error must not leave seeded content and controls unbound.
 When toggling `hidden`, ensure authored display rules do not override it;
 results and their empty state must never appear at the same time.
+Keep handler, label, and validation-feedback selectors consistent with the IDs
+actually rendered in the markup. Do not derive feedback IDs by mixing input
+and field naming schemes. Optional feedback nodes must be null-safe; a missing
+message element must not throw or block an otherwise valid state update.
 
 Writing the primary HTML deliverable to disk IS the delivery: no opening, no
 previewing, no walkthroughs, no second pass of any kind after the write. Meet
