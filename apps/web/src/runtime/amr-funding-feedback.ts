@@ -13,13 +13,18 @@ function fundingKey(scope: AmrBalanceGateScope, modelId: string | null): string 
   return JSON.stringify([cacheGeneration, currentWorkspaceAccountGeneration(), scope.workspaceType, scope.workspaceId, scope.workspaceMemberId, modelId]);
 }
 
-/** Only Home may use a fresh negative to hold navigation while rechecking it. */
+/** Home can hold navigation while confirming a short-lived negative or a
+ * wallet-and-plan projection. A recent positive overrides either memory hint. */
 export function cachedHomeAmrFundingBlock(
   scope: AmrBalanceGateScope | undefined,
   modelId: string | null,
+  memorySnapshot: AmrWalletSnapshot | null = null,
 ): AmrWalletSnapshot | null {
-  if (!scope || homeBlock?.key !== fundingKey(scope, modelId) || homeBlock.expiresAt <= Date.now()) return null;
-  return homeBlock.snapshot;
+  if (!scope) return null;
+  const key = fundingKey(scope, modelId);
+  if (positive?.key === key && positive.expiresAt > Date.now()) return null;
+  if (homeBlock?.key === key && homeBlock.expiresAt > Date.now()) return homeBlock.snapshot;
+  return memorySnapshot;
 }
 
 export function invalidateAmrFundingFeedback(): void {

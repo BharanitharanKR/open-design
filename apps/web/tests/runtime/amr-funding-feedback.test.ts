@@ -90,6 +90,14 @@ describe('Home cached funding gate', () => {
     expect(cachedHomeAmrFundingBlock(scope, 'model')).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+  it('lets a recent available verdict override an older display-wallet block', async () => {
+    const { scope } = fixture('available');
+    const snapshot = { status: 'available' as const, profile: 'test', user: null, balanceUsd: '0',
+      updatedAt: null, fetchedAt: new Date().toISOString(), stale: true, source: 'daemon_cache' as const };
+    expect(cachedHomeAmrFundingBlock(scope, 'model', snapshot)).toBe(snapshot);
+    await checkAmrFundingFeedback(scope, 'model');
+    expect(cachedHomeAmrFundingBlock(scope, 'model', snapshot)).toBeNull();
+  });
   it('expires negative evidence against its server timestamp, not just arrival time', async () => {
     vi.useFakeTimers();
     const { scope, preflight } = fixture('insufficient');

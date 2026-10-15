@@ -119,6 +119,7 @@ import {
 } from '../runtime/amr-balance-branch';
 import { installDeepSeekHarnessCompanion } from '../providers/agent-companion';
 import {
+  amrBalanceGateFromMemory,
   amrBalanceGateScopeForWorkspaceContext,
   checkAmrBalanceGate,
   retryUnavailableAmrBalanceGate,
@@ -1477,7 +1478,14 @@ export function EntryShell({
         workspaceContextStateRef.current.failure === 'unsupported'
           ? null : workspaceResourceReadContext(workspaceContextStateRef.current),
       );
-      const cachedBlock = cachedHomeAmrFundingBlock(scope, amrModelId ?? null);
+      // Restore #8240's pre-handoff memory gate using both the wallet and
+      // Coding Plan projection. The existing billing stream/fallback refreshes
+      // this projection even after the independent hint's short TTL expires.
+      const memoryBlock = amrBalanceGateFromMemory(
+        workspaceBillingBalanceUsd(workspaceBillingResponse, homeFundingContext),
+        { scope, modelId: amrModelId, preflight: workspaceBillingResponse?.preflight, profile: amrProfile },
+      );
+      const cachedBlock = cachedHomeAmrFundingBlock(scope, amrModelId ?? null, memoryBlock?.snapshot);
       if (cachedBlock) {
         const identity = homeFundingIdentityRef.current;
         const accountGeneration = currentWorkspaceAccountGeneration();

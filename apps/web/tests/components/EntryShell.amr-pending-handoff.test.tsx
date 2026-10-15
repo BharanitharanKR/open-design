@@ -17,6 +17,7 @@ import {
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
   type AmrWalletSnapshot,
+  type WorkspaceBillingPreflight,
   type WorkspaceCollabContext,
 } from '@open-design/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -297,8 +298,9 @@ describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
   });
 });
 
-describe('zero wallet never bypasses the ordinary scoped preflight hand-off', () => {
+describe('Home memory funding gate', () => {
   let billingReads = 0;
+  let memoryPreflight: WorkspaceBillingPreflight | null = null;
 
   beforeEach(() => {
     globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
@@ -308,6 +310,7 @@ describe('zero wallet never bypasses the ordinary scoped preflight hand-off', ()
     resetWorkspaceBillingCache();
     resetTeamProjectsCache();
     billingReads = 0;
+    memoryPreflight = null;
     const workspace = personalContext();
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -319,6 +322,7 @@ describe('zero wallet never bypasses the ordinary scoped preflight hand-off', ()
         billingReads += 1;
         // The projection the rail shows: this member's wallet is at $0.
         return jsonResponse({
+          preflight: memoryPreflight,
           summary: null,
           workspaceBalance: {
             workspaceId: workspace.workspaceId,
@@ -378,6 +382,28 @@ describe('zero wallet never bypasses the ordinary scoped preflight hand-off', ()
     await checkAmrFundingFeedback(context, 'default');
     return { ...h, confirm: (fundingCheck: string) => finishConfirmation(jsonResponse({ preflight: { ...preflight, fundingCheck } })) };
   }
+
+  it('restores #8240 from the displayed wallet and plan without an independent hint', async () => {
+    const context = personalContext();
+    memoryPreflight = {
+      schemaVersion: 1, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+      modelId: null, generatedAt: new Date().toISOString(), balanceUsd: '0', funding: 'gateway', modelCovered: null,
+      codingPlan: { workspaceId: context.workspaceId, generatedAt: new Date().toISOString(), eligible: false, tier: null, windows: [] },
+    };
+    const h = harness('amr');
+    await waitForWalletInMemory();
+    invalidateAmrFundingFeedback();
+    const original = globalThis.fetch;
+    let finish!: (response: Response) => void;
+    globalThis.fetch = vi.fn((input, init) => String(input).includes('/api/workspace/billing/preflight?')
+      ? new Promise<Response>((resolve) => { finish = resolve; }) : original(input, init));
+    await submitHome('Restore the in-memory Home gate.');
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('amr-balance-dialog')).toBeTruthy();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    finish(jsonResponse({ preflight: null }));
+    await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+  });
 
   it('keeps a cached backend insufficient verdict on Home before any project hand-off', async () => {
     const h = await primeHomeFunding();

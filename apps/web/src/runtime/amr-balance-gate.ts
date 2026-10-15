@@ -17,12 +17,44 @@ export type AmrBalanceGateResult =
 
 export const HOME_AMR_BALANCE_RETRY_DELAYS_MS = [400, 1_200] as const;
 
-/** A cached wallet alone cannot prove that a task is unfunded. */
+/** Home may provisionally hold a known empty wallet when its scoped plan
+ * reading also shows no funding. The caller must confirm asynchronously and
+ * release on unknown/timeout; this projection is never run admission authority.
+ * Missing plan data and available quota cannot be turned into insufficiency. */
 export function amrBalanceGateFromMemory(
-  _balanceUsd: string | null | undefined,
-  _options: { profile?: string | null; updatedAt?: string | null } = {},
-): null {
-  return null;
+  balanceUsd: string | null | undefined,
+  options: {
+    profile?: string | null;
+    updatedAt?: string | null;
+    scope?: AmrBalanceGateScope;
+    modelId?: string | null;
+    preflight?: WorkspaceBillingPreflight | null;
+  } = {},
+): (Extract<AmrBalanceGateResult, { kind: 'hard' }> & { reason: 'insufficient' }) | null {
+  const balance = balanceUsd?.trim();
+  const { scope, preflight } = options;
+  if (!balance || !Number.isFinite(Number(balance)) || Number(balance) > 0 || !scope || !preflight) return null;
+  if (preflight.schemaVersion !== 1 || preflight.workspaceId !== scope.workspaceId ||
+    preflight.workspaceMemberId !== scope.workspaceMemberId ||
+    (preflight.modelId !== null && preflight.modelId !== (options.modelId ?? null)) ||
+    preflight.fundingCheck === 'available' || preflight.funding === 'wallet') return null;
+
+  const plan = preflight.codingPlan;
+  if (!plan || plan.workspaceId !== scope.workspaceId) return null;
+  // A null-model display read describes member quota, not model coverage.
+  // Only a definitely exhausted, not-yet-reset window can hold an eligible plan.
+  const exhausted = plan.eligible === true && plan.windows.some((window) =>
+    /^0+$/.test(window.remainingCredits) && window.resetsAt != null &&
+    Date.parse(window.resetsAt) > Date.now());
+  if (plan.eligible !== false && !exhausted) return null;
+  return {
+    kind: 'hard', reason: 'insufficient',
+    snapshot: {
+      status: 'available', profile: options.profile?.trim() || 'default', user: null,
+      balanceUsd: balance, updatedAt: options.updatedAt ?? preflight.generatedAt,
+      fetchedAt: new Date().toISOString(), stale: true, source: 'daemon_cache',
+    },
+  };
 }
 
 /**

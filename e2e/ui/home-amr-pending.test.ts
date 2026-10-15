@@ -351,3 +351,62 @@ test('[P0] cached backend insufficiency stays on Home and dismiss preserves the 
     create.release();
   }
 });
+
+for (const planAvailable of [false, true]) {
+  test(`[P0] Home restores the wallet memory gate with Coding Plan available=${planAvailable}`, async ({ page }, testInfo) => {
+    await wireSignedInAmrHome(page, { accountBalanceUsd: '0.00' });
+    const create = await holdProjectCreate(page);
+    const confirmation = deferred();
+    let sending = false;
+    const { workspaceId, workspaceMemberId } = AMR_PERSONAL_WORKSPACE_CONTEXT;
+    const displayed = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/workspace/billing'
+      && new URL(response.url()).searchParams.get('scope') === 'workspace' && response.ok());
+    await page.route('**/api/workspace/billing?**', async (route) => {
+      // Older than the independent hint TTL; the Home gate must consume the
+      // billing projection already maintained for the rail, not a warmed hint.
+      const generatedAt = new Date(Date.now() - 31_000).toISOString();
+      await route.fulfill({ json: {
+        summary: null,
+        workspaceBalance: { workspaceId, workspaceMemberId, billingScopeVersion: 2, balanceUsd: '0', updatedAt: generatedAt, expiresAt: null },
+        preflight: {
+          schemaVersion: 1, workspaceId, workspaceMemberId, modelId: null, generatedAt,
+          balanceUsd: '0', funding: planAvailable ? 'coding_plan' : 'gateway', modelCovered: null,
+          codingPlan: { workspaceId, generatedAt, eligible: planAvailable, tier: planAvailable ? 'go' : null,
+            windows: planAvailable ? [{ policyId: '5h', durationSeconds: 18000, resetMode: 'activity_triggered',
+              usedCredits: '0', limitCredits: '100', remainingCredits: '100', windowStart: null, resetsAt: null }] : [] },
+        },
+      } });
+    });
+    await page.route('**/api/workspace/billing/preflight?**', async (route) => {
+      if (sending) await confirmation.promise;
+      await route.fulfill({ json: { preflight: null } });
+    });
+    try {
+      await gotoEntryHome(page);
+      await displayed;
+      const prompt = 'Use the displayed wallet and plan before entering a project.';
+      sending = true;
+      await sendFromHome(page, prompt);
+      if (planAvailable) {
+        await expect(page.getByTestId('project-creation-pending-view')).toBeVisible();
+        await expect(page.getByTestId('amr-balance-dialog')).toHaveCount(0);
+        await expect.poll(() => create.requested()).toBe(true);
+      } else {
+        const dialog = page.getByTestId('amr-balance-dialog');
+        await expect(dialog).toBeVisible();
+        await expect(page.getByTestId('home-hero-input')).toBeVisible();
+        await expect(page.getByTestId('project-creation-pending-view')).toHaveCount(0);
+        expect(create.requested()).toBe(false);
+        await testInfo.attach('restored-home-memory-gate', { body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png' });
+        // An old CLI/unreadable confirmation cannot strand this pending send.
+        confirmation.resolve();
+        await expect(dialog).toBeHidden();
+        await expect.poll(() => create.requested()).toBe(true);
+        await expect(page.getByTestId('project-creation-pending-view')).toBeVisible();
+      }
+    } finally {
+      confirmation.resolve();
+      create.release();
+    }
+  });
+}

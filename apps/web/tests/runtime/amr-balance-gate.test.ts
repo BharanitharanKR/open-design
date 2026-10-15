@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AmrWalletSnapshot } from '@open-design/contracts';
+import type { AmrWalletSnapshot, WorkspaceBillingPreflight } from '@open-design/contracts';
 import {
   AMR_HARD_BLOCK_BALANCE_USD,
   HOME_AMR_BALANCE_RETRY_DELAYS_MS,
@@ -464,6 +464,45 @@ describe('retryUnavailableAmrBalanceGate', () => {
 });
 
 describe('amrBalanceGateFromMemory', () => {
+  const scope = { workspaceType: 'personal' as const, workspaceId: 'ws', workspaceMemberId: 'member' };
+  function memoryPreflight(): WorkspaceBillingPreflight {
+    return {
+      schemaVersion: 1, workspaceId: 'ws', workspaceMemberId: 'member', modelId: null,
+      generatedAt: new Date().toISOString(), balanceUsd: '0', modelCovered: null, funding: 'gateway',
+      codingPlan: { workspaceId: 'ws', generatedAt: new Date().toISOString(), eligible: false, tier: null, windows: [] },
+    };
+  }
+  it('restores the Home memory gate for an empty wallet with no Coding Plan', () => {
+    expect(amrBalanceGateFromMemory('0', { scope, preflight: memoryPreflight(), modelId: 'model' }))
+      .toMatchObject({ kind: 'hard', reason: 'insufficient', snapshot: { balanceUsd: '0' } });
+  });
+  it.each(['available', 'wrong-member', 'wrong-workspace', 'wrong-model', 'unknown-plan', 'plan-quota'])(
+    'does not block on %s evidence', (scenario) => {
+      const preflight = memoryPreflight();
+      if (scenario === 'available') preflight.fundingCheck = 'available';
+      if (scenario === 'wrong-member') preflight.workspaceMemberId = 'other';
+      if (scenario === 'wrong-workspace') preflight.workspaceId = 'other';
+      if (scenario === 'wrong-model') preflight.modelId = 'other';
+      if (scenario === 'unknown-plan') preflight.codingPlan.eligible = true;
+      if (scenario === 'plan-quota') {
+        preflight.codingPlan.eligible = true;
+        preflight.codingPlan.windows = [{ policyId: '5h', durationSeconds: 18000, resetMode: 'activity_triggered',
+          usedCredits: '0', limitCredits: '100', remainingCredits: '100', windowStart: null, resetsAt: null }];
+      }
+      expect(amrBalanceGateFromMemory('0', { scope, preflight, modelId: 'model' })).toBeNull();
+    },
+  );
+  it('holds an exhausted plan provisionally but allows a window that has reset', () => {
+    const preflight = memoryPreflight();
+    preflight.codingPlan.eligible = true;
+    preflight.codingPlan.windows = [{ policyId: '5h', durationSeconds: 18000, resetMode: 'activity_triggered',
+      usedCredits: '100', limitCredits: '100', remainingCredits: '0', windowStart: null,
+      resetsAt: new Date(Date.now() + 60_000).toISOString() }];
+    expect(amrBalanceGateFromMemory('0', { scope, preflight, modelId: 'model' })).not.toBeNull();
+    preflight.codingPlan.windows[0]!.resetsAt = new Date(Date.now() - 1).toISOString();
+    expect(amrBalanceGateFromMemory('0', { scope, preflight, modelId: 'model' })).toBeNull();
+  });
+
   it.each(['0', '-1', '1', '', 'bad', null, undefined])('never treats wallet %s as funding authority', (balance) => {
     expect(amrBalanceGateFromMemory(balance)).toBeNull();
   });
