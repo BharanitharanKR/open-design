@@ -12622,11 +12622,29 @@ function HtmlViewer({
   }, [inspectMode, srcDoc, useUrlLoadPreview, workspaceActive]);
 
   const commentTargetsKey = JSON.stringify([projectId, file.name, srcDoc, useUrlLoadPreview, reloadKey]);
+  // Only a current target report or a paired locate failure can establish loss.
+  // Saved boxes/text never supply location evidence; an unwitnessed document is pending.
+  const selectedLocationComment = previewComments.find(comment => comment.id === activePreviewCommentId
+    && comment.filePath === file.name && commentUsesIdentity(comment) && ownerCommentNeedsLocation(comment, collab.enabled));
+  const lostSelectedCommentId = selectedLocationComment && commentTargetsReadyKey === commentTargetsKey
+    && (resolveOwnerCommentAnchor(selectedLocationComment, liveCommentTargets, collab.publishedVersion ?? undefined).state === 'lost'
+      || (missingCommentLocation?.commentId === selectedLocationComment.id && missingCommentLocation.previewKey === commentTargetsKey
+        && missingCommentLocation.intent === commentLocationIntent)) ? selectedLocationComment.id : null;
+  const preparationComposerComment = currentActiveComposerComment();
+  // A strict-lost row has no composer. Its exact saved prefill is not new work,
+  // but any edit (including clearing that note) must still prevent publication.
+  const unchangedLostCommentPrefill = !activeCommentTarget && lostSelectedCommentId !== null
+    && preparationComposerComment?.id === lostSelectedCommentId
+    && commentDraft === preparationComposerComment.note;
+  const commentPreparationDraftUnsettled = !unchangedLostCommentPrefill && (
+    Boolean(commentDraft.trim()) || Boolean(preparationComposerComment && (activeCommentTarget || lostSelectedCommentId)
+      && commentDraft !== preparationComposerComment.note)
+  );
   const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles) && !needsPowered && liveHtml === undefined;
   const commentPreparationSettled = !streaming && !manualEditMode && !manualEditDraftDirty
     && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
     && !manualEditPendingStyleRef.current && !inspectMode && !savingInspect && !drawOverlayOpen
-    && source !== null && !versionModalOpen && !filesRefreshPending && !commentDraft.trim() && !queuedBoardNotes.length && !boardImages.length
+    && source !== null && !versionModalOpen && !filesRefreshPending && !commentPreparationDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
     && !sendingBoardBatch && !_speakerNotesSaving && !publishingPublicFile;
   const commentPreparationInputKey = useMemo(() => JSON.stringify([
     source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes,
@@ -16915,14 +16933,7 @@ function HtmlViewer({
         document.body,
       )
     : null;
-  // Only a current target report or a paired locate failure can establish loss.
-  // Saved boxes/text never supply location evidence; an unwitnessed document is pending.
-  const selectedLocationComment = previewComments.find(comment => comment.id === activePreviewCommentId
-    && comment.filePath === file.name && commentUsesIdentity(comment) && ownerCommentNeedsLocation(comment, collab.enabled));
-  const unavailableCommentId = boardMode && selectedLocationComment && commentTargetsReadyKey === commentTargetsKey
-    && (resolveOwnerCommentAnchor(selectedLocationComment, liveCommentTargets, collab.publishedVersion ?? undefined).state === 'lost'
-      || (missingCommentLocation?.commentId === selectedLocationComment.id && missingCommentLocation.previewKey === commentTargetsKey
-        && missingCommentLocation.intent === commentLocationIntent)) ? selectedLocationComment.id : null;
+  const unavailableCommentId = boardMode ? lostSelectedCommentId : null;
   const commentSidePanel = workspaceActive && commentPanelOpen ? (
     <CommentSideDock
       comments={visibleSideComments}

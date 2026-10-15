@@ -9,7 +9,11 @@ import { CollabProvider, type CollabContextValue } from '../../src/collab/collab
 import type { PreviewComment } from '../../src/types';
 vi.mock('../../src/components/BoardComposerPopover', async importOriginal => {
   const original = await importOriginal<typeof import('../../src/components/BoardComposerPopover')>();
-  return { ...original, BoardComposerPopover: (props: { draft: string; onDraft: (value: string) => void; onSaveComment: () => void }) => <div>
+  return { ...original, BoardComposerPopover: (props: { draft: string; onDraft: (value: string) => void; onSaveComment: () => void;
+    onAddDraft: () => void; onAttachImages: (files: File[]) => void; onRemoveImage: (index: number) => void }) => <div>
+    <button data-testid="probe-queue" onClick={props.onAddDraft}>Queue</button>
+    <button data-testid="probe-attach" onClick={() => props.onAttachImages([new File(['image'], 'new.png', { type: 'image/png' })])}>Attach</button>
+    <button data-testid="probe-remove-image" onClick={() => props.onRemoveImage(0)}>Remove image</button>
     <input data-testid="probe-draft" value={props.draft} onChange={event => props.onDraft(event.target.value)} />
     <button data-testid="probe-save" onClick={props.onSaveComment}>Save</button>
   </div> };
@@ -283,6 +287,46 @@ it.each(['pending', 'comment-draft', 'manual-edit', 'ready'] as const)('R6 suppo
   expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(state === 'ready' ? 1 : 0);
   if (state === 'comment-draft') expect(screen.getByTestId('probe-draft')).toHaveValue('Already unsettled before Update');
   if (state === 'manual-edit') expect(screen.getByTestId('manual-edit-mode-toggle')).toHaveAttribute('aria-pressed', 'true');
+});
+it.each(['initially-lost', 'saved', 'typed', 'cleared', 'whitespace-edit', 'fresh-image', 'removed-image', 'queued'] as const)(
+  'strict-lost saved row: normal Update distinguishes %s work from persisted prefill', async state => {
+  const lost: PreviewComment = { ...target, id: 'lost', projectId: 'p', conversationId: 'c', filePath: 'index.html',
+    elementId: `cmt:${uuid}`, selector: `[data-od-comment-id="${uuid}"]`, note: 'Saved feedback', status: 'open', createdAt: 1, updatedAt: 1 };
+  const route = setup({ activePublication: true, prior: true, history: [lost] });
+  await screen.findByTestId('comment-identity-revalidate');
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const frame = await acknowledge('Target');
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const dispatch = async (data: object) => { await act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data }))); };
+  const liveTarget = { ...target, elementId: lost.elementId, selector: lost.selector };
+  if (state !== 'initially-lost') await dispatch({ type: 'od:comment-targets', targets: [liveTarget] });
+  fireEvent.click(screen.getByTestId('comment-side-item'));
+  if (state !== 'initially-lost') {
+    await dispatch({ ...liveTarget, type: 'od:comment-active-target-update' });
+    expect(screen.getByTestId('comment-active-pin')).toBeInTheDocument();
+  }
+  if (state === 'typed' || state === 'cleared' || state === 'whitespace-edit') {
+    fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: state === 'typed' ? 'Actual unsaved edit' : state === 'cleared' ? '' : `${lost.note} ` } });
+  }
+  if (state === 'fresh-image' || state === 'removed-image') {
+    fireEvent.click(screen.getByTestId('probe-attach'));
+    if (state === 'removed-image') fireEvent.click(screen.getByTestId('probe-remove-image'));
+  }
+  if (state === 'queued') fireEvent.click(screen.getByTestId('probe-queue'));
+  await dispatch({ type: 'od:comment-targets', targets: [] });
+  expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
+  expect(screen.queryByTestId('comment-active-pin')).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  const update = await screen.findByRole('button', { name: /update link/i });
+  await waitFor(() => expect(update).toBeEnabled());
+  await act(async () => fireEvent.click(update));
+  const settled = state === 'initially-lost' || state === 'saved' || state === 'removed-image';
+  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(settled ? 1 : 0);
+  if (!settled) expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('COMMENT_EDITING_UNSETTLED');
+  expect(screen.queryByTestId('probe-draft')).toBeNull(); // No visible composer after strict loss.
+  expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
+  expect(screen.queryByTestId('comment-active-pin')).toBeNull();
+  expect(route.writes.mock.calls.some(call => String(call[0]).endsWith('/comment-identities/prepare'))).toBe(false);
 });
 it.each(['cmt:fake', 'cmt:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'])('untrusted comment history %s is not a preparation receipt', async elementId => {
   const { fetcher } = setup({ history: [{ ...target, id: 'fake', projectId: 'barrier-project', conversationId: 'c', filePath: 'index.html', elementId, note: 'Untrusted claim', status: 'open', createdAt: 1, updatedAt: 1 } as PreviewComment] });
