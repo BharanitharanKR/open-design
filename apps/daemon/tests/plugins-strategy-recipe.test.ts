@@ -133,6 +133,11 @@ describe('OD Next V2 request recipe wiring', () => {
     expect(core).toContain('Never assume\nan unknown connection is real or simulated');
     expect(core).toContain('When the user asks about sources, design specifications, implementation,');
     expect(core).toContain('Preserve necessary attribution');
+    expect(core).toContain('Preserve both the scope and certainty of facts');
+    expect(core).toContain('Values alone do not establish their roles');
+    expect(core).toContain('Do not prepend a kickoff or replay earlier progress');
+    expect(core).toContain('Keep stock-library and supplier names in source records by default');
+    expect(core).toContain('required attribution or licensing');
     expect(bundle.coreSystemPrompt.outputContract).toContain('Follow the Core communication guidance');
     expect(bundle.coreSystemPrompt.outputContract).not.toContain('design direction, implementation steps');
     expect(bundle.sessionSkills.taskTypeSkill.body).toContain('They are work specifications, not');

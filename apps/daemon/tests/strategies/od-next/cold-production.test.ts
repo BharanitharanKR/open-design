@@ -37,6 +37,8 @@ it.each(['frozen gate', 'current host instructions'] as const)('freezes context 
   expect(cold.context.priorTranscript).toContain('Keep the dog blue.');
   expect(cold.context.priorTranscript).toContain('Plan: a blue dog image, no HTML. 中文 & <literal> preserved.');
   expect(cold.userFirstPrompt).toContain('This is the production turn');
+  expect(cold.userFirstPrompt).not.toContain('accepted plan');
+  expect(cold.userFirstPrompt).toContain('does not mean the user approved the plan');
   expect(cold.userFirstPrompt).toContain(OD_NEXT_USER_FACING_REPLY_INSTRUCTIONS);
   expect(cold.context.formOverride).toBeUndefined();
   expect(cold.taskMetadata.titleDirective).toBeUndefined();

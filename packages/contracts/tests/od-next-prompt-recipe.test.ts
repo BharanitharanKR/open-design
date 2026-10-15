@@ -402,6 +402,16 @@ describe('OD Next V2 prompt recipe', () => {
     expect(production).toContain('original user request for all user-facing progress and final replies');
     expect(production).toContain('Follow the Core communication guidance');
   });
+
+  it('keeps automatic production distinct from user approval and completed delivery', () => {
+    const production = composeOdNextMarkerProductionTurn({
+      taskExecutionId: 'task-current-state', taskRunIndex: 1,
+    });
+    expect(production).not.toContain('accepted plan');
+    expect(production).toContain('does not mean the user approved the plan');
+    expect(production).toContain('Do not prepend a kickoff or replay earlier progress');
+    expect(production).toContain('Preserve both the scope and certainty of facts');
+  });
   it('keeps post-Build quality semantics out of the recipe structure and text', () => {
     const prompt = composeOdNextStrategyRequestPromptV2(recipe);
     expect(prompt).not.toMatch(/\bverification\b/i);
