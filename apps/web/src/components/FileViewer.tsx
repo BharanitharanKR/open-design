@@ -1,3 +1,4 @@
+import { previewStorageKey, readPreviewStorage, savePreviewStorageMessage } from '../runtime/preview-storage';
 import { useExperienceError } from '../observability/use-experience-error';
 import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-detail';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
@@ -10072,6 +10073,7 @@ function HtmlViewer({
     const s = routingHtmlSource;
     return s != null && htmlNeedsRedirectGuard(s);
   }, [passiveLargeHtmlPreview, routingHtmlSource]);
+  const needsPersistentStorage = Boolean(routingHtmlSource && /\blocalStorage\b/.test(routingHtmlSource));
   const urlDocumentGuardsAvailable =
     liveHtml === undefined && file.size <= PREVIEW_URL_GUARD_MAX_HTML_BYTES;
   // Set by the injected guard's `od:redirect-loop-blocked` postMessage. The
@@ -10224,7 +10226,7 @@ function HtmlViewer({
     urlModeBridge,
     inspectMode,
     drawMode: drawOverlayOpen,
-    forceInline: forceInline && !needsPowered,
+    forceInline: (forceInline || needsPersistentStorage) && !needsPowered,
     needsSandboxShim: needsSandboxShim && !needsPowered,
     needsLocalInteractionBridge: needsLocalInteractionBridge && !needsPowered,
     // Daemon guards wrap the settled on-disk response. Streaming/in-memory
@@ -10262,6 +10264,12 @@ function HtmlViewer({
       if (srcDocPreviewIframeRef.current) unbindMotionPreviewActivity(srcDocPreviewIframeRef.current);
       srcDocNavigationCommittedRef.current = null;
       srcDocContentReadyRef.current = null;
+    }
+    // Reset before the shell can announce readiness. Its ready message may
+    // precede the first load; resetting in onLoad would activate it twice.
+    if (frame && srcDocFrameDedupeResetForRef.current !== frame) {
+      srcDocFrameDedupeResetForRef.current = frame;
+      activatedSrcDocTransportHtmlRef.current = null;
     }
     srcDocPreviewIframeRef.current = frame;
     if (frame) bindMotionPreviewActivity(frame);
@@ -10838,6 +10846,7 @@ function HtmlViewer({
     effectiveDeck ? 'deck' : 'html',
     srcDocBaseHref,
   ].join('\0');
+  const previewStorageScopeKey = previewStorageKey(sourceAuthorizationScopeKey, projectId, file.name);
   const candidateSrcDocTransport = useMemo(
     () => {
       const sourceFingerprint = previewSource === null
@@ -10860,6 +10869,7 @@ function HtmlViewer({
         generation,
         srcDoc: previewSource ? buildSrcdoc(previewSource, {
           motionPreview: true,
+          previewStorage: Boolean(previewStorageScopeKey),
           deck: effectiveDeck,
           baseHref: srcDocBaseHref,
           initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
@@ -10893,6 +10903,7 @@ function HtmlViewer({
       previewSource,
       effectiveDeck,
       srcDocTransportIdentity,
+      previewStorageScopeKey,
       previewStateKey,
       reloadKey,
       transportPreviewMeasurementDocumentEpoch,
@@ -10916,6 +10927,14 @@ function HtmlViewer({
   const srcDoc = srcDocTransport.srcDoc;
   const expectedSrcDocTransportGenerationRef = useRef(srcDocTransportGeneration);
   expectedSrcDocTransportGenerationRef.current = srcDocTransportGeneration;
+  useEffect(() => {
+    const onStorage = (event: MessageEvent) => {
+      savePreviewStorageMessage(event, srcDocPreviewIframeRef.current?.contentWindow ?? null,
+        expectedSrcDocTransportGenerationRef.current, previewStorageScopeKey);
+    };
+    window.addEventListener('message', onStorage);
+    return () => window.removeEventListener('message', onStorage);
+  }, [previewStorageScopeKey]);
   const readySrcDocTransportRef = useRef<{
     frame: HTMLIFrameElement;
     generation: string;
@@ -11664,6 +11683,7 @@ function HtmlViewer({
   // visibility swap rather than a remount and reload.
   const useLazySrcDocTransport =
     usesPersistentSrcDocTransport
+    || (needsPersistentStorage && !needsPowered)
     || srcDocRecoveryGeneration === srcDocTransportGeneration
     || (!manualEditRequiresSrcDoc && !captureModeActive && useUrlLoadPreview && !srcDocMaterialized);
   // Park on a static "loop detected" document once the guard reports a runaway
@@ -11836,12 +11856,14 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      previewStorage: previewStorageScopeKey ? readPreviewStorage(previewStorageScopeKey) : undefined,
     }, '*');
     activatedSrcDocTransportHtmlRef.current = srcDocActivationContent;
     return true;
   }, [
     boardMode,
     srcDocActivationContent,
+    previewStorageScopeKey,
     srcDocMaterialized,
     srcDocShellReady,
     srcDocTransportGeneration,
@@ -11863,11 +11885,13 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      previewStorage: previewStorageScopeKey ? readPreviewStorage(previewStorageScopeKey) : undefined,
     }, '*');
     activatedSrcDocTransportHtmlRef.current = srcDocActivationContent;
     return true;
   }, [
     srcDocActivationContent,
+    previewStorageScopeKey,
     srcDocMaterialized,
     srcDocTransportGeneration,
     useLazySrcDocTransport,
@@ -11881,9 +11905,10 @@ function HtmlViewer({
       type: 'od:srcdoc-transport-activate',
       html: srcDocActivationContent,
       generation: srcDocTransportGeneration,
+      previewStorage: previewStorageScopeKey ? readPreviewStorage(previewStorageScopeKey) : undefined,
     }, '*');
     return true;
-  }, [srcDocActivationContent, srcDocTransportGeneration]);
+  }, [srcDocActivationContent, srcDocTransportGeneration, previewStorageScopeKey]);
   function verifyLoadedSrcDocTransport(target: HTMLIFrameElement | null) {
     if (!target || target !== srcDocPreviewIframeRef.current) return;
     const generation = srcDocTransportGeneration;
@@ -17627,40 +17652,6 @@ function HtmlViewer({
                               transportPreviewMeasurementDocumentEpoch;
                           }
                           if (!useUrlLoadPreview) beginDesktopPreviewContentMeasurementGeneration(frame);
-                          // Reset the activation dedupe exactly ONCE per
-                          // freshly mounted iframe DOM node, never on the
-                          // subsequent load events that the same node
-                          // emits during normal srcDoc rendering.
-                          //
-                          // The iframe's load event fires twice for one
-                          // successful activation: once when the lazy
-                          // transport shell HTML loads, and again when
-                          // our own document.open/write/close inside the
-                          // shell finishes. PR #2699 reset the dedupe on
-                          // every load so that switching
-                          // preview -> source -> preview (which remounts
-                          // this iframe as a fresh DOM node) would
-                          // re-activate the new shell. But resetting on
-                          // every load also re-activated on the SECOND
-                          // load of a non-remounted frame, which
-                          // re-triggered document.open/write/close, which
-                          // re-fired the load event, ad infinitum. The
-                          // dedupe ref oscillated between null and the
-                          // current srcDoc thousands of times per render
-                          // and each iteration restarted every CSS
-                          // animation from its `from` keyframe. Designs
-                          // using `animation-fill-mode: both` with
-                          // `from { opacity: 0 }` stayed at opacity 0
-                          // forever and the preview read as blank.
-                          // That is issue #2361.
-                          //
-                          // Tracking the last frame we reset for lets us
-                          // keep PR #2699's "remount after Source toggle"
-                          // fix while breaking the loop on plain renders.
-                          if (frame && srcDocFrameDedupeResetForRef.current !== frame) {
-                            srcDocFrameDedupeResetForRef.current = frame;
-                            activatedSrcDocTransportHtmlRef.current = null;
-                          }
                           if (useLazySrcDocTransport) setSrcDocShellReady(true);
                           const activatedTransport = activateLoadedSrcDocTransport(frame);
                           if (frame && activatedTransport) {

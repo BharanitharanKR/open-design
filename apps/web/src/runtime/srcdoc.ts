@@ -1,3 +1,4 @@
+import { buildPreviewStorageBridge } from './preview-storage';
 import { injectMotionSourcePlayer, markMotionHostedPreview } from '@open-design/contracts/runtime/motion-source-player';
 /**
  * Wrap an artifact's HTML for a sandboxed iframe. Corresponds to
@@ -69,6 +70,8 @@ import {
 import { isApprovedFontStylesheetHref } from './deck-thumbnail-parser';
 
 export type SrcdocOptions = {
+  /** Host-scoped local progress, seeded before authored scripts by the lazy shell. */
+  previewStorage?: boolean;
   /** Live embedded motion preview only; do not enable for exports/captures. */
   motionPreview?: boolean;
   deck?: boolean;
@@ -370,7 +373,7 @@ export function buildSrcdoc(
   const withDeferredFonts = options.deferFontStylesheets
     ? deferTrustedFontStylesheets(withPreviewBaseBridge)
     : withPreviewBaseBridge;
-  const withShim = injectSandboxShim(withDeferredFonts);
+  const withShim = injectSandboxShim(withDeferredFonts, options.previewStorage);
   const blockLoadTimeScriptRedirect = htmlHasLoadTimeLocationNavigation(withPreviewBaseBridge);
   // Always on: a redirect loop can freeze ANY previewed artifact, and the guard
   // is inert on documents that never self-redirect. Injected right after the
@@ -501,6 +504,7 @@ export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {})
         } catch (_) { /* sandboxed parent — host falls back to onLoad */ }
       }
       function handleTransportMessage(ev){
+        if (ev.source !== window.parent) return;
         var data = ev && ev.data;
         if (data && data.type === 'od:srcdoc-transport-shell-probe') {
           announceReady();
@@ -512,6 +516,9 @@ export function buildLazySrcdocTransport(options: { quirksMode?: boolean } = {})
           window.removeEventListener('message', handleTransportMessage);
         }
         document.open();
+        window.__odPreviewStorageSeed = data.previewStorage
+          ? { generation: data.generation, values: data.previewStorage }
+          : null;
         document.write(data.html);
         document.close();
       }
@@ -1528,13 +1535,14 @@ function escapeAttr(value: string): string {
 // try/catch — when it throws, the whole script aborts and the deck
 // becomes a static, unnavigable preview. We install a same-origin
 // in-memory shim BEFORE any user script runs so those decks degrade
-// gracefully (position just doesn't persist across reloads).
+// gracefully. Live host previews may additionally seed isolated local progress;
+// exports and unhosted documents retain the in-memory fallback.
 // allow-popups and allow-popups-to-escape-sandbox are needed for 
 // links with target="_blank" to work in the sandboxed preview.
 // Empty hrefs return to the top; element anchors scroll into view.
 // Hash routers keep their same-document route and browser history.
-function injectSandboxShim(doc: string): string {
-  return injectAtDocumentStart(doc, buildPreviewSandboxShim());
+function injectSandboxShim(doc: string, persistStorage = false): string {
+  return injectAtDocumentStart(doc, buildPreviewSandboxShim() + (persistStorage ? buildPreviewStorageBridge() : ''));
 }
 
 function injectPreviewFocusGuard(doc: string): string {
