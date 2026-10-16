@@ -677,6 +677,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // Enter/click in that window cannot start another send before the host
     // decides whether the first one is kept or handed back.
     const composedSendPendingRef = useRef(false);
+    const pendingDraftRef = useRef<{
+      snapshot: ComposerSendSnapshot;
+      keptWorkspaceContextIds: ReadonlySet<string>;
+      storageKey: string | undefined;
+      edited: boolean;
+    } | null>(null);
+    const currentDraftStorageKeyRef = useRef(draftStorageKey);
+    currentDraftStorageKeyRef.current = draftStorageKey;
     // The latch above prevents duplicates, but a ref alone leaves the UI
     // completely unchanged while an async admission gate (notably AMR's
     // workspace billing check) is pending. Mirror it in state so Send turns
@@ -1566,6 +1574,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       const nextWorkspaceLinkedDirAdds = Object.fromEntries(
         Object.entries(workspaceLinkedDirAdds).filter(([id]) => linkedWorkspaceContextIds.has(id)),
       );
+      draftRef.current = "";
       setDraft("");
       setStaged([]);
       nextAttachmentOrderRef.current = 0;
@@ -1649,6 +1658,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         activeAppliedPlugin,
         quotes: quotes ?? [],
       };
+      const pending = pendingDraftRef.current;
+      if (pending && composerChangedSinceReset(pending.snapshot, pending.keptWorkspaceContextIds)) {
+        pending.edited = true;
+      }
     });
 
     /**
@@ -1718,7 +1731,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       snapshot: ComposerSendSnapshot,
       keptWorkspaceContextIds: ReadonlySet<string>,
     ) {
-      if (composerChangedSinceReset(snapshot, keptWorkspaceContextIds)) return;
+      const pending = pendingDraftRef.current;
+      if (pending?.edited || pending?.storageKey !== currentDraftStorageKeyRef.current
+        || composerChangedSinceReset(snapshot, keptWorkspaceContextIds)) return;
       replaceEditorDraft(snapshot.draft);
       setStaged(snapshot.staged);
       nextAttachmentOrderRef.current = snapshot.nextAttachmentOrder;
@@ -1755,6 +1770,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         },
         handBack,
       ).finally(() => {
+        pendingDraftRef.current = null;
         composedSendPendingRef.current = false;
         setComposedSendPending(false);
       });
@@ -1777,6 +1793,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         throw error;
       }
       const keptWorkspaceContextIds = new Set(reset().map((item) => item.id));
+      pendingDraftRef.current = { snapshot, keptWorkspaceContextIds, storageKey: draftStorageKey, edited: false };
       finishComposedSend(outcome, snapshot, keptWorkspaceContextIds, pendingMetadata);
       return true;
     }
@@ -2901,6 +2918,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // (files) is intentionally NOT pruned: users attach files via the upload
     // button without leaving an `@<path>` token.
     function handleEditorChange(text: string, present: InlineMentionEntity[]) {
+      if (pendingDraftRef.current && text !== draftRef.current) pendingDraftRef.current.edited = true;
       draftRef.current = text;
       setDraft(text);
       const set = new Set(present.map((e) => `${e.kind}:${e.id}`));

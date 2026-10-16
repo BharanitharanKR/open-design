@@ -14384,35 +14384,40 @@ export async function startServer({
       return;
     }
 
-    run.status = 'running';
-    run.updatedAt = Date.now();
-    send('start', {
-      runId,
-      agentId,
-      bin: userFacingAgentLabel(agentId, resolvedBin),
-      streamFormat: def.streamFormat ?? 'plain',
-      projectId: typeof projectId === 'string' ? projectId : null,
-      cwd,
-      model: safeModel,
-      reasoning: safeReasoning,
-      serviceTier: safeServiceTier,
-      toolTokenExpiresAt: toolTokenGrant?.expiresAt ?? null,
-    });
-    /*
-     * This turn's done key, published BEFORE the child is spawned.
-     *
-     * Ordering is the whole contract: the chat client only honours a
-     * `<od-done key="…"/>` marker whose key matches the one it has already
-     * seen for this turn, so the key event must land ahead of the first
-     * `text_delta` on both the live stream and the persisted event list. It is
-     * emitted as a normal agent event so it rides the same path as everything
-     * else — persisted into the assistant message and replayed on reconnect —
-     * rather than needing a message column of its own.
-     */
-    if (typeof run.doneKey === 'string' && run.doneKey) {
-      send('agent', { type: 'done_key', key: run.doneKey });
-    }
-    noteAgentActivity();
+    const publishRunStart = () => {
+      run.status = 'running';
+      run.updatedAt = Date.now();
+      send('start', {
+        runId,
+        agentId,
+        bin: userFacingAgentLabel(agentId, resolvedBin),
+        streamFormat: def.streamFormat ?? 'plain',
+        projectId: typeof projectId === 'string' ? projectId : null,
+        cwd,
+        model: safeModel,
+        reasoning: safeReasoning,
+        serviceTier: safeServiceTier,
+        toolTokenExpiresAt: toolTokenGrant?.expiresAt ?? null,
+      });
+      /*
+       * This turn's done key, published BEFORE the child is spawned.
+       *
+       * Ordering is the whole contract: the chat client only honours a
+       * `<od-done key="…"/>` marker whose key matches the one it has already
+       * seen for this turn, so the key event must land ahead of the first
+       * `text_delta` on both the live stream and the persisted event list. It is
+       * emitted as a normal agent event so it rides the same path as everything
+       * else — persisted into the assistant message and replayed on reconnect —
+       * rather than needing a message column of its own.
+       */
+      if (typeof run.doneKey === 'string' && run.doneKey) {
+        send('agent', { type: 'done_key', key: run.doneKey });
+      }
+      noteAgentActivity();
+    };
+    // AMR queue acceptance is not permission to start the task. Publish the
+    // existing start event only after the authoritative lease admission.
+    if (def.id !== 'amr') publishRunStart();
 
     let child;
     let acpSession = null;
@@ -14541,6 +14546,8 @@ export async function startServer({
           }
         }
       }
+      if (run.cancelRequested || design.runs.isTerminal(run.status)) return;
+      if (def.id === 'amr') publishRunStart();
       const env = applyAgentLaunchEnv({
         ...agentSpawnEnv,
         ...(mmdRouteLaunchEnv || {}),
