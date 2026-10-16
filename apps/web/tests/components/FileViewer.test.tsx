@@ -11807,6 +11807,7 @@ describe('FileViewer tweaks toolbar', () => {
   it('keeps saved comment pins visible while adding another comment', async () => {
     const olderComment: PreviewComment = {
       id: 'comment-older',
+      authorKey: 'a'.repeat(64),
       projectId: 'project-1',
       conversationId: 'conversation-1',
       filePath: 'preview.html',
@@ -11824,6 +11825,7 @@ describe('FileViewer tweaks toolbar', () => {
     const newerComment: PreviewComment = {
       ...olderComment,
       id: 'comment-newer',
+      authorKey: 'b'.repeat(64),
       elementId: 'pin-newer',
       selector: '[data-od-pin="pin-newer"]',
       label: 'pin-newer',
@@ -11848,6 +11850,10 @@ describe('FileViewer tweaks toolbar', () => {
     expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
     expect(screen.getByTestId('comment-saved-marker-pin-older').textContent).toBe('1');
     expect(screen.getByTestId('comment-saved-marker-pin-newer').textContent).toBe('2');
+    const olderColor = commentAuthorAvatarColor(olderComment.authorKey!);
+    const newerColor = commentAuthorAvatarColor(newerComment.authorKey!);
+    expect(screen.getByTestId('comment-saved-marker-pin-older').querySelector('button')).toHaveStyle({ background: olderColor.bg, color: olderColor.fg });
+    expect(screen.getByTestId('comment-saved-marker-pin-newer').querySelector('button')).toHaveStyle({ background: newerColor.bg, color: newerColor.fg });
 
     clickAgentTool('board-mode-toggle');
 
@@ -11883,6 +11889,7 @@ describe('FileViewer tweaks toolbar', () => {
       expect(activeItem?.getAttribute('aria-current')).toBe('true');
     });
     expect(screen.getByTestId('comment-active-pin').textContent).toBe('2');
+    expect(screen.getByTestId('comment-active-pin')).toHaveStyle({ background: newerColor.bg, color: newerColor.fg });
     expect(document.querySelector('[data-comment-id="comment-older"]')?.className).not.toContain('active');
   });
 

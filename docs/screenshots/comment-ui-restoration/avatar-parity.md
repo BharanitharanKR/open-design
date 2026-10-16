@@ -30,7 +30,11 @@ An executable audit extracted the declarations from the **downloaded deployed Ja
 
 The accompanying screenshots come from the current local product with controlled GET comment snapshots, clearly marked as **synthetic local acceptance data**, not production users or end-to-end delivery evidence. No DOM or avatar-style injection is used.
 
-The browser test `e2e/ui/comment-avatar-colors.test.ts` asserts actual computed foreground/background colors for blue, orange, purple and green author avatars, their displayed initials, and the same orange color for public/team comments carrying the same author key. A full-workspace screenshot shows the entry point; a panel close-up makes the colors legible.
+The browser test `e2e/ui/comment-avatar-colors.test.ts` asserts actual computed foreground/background colors for blue, orange, purple and green author avatars, their displayed initials, and the same orange color for public/team comments carrying the same author key. It also checks each saved canvas pin against its author's colors, checks hover preserves that color, and verifies the selected saved pin keeps the same color and number. Five distinct real document targets keep the canvas pins separately visible. A full-workspace screenshot shows the entry point and colored canvas pins; a panel close-up makes the avatars legible; a selected-pin screenshot covers the active state.
+
+### Canvas rendering follow-up
+
+The earlier screenshots correctly exercised sidebar avatar colors but missed the canvas pins, which still used the neutral CSS fallback. This was a missing presentation binding, not a palette/hash/key mismatch. `CommentPreviewOverlays` now reuses the same existing `commentAuthorAvatarColor(comment.authorKey ?? '')` helper for saved and active saved pin style props. No identity-ID fallback is restored. Event handlers, numbering, position, anchor behavior, API and server logic remain unchanged. An unsaved provisional pin has no saved author snapshot and retains its existing neutral appearance.
 
 ## Verification boundary
 

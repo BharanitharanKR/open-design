@@ -19,7 +19,9 @@ test('[P1] comment avatars use authorKey colors in the restored panel', async ({
   });
   expect(created.ok(), await created.text()).toBeTruthy();
   const { conversationId } = await created.json() as { conversationId: string };
-  const content = '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><body style="font-family:system-ui;padding:36px;color:#202020"><main><h1 data-od-id="hero-title">评论头像色彩验收</h1><p>本地合成作者数据 · 非线上用户评论</p><p>相同 authorKey 的团队与公开评论保持同色。</p></main></body></html>';
+  const content = '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><body style="font-family:system-ui;padding:28px;color:#202020"><main><h1 style="font-size:24px">评论头像色彩验收</h1><p>本地合成作者数据 · 非线上用户评论</p><p>画布标记与右侧同一作者保持同色。</p>'
+    + ['蓝色评论标记', '橙色评论标记', '紫色评论标记', '绿色评论标记', '同一作者的团队评论标记'].map((label, index) => `<h2 data-od-id="color-${index}" style="font-size:18px;margin:28px 0">${label}</h2>`).join('')
+    + '</main></body></html>';
   const file = await page.request.post(`/api/projects/${projectId}/files`, {
     data: { name: 'index.html', content, artifactManifest: { version: 1, kind: 'html', title: 'index.html', entry: 'index.html', renderer: 'html', exports: ['html'] } },
   });
@@ -36,8 +38,8 @@ test('[P1] comment avatars use authorKey colors in the restored panel', async ({
   const now = Date.now();
   const comments = [...authors, { ...authors[1]!, note: '同一作者的团队评论：应与橙色公开头像一致。' }].map((author, index) => ({
     id: `avatar-${index}`, projectId, conversationId, filePath: 'index.html',
-    elementId: 'hero-title', selector: '[data-od-id="hero-title"]', label: '页面标题', text: '评论头像色彩验收',
-    htmlHint: '<h1 data-od-id="hero-title">评论头像色彩验收</h1>',
+    elementId: `color-${index}`, selector: `[data-od-id="color-${index}"]`, label: '评论标记', text: '评论头像色彩验收',
+    htmlHint: `<h2 data-od-id="color-${index}">`,
     position: { x: 36, y: 36, width: 360, height: 48 }, note: author.note, status: 'open',
     authorKind: index === 4 ? 'member' : 'user', authorKey: 'a'.repeat(60) + author.suffix,
     ...(index === 4 ? { authorMemberId: 'synthetic-color-member' } : {}),
@@ -51,7 +53,13 @@ test('[P1] comment avatars use authorKey colors in the restored panel', async ({
   await entry.click();
   const panel = page.getByTestId('comment-side-panel');
   await expect(panel.getByTestId('comment-side-item')).toHaveCount(5);
-  for (const author of authors) {
+  for (const [index, author] of authors.entries()) {
+    const pin = page.getByTestId(`comment-saved-marker-color-${index}`).locator('.comment-saved-pin');
+    await expect(pin).toBeVisible();
+    await expect(pin).toHaveCSS('background-color', author.bg);
+    await expect(pin).toHaveCSS('color', author.fg);
+    await pin.hover();
+    await expect(pin).toHaveCSS('background-color', author.bg);
     const row = panel.getByTestId('comment-side-item').filter({ hasText: author.note });
     const avatar = row.locator('.comment-side-avatar');
     await expect(avatar).toHaveText(author.name[0]!);
@@ -61,12 +69,25 @@ test('[P1] comment avatars use authorKey colors in the restored panel', async ({
   const memberAvatar = panel.getByTestId('comment-side-item').filter({ hasText: '同一作者的团队评论' }).locator('.comment-side-avatar');
   await expect(memberAvatar).toHaveCSS('background-color', authors[1]!.bg);
   await expect(memberAvatar).toHaveCSS('color', authors[1]!.fg);
+  const memberPin = page.getByTestId('comment-saved-marker-color-4').locator('.comment-saved-pin');
+  await expect(memberPin).toHaveCSS('background-color', authors[1]!.bg);
+  await expect(memberPin).toHaveCSS('color', authors[1]!.fg);
+  await page.mouse.move(400, 400);
   const output = resolve(process.env.OD_VISUAL_OUTPUT_DIR ?? testInfo.outputPath('avatar-colors'));
   await mkdir(output, { recursive: true });
   await page.screenshot({ path: resolve(output, 'comment-colored-avatars.png'), animations: 'disabled' });
   await panel.screenshot({ path: resolve(output, 'comment-colored-avatar-panel.png'), animations: 'disabled' });
+  const firstPin = page.getByTestId('comment-saved-marker-color-0').locator('.comment-saved-pin');
+  const savedNumber = await firstPin.textContent();
+  await firstPin.click();
+  const activePin = page.getByTestId('comment-active-pin');
+  await expect(activePin).toHaveText(savedNumber!);
+  await expect(activePin).toHaveCSS('background-color', authors[0]!.bg);
+  await expect(activePin).toHaveCSS('color', authors[0]!.fg);
+  await page.mouse.move(400, 400);
+  await page.screenshot({ path: resolve(output, 'comment-active-colored-pin.png'), animations: 'disabled' });
   await writeFile(resolve(output, 'comment-colored-avatars.json'), JSON.stringify({
     source: 'local product with synthetic GET comment snapshots; not live production account data',
-    colors: authors.map(({ name, bg, fg }) => ({ name, bg, fg })), sameAuthorPublicMemberColor: 'PASS',
+    colors: authors.map(({ name, bg, fg }) => ({ name, bg, fg })), sameAuthorPublicMemberColor: 'PASS', savedAndActivePinColorParity: 'PASS',
   }, null, 2));
 });

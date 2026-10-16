@@ -6197,6 +6197,7 @@ function CommentPreviewOverlays({
     () =>
       visibleComments.filter(({ comment }) => !(driftLadder || commentUsesIdentity(comment)) || comment.id !== activeExistingCommentId || Boolean(activeTarget)).map(({ comment, markerNumber, snapshot, anchorState }) => {
         const bounds = overlayBoundsFromSnapshot(snapshot, scale, overlayOffset);
+        const pinColor = commentAuthorAvatarColor(comment.authorKey ?? '');
         const label = commentTargetDisplayName(comment);
         const drifted = anchorState !== 'anchored';
         const tooltip = drifted
@@ -6220,6 +6221,7 @@ function CommentPreviewOverlays({
             <button
               type="button"
               className="comment-saved-pin"
+              style={{ background: pinColor.bg, color: pinColor.fg }}
               onClick={(event) => {
                 event.stopPropagation();
                 onOpenCommentRef.current(comment, snapshot);
@@ -6239,6 +6241,8 @@ function CommentPreviewOverlays({
     ? comments.findIndex((comment) => comment.id === activeExistingCommentId)
     : -1;
   const activeSavedComment = activeSavedIndex >= 0 ? comments[activeSavedIndex] : undefined;
+  const activePinColor = activeSavedComment
+    ? commentAuthorAvatarColor(activeSavedComment.authorKey ?? '') : undefined;
   const activePinNumber = activeSavedComment
     ? (typeof activeSavedComment.pinSeq === 'number' ? activeSavedComment.pinSeq : activeSavedIndex + 1)
     // A brand-new, not-yet-saved comment: provisional guess at what the
@@ -6263,7 +6267,10 @@ function CommentPreviewOverlays({
       {showActivePin && activeTarget ? (
         <div
           className="comment-active-pin"
-          style={activeCommentPinStyle(activeTarget, scale, overlayOffset)}
+          style={{
+            ...activeCommentPinStyle(activeTarget, scale, overlayOffset),
+            ...(activePinColor ? { background: activePinColor.bg, color: activePinColor.fg } : {}),
+          }}
           data-testid="comment-active-pin"
           aria-hidden="true"
         >
