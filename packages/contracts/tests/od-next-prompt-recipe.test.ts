@@ -12,6 +12,7 @@ import {
 
 import { composeSystemPrompt } from '../src/prompts/system.js';
 import { composeOdNextMarkerProductionTurn, renderOdNextProductionReadyInstructions } from '../src/prompts/od-next-production-marker.js';
+import { renderChatTurnHostProtocolInstructions } from '../src/prompts/chat-turn-host-protocol.js';
 
 const A = 'a'.repeat(64);
 const B = 'b'.repeat(64);
@@ -487,6 +488,7 @@ describe('OD Next V2 prompt recipe', () => {
     const bundle = composeOdNextStrategyBundleHeadV2(recipe);
     const production = composeOdNextMarkerProductionTurn({
       taskExecutionId: 'task-1', taskRunIndex: 1,
+      hostProtocolText: renderChatTurnHostProtocolInstructions('abc123', 'od_next_production').text,
     });
 
     expect(stableContext).toContain(context.memoryBody);
@@ -497,6 +499,12 @@ describe('OD Next V2 prompt recipe', () => {
     expect(production).toContain("Use the language of the user's latest request");
     expect(production).toContain('including the first progress update');
     expect(production).toContain('Do not narrate internal Skill IDs');
+    expect(production).toContain('provide the requested plan and stop');
+    expect(production).toContain('Use the already loaded deliverable Skills');
+    expect(production).toContain('Core-authorized bounded check');
+    expect(production).toContain('<od-done key="abc123"/>');
+    expect(production).toContain('<od-next key="abc123"');
+    expect(production).toContain('<od-focus key="abc123"');
     for (const prompt of [core, stableContext, request, JSON.stringify(bundle), production]) {
       expect(prompt).not.toContain('task-brief');
       expect(prompt).not.toContain('rule-proposal');

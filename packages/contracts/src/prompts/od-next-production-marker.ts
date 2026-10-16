@@ -64,9 +64,10 @@ calls or internal reasoning, unless the user explicitly asks for them.`;
 export function composeOdNextMarkerProductionTurn(input: {
   taskExecutionId: string;
   taskRunIndex: number;
+  hostProtocolText: string;
 }): string {
   return serializeOdNextRequestTurnV1({
-    ...input, stage: 'production',
+    taskExecutionId: input.taskExecutionId, taskRunIndex: input.taskRunIndex, stage: 'production',
     payload: `Continue the current session and execute the plan from the preceding
 response within the user's latest explicit requirements and exclusions.
 Use the language of the user's latest request for all user-facing text,
@@ -99,6 +100,8 @@ precedence; do not claim testing or playback that did not occur.
 The sole default exception is the Core-authorized bounded check during actual
 user-requested video-motion production; it does not apply to a loaded helper,
 plan-only response, interactive animation, or unrelated follow-up.
-Never claim that a plan, a tool invocation, or an absent file is delivery.`,
+Never claim that a plan, a tool invocation, or an absent file is delivery.
+
+${input.hostProtocolText}`,
   });
 }

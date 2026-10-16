@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { strategyPackageHashFromDigests } from '@open-design/plugin-runtime';
-import { OD_NEXT_PROMPT_BUNDLE_SCHEMA_V2, serializeCanonicalXml, StrategyTaskProjectionV2Schema } from '@open-design/contracts';
+import { OD_NEXT_PROMPT_BUNDLE_SCHEMA_V2, parseOdNextPromptBundleV2, serializeCanonicalXml, StrategyTaskProjectionV2Schema } from '@open-design/contracts';
 import type { AppliedPluginSnapshot, OpenDesignPlanContractV2 } from '@open-design/contracts';
 import type Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -236,6 +236,139 @@ describe('OD Next planning coordinator', () => {
     });
     return { task, service, physical };
   }
+  const productionMarker = '<od-production-ready key="5e819e50c013db87" />';
+  function markerReply(text: string) {
+    const stream = createOdNextRunProtocol(null, '5e819e50c013db87');
+    stream.push(text); return stream.finish().parsed;
+  }
+
+  it('persists the production run key and localized host protocol in both resume and cold input', () => {
+    const { task, service } = markerHarness();
+    let productionMeta: InternalRunCreateInput | undefined;
+    const prepare = service.prepare;
+    vi.spyOn(service, 'prepare').mockImplementation(input => {
+      productionMeta = input.meta;
+      return prepare(input);
+    });
+    const continued = prepareAutomaticStrategyContinuation({
+      db, service, task, parsed: markerReply(`Build the requested page.\n${productionMarker}`),
+      locale: 'zh-CN',
+      createMeta: (_stage, instruction) => ({ message: instruction }),
+      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false },
+    });
+    expect(continued.start).toBe(true);
+    const key = productionMeta?.doneKey;
+    expect(key).toMatch(/^[a-f0-9]{16}$/);
+    expect(key).not.toBe('5e819e50c013db87');
+    const persisted = getStrategyTaskExecution(db, task.taskExecutionId)!.runs.at(-1)!;
+    const resume = persisted.finalText.text;
+    const cold = parseOdNextPromptBundleV2(persisted.coldStartFinalText!.text).userFirstPrompt;
+    expect(productionMeta?.message).toBe(resume);
+    for (const text of [resume, cold]) {
+      expect(text).toContain(`<od-done key="${key}"/>`);
+      expect(text).toContain(`<od-next key="${key}"`);
+      expect(text).toContain(`<od-focus key="${key}"`);
+      expect(text).toContain('Simplified Chinese');
+      expect(text).toContain('`zh-CN`');
+      expect(text).not.toContain('inputStage=');
+      expect(text).not.toContain('outcome=');
+      expect(text).not.toContain('od-production-ready key=');
+    }
+  });
+
+  it.each([
+    `Build a landing page and a deck.\n${productionMarker}`,
+    `Build a landing page and a deck.${productionMarker}`,
+    'Build a landing page and a deck.\n<od-production-ready key="5e819e50c013db87">',
+    'Build a landing page and a deck.\n<od-production-ready key="5e819e50c013db87>',
+    'Build a landing page and a deck.\nod-production-ready key="5e819e50c013db87"',
+  ])('marker protocol continues once without a Plan Contract, then settles without an entry: %s', text => {
+    const { task, service, physical } = markerHarness();
+    const input = {
+      db, service, task, parsed: markerReply(text),
+      createMeta: (_stage: string, instruction: string) => ({ message: instruction }),
+      completionEvidence: { physicalStatus: 'succeeded' as const, deliverableValid: false },
+    };
+    const continued = prepareAutomaticStrategyContinuation(input);
+    expect(continued.start).toBe(true);
+    expect(continued.result.task).toMatchObject({ inputStage: 'production', outcome: 'running' });
+    expect(continued.result.task.planContract).toBeUndefined();
+    expect(continued.result.task.runs).toHaveLength(2);
+    expect(StrategyTaskProjectionV2Schema.safeParse(projectStrategyTask(continued.result.task)).success).toBe(true);
+    expect(prepareAutomaticStrategyContinuation(input).start).toBe(false);
+    expect(physical.size).toBe(1);
+    const final = prepareAutomaticStrategyContinuation({
+      ...input, task: getStrategyTaskExecution(db, task.taskExecutionId)!,
+      parsed: markerReply(`Files written.\n<open-design-runtime-state>\n{broken}\n</open-design-runtime-state>\n${productionMarker}`),
+    });
+    expect(final.start).toBe(false);
+    expect(final.result.action).toBe('completed'); expect(final.result.reasonCodes).toEqual([]);
+    expect(final.result.task.runs).toHaveLength(2);
+    expect(projectStrategyTask(final.result.task, 'marker-request')).toMatchObject({ settlementReason: 'continued' });
+    expect(projectStrategyTask(final.result.task, 'marker-production')).toMatchObject({ settlementReason: 'ended' });
+    expect(StrategyTaskProjectionV2Schema.safeParse(projectStrategyTask(final.result.task)).success).toBe(true);
+  });
+
+  it.each([
+    ['ordinary answer', 'Hello'],
+    ['missing marker', 'Plan is ready.'],
+    ['wrong key', 'Plan is ready.\n<od-production-ready key="0000" />'],
+    ['malformed legacy state', 'Done.\n<open-design-runtime-state>\n{}\n</open-design-runtime-state>'],
+    ['pending question', `<question-form id="scope">{"questions":[{"id":"audience","label":"Who is this for?"}]}</question-form>\n${productionMarker}`],
+  ])('marker protocol settles %s without an error or automatic turn', (_label, text) => {
+    const { task, service, physical } = markerHarness();
+    const result = prepareAutomaticStrategyContinuation({
+      db, service, task, parsed: markerReply(text), createMeta: () => ({}),
+      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false },
+    });
+    expect(result.start).toBe(false); expect(result.result.action).toBe('completed');
+    expect(result.result.reasonCodes).toEqual([]); expect(physical.size).toBe(0);
+  });
+
+  it.each([
+    { text: 'Hello', facts: {}, reason: 'text_only' },
+    { text: '', facts: {}, reason: 'empty_reply' },
+    { text: 'Partial answer', facts: { truncated: true }, reason: 'truncated' },
+    { text: 'Still working', facts: { todoUnfinished: true }, reason: 'todo_unfinished' },
+    { text: 'Delivered', facts: { deliverableValid: true, todoUnfinished: true }, reason: 'deliverable_valid' },
+    { text: '<question-form id="scope">{"questions":[{"id":"audience","label":"Who?"}]}</question-form>', facts: {}, reason: 'question' },
+  ])('persists host settlement $reason without declaring delivery', ({ text, facts, reason }) => {
+    const { task, service, physical } = markerHarness();
+    const result = prepareAutomaticStrategyContinuation({
+      db, service, task, parsed: markerReply(text), createMeta: () => ({}),
+      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false, ...facts },
+    });
+    expect(result.start).toBe(false);
+    expect(physical.size).toBe(0);
+    const reloaded = getStrategyTaskExecution(db, task.taskExecutionId)!;
+    expect(projectStrategyTask(reloaded)).toMatchObject({
+      outcome: 'completed', settlementReason: reason === 'question' ? 'question' : 'ended',
+      deliverableValid: facts.deliverableValid === true, settlementFacts: facts,
+    });
+  });
+
+  it.each(['failed', 'canceled'] as const)('marker protocol does not continue a %s process', status => {
+    const { task, service, physical } = markerHarness();
+    const result = prepareAutomaticStrategyContinuation({
+      db, service, task, parsed: markerReply(`Ready.\n${productionMarker}`), createMeta: () => ({}),
+      completionEvidence: { physicalStatus: status, deliverableValid: true },
+    });
+    expect(result.result.action).toBe(status === 'failed' ? 'completed' : 'canceled');
+    expect(physical.size).toBe(0);
+    expect(projectStrategyTask(result.result.task).settlementReason).toBe('ended');
+  });
+
+  it.each(['succeeded', 'failed', 'canceled'] as const)('marker fallback persists physical %s separately from delivery', status => {
+    const { task } = markerHarness();
+    const result = completeAutomaticSimpleProduction(db, {
+      runId: task.latestRunId, physicalStatus: status, deliverableValid: false,
+    });
+    expect(result).toMatchObject({
+      outcome: status === 'canceled' ? 'canceled' : 'completed',
+      deliverableValid: false,
+    });
+    expect(projectStrategyTask(result!).deliverableValid).toBe(false);
+  });
 
   it('does not inherit plan file evidence as production delivery', () => {
     const { task, service } = markerHarness();
@@ -351,11 +484,6 @@ describe('OD Next planning coordinator', () => {
     expect(resolveStrategyHandoff(db, input, [])).toBeNull();
   });
 
-  const productionMarker = '<od-production-ready key="5e819e50c013db87" />';
-  function markerReply(text: string) {
-    const stream = createOdNextRunProtocol(null, '5e819e50c013db87');
-    stream.push(text); return stream.finish().parsed;
-  }
 
   it.each([
     ['a bundle written by the pre-reshape v2 composer', (target: Database.Database) => {
