@@ -1,10 +1,12 @@
 import { recordIncomingUpdateLifecycle, type UpdateLifecycleObservation } from "./update-lifecycle-observations.js";
 export { recordIncomingUpdateLifecycle, type UpdateLifecycleObservation } from "./update-lifecycle-observations.js";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { BrowserWindow, Menu, app, dialog, globalShortcut, powerMonitor, shell, type MenuItemConstructorOptions } from "electron";
+import { BrowserWindow, Menu, app, dialog, globalShortcut, ipcMain, powerMonitor, shell, type MenuItemConstructorOptions } from "electron";
+import { attachStartupReadyIpc, createStartupTiming, type StartupTiming } from "./startup-timing.js";
+export { createStartupTiming, type StartupTiming } from "./startup-timing.js";
 
 import {
   APP_KEYS,
@@ -194,6 +196,8 @@ export function applyLoopbackConnectionLimitSwitch(electronApp: Electron.App): v
 }
 
 export type DesktopMainOptions = {
+  /** Carries the packaged process origin and sidecar phases into desktop. */
+  startupTiming?: StartupTiming;
   beforeShutdown?: (record?: (event: UpdateLifecycleObservation) => Promise<void>) => Promise<void>;
   /** Prevent packaged renderer traffic from reaching sidecars as they retire. */
   quiesceRendererTransport?: () => void | Promise<void>;
@@ -674,6 +678,25 @@ export async function runDesktopMain(
   runtime: SidecarRuntimeContext<LegacySidecarRuntimeLayout>,
   options: DesktopMainOptions,
 ): Promise<DesktopMainHandle> {
+  const startupTiming = options.startupTiming ?? createStartupTiming({
+    startupType: "cold",
+    report: (event, properties) => reportDesktopObservabilityEvent(resolveDaemonBaseUrl(options), event, properties),
+  });
+  try {
+    return await runDesktopMainWithTiming(runtime, options, startupTiming);
+  } catch (error) {
+    startupTiming.finish("failed", "desktop_start_failed");
+    throw error;
+  }
+}
+
+async function runDesktopMainWithTiming(
+  runtime: SidecarRuntimeContext<LegacySidecarRuntimeLayout>,
+  options: DesktopMainOptions,
+  initialStartupTiming: StartupTiming,
+): Promise<DesktopMainHandle> {
+  let startupTiming = initialStartupTiming;
+  startupTiming.mark("desktop_entry");
   // Install the defensive uncaughtException filter BEFORE awaiting
   // app.whenReady, so a setTypeOfService EINVAL thrown by undici during
   // the renderer's first fetch is intercepted rather than surfacing as
@@ -694,6 +717,7 @@ export async function runDesktopMain(
   applyLoopbackConnectionLimitSwitch(app);
 
   await app.whenReady();
+  startupTiming.mark("electron_ready");
   configureAboutPanel(options);
 
   // PR #974: mint a per-process auth secret and hand it to the daemon
@@ -772,7 +796,7 @@ export async function runDesktopMain(
   const sessionStatePath = join(dirname(desktopLogPath), "session-state.json");
   const { previousUncleanSessions } = beginDesktopSession({
     stateFilePath: sessionStatePath,
-    sessionId: randomUUID(),
+    sessionId: startupTiming.context().app_session_id,
     version: app.getVersion(),
     now: () => new Date(),
   });
@@ -794,6 +818,7 @@ export async function runDesktopMain(
   let disposeMenu: () => void = () => undefined;
   let updateScheduler: DesktopUpdaterScheduler | null = null;
   let removeDiagnosticsIpc: () => void = () => undefined;
+  let removeStartupIpc: () => void = () => undefined;
   let shutdownPromise: Promise<void> | null = null;
   let shutdownComplete = false;
   let shutdownRequestCount = 0;
@@ -850,6 +875,7 @@ export async function runDesktopMain(
   // Every quit entry point joins the same cleanup, including repeated updater
   // requests while sidecars are still draining.
   function shutdown(): Promise<void> {
+    startupTiming.finish("cancelled", "quit_before_ready");
     shutdownRequestCount += 1;
     if (shutdownPromise == null) recordDesktopHostEvent({ stateFilePath: sessionStatePath }, { kind: "quit-requested" });
     shutdownPromise ??= Promise.resolve().then(async () => {
@@ -864,6 +890,7 @@ export async function runDesktopMain(
       // has already gone away for the entire graceful-stop window.
       disposeMenu();
       removeDiagnosticsIpc();
+      removeStartupIpc();
       let rendererQuiesceFailed = false;
       await desktop?.close().catch(() => {
         rendererQuiesceFailed = true;
@@ -925,7 +952,7 @@ export async function runDesktopMain(
           case SIDECAR_MESSAGES.CONSOLE:
             return activeDesktop.console();
           case SIDECAR_MESSAGES.SHOW:
-            activeDesktop.show();
+            showDesktop();
             dispatchInviteDeeplink(request.input?.deeplinkUrl ?? null);
             notifyDesktopExternalShow(options.onExternalShow);
             return { accepted: true };
@@ -971,6 +998,7 @@ export async function runDesktopMain(
   disposeMenu = menuController.dispose;
 
   console.info("[open-design desktop] creating desktop runtime");
+  startupTiming.mark("window_creating");
   desktop = await createDesktopRuntime({
     desktopAuthSecret,
     discoverUrl: options.discoverWebUrl,
@@ -993,6 +1021,7 @@ export async function runDesktopMain(
     onUpdateMenuLabels: menuController.setUpdateLabels,
     requestQuit: shutdownAndExit,
     onMainWindowReady: () => {
+      startupTiming.mark("window_revealed");
       void recordIncomingUpdateLifecycle({ root: options.update?.installerObservationRoot, namespace: updater.config.namespace ?? "default", channel: updater.config.channel, version: updater.config.currentVersion }, { stage: "desktop_ready", outcome: "completed" });
     },
     splashWindow: options.splashWindow,
@@ -1000,6 +1029,38 @@ export async function runDesktopMain(
     updater,
     windowTitle: options.windowTitle,
   });
+  removeStartupIpc = attachStartupReadyIpc({
+    ipc: ipcMain,
+    timing: () => startupTiming,
+    authorize: (event) => {
+      if (event.sender.isDestroyed() || event.senderFrame !== event.sender.mainFrame) return false;
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      if (!owner || owner.webContents !== event.sender) return false;
+      // The pet, splash, guest webviews and child frames cannot finish launch.
+      const expectedUrl = desktop?.status().url;
+      if (!expectedUrl) return false;
+      try {
+        const expected = new URL(expectedUrl);
+        const actual = new URL(event.sender.getURL());
+        return actual.protocol === expected.protocol && actual.host === expected.host && actual.pathname === expected.pathname;
+      } catch { return false; }
+    },
+  });
+
+  function beginWarmActivation(): StartupTiming | null {
+    // Initial activation while booting belongs to the original attempt. A
+    // later hidden-window restore is warm; repeated focus isn't a launch.
+    if (!startupTiming.isPending() && desktop?.status().windowVisible === false) {
+      startupTiming = startupTiming.nextAttempt("warm");
+      return startupTiming;
+    }
+    return null;
+  }
+  function showDesktop() {
+    const warm = beginWarmActivation();
+    desktop?.show();
+    warm?.mark("window_revealed");
+  }
   if (pendingUpdateDialogRequest) {
     pendingUpdateDialogRequest = false;
     desktop.openUpdateDialog({ source: "mac-app-menu" });
@@ -1008,7 +1069,11 @@ export async function runDesktopMain(
   options.onDesktopReady?.({
     dispatchInviteDeeplink,
     show: () => {
-      void Promise.resolve(options.onExternalShow?.()).finally(() => desktop?.show());
+      const warm = beginWarmActivation();
+      void Promise.resolve(options.onExternalShow?.()).finally(() => {
+        desktop?.show();
+        warm?.mark("window_revealed");
+      });
     },
   });
 
@@ -1075,7 +1140,7 @@ export async function runDesktopMain(
   });
 
   app.on("activate", () => {
-    desktop?.show();
+    showDesktop();
   });
 
   return {

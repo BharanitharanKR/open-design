@@ -52,6 +52,7 @@ function shutdownHarness(options: {
   const recordHostEvent = vi.fn();
   const recordLifecycle = vi.fn(async (_event: unknown) => undefined);
   const sandbox = {
+    startupTiming: { finish: vi.fn() }, removeStartupIpc: vi.fn(),
     updater: { recordLifecycle },
     options: { beforeShutdown, quiesceRendererTransport }, desktop: { close }, app: { quit, on }, process: { exit },
     updateScheduler: { stop: vi.fn() }, disposeMenu: vi.fn(), removeDiagnosticsIpc: vi.fn(),
