@@ -376,19 +376,20 @@ describe('od project CLI', () => {
     const json = await runCli([...args, '--json']);
     expect(json.code).toBe(0); expect(JSON.parse(json.stdout)).toEqual(body);
   });
-  it('publish that made a private team project team-visible prints the same notice as the UI and keeps the JSON field', async () => {
+  it('publish does not announce a project visibility change; JSON remains raw daemon output', async () => {
     const body = { status: 'published', url: 'https://viewer.example.test/s', madeTeamVisible: true, receipt: { slug: 'stable', filePath: 'nested/index.html', versionId: 'v1', version: 1, publishedAt: 1, entryPath: 'index.html' } };
     stub = await startProjectStubServer(undefined, body);
     const args = ['project', 'share', 'publish', 'project-1', '--path', 'nested/index.html', '--daemon-url', stub.baseUrl];
     const human = await runCli(args);
     expect(human.code).toBe(0);
     expect(human.stdout.trim()).toBe('https://viewer.example.test/s');
-    expect(human.stderr).toBe('[project] notice: this project is now visible to your team members.\n');
+    expect(human.stderr).toBe('');
     const json = await runCli([...args, '--json']);
     expect(json.code).toBe(0); expect(json.stderr).toBe('');
     expect(JSON.parse(json.stdout)).toMatchObject({ madeTeamVisible: true });
     const help = await runCli(['project', 'share', '--help']);
-    expect(help.stdout).toContain('"madeTeamVisible": true');
+    expect(help.stdout).toContain('Publishing does not change project team visibility.');
+    expect(help.stdout).not.toContain('madeTeamVisible');
   });
   it('retry-stop targets the persisted file intent, never the deleted project DELETE route', async () => {
     stub = await startProjectStubServer();

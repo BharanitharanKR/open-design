@@ -29,10 +29,10 @@ function props(overrides: Partial<Props> = {}): Props {
 
 const notice = '发布后团队成员可见。';
 
-describe('decision 67 #11: publishing a private team-workspace project makes it team-visible', () => {
-  it('tells the owner before the first publish', () => {
+describe('public file publishing is independent of project team visibility', () => {
+  it('does not warn of an automatic team transition before first publish', () => {
     render(<ShareTab {...props()} />);
-    expect(screen.getByRole('note')).toHaveTextContent(notice);
+    expect(screen.queryByText(notice)).toBeNull();
     expect(screen.getByRole('menuitem', { name: '生成并复制链接' })).toBeEnabled();
   });
 

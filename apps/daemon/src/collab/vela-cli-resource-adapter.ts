@@ -164,6 +164,8 @@ export interface VelaCliResourceAdapterOptions {
   resolvePullDir?: (projectId: string) => string | Promise<string>;
   /** (projectId, principal) → hub resourceId. Colon-free (routed as a path param). */
   resourceIdFor?: (projectId: string, principal?: ResourceHubPrincipal | null) => string;
+  /** Exact server-backed root; missing authority throws and has no legacy fallback. */
+  resolveResourceId?: (projectId: string, principal?: ResourceHubPrincipal | null) => string | Promise<string>;
   /** Hub resource kind (project / design_system / plugin / skill). */
   kind?: string;
   /**
@@ -198,6 +200,8 @@ export function createVelaCliResourceAdapter(
 ): ResourcePublishAdapter {
   const resolvePullDir = options.resolvePullDir ?? options.resolveProjectDir;
   const resourceIdFor = options.resourceIdFor ?? projectResourceIdFor;
+  const exactResourceId = (projectId: string, principal?: ResourceHubPrincipal | null) =>
+    options.resolveResourceId ? options.resolveResourceId(projectId, principal) : resourceIdFor(projectId, principal);
   const kind = options.kind ?? PROJECT_KIND;
   const run = options.run ?? defaultRunVelaResource;
 
@@ -209,15 +213,19 @@ export function createVelaCliResourceAdapter(
     return (await options.hasTeamIdentity(principal)) ? fn() : fallback;
   }
 
-  function resourceIdsFor(projectId: string, principal?: ResourceHubPrincipal | null): string[] {
-    return projectResourceIdsFor(projectId, principal, resourceIdFor);
+  async function resourceIdsFor(projectId: string, principal?: ResourceHubPrincipal | null): Promise<string[]> {
+    // Exact server authority is not an ID generator. Do not ask it for an
+    // unscoped/guessed substitute when the root is absent.
+    return options.resolveResourceId
+      ? [await exactResourceId(projectId, principal)]
+      : projectResourceIdsFor(projectId, principal, resourceIdFor);
   }
 
   return {
     publish({ projectId, principal }) {
       return gated(principal, async () => {
         const dir = await options.resolveProjectDir(projectId);
-        const args = ['push', kind, resourceIdFor(projectId, principal), dir, '--ref', PUBLISHED_REF, '--json'];
+        const args = ['push', kind, await exactResourceId(projectId, principal), dir, '--ref', PUBLISHED_REF, '--json'];
         for (const name of MEMBER_MIRROR_PUSH_EXCLUDED_ENTRIES) {
           args.push('--exclude', name);
         }
@@ -240,7 +248,7 @@ export function createVelaCliResourceAdapter(
       return gated(principal, async () => {
         // `head` reports the published version without downloading — a null
         // version means nothing is published yet.
-        for (const resourceId of resourceIdsFor(projectId, principal)) {
+        for (const resourceId of await resourceIdsFor(projectId, principal)) {
           const out = await run(
             ['head', resourceId, '--ref', PUBLISHED_REF, '--json'],
             principal?.teamId,
@@ -256,7 +264,7 @@ export function createVelaCliResourceAdapter(
       return gated(principal, async () => {
         const dir = await resolvePullDir(projectId);
         let lastError: unknown;
-        const resourceIds = resourceIdsFor(projectId, principal);
+        const resourceIds = await resourceIdsFor(projectId, principal);
         for (const [index, resourceId] of resourceIds.entries()) {
           try {
             const out = await run(
@@ -286,7 +294,7 @@ export function createVelaCliResourceAdapter(
       await gated(principal, async () => {
         try {
           await run(
-            ['remove', resourceIdFor(projectId, principal), '--json'],
+            ['remove', await exactResourceId(projectId, principal), '--json'],
             principal?.teamId,
           );
         } catch (error) {

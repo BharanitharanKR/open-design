@@ -12297,8 +12297,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
@@ -12348,8 +12348,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
@@ -12421,8 +12421,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
@@ -12476,8 +12476,8 @@ describe('FileViewer tweaks toolbar', () => {
           previewComments={previewComments}
         />,
       );
-      const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
       fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+      const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
       return frame;
     }
 
@@ -12662,8 +12662,8 @@ describe('FileViewer tweaks toolbar', () => {
 
     render(<Harness />);
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
@@ -12811,8 +12811,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     fireEvent.click(screen.getByTestId('board-mode-toggle'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
       data: {
@@ -12858,8 +12858,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     fireEvent.click(screen.getByTestId('board-mode-toggle'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     window.dispatchEvent(new MessageEvent('message', {
       source: frame.contentWindow,
       data: {
@@ -12913,8 +12913,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     const target = {
       elementId: 'hero',
@@ -12971,8 +12971,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     const target = {
       elementId: 'hero',
@@ -13022,8 +13022,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     const target = {
       elementId: 'hero',
@@ -13067,8 +13067,8 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     clickAgentTool('board-mode-toggle');
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
 
     const target = {
       elementId: 'hero',

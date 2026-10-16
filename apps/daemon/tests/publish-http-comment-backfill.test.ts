@@ -303,12 +303,14 @@ it.each([false, true])(
 			expect(publicationCommands.map((args) => args.slice(0, 2))).toEqual(
 				fail
 					? [
-							["resource", "push"],
+							["team-projects", "register-resource"],
+					["resource", "push"],
 							["share", "publish"],
 							["share", "stop"],
 						]
 					: [
-							["resource", "push"],
+							["team-projects", "register-resource"],
+					["resource", "push"],
 							["share", "publish"],
 						],
 			);
@@ -529,6 +531,7 @@ it.each([false, true])(
 						.mock.calls.map((call) => call[0][0]),
 				).toEqual(["push"]);
 				expect(publicationCommands.map((args) => args.slice(0, 2))).toEqual([
+					["team-projects", "register-resource"],
 					["resource", "push"],
 					["share", "publish"],
 					["share", "stop"],
@@ -600,6 +603,7 @@ it.each([false, true])(
 						.mock.calls.map((call) => call[0][0]),
 				).toEqual(["push"]);
 				expect(publicationCommands.map((args) => args.slice(0, 2))).toEqual([
+					["team-projects", "register-resource"],
 					["resource", "push"],
 					["share", "publish"],
 					["share", "stop"],

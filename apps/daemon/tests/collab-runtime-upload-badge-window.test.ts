@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createCollabRuntime, type CollabRuntime } from '../src/collab/runtime.js';
+import { teamProjectRegistration } from './team-project-registration-fixture.js';
 
 // recvqghymxqQQq follow-up: characterizes how long `syncState` actually stays
 // 'pending_upload' after a local (owner-side) file edit on an already-shared
@@ -14,6 +15,12 @@ describe('collab runtime — owner upload-badge transient window', () => {
   it('flips pending_upload -> synced well inside the web client\'s 5s status-poll cadence', async () => {
     const runtime: CollabRuntime = createCollabRuntime({
       adapter: { publish: async () => ({ version: 2 }) },
+      teamProjectCatalog: {
+        upsert: async () => {},
+        ensurePrivate: teamProjectRegistration,
+        getRegistration: teamProjectRegistration,
+        setVisibility: async () => {},
+      },
     });
     try {
       const projectId = 'shared-project';

@@ -11,8 +11,9 @@ export interface CommentRelayScope {
 
 /**
  * The relay eligibility channel is deliberately separate from team-directory
- * identity. A personal project may relay only when its persisted creator owns
- * an active publication for the comment's exact file; no commenter identity
+ * identity. A personal project, including one in a team workspace, may relay
+ * only when its persisted creator owns an active publication for the comment's
+ * exact file; no commenter identity
  * and no member-directory lookup can widen that scope.
  */
 export function personalCommentRelayFilePaths(input: {
@@ -30,7 +31,6 @@ export function personalCommentRelayFilePaths(input: {
     || !ownerMemberId
     || binding?.resourceState === 'deleted'
     || binding?.visibility !== 'personal'
-    || context.workspaceType !== 'personal'
     || context.workspaceId !== workspaceId
     || context.workspaceMemberId !== ownerMemberId
     || context.memberStatus !== 'active'

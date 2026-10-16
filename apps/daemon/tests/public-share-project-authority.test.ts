@@ -38,8 +38,8 @@ it.each([null, 'another-member', 'owner', 'placeholder', 'catalog-other-owner', 
     if (localOwner === 'bootstrap-failed') throw new Error('private credential https://private.invalid/private-path');
     if (localOwner === 'bootstrap-root-failed') return ensurePublicShareProject({
       projectId: 'p', principal: { teamId: 'w', memberId: 'owner', role: 'owner', lifecycleState: 'active', workspaceType: 'personal' },
-      describeProject: () => ({ metadata: {} }), resolveProjectDir: () => root,
-      run: async () => { throw Object.assign(new Error('private credential'), { stderr: 'upload blob to object store https://private.invalid/private-path' }); },
+      describeProject: () => ({ metadata: {} }),
+      run: async () => { throw Object.assign(new Error('private credential'), { stderr: 'private response' }); },
     });
     catalog = { projectId: 'p', ownerMemberId: 'owner', sharedAt: new Date(1).toISOString() };
     return catalog;
@@ -65,8 +65,8 @@ it.each([null, 'another-member', 'owner', 'placeholder', 'catalog-other-owner', 
       expect(events).toEqual(['root-and-catalog']);
       expect(warn).toHaveBeenCalledExactlyOnceWith('[od] public share diagnostic', expect.any(String));
       expect(JSON.parse(warn.mock.calls[0]![1] as string)).toEqual({
-        operation: 'bootstrap', stage: localOwner === 'bootstrap-failed' ? 'bootstrap' : 'bootstrap_root_push', status: 503,
-        errorCode: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', reason: localOwner === 'bootstrap-failed' ? 'unknown' : 'object_store', durationMs: expect.any(Number),
+        operation: 'bootstrap', stage: localOwner === 'bootstrap-failed' ? 'bootstrap' : 'bootstrap_catalog_upsert', status: 503,
+        errorCode: 'WORKSPACE_PROJECT_OWNERSHIP_UNAVAILABLE', reason: 'unknown', durationMs: expect.any(Number),
       });
     } else if (localOwner !== 'owner') {
       expect(response.status).toBe(403);

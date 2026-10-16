@@ -179,7 +179,7 @@ describe('public file publication restart lifecycle', () => {
     expect(fingerprints.compare(scope, (await plan()).files)).toBe('current');
     expect(publications.get(scope)?.slug).toBe(fixtureShareSlug);
     expect(vela.runResourceCommand.mock.calls.map(([args]) => args[0])).toEqual(['push']);
-    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['resource', 'push'], ['share', 'publish']]);
+    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['team-projects', 'register-resource'], ['resource', 'push'], ['share', 'publish']]);
   });
 
   it('stops a new alias when publication persistence fails', async () => {
@@ -220,7 +220,7 @@ describe('public file publication restart lifecycle', () => {
       },
     });
     expect(vela.runResourceCommand.mock.calls.map(([args]) => args[0])).toEqual(['push']);
-    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['resource', 'push'], ['share', 'publish'], ['share', 'stop']]);
+    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['team-projects', 'register-resource'], ['resource', 'push'], ['share', 'publish'], ['share', 'stop']]);
     expect(cloudCommands.at(-1)).toEqual(['share', 'stop', fixtureShareSlug, '--project-id', 'project-1', '--json']);
   });
 
@@ -238,7 +238,7 @@ describe('public file publication restart lifecycle', () => {
     const response = await daemon.request('POST');
     expect(response.status).toBe(502);
     expect(response.body).toMatchObject({ error: { code: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED' } });
-    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['resource', 'push'], ['share', 'publish']]);
+    expect(cloudCommands.map(args => args.slice(0, 2))).toEqual([['team-projects', 'register-resource'], ['resource', 'push'], ['share', 'publish']]);
     expect(cloud.get('project-1:index.html')?.status).toBe('active');
   });
 

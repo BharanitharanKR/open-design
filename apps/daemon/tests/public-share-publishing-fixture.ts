@@ -23,7 +23,7 @@ export function createPublicSharePublishingFixture(
   store: PublicFilePublicationStore,
   resource: (args: string[], workspace: string) => Promise<string>,
   enqueue: Parameters<typeof createPublicFilePublicationRecorder>[2] = () => ({ enqueued: 0, skippedInbound: 0 }),
-  options: { env?: NodeJS.ProcessEnv; configuredEnv?: Record<string, string>; amr?: FixtureAmrShareFields; failShareState?: () => boolean; pending?: boolean; failUpload?: boolean; failStop?: boolean; failResume?: boolean; failResumeAfterActivation?: boolean; failComplete?: boolean; beforeStop?: () => Promise<void>; commands?: string[][]; cloud?: FixtureShareCloud } = {},
+  options: { teamProject?: (args: string[]) => Promise<string>; env?: NodeJS.ProcessEnv; configuredEnv?: Record<string, string>; amr?: FixtureAmrShareFields; failShareState?: () => boolean; pending?: boolean; failUpload?: boolean; failStop?: boolean; failResume?: boolean; failResumeAfterActivation?: boolean; failComplete?: boolean; beforeStop?: () => Promise<void>; commands?: string[][]; cloud?: FixtureShareCloud } = {},
 ): Pick<RegisterCollabSyncRoutesDeps, 'sharePublishing' | 'readProjectShareState' | 'resolvePublicShareLink'> {
   const outbox = createShareBindingOutbox(db);
   let ids = 0;
@@ -48,6 +48,12 @@ export function createPublicSharePublishingFixture(
     prepare: async (scope, slug) => ({
       run: async args => {
         options.commands?.push([...args]);
+        if (args[0] === 'team-projects') {
+          if (options.teamProject) return options.teamProject(args);
+          if (args[1] !== 'register-resource' || args[2] !== scope.projectId
+            || args[3] !== publicFileResourceIdFor(scope)) throw new Error('unexpected project association');
+          return JSON.stringify({ ok: true });
+        }
         if (args[0] === 'resource') {
           if (options.failUpload) throw new Error('upload unavailable');
           return resource(args.slice(1), scope.resourceTeamId);

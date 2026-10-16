@@ -389,10 +389,7 @@ import {
   workspaceTeamDesignSystemBindingResourceId,
 } from './design-systems/workspace-team-binding.js';
 import { ownedDesignSystemSourceIsReady } from './design-systems/team-owner-materialization.js';
-import {
-  createDesignSystemBackingProjectPreparer,
-  createLinkedProjectTeamResourceShareService,
-} from './design-systems/team-project-share.js';
+import { createLinkedProjectTeamResourceShareService } from './design-systems/team-project-share.js';
 import { prepareDesignTokenContractRebuild } from './design-systems/token-contract-rebuild.js';
 import { registerBrandRoutes } from './brand-routes.js';
 import {
@@ -936,7 +933,6 @@ import { sourcePathForCurrentPublication } from './collab/comment-relay-publicat
 import { recordPersonalPublishedCommentMutation } from './collab/published-comment-mutation.js';
 import { createPublicFilePublicationRecorder } from './collab/public-file-publication-recording.js';
 import { enqueuePublishedFileComments } from './collab/published-file-comment-backfill.js';
-import { isPrivateTeamProjectOfCreator, markPublishedTeamProjectVisible } from './collab/public-share-team-visibility.js';
 import { createVelaPublicFileStop } from './collab/vela-public-file-stop.js';
 import { createShareContentFingerprints } from './collab/share-content-fingerprint.js';
 import { createShareBindingOutbox } from './collab/share-binding-outbox.js';
@@ -3984,9 +3980,9 @@ export async function startServer({
   const teamResourceVersions = createTeamResourceVersionStore(RUNTIME_DATA_DIR);
   const teamProjectContentResourceId = (
     projectId: string,
-    scope: { resourceTeamId: string; ownerMemberId: string },
+    scope: { resourceTeamId: string; ownerMemberId: string; resourceId?: string },
   ) =>
-    projectResourceIdFor(projectId, {
+    scope.resourceId ?? projectResourceIdFor(projectId, {
       teamId: scope.resourceTeamId,
       memberId: scope.ownerMemberId,
       role: 'member',
@@ -4272,15 +4268,15 @@ export async function startServer({
           visibility: 'team',
           createdByWorkspaceMemberId: input.ownerMemberId ?? input.updatedByMemberId ?? null,
           updatedByWorkspaceMemberId: input.updatedByMemberId ?? input.ownerMemberId ?? null,
-          resourceHubResourceId: projectResourceIdFor(input.projectId, input.principal),
+          resourceHubResourceId: getWorkspaceProjectByProjectId(db, input.projectId)?.resourceHubResourceId ?? null,
           cloudTombstonedAt: null,
           syncState: 'synced',
         }
       : {
           visibility: 'personal',
           updatedByWorkspaceMemberId: input.updatedByMemberId ?? input.ownerMemberId ?? null,
-          resourceHubResourceId: null,
-          cloudTombstonedAt: Date.now(),
+          resourceHubResourceId: getWorkspaceProjectByProjectId(db, input.projectId)?.resourceHubResourceId ?? null,
+          cloudTombstonedAt: null,
           syncState: 'local_only',
         };
     const persist = db.transaction(() => {
@@ -4321,6 +4317,34 @@ export async function startServer({
       ? ownedContentSync.withPublication(projectId, principal, publish)
       : publish(),
     workspaceContext: workspaceContextProvider,
+    ...(velaCliTeamProjectCatalog ? {
+      resolveResourceId: async (projectId: string, principal?: ResourceHubPrincipal | null) => {
+        if (!principal) throw new Error('TEAM_PROJECT_ROOT_UNAVAILABLE');
+        const row = getWorkspaceProjectByProjectId(db, projectId);
+        if (row && (row.workspaceId !== principal.teamId || row.resourceState !== 'active'
+          || row.cloudTombstonedAt != null)) throw new Error('TEAM_PROJECT_ROOT_UNAVAILABLE');
+        if (row?.resourceHubResourceId?.trim()) return row.resourceHubResourceId;
+        // Rootless old local data is resolved from the existing catalog identity,
+        // not migrated to a generated alias. Native Vela enforces viewer access.
+        const registration = await velaCliTeamProjectCatalog.getRegistration(projectId, principal);
+        if (!registration || registration.visibility !== 'team' || !registration.resourceId?.trim()) {
+          throw new Error('TEAM_PROJECT_ROOT_UNAVAILABLE');
+        }
+        return registration.resourceId;
+      },
+      retainRegistration: (registration: import('@open-design/contracts').PublicShareProjectRegistration, principal: ResourceHubPrincipal) => {
+        const row = getWorkspaceProjectByProjectId(db, registration.projectId);
+        if (row?.workspaceId !== principal.teamId || row.resourceState !== 'active'
+          || row.createdByWorkspaceMemberId !== principal.memberId || row.cloudTombstonedAt != null
+          || registration.workspaceId !== principal.teamId || registration.ownerMemberId !== principal.memberId) {
+          throw new Error('TEAM_PROJECT_REGISTRATION_SCOPE_MISMATCH');
+        }
+        updateWorkspaceProject(db, principal.teamId, registration.projectId, {
+          resourceHubResourceId: registration.resourceId,
+          updatedAt: SYNC_KEEPS_UPDATED_AT,
+        });
+      },
+    } : {}),
     canPublishProjectContent: (projectId) =>
       !projectIsUnmaterializedSharedPlaceholder(projectId) && !ownedContentSync?.isApplying(projectId),
     resolveProjectDir: async (projectId) => {
@@ -4463,6 +4487,7 @@ export async function startServer({
     ...(velaCliTeamProjectCatalog ? { teamProjectCatalog: velaCliTeamProjectCatalog } : {}),
   });
 
+
   // Collab cloud (C-lane §D2.5/§D4): cross-daemon comment sync + member
   // directory. The client is null (all calls degrade to no-op) unless
   // OD_COLLAB_CLOUD_URL is set. The service ties it to the one workspace context
@@ -4548,6 +4573,7 @@ export async function startServer({
           ) return null;
           return { workspaceId, ownerMemberId };
         },
+        captureCommentRelayProjectBinding: publicFileMutations.captureReconciliation,
         validateCommentRelayProjectBinding: (record) =>
           commentRelayLocalBindingMatches(
             record,
@@ -4749,17 +4775,18 @@ export async function startServer({
   /**
    * Drop catalog rows this member has already moved back to "personal".
    *
-   * A move to personal deletes the hub catalog row in the same request, but
-   * every display read above goes through a stale-while-revalidate cache, so
-   * for up to one TTL the list still carries the row that was just deleted.
+   * A move to personal changes the hub policy in the same request, but
+   * display reads use stale-while-revalidate caches, so for up to one TTL
+   * the list can still carry the pre-transition team row.
    * That is long enough to paint the "shared" badge back onto a project the
    * user just made private — the unshare looks like it silently reverted. It
    * would also let the publish watcher re-adopt the project as owned-and-
    * shared and republish it.
    *
-   * `cloudTombstonedAt` on the local workspace row is the truth for "this
-   * member unshared it"; a re-share clears it (see `workspaceProjectMovePatch`
-   * in routes/project). The filter runs on the cache OUTPUT, not inside it, so
+   * The runtime's explicit-private suppression is immediate without deleting
+   * the retained root. Persisted legacy tombstones are still respected. On a
+   * fresh daemon these caches are cold and the team-only server list is policy
+   * authority. The filter runs on cache OUTPUT, not inside it, so
    * a value cached before the unshare is still gated. Owner scoping keeps a
    * teammate's own share of the same project id visible.
    */
@@ -4776,9 +4803,9 @@ export async function startServer({
         .filter((row: any) => row.workspaceVisibility === 'personal' && row.cloudTombstonedAt != null)
         .map((row: any) => row.id),
     );
-    if (tombstoned.size === 0) return projects;
     return projects.filter(
-      (entry) => !(entry.ownerMemberId === memberId && tombstoned.has(entry.projectId)),
+      (entry) => !(entry.ownerMemberId === memberId && (tombstoned.has(entry.projectId)
+        || collab.isTeamShareSuppressed(entry.projectId, { teamId: workspaceId, memberId }))),
     );
   };
   const teamProjectsForDisplay = async (
@@ -4842,6 +4869,7 @@ export async function startServer({
     // the result is carried through every catalog/list/tombstone step below.
     const capturedWorkspaceId = requestedWorkspaceId.trim();
     return {
+      captureReconciliation: publicFileMutations.captureReconciliation,
       getWorkspaceIdentity: async () => {
         if (!capturedWorkspaceId) return null;
         const directory = await fetchWorkspaceDirectory().catch(() => ({
@@ -4893,6 +4921,7 @@ export async function startServer({
               },
             )).map((record) => ({
               projectId: record.projectId,
+              visibility: record.visibility,
               ownerMemberId: record.ownerMemberId,
               displayName: record.displayName,
               catalogRevisionAt: Number.isFinite(Date.parse(record.updatedAt))
@@ -5252,7 +5281,7 @@ export async function startServer({
         && item.lifecycleState !== 'deleted' && item.lifecycleState !== 'deleting');
     }, { readAlign: scope => commentAlignment.read(scope),
       readProjectShareState: createVelaProjectShareState({
-        dataRoot: RUNTIME_DATA_DIR, configuredEnv: configuredAmrEnv, registerPersonalProject: false,
+        dataRoot: RUNTIME_DATA_DIR, configuredEnv: configuredAmrEnv, registerLocallyOwnedProject: false,
       }),
       readCredential: () => {
         const current = readVelaControlApiContext(process.env, configuredAmrEnv());
@@ -5306,6 +5335,24 @@ export async function startServer({
         && item.workspaceId === scope.resourceTeamId,
     );
   };
+  const resolveTeamProjectResourceId = async (projectId: string, scope: TeamMirrorPullScope): Promise<string> => {
+    if (!velaCliTeamProjectCatalog || !(await verifiedTeamMirrorScope(scope))) {
+      throw new Error('TEAM_PROJECT_ROOT_UNAVAILABLE');
+    }
+    const registration = await velaCliTeamProjectCatalog.getRegistration(projectId, {
+      teamId: scope.resourceTeamId, memberId: scope.ownerMemberId,
+      role: 'member', lifecycleState: 'active', workspaceType: 'team',
+    });
+    const binding = getWorkspaceProjectByProjectId(db, projectId);
+    if (!registration || registration.workspaceId !== scope.workspaceId
+      || registration.visibility !== 'team' || !registration.resourceId?.trim()
+      || (binding && (binding.workspaceId !== scope.workspaceId
+        || binding.cloudTombstonedAt != null
+        || (binding.resourceHubResourceId != null && binding.resourceHubResourceId !== registration.resourceId)))) {
+      throw new Error('TEAM_PROJECT_ROOT_BINDING_MISMATCH');
+    }
+    return registration.resourceId;
+  };
   const ownedContentStore = createSqliteOwnedContentStore(db);
   const ownedProjectDirectory = (scope: OwnedContentScope): string => resolveProjectDir(PROJECTS_DIR, scope.projectId);
   ownedContentSync = createOwnedContentSync({
@@ -5332,12 +5379,17 @@ export async function startServer({
       return { projectId, workspaceId: binding.workspaceId, resourceTeamId: teamId,
         viewerMemberId: memberId, ownerMemberId: memberId };
     },
-    apply: async (scope, expectedVersion) => {
+    apply: async (capturedScope, expectedVersion) => {
+      const scope = velaCliTeamProjectCatalog
+        ? { ...capturedScope, resourceId: await resolveTeamProjectResourceId(capturedScope.projectId, capturedScope) }
+        : capturedScope;
       let remoteProject: Awaited<ReturnType<typeof resolveSharedProject>> = null;
       const authorize = async () => {
         if (!(await verifiedTeamMirrorScope(scope))) throw new Error('owner workspace is unavailable');
         remoteProject = await resolveSharedProject(scope.projectId, scope);
         if (!remoteProject || remoteProject.ownerMemberId !== scope.viewerMemberId) throw new Error('owner project is no longer shared');
+        if (velaCliTeamProjectCatalog
+          && await resolveTeamProjectResourceId(scope.projectId, scope) !== scope.resourceId) throw new Error('owner project root changed');
         if (remoteProject.metadata?.baseDir) throw Object.assign(new Error('imported project content is not supported'), { code: 'PROJECT_DIRECTORY_UNSUPPORTED' });
         const binding = getWorkspaceProjectByProjectId(db, scope.projectId);
         if (binding && (binding.workspaceId !== scope.workspaceId || binding.visibility !== 'team'
@@ -5443,16 +5495,20 @@ export async function startServer({
     // publication cannot enqueue work that later resolves against nothing.
     recordPublicFilePublication,
     resolveLocalPublicShareOwner: resolveLocalProjectOwner,
-    isPrivateTeamProjectOfCreator: (projectId, principal) => isPrivateTeamProjectOfCreator(db, projectId, principal),
-    markPublishedTeamProjectVisible: (projectId, principal) => markPublishedTeamProjectVisible(db, projectId, principal),
     resolvePublicShareLink: (projectId, slug, amr) => resolvePublicShareLink(projectId, slug, amr, process.env, configuredAmrEnv()),
     sharePublishing: {
       ensureProject: (scope, principal, run) => ensurePublicShareProject({
         projectId: scope.projectId, principal, run, describeProject: describeCollabProject,
-        resolveProjectDir: async projectId => {
-          const project = getProject(db, projectId);
-          if (!project) throw new Error('PUBLIC_SHARE_PROJECT_MISSING');
-          return resolveProjectShareDir(PROJECTS_DIR, projectId, project, resolveProjectDir);
+        retainRoot: registration => {
+          const binding = getWorkspaceProjectByProjectId(db, registration.projectId);
+          if (!binding || binding.workspaceId !== registration.workspaceId
+            || binding.createdByWorkspaceMemberId !== registration.ownerMemberId
+            || binding.resourceState !== 'active' || binding.cloudTombstonedAt != null) {
+            throw new Error('PUBLIC_SHARE_PROJECT_BINDING_UNAVAILABLE');
+          }
+          updateWorkspaceProject(db, registration.workspaceId, registration.projectId, {
+            resourceHubResourceId: registration.resourceId,
+          });
         },
       }),
       reservations: createShareAliasReservations(db),
@@ -5492,6 +5548,7 @@ export async function startServer({
     verifyWorkspaceRequest: verifiedWorkspaceContextForRequest,
     verifyWorkspaceReadRequest: verifiedWorkspaceReadContextForRequest,
     verifyWorkspaceScope: verifiedTeamMirrorScope,
+    ...(velaCliTeamProjectCatalog ? { resolveTeamProjectResourceId } : {}),
     readContentTransferState: (projectId, scope) =>
       projectContentTransferStates.read({ projectId, ...scope }),
     beginContentTransfer: (projectId, scope, version) =>
@@ -5671,6 +5728,10 @@ export async function startServer({
   const proactiveTeamProjectMaterializedVersion = (
     target: ProactiveContentPullTarget,
   ) => {
+    const binding = getWorkspaceProjectByProjectId(db, target.projectId);
+    const boundTarget = binding?.workspaceId === target.workspaceId && binding.resourceHubResourceId
+      ? { ...target, resourceId: binding.resourceHubResourceId }
+      : target;
     const authorized = getTeamProjectMaterialization(
       db,
       target.workspaceId,
@@ -5681,10 +5742,10 @@ export async function startServer({
       teamResourceVersions.get(
         target.workspaceId,
         'project-content',
-        teamProjectContentResourceId(target.projectId, target),
+        teamProjectContentResourceId(target.projectId, boundTarget),
       ),
       target.projectId,
-      target,
+      boundTarget,
     );
     return version == null ? null : String(version);
   };
@@ -5697,7 +5758,7 @@ export async function startServer({
   const backgroundPullSizeGuard = createBackgroundPullSizeGuard({
     maxEntries: backgroundPullMaxEntriesFromEnv(),
     maxCumulativeEntries: backgroundPullMaxCumulativeEntriesFromEnv(),
-    inspect: (scope, version) =>
+    inspect: async (scope, version) =>
       inspectAuthorizedTeamProjectPull({
         projectId: scope.projectId,
         scope: {
@@ -5705,6 +5766,7 @@ export async function startServer({
           resourceTeamId: scope.resourceTeamId,
           viewerMemberId: scope.viewerMemberId,
           ownerMemberId: scope.ownerMemberId,
+          ...(velaCliTeamProjectCatalog ? { resourceId: await resolveTeamProjectResourceId(scope.projectId, scope) } : {}),
         },
         expectedVersion: version,
       }),
@@ -7569,41 +7631,28 @@ export async function startServer({
   ) => JSON.stringify([workspaceId, resourceId]);
   const designSystemsTeamShare = createLinkedProjectTeamResourceShareService({
     resource: designSystemsTeamResourceShare,
-    prepare: createDesignSystemBackingProjectPreparer({
-      resolveProjectId: async (resourceId, scope) =>
-        (await listAllDesignSystems({
-          workspaceId: scope.principal.teamId,
-          workspaceMemberId: scope.principal.memberId,
-        }))
-          .find((candidate) => candidate.id === resourceId)
-          ?.projectId ?? null,
-      ensureProjectId: async (resourceId, scope) =>
-        (await ensureUserDesignSystemWorkspaceProject(db, resourceId, {
-          workspaceId: scope.principal.teamId,
-          workspaceMemberId: scope.principal.memberId,
-        }))?.project.id ?? null,
-      projectExists: (projectId) => Boolean(getProject(db, projectId)),
-      getProjectBinding: (projectId) =>
-        getWorkspaceProjectByProjectId(db, projectId),
-      publishProject: (projectId, scope) =>
-        collab.requestTeamShare(projectId, scope.principal),
-      unpublishProject: (projectId, scope) =>
-        collab.requestTeamUnshare(projectId, scope.principal),
-      persistVisibility: ({ projectId, scope, visibility }) =>
-        persistWorkspaceProjectVisibility({
-          projectId,
-          principal: scope.principal,
-          visibility,
-          ownerMemberId: scope.principal.memberId,
-          updatedByMemberId: scope.principal.memberId,
-        }),
-      onPrepared: ({ resourceId, projectId, scope }) => {
-        designSystemBackingProjects.set(
-          designSystemBackingProjectKey(scope.principal.teamId, resourceId),
-          projectId,
-        );
-      },
-    }),
+    prepare: async (resourceId, scope) => {
+      const projectId = (await listAllDesignSystems({
+        workspaceId: scope.principal.teamId,
+        workspaceMemberId: scope.principal.memberId,
+      })).find((candidate) => candidate.id === resourceId)?.projectId ?? '';
+      const key = designSystemBackingProjectKey(scope.principal.teamId, resourceId);
+      designSystemBackingProjects.delete(key);
+      return {
+        projectId,
+        transition: async (visibility) => {
+          // A design-system resource action is not a project policy action.
+          // Unshare/compensation cannot demote its independently shared project.
+          if (visibility !== 'team' || !projectId) return;
+          const binding = getWorkspaceProjectByProjectId(db, projectId);
+          if (binding?.workspaceId !== scope.principal.teamId || binding.visibility !== 'team'
+            || binding.resourceState !== 'active' || binding.cloudTombstonedAt != null
+            || binding.createdByWorkspaceMemberId !== scope.principal.memberId) return;
+          await collab.syncExistingTeamProject(projectId, scope.principal);
+          designSystemBackingProjects.set(key, projectId);
+        },
+      };
+    },
   });
   const designSystemsTeamList = cachedTeamResourceList(
     designSystemsTeamShare,
@@ -7616,9 +7665,10 @@ export async function startServer({
   ) => {
     const workspaceId = scope.principal.teamId;
     const key = designSystemBackingProjectKey(workspaceId, resourceId);
-    const projectId = designSystemBackingProjects.get(key);
-    // The linked service already persisted the backing project before it
-    // resolved. `emitTeamProjectsChanged` invalidates the exact Workspace's
+    const rememberedProjectId = designSystemBackingProjects.get(key);
+    const projectId = rememberedProjectId && getWorkspaceProjectByProjectId(db, rememberedProjectId)?.visibility === 'team'
+      ? rememberedProjectId : null;
+    // Only an independently team-visible backing project was synchronized. `emitTeamProjectsChanged` invalidates the exact Workspace's
     // project catalogs before emitting; the resource route invalidates its
     // own listing before it calls this helper.
     emitTeamProjectsChanged(workspaceId, {
@@ -9100,6 +9150,10 @@ export async function startServer({
         invalidatePresenceReadCache(projectId);
         return result;
       },
+      requestTeamDelete: async (projectId, principal) => {
+        await collab.requestTeamDelete(projectId, principal);
+        invalidatePresenceReadCache(projectId);
+      },
       materializeTeamProject: async (projectId, principal) => {
         const outcome = await collabSyncRoutes.pullSharedProject(projectId, {
           workspaceId: principal.teamId,
@@ -9117,7 +9171,15 @@ export async function startServer({
         workspaceTeamProjectCatalog?.invalidate();
       },
     },
-    ...(workspaceTeamProjectCatalog ? { teamProjectCatalog: workspaceTeamProjectCatalog } : {}),
+    ...(workspaceTeamProjectCatalog ? { teamProjectCatalog: {
+      ...workspaceTeamProjectCatalog,
+      // List reconciliation is a policy consumer too: a cached Team row must
+      // not resurrect a project whose creator explicitly made it private.
+      list: async (principal: ResourceHubPrincipal) => withoutLocallyUnsharedProjects(
+        await workspaceTeamProjectCatalog.list(principal),
+        { workspaceId: principal.teamId, workspaceMemberId: principal.memberId },
+      ),
+    } } : {}),
     // Second witness for the team-share invariant: refuse a team share aimed at
     // a workspace the directory says is personal, even if the caller's headers
     // claim otherwise. See collab/team-share-scope.ts.

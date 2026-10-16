@@ -532,6 +532,12 @@ test('[P0] sending preview comments opens the refreshed follow-up artifact', asy
   const saveComment = page.getByTestId('comment-popover-save');
   const multilineComment = 'Make the headline more specific.\nKeep the supporting copy concise.';
   await note.fill('Make the headline more specific.');
+  // Collapse a full selection to its end before exercising native multiline
+  // input. Unlike Meta+End, this also moves the caret on macOS.
+  await note.press('ControlOrMeta+a');
+  await note.press('ArrowRight');
+  await expect.poll(() => note.evaluate(input => (input as HTMLTextAreaElement).selectionStart))
+    .toBe('Make the headline more specific.'.length);
   await note.press('Shift+Enter');
   await note.pressSequentially('Keep the supporting copy concise.');
   await expect(note).toHaveValue(multilineComment);

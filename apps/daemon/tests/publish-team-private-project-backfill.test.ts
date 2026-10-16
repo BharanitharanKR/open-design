@@ -19,7 +19,6 @@ import { createCommentRelayOutboxStore, commentRelayLocalBindingMatches } from '
 import { createCollabCloudService } from '../src/collab/collab-cloud-service.js';
 import { createVelaCliCollabClient } from '../src/collab/vela-cli-collab-client.js';
 import { commentRelayScope } from '../src/collab/comment-relay-scope.js';
-import { isPrivateTeamProjectOfCreator, markPublishedTeamProjectVisible } from '../src/collab/public-share-team-visibility.js';
 import { runVelaResourceCommand } from '../src/collab/vela-cli-resource-adapter.js';
 import { readVelaControlApiContext } from '../src/integrations/vela.js';
 import { createPublicSharePublishingFixture } from './public-share-publishing-fixture.js';
@@ -36,7 +35,7 @@ const target = { filePath: FILE, elementId: 'hero', selector: 'h1', label: 'Hero
 // Integration defect (share P0, t-backfill.log): a private project in a TEAM
 // workspace lost its existing comments on the share page, dropped comments
 // written right after publishing, and later showed two pins numbered 1.
-it('publishing a private team-workspace project makes it team-visible before backfill, so comments are delivered once with distinct pins', async () => {
+it('publishing a private team-workspace project preserves personal visibility and delivers exact-file comments once with distinct pins', async () => {
   const root = await mkdtemp(join(tmpdir(), 'od-publish-team-private-'));
   const db = openDatabase(root);
   const context: WorkspaceCollabContext = {
@@ -68,7 +67,7 @@ it('publishing a private team-workspace project makes it team-visible before bac
       collab: runtime, publicFilePublicationStore: store, ...fixture,
       sharePublishing: {
         ...fixture.sharePublishing!,
-        // Registration in the team catalog: from here on the remote catalog lists it.
+        // Creator registration is exact-only; not a team-list promotion.
         ensureProject: async (scope, principal) => {
           catalogued = true;
           return { projectId: scope.projectId, ownerMemberId: principal.memberId, sharedAt: new Date(1).toISOString() };
@@ -76,11 +75,9 @@ it('publishing a private team-workspace project makes it team-visible before bac
       },
       recordPublicFilePublication: createPublicFilePublicationRecorder(db, store, enqueuePublishedFileComments),
       verifyWorkspaceRequest: async req => req.get('x-od-workspace-id') === 'w' ? context : null,
-      // Private project: not in the team catalog until this publish registers it.
+      // Private project: only the local creator proof exists before ensure.
       resolveSharedProject: async () => null, resolveSharedProjectOwner: async () => null,
       resolveLocalPublicShareOwner: () => 'owner',
-      isPrivateTeamProjectOfCreator: (projectId, principal) => isPrivateTeamProjectOfCreator(db, projectId, principal),
-      markPublishedTeamProjectVisible: (projectId, principal) => markPublishedTeamProjectVisible(db, projectId, principal),
       resolveProjectDir: () => root,
     });
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -89,12 +86,12 @@ it('publishing a private team-workspace project makes it team-visible before bac
     const response = await fetch(`http://127.0.0.1:${address.port}/api/projects/p/files/${FILE}/publish-public`, {
       method: 'POST', headers: { 'x-od-workspace-id': 'w', 'x-od-workspace-member-id': 'owner' },
     });
-    const body = await response.json();
+    const body = await response.json() as Record<string, unknown>;
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ status: 'published', madeTeamVisible: true });
-    expect(getWorkspaceProjectByProjectId(db, 'p')).toMatchObject({ visibility: 'team', createdByWorkspaceMemberId: 'owner' });
-    // The backfill is queued as Team relay, which a team workspace can deliver.
-    expect(queue.listDue(Date.now()).map(row => [row.comment.id, row.relayScope])).toEqual([['first', 'team'], ['second', 'team']]);
+    expect(body).toMatchObject({ status: 'published' });
+    expect(body.madeTeamVisible).toBeUndefined();
+    expect(getWorkspaceProjectByProjectId(db, 'p')).toMatchObject({ visibility: 'personal', createdByWorkspaceMemberId: 'owner' });
+    expect(queue.listDue(Date.now()).map(row => [row.comment.id, row.relayScope])).toEqual([['first', 'personal'], ['second', 'personal']]);
 
     const delivered: Array<{ id: string; seq: number }> = [];
     const relay = createCollabCloudService({
@@ -119,7 +116,7 @@ it('publishing a private team-workspace project makes it team-visible before bac
     try {
       // A comment written right after publishing is relay-eligible and queued.
       expect(commentRelayScope({ projectId: 'p', filePath: FILE, context,
-        binding: getWorkspaceProjectByProjectId(db, 'p'), publications: store })).toMatchObject({ relayScope: 'team' });
+        binding: getWorkspaceProjectByProjectId(db, 'p'), publications: store })).toMatchObject({ relayScope: 'personal' });
       const fresh = upsertPreviewComment(db, 'p', 'a', { id: 'third', note: 'third', authorMemberId: 'owner', target },
         { pinPendingCloudConfirm: true }) as unknown as PreviewComment;
       expect(relay.enqueueComment(fresh, context)).toBe(true);
@@ -138,11 +135,9 @@ it('publishing a private team-workspace project makes it team-visible before bac
   }
 });
 
-// Rows queued as personal relay by the pre-fix publish path (or before this
-// daemon learned the project turned team-visible) must not be cancelled for a
-// state that is only transient: defer while private-in-team, then re-queue as
-// Team relay once the creator's row is team-visible.
-it('a personal backfill queued in a team workspace is deferred, then delivered as Team relay once the project turns team-visible', async () => {
+// Private-in-team publication is a stable creator/exact-file relay scope,
+// not a transient state waiting for automatic catalog promotion.
+it('a personal backfill queued in a team workspace is delivered without changing project visibility', async () => {
   const root = await mkdtemp(join(tmpdir(), 'od-relay-team-private-'));
   const db = openDatabase(root);
   const context: WorkspaceCollabContext = {
@@ -185,14 +180,9 @@ it('a personal backfill queued in a team workspace is deferred, then delivered a
     const backfill = () => readPublishedCommentBackfill(db, { projectId: 'p', workspaceId: 'w', workspaceMemberId: 'owner', filePath: FILE });
     try {
       await relay.flushPendingComments();
-      expect(delivered).toEqual([]);
-      expect(queue.count()).toBe(2);
-      expect(errors).toEqual(['comment relay awaiting team visibility', 'comment relay awaiting team visibility']);
-      expect(backfill()).toMatchObject({ state: 'failed', retryable: true, code: 'BACKFILL_DELIVERY_DEFERRED' });
-
-      expect(markPublishedTeamProjectVisible(db, 'p', { memberId: 'owner', teamId: 'w', role: 'owner', lifecycleState: 'active', workspaceType: 'team' })).toBe(true);
-      await relay.flushPendingComments();
       expect(delivered).toEqual(['first', 'second']);
+      expect(errors).toEqual([]);
+      expect(getWorkspaceProjectByProjectId(db, 'p')?.visibility).toBe('personal');
       expect(queue.count()).toBe(0);
       expect(backfill()).toMatchObject({ state: 'succeeded', retryable: false });
     } finally { relay.dispose(); }
@@ -201,7 +191,7 @@ it('a personal backfill queued in a team workspace is deferred, then delivered a
   }
 });
 
-it('a personal record never promoted to team is cancelled after bounded deferral, not retried forever', async () => {
+it('a stopped private-in-team publication is cancelled without waiting for team promotion', async () => {
   const root = await mkdtemp(join(tmpdir(), 'od-relay-team-private-cap-'));
   const db = openDatabase(root);
   const context = {
@@ -222,6 +212,9 @@ it('a personal record never promoted to team is cancelled after bounded deferral
     createPublicFilePublicationRecorder(db, store, enqueuePublishedFileComments)(
       { resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE },
       { slug: 'stable', url: 'https://viewer.example.test/s', fileName: FILE }, [{ sourcePath: FILE, publishedPath: 'index.html' }]);
+    // The publication witness, not workspace type or catalog promotion, owns
+    // cancellation. A stopped file must never regain eligibility from retries.
+    store.delete({ resourceTeamId: 'w', ownerMemberId: 'owner', projectId: 'p', filePath: FILE });
     const relay = createCollabCloudService({
       client: createVelaCliCollabClient({ run: async () => { throw new Error('must not push'); } }),
       commentOutbox: queue, listProjectIds: () => [], retryDelayMs: () => 0, onError: () => {},
@@ -233,13 +226,12 @@ it('a personal record never promoted to team is cancelled after bounded deferral
       resolveLocalConversationId: () => 'a', mergeComment: () => 'unchanged',
     });
     try {
-      let passes = 0;
-      while (queue.count() > 0 && passes < 100) { await relay.flushPendingComments(); passes += 1; }
+      await relay.flushPendingComments();
       expect(queue.count()).toBe(0);
-      expect(passes).toBeGreaterThan(10);
-      expect(passes).toBeLessThan(100);
+      // Stopping removes publication-scoped backfill state with its outbox.
       expect(readPublishedCommentBackfill(db, { projectId: 'p', workspaceId: 'w', workspaceMemberId: 'owner', filePath: FILE }))
-        .toMatchObject({ state: 'failed', retryable: false, code: 'BACKFILL_DELIVERY_DISCARDED' });
+        .toBeUndefined();
+      expect(getWorkspaceProjectByProjectId(db, 'p')?.visibility).toBe('personal');
     } finally { relay.dispose(); }
   } finally {
     closeDatabase(); await rm(root, { recursive: true, force: true });
@@ -260,11 +252,7 @@ it('only the same creator in the same workspace is re-queued as Team relay', () 
   expect(commentRelayRecordPromotedToTeam({ ...record, relayScope: 'team' }, team)).toBe(false);
 });
 
-// Integration rerun (share P0, 2026-09-27): registering the project in the team
-// catalog lets a concurrent catalog reconcile (hub `team-projects-changed`, a
-// project list read) rebind the row to team before publish-public marks it.
-// The publish still made the project team-visible, so it must say so; otherwise
-// the UI keeps showing "only me" and the CLI never prints its notice.
+// Publication must not overwrite or claim a concurrent explicit team transition.
 async function publishWithCatalogRace(initialVisibility: 'personal' | 'team') {
   const root = await mkdtemp(join(tmpdir(), 'od-publish-team-race-'));
   const db = openDatabase(root);
@@ -295,7 +283,7 @@ async function publishWithCatalogRace(initialVisibility: 'personal' | 'team') {
       sharePublishing: {
         ...fixture.sharePublishing!,
         ensureProject: async (scope, principal) => {
-          // The catalog reconcile wins the race and binds the row to team first.
+          // An explicit user team transition wins while publication is in flight.
           db.prepare(`UPDATE workspace_projects SET visibility='team', sync_state='synced' WHERE project_id='p'`).run();
           return { projectId: scope.projectId, ownerMemberId: principal.memberId, sharedAt: new Date(1).toISOString() };
         },
@@ -304,8 +292,6 @@ async function publishWithCatalogRace(initialVisibility: 'personal' | 'team') {
       verifyWorkspaceRequest: async req => req.get('x-od-workspace-id') === 'w' ? context : null,
       resolveSharedProject: async () => null, resolveSharedProjectOwner: async () => null,
       resolveLocalPublicShareOwner: () => 'owner',
-      isPrivateTeamProjectOfCreator: (projectId, principal) => isPrivateTeamProjectOfCreator(db, projectId, principal),
-      markPublishedTeamProjectVisible: (projectId, principal) => markPublishedTeamProjectVisible(db, projectId, principal),
       resolveProjectDir: () => root,
     });
     await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -321,10 +307,11 @@ async function publishWithCatalogRace(initialVisibility: 'personal' | 'team') {
   }
 }
 
-it('reports madeTeamVisible when a catalog reconcile marked the private project team-visible first', async () => {
+it('does not claim a visibility change when an explicit team transition wins during publication', async () => {
   const { status, body } = await publishWithCatalogRace('personal');
   expect(status).toBe(200);
-  expect(body).toMatchObject({ status: 'published', madeTeamVisible: true });
+  expect(body).toMatchObject({ status: 'published' });
+  expect(body.madeTeamVisible).toBeUndefined();
 });
 
 it('does not report madeTeamVisible for a project that was already team-visible before publishing', async () => {

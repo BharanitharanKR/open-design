@@ -9,6 +9,7 @@ import { sharePublishResponse } from '../collab/share-publish-response.js';
 import { persistedAmrShareUrl, type AmrShareLink, type PublicShareLink } from '../collab/public-share-viewer-url.js';
 import { stopVelaShare } from '../collab/vela-share-stop.js';
 import { publicFileResourceIdFor } from '../collab/public-file-resource-id.js';
+import { registerVelaTeamProjectResource } from '../collab/vela-cli-team-projects.js';
 import { resumePendingShareBinding } from '../collab/resume-pending-share-binding.js';
 import { resumeExistingVelaShare } from '../collab/vela-share-binding.js';
 import type { RecordPublicFilePublication } from '../collab/public-file-publication-recording.js';
@@ -107,6 +108,8 @@ export interface RegisterPulledProjectInput {
 }
 
 export interface TeamMirrorPullScope {
+  /** Exact catalog-bound root; never supplied by an HTTP caller. */
+  resourceId?: string;
   workspaceId: string;
   resourceTeamId: string;
   viewerMemberId: string;
@@ -156,8 +159,7 @@ export interface RegisterCollabSyncRoutesDeps {
     | 'publishedHead'
     | 'projectSyncState'
     | 'projectOwnerMemberId'
-    | 'requestTeamShare'
-    | 'requestTeamUnshare'
+    | 'forgetTeamShare'
     | 'pullLatest'
   >;
   resolveSharedProjectOwner?: (
@@ -212,6 +214,7 @@ export interface RegisterCollabSyncRoutesDeps {
    * mutable active Workspace.
    */
   verifyWorkspaceScope?: (scope: TeamMirrorPullScope) => Promise<boolean>;
+  resolveTeamProjectResourceId?: (projectId: string, scope: TeamMirrorPullScope) => Promise<string>;
   /** Set/clear the non-destructive "team mirror revoked" flag on a local
    *  project so read routes stop serving a project that has left the team. */
   markTeamProjectRevoked?: (projectId: string, revoked: boolean) => void;
@@ -251,12 +254,6 @@ export interface RegisterCollabSyncRoutesDeps {
   readProjectShareState?: ReadProjectShareState;
   /** Durable local author proof for a not-yet-catalogued project. Never inferred from the requester. */
   resolveLocalPublicShareOwner?: (projectId: string, workspaceId: string) => string | null;
-  /** The creator's own active private row in this team workspace. Read before
-   * catalog registration, after which a concurrent reconcile may rebind it. */
-  isPrivateTeamProjectOfCreator?: (projectId: string, principal: ResourceHubPrincipal) => boolean;
-  /** Record a creator's private project as team-visible once publishing has
-   * registered it in a team catalog. True when the row is the creator's team row afterwards. */
-  markPublishedTeamProjectVisible?: (projectId: string, principal: ResourceHubPrincipal) => boolean;
   /** The only presentation rule for a publication's Viewer address: explicit
    * local override, else the address AMR reported (fresh evidence or the
    * persisted copy, re-verified), else unavailable. Unwired means unavailable,
@@ -763,8 +760,6 @@ export function registerCollabSyncRoutes(
     publishedHead,
     projectSyncState,
     projectOwnerMemberId,
-    requestTeamShare,
-    requestTeamUnshare,
     pullLatest,
   } = deps.collab;
   const {
@@ -783,25 +778,6 @@ export function registerCollabSyncRoutes(
     notifyFilesChanged,
     notifyProjectMetadataChanged,
   } = deps;
-  /**
-   * One seam for "this project's team-share state just changed".
-   *
-   * Both halves belong together: the visibility record is persisted AND the
-   * team-project catalog is dropped. The catalog read behind
-   * `/api/workspace/projects/team` is served from a short-lived SWR entry, so a
-   * GET issued right after a share would otherwise answer with the pre-share
-   * list until the freshness window expired or a hub event happened to arrive.
-   *
-   * Announce through this rather than calling the two deps side by side, so a
-   * future mutation added to this module cannot pick up one and forget the
-   * other.
-   */
-  const announceTeamShareStateChange = (
-    change: Parameters<NonNullable<RegisterCollabSyncRoutesDeps['onTeamShareStateChanged']>>[0],
-  ): void => {
-    deps.onTeamShareStateChanged?.(change);
-    invalidateTeamProjectCatalog?.();
-  };
   const readManifest = deps.readManifest ?? readProjectManifest;
   const publicFilePublicationStore =
     deps.publicFilePublicationStore
@@ -970,7 +946,10 @@ export function registerCollabSyncRoutes(
           role: ownerMemberId === viewerPrincipal.memberId ? viewerPrincipal.role : 'member' as const,
         }
       : viewerPrincipal;
-    return { verification, principal, scope };
+    const boundScope = scope && deps.resolveTeamProjectResourceId
+      ? { ...scope, resourceId: await deps.resolveTeamProjectResourceId(projectId, scope) }
+      : scope;
+    return { verification, principal, scope: boundScope };
   }
 
   async function canShareProjectsForRequest(
@@ -1279,7 +1258,7 @@ export function registerCollabSyncRoutes(
           !projectStore?.get ||
           !isUnmaterializedSharedPlaceholder(projectStore.get(projectId))
         ) return;
-        await requestTeamUnshare(projectId, resourcePrincipal ?? undefined);
+        await deps.collab.forgetTeamShare?.(projectId, resourcePrincipal);
         retireUnmaterializedSharedPlaceholder?.(projectId);
         invalidateTeamProjectCatalog?.();
       }
@@ -1550,11 +1529,25 @@ export function registerCollabSyncRoutes(
     } catch {
       return res.status(502).json({ error: 'PUBLIC_SHARE_PREPARATION_UNAVAILABLE' });
     }
-    // Before registration: once the project is in the team catalog, a catalog
-    // reconcile (hub event, project list read) may mark the row team-visible
-    // ahead of this request, and the publish must still report that it did.
-    const wasPrivateTeamProject = verifiedContext.workspaceType === 'team'
-      && deps.isPrivateTeamProjectOfCreator?.(projectId, principal) === true;
+    // Absence must be observed remotely, not inferred from a lost local row.
+    // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
+    const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
+    const stoppedSlug = previousState?.projectId === projectId
+      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped')?.slug
+      : undefined;
+    const resumed = await resumePendingShareBinding(scope, publicFilePublicationStore, publisher.outbox, prepared.run, stoppedSlug);
+    if (resumed) {
+      return res.json(sharePublishResponse(resumed,
+        presentPublicShareLink(deps.resolvePublicShareLink, projectId, resumed.receipt.slug, resumed.amrLink ?? null)));
+    }
+    // Vela refuses a plain publish to a stopped binding (409
+    // share_binding_stopped). Refuse before uploading; reopening the original
+    // link is the explicit `{ mode: 'resume' }` request (OPEND-3510).
+    if (stoppedSlug) {
+      return res.status(409).json({ error: 'SHARE_STOPPED_RESUME_REQUIRED' });
+    }
+    // Policy/bootstrap and association are mutations too: a refused stopped
+    // publish must not reach them. Recovery above reuses its existing binding.
     if (needsCatalog) {
       try {
         if (!publisher.ensureProject) throw new Error('project bootstrap unavailable');
@@ -1569,35 +1562,12 @@ export function registerCollabSyncRoutes(
         return res.status(403).json({ error: 'WORKSPACE_PROJECT_PUBLISH_DENIED' });
       }
     }
-    // Decision 67 #11: the project is now in the team catalog, so it is
-    // team-visible. Say so locally before anything below can enqueue the
-    // comment backfill or accept a new comment for it; waiting for the
-    // background reconcile left both stranded as creator-only relay in a team
-    // workspace, which is not relayable and was cancelled for good.
-    const teamVisible = verifiedContext.workspaceType === 'team'
-      && deps.markPublishedTeamProjectVisible?.(projectId, principal) === true;
-    const madeTeamVisible = wasPrivateTeamProject && teamVisible;
-    if (madeTeamVisible) invalidateTeamProjectCatalog?.();
-    // Carried on failures too: the visibility change stands even if the upload
-    // below fails, and a retry would no longer report it.
-    const withVisibility = <T extends object>(body: T): T | (T & { madeTeamVisible: true }) =>
-      madeTeamVisible ? { ...body, madeTeamVisible: true } : body;
-    // Absence must be observed remotely, not inferred from a lost local row.
-    // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
-    const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
-    const stoppedSlug = previousState?.projectId === projectId
-      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped')?.slug
-      : undefined;
-    const resumed = await resumePendingShareBinding(scope, publicFilePublicationStore, publisher.outbox, prepared.run, stoppedSlug);
-    if (resumed) {
-      return res.json(withVisibility(sharePublishResponse(resumed,
-        presentPublicShareLink(deps.resolvePublicShareLink, projectId, resumed.receipt.slug, resumed.amrLink ?? null))));
-    }
-    // Vela refuses a plain publish to a stopped binding (409
-    // share_binding_stopped). Refuse before uploading; reopening the original
-    // link is the explicit `{ mode: 'resume' }` request (OPEND-3510).
-    if (stoppedSlug) {
-      return res.status(409).json(withVisibility({ error: 'SHARE_STOPPED_RESUME_REQUIRED' }));
+    // Associate even legacy selected resources; catalog presence is not proof
+    // of that relationship. The pinned session must ACK before any file bytes.
+    try {
+      await registerVelaTeamProjectResource(projectId, publicFileResourceIdFor(scope), prepared.run);
+    } catch {
+      return res.status(503).json({ error: 'PUBLIC_SHARE_RESOURCE_REGISTRATION_UNAVAILABLE' });
     }
     const resourceId = publicFileResourceIdFor(scope);
     const tempDir = await mkdtemp(path.join(os.tmpdir(), 'od-public-file-'));
@@ -1644,15 +1614,15 @@ export function registerCollabSyncRoutes(
             logPublicFileFailure({
               action: 'publish', errorCode: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure, requestId, startedAt,
             });
-            return res.status(502).json(withVisibility({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure }));
+            return res.status(502).json({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure });
           } catch { /* Remote publication may still be accessible: never hide it. */ }
         }
         const manualUrl = presentPublicShareLink(deps.resolvePublicShareLink, projectId, result.receipt.slug, amrLink).url;
-        return res.status(502).json(withVisibility({ error: {
+        return res.status(502).json({ error: {
           code: 'PUBLIC_FILE_MANUAL_REVOKE_REQUIRED',
           message: `Publication metadata could not be saved; the public share may remain accessible${manualUrl ? ` at ${manualUrl}` : ''}. Use od project share stop to revoke it explicitly.`,
           data: { ...publication, url: manualUrl, projectId, receipt: result.receipt },
-        } }));
+        } });
       }
       // Register/bind must never revive a stopped link. This foreground owner
       // request alone carries explicit resume intent for the observed alias.
@@ -1682,7 +1652,7 @@ export function registerCollabSyncRoutes(
           console.warn('[od] public file content fingerprint unavailable');
         }
       }
-      return res.json(withVisibility(response));
+      return res.json(response);
     } catch (error) {
       console.warn('[od] failed to publish public project file:', error);
       const failure = stage === 'persist'
@@ -1691,7 +1661,7 @@ export function registerCollabSyncRoutes(
       logPublicFileFailure({
         action: 'publish', errorCode: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure, requestId, startedAt,
       });
-      return res.status(502).json(withVisibility({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure }));
+      return res.status(502).json({ error: 'PUBLIC_FILE_PUBLISH_UNAVAILABLE', failure });
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
@@ -1927,71 +1897,8 @@ export function registerCollabSyncRoutes(
     const context = verification.context;
     const principal = contextToResourceHubPrincipal(context);
 
-    if (event === 'project_team_share_requested') {
-      if (!principal || !(await canShareProjectsForRequest(req, context))) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
-      }
-      const sharerMemberId = principal.memberId;
-      const existingOwnerMemberId = await resolveSharedProjectOwner?.(projectId, {
-        workspaceId: context!.workspaceId,
-        workspaceMemberId: context!.workspaceMemberId,
-      }) ?? null;
-      if (
-        existingOwnerMemberId &&
-        existingOwnerMemberId !== sharerMemberId
-      ) {
-        return res.json({
-          ok: true,
-          syncState: 'synced',
-          publishedVersion: publishedVersion(projectId, principal),
-        });
-      }
-      let nextPublishedVersion: number | null;
-      try {
-        ({ version: nextPublishedVersion } = await requestTeamShare(projectId, principal ?? sharerMemberId));
-      } catch (error) {
-        console.warn('[od] failed to publish team-shared project bytes:', error);
-        return res.status(502).json({ error: 'TEAM_PROJECT_PUBLISH_UNAVAILABLE' });
-      }
-      if (nextPublishedVersion == null) {
-        return res.status(502).json({ error: 'TEAM_PROJECT_PUBLISH_UNAVAILABLE' });
-      }
-      announceTeamShareStateChange({
-        projectId,
-        principal,
-        visibility: 'team',
-        ownerMemberId: sharerMemberId ?? null,
-        updatedByMemberId: sharerMemberId ?? null,
-      });
-      return res.json({
-        ok: true,
-        syncState: projectSyncState(projectId, principal),
-        publishedVersion: nextPublishedVersion,
-      });
-    }
-
-    if (event === 'project_team_unshare_requested') {
-      if (!principal || !(await canShareProjectsForRequest(req, context))) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_SHARE_DENIED' });
-      }
-      const callerMemberId = principal.memberId;
-      const remoteOwnerMemberId = await resolveSharedProjectOwner?.(projectId, {
-        workspaceId: context!.workspaceId,
-        workspaceMemberId: context!.workspaceMemberId,
-      }) ?? null;
-      const ownerMemberId =
-        remoteOwnerMemberId ?? projectOwnerMemberId(projectId, principal);
-      if (ownerMemberId && ownerMemberId !== callerMemberId) {
-        return res.status(403).json({ error: 'WORKSPACE_PROJECT_UNSHARE_DENIED' });
-      }
-      await requestTeamUnshare(projectId, principal);
-      announceTeamShareStateChange({
-        projectId,
-        principal,
-        visibility: 'personal',
-        ownerMemberId,
-        updatedByMemberId: callerMemberId ?? null,
-      });
+    if (event === 'project_team_share_requested' || event === 'project_team_unshare_requested') {
+      return res.status(409).json({ error: 'PROJECT_VISIBILITY_REQUIRES_MOVE' });
     }
 
     res.json({ ok: true, syncState: projectSyncState(projectId, principal) });
@@ -2008,11 +1915,14 @@ export function registerCollabSyncRoutes(
   async function pullSharedProjectOnce(
     projectId: string,
     principal: ResourceHubPrincipal | null,
-    scope: TeamMirrorPullScope | null,
+    capturedScope: TeamMirrorPullScope | null,
     authorizationWitness?: ProactivePullAuthorizationWitness,
     expectedVersion?: number,
     authorizedStageInvocation?: AuthorizedProactivePullInvocation,
   ): Promise<CollabSyncPullOutcome> {
+    const scope = capturedScope && deps.resolveTeamProjectResourceId
+      ? { ...capturedScope, resourceId: await deps.resolveTeamProjectResourceId(projectId, capturedScope) }
+      : capturedScope;
     const profileReceivedAtMs =
       authorizedStageInvocation?.profileReceivedAtMs;
     type AuthorizedPullTimingPhase =
@@ -2125,6 +2035,8 @@ export function registerCollabSyncRoutes(
         }
         try {
           const scopeStillAuthorized = await deps.verifyWorkspaceScope(scope);
+          if (deps.resolveTeamProjectResourceId
+            && scope.resourceId !== await deps.resolveTeamProjectResourceId(projectId, scope)) return false;
           return (
             scopeStillAuthorized &&
             isAuthorizedProactivePullInvocation(

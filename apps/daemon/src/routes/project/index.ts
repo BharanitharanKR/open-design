@@ -3,7 +3,7 @@ import { CommentPreparationError, prepareCommentIdentity } from '../../services/
 import { ProjectPublicFileStopPendingError, type PublicFileDeleteTarget } from '../../collab/project-public-file-stop.js';
 import type { ProjectDeleteResponse } from '@open-design/contracts';
 import { publicFileMutationHandler } from '../public-file-mutation-handler.js';
-import type { PublicFileMutations } from '../../collab/public-file-mutations.js';
+import { createPublicFileMutations, type PublicFileMutations } from '../../collab/public-file-mutations.js';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
@@ -2207,6 +2207,7 @@ function buildDesignSystemCopyPendingPrompt(input: {
 
 export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDeps) {
   const { db, design } = ctx;
+  const projectMutations = ctx.publicFileMutations ?? createPublicFileMutations();
   const projectCreatePreparationTimeoutMs =
     typeof ctx.projectCreatePreparationTimeoutMs === 'number'
     && Number.isFinite(ctx.projectCreatePreparationTimeoutMs)
@@ -2828,6 +2829,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         .filter((row) => row.resourceHubResourceId)
         .map((row) => [`${row.resourceHubResourceId}\0${row.id}`, row] as const),
     );
+    const canReconcile = projectMutations.captureReconciliation();
     const tombstoned = locallyTombstonedTeamProjects(localRows, ctx);
     let remoteProjects: VelaTeamProjectRecord[];
     try {
@@ -2838,6 +2840,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     const seenResourceIds = new Set<string>();
     const visibleProjects = remoteProjects
       .filter((project) => project.workspaceId === ctx.workspaceId)
+      .filter((project) => canReconcile(project.projectId))
       .filter((project) => project.access.canView)
       .filter((project) => !remoteTeamProjectWasUnsharedLocally(project, tombstoned, ctx));
     for (const project of visibleProjects) {
@@ -3590,6 +3593,14 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // ignore
     }
   }
+  function commitConfirmedVisibility(id: string, ctx: WorkspaceProjectContext, visibility: 'personal' | 'team') {
+    // Preserve the retained root and transport's confirmed sync state. Only
+    // explicit moves write policy; ACK must be durable before the response.
+    updateWorkspaceProject(db, ctx.workspaceId, id, {
+      visibility,
+      ...(visibility === 'personal' ? { syncState: 'local_only' as const } : {}),
+    });
+  }
   function ownerForTeamShare(summary: any, ctx: WorkspaceProjectContext, visibility: 'personal' | 'team') {
     if (visibility !== 'team') return summary?.createdByWorkspaceMemberId ?? null;
     return summary?.createdByWorkspaceMemberId ?? ctx.workspaceMemberId;
@@ -3604,8 +3615,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       visibility,
       createdByWorkspaceMemberId: ownerForTeamShare(summary, ctx, visibility),
       updatedByWorkspaceMemberId: ctx.workspaceMemberId,
-      resourceHubResourceId: visibility === 'team' ? projectResourceIdFor(id, workspaceProjectPrincipal(ctx)) : null,
-      cloudTombstonedAt: visibility === 'team' ? null : Date.now(),
+      resourceHubResourceId: getWorkspaceProjectByProjectId(db, id)?.resourceHubResourceId ?? summary?.resourceHubResourceId ?? null,
+      cloudTombstonedAt: null,
       syncState: visibility === 'team' ? 'pending_upload' : 'local_only',
     };
   }
@@ -3615,7 +3626,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       resourceState: row.resourceState,
       createdByWorkspaceMemberId: row.createdByWorkspaceMemberId ?? null,
       updatedByWorkspaceMemberId: row.updatedByWorkspaceMemberId ?? null,
-      resourceHubResourceId: row.resourceHubResourceId ?? null,
+      // Creator ensure is durable even when the following root transport fails.
+      resourceHubResourceId: getWorkspaceProjectByProjectId(db, row.id)?.resourceHubResourceId ?? row.resourceHubResourceId ?? null,
       cloudTombstonedAt: row.cloudTombstonedAt ?? null,
       syncState: row.syncState ?? 'local_only',
       version: row.workspaceVersion ?? 1,
@@ -3637,7 +3649,9 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     return /team_project_owner_conflict/i.test(String(error));
   }
 
-  app.post('/api/workspaces/:workspaceId/projects/:projectId/move', async (req, res) => {
+  const withVisibilityMoveLocks = projectMutations.withMoves;
+
+  app.post('/api/workspaces/:workspaceId/projects/:projectId/move', async (req, res) => withVisibilityMoveLocks([req.params.projectId], async () => {
     try {
       const ctx = await authoritativeWorkspaceProjectContext(req, res, req.params.workspaceId);
       if (!ctx) return;
@@ -3709,6 +3723,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         restoreWorkspaceProjectRow(row);
         throw new TeamProjectSyncError(error);
       }
+      commitConfirmedVisibility(project.id, ctx, visibility);
       if (visibility === 'team') {
         const ensureCommentAnchor = db.transaction(() => {
           ensureTeamProjectCommentConversations(db, project.id);
@@ -3732,9 +3747,9 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
-  });
+  }));
 
-  app.post('/api/workspaces/:workspaceId/projects/batch-move', async (req, res) => {
+  app.post('/api/workspaces/:workspaceId/projects/batch-move', async (req, res) => withVisibilityMoveLocks(parseProjectIds(req.body?.projectIds) ?? [], async () => {
     try {
       const ctx = await authoritativeWorkspaceProjectContext(req, res, req.params.workspaceId);
       if (!ctx) return;
@@ -3766,13 +3781,32 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         }
       });
       moveMany(projectIds);
+      const completed: string[] = [];
       try {
-        await requestTeamVisibility(projectIds, ctx, visibility);
+        for (const id of projectIds) {
+          await requestTeamVisibility([id], ctx, visibility);
+          completed.push(id);
+          commitConfirmedVisibility(id, ctx, visibility);
+        }
       } catch (error) {
+        const uncompensated = new Set<string>();
+        for (const id of completed.reverse()) {
+          const previous = previousRows.find((item: any) => item?.id === id);
+          if (!previous || previous.workspaceVisibility === visibility) continue;
+          try {
+            await requestTeamVisibility([id], ctx, previous.workspaceVisibility);
+          } catch (compensationError) {
+            // A distributed batch cannot roll back a remote outage with SQL.
+            // Preserve confirmed remote successes locally rather than lie about
+            // their policy, and report the original batch as failed/retryable.
+            uncompensated.add(id);
+            console.warn('[od] project batch move compensation failed:', id, compensationError);
+          }
+        }
         const rollbackMany = db.transaction((items: any[]) => {
           for (const item of items) restoreWorkspaceProjectRow(item);
         });
-        rollbackMany(previousRows.filter(Boolean));
+        rollbackMany(previousRows.filter((item: any) => item && !uncompensated.has(item.id)));
         throw new TeamProjectSyncError(error);
       }
       if (visibility === 'team') {
@@ -3799,7 +3833,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
-  });
+  }));
 
   app.post('/api/workspaces/:workspaceId/projects/batch-delete', async (req, res) => {
     try {
@@ -5526,19 +5560,12 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
           || getWorkspaceProjectByProjectId(db, project.id)?.visibility !== 'personal') throw error;
         shareResiduals = error.shareResiduals;
       }
-      // spec 04 §11: a team-visible project must be unshared from the hub
-      // BEFORE it disappears locally — mirrors the 'personal' branch of
-      // /move's `requestTeamVisibility`, the one other place this daemon
-      // already knows how to take a project out of the team space. Without
-      // this, `dbDeleteProject` only ever touches THIS caller's own
-      // `workspace_projects` row: the hub's published resource (and every
-      // OTHER member's already-bound local row) never learns the project is
-      // gone, so teammates keep seeing it. `enforceWorkspaceProjectMutation`
-      // just above already proved the caller may mutate this exact row, so
-      // no separate `canShareProjects` gate is layered on top here — the
-      // whole project is about to stop existing regardless.
+      // Permanent deletion removes a registered root; moving to private does
+      // not. Pending public-stop residuals permit local-only private deletion,
+      // so retain their cloud identity for the existing stop retry pipeline.
       const workspaceRow = getWorkspaceProjectByProjectId(db, project.id);
-      if (workspaceRow?.visibility === 'team') {
+      if (workspaceRow && !shareResiduals?.length
+        && (workspaceRow.visibility === 'team' || workspaceRow.resourceHubResourceId)) {
         // Same context the gate above allowed this delete under — NOT a fresh
         // header read, which is null for a headerless caller and would skip the
         // hub work while still deleting locally.
@@ -5555,7 +5582,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
             'workspace context is required to unshare this project before deleting it',
           );
         }
-        await requestTeamVisibility([project.id], teamCtx, 'personal');
+        await collabSync.requestTeamDelete(project.id, workspaceProjectPrincipal(teamCtx));
+        try { collabSync.invalidateTeamProjectCatalog?.(); } catch { /* Best-effort display cache. */ }
       }
       // Stop any live agent run in this project before its row and directory
       // are removed, otherwise the CLI subprocess is orphaned — it keeps

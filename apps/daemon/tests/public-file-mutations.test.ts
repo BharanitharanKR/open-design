@@ -21,3 +21,24 @@ it('does not block another project and recovers after a rejected operation', asy
   gate.release(); await rejection; expect(await next).toBe(7);
   expect(await mutations.run('p', async () => 8)).toBe(8);
 });
+it('shares the publication lane with queued moves, but only moves fence catalog reads', async () => {
+  const mutations = createPublicFileMutations();
+  const release = deferred(); const entered = deferred();
+  const publication = mutations.run('p', async () => { entered.release(); await release.promise; });
+  await entered.promise;
+  const before = mutations.captureReconciliation();
+  expect(before('p')).toBe(true);
+  let moved = false;
+  const move = mutations.withMoves(['p'], async () => { moved = true; });
+  const during = mutations.captureReconciliation();
+  expect(before('p')).toBe(false);
+  expect(during('p')).toBe(false);
+  expect(during('other')).toBe(true);
+  expect(moved).toBe(false);
+  release.release();
+  await Promise.all([publication, move]);
+  expect(moved).toBe(true);
+  expect(before('p')).toBe(false);
+  expect(during('p')).toBe(false);
+  expect(mutations.captureReconciliation()('p')).toBe(true);
+});

@@ -441,11 +441,11 @@ describe("durable Team comment relay outbox", () => {
 		expect(outbox.count()).toBe(0);
 	});
 
-	it("delivers an active personal owner publication through a durable outbox after restart", async () => {
+	it.each(["personal", "team"] as const)("delivers a private owner publication in a %s workspace through a durable outbox after restart", async workspaceType => {
 		const db = seededDb();
 		const owner = context("owner", {
 			workspaceId: "workspace-personal",
-			workspaceType: "personal",
+			workspaceType,
 			workspaceMemberId: "personal-owner",
 			teamId: "",
 		});
@@ -560,11 +560,11 @@ describe("durable Team comment relay outbox", () => {
 		expect(restartedOutbox.count()).toBe(0);
 		restarted.dispose();
 	});
-	it("fails closed for no publication, a different file, stopped publication, and a switched personal identity", async () => {
+	it.each(["personal", "team"] as const)("fails closed for no publication, a different file, stopped publication, and a switched creator in a %s workspace", async workspaceType => {
 		const db = seededDb();
 		const owner = context("owner", {
 			workspaceId: "workspace-personal",
-			workspaceType: "personal",
+			workspaceType,
 			workspaceMemberId: "personal-owner",
 			teamId: "",
 		});

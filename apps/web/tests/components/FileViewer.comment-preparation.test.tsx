@@ -135,10 +135,15 @@ it.each([false, true])('source-version save awaits a fresh challenged frame; sta
     window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { type: 'od:comment-targets', targets: [] } }));
   });
   expect(screen.getByTestId('comment-identity-preparation')).not.toHaveTextContent('Preview ready');
-  act(() => {
+  // Real postMessage deliveries are separate tasks. Flush the challenged
+  // activation before delivering its target index, rather than batching both
+  // synchronously against the pre-activation React state.
+  await act(async () => {
     window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: {
       type: 'od:srcdoc-transport-activated', generation: probe!.generation, probeId: probe!.probeId, bodyComplete: true,
     } }));
+  });
+  await act(async () => {
     window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { type: 'od:comment-targets', targets: [] } }));
   });
   await waitFor(() => expect(screen.getByTestId('comment-identity-preparation')).toHaveTextContent('Preview ready'));

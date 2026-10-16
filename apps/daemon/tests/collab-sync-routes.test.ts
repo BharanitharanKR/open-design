@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as deployPlanner from '../src/deploy.js';
 import express from 'express';
+import { publicFileResourceIdFor } from '../src/collab/public-file-resource-id.js';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { migrateCommentRelayOutbox } from '../src/collab/comment-relay-outbox.js';
@@ -33,12 +34,14 @@ import {
 } from '@open-design/contracts';
 import { runVelaResourceCommand } from '../src/collab/vela-cli-resource-adapter.js';
 import {
-  createCollabRuntime,
+  createCollabRuntime as createRuntime,
   type CollabRuntime,
   type CreateCollabRuntimeOptions,
 } from '../src/collab/runtime.js';
 import { contextToResourceHubPrincipal } from '../src/collab/resource-principal.js';
 import type { WorkspaceContextProvider } from '../src/collab/workspace-context.js';
+import { withTeamProjectCatalog } from './team-project-registration-fixture.js';
+const createCollabRuntime = (options: CreateCollabRuntimeOptions = {}) => createRuntime(withTeamProjectCatalog(options));
 import {
   createProactiveContentPull,
   type ProactiveContentPullTarget,
@@ -328,6 +331,10 @@ async function publicShareFixture(options: {
     ensureProject: async scope => ({ projectId: scope.projectId, ownerMemberId: scope.ownerMemberId, sharedAt: '2026-01-01T00:00:00.000Z' }),
     prepare: async (scope, slug) => ({
       run: async args => {
+        if (args[0] === 'team-projects') {
+          expect(args).toEqual(['team-projects', 'register-resource', scope.projectId, publicFileResourceIdFor(scope)]);
+          return JSON.stringify({ ok: true });
+        }
         if (options.run) return options.run(args);
         if (args[0] === 'resource') return runVelaResourceCommand(args.slice(1), scope.resourceTeamId);
         if (args[0] !== 'share') throw new Error('unexpected command');
@@ -475,8 +482,15 @@ async function startSyncServer(
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('server did not bind to a TCP port');
   const base = `http://127.0.0.1:${address.port}`;
+  const explicitPrincipal = () => {
+    const principal = contextToResourceHubPrincipal(authoritativeContext);
+    if (!principal) throw new Error('test setup requires a pinned project creator');
+    return principal;
+  };
   return {
     handle,
+    shareProject: (projectId: string) => runtime!.requestTeamShare(projectId, explicitPrincipal()),
+    unshareProject: (projectId: string) => runtime!.requestTeamUnshare(projectId, explicitPrincipal()),
     async json(
       route: string,
       options: {
@@ -624,8 +638,8 @@ describe('collab sync routes', () => {
     await runtime.requestTeamShare(projectId, workspaceB);
     await runtime.requestTeamUnshare(projectId, workspaceA);
 
-    expect(unpublish).toHaveBeenCalledWith({ projectId, principal: workspaceA });
-    expect(teamProjectCatalog.remove).toHaveBeenCalledWith(projectId, workspaceA);
+    expect(unpublish).not.toHaveBeenCalled();
+    expect(teamProjectCatalog.remove).not.toHaveBeenCalled();
     expect(runtime.publishedVersion(projectId, workspaceA)).toBeNull();
     expect(runtime.projectSyncState(projectId, workspaceA)).toBe('local_only');
     expect(runtime.projectOwnerMemberId(projectId, workspaceA)).toBeNull();
@@ -1183,7 +1197,8 @@ describe('collab sync routes', () => {
         event: 'project_team_share_requested',
         projectId: 'p1',
       },
-    })).status).toBe(200);
+    })).status).toBe(409);
+    await api.shareProject('p1');
     expect((await api.json('/api/projects/p1/collab/publish', {
       method: 'POST',
     })).status).toBe(200);
@@ -1500,25 +1515,9 @@ describe('collab sync routes', () => {
     expect(projectStore.projects.get('owned-shared-p')?.name).toBe('Real Owner Project');
   });
 
-  it('owner self-pull hitting a retracted hub resource heals the dangling catalog row instead of leaving a ghost', async () => {
-    // The reinstall-revival shape reproduced live on the feature-test hub
-    // (2026-07-27, workspace res-wipe-0727): an unshare's two hub writes are
-    // resource remove → team-projects catalog remove, and when only the first
-    // landed the hub is left dangling — the catalog still lists the project
-    // while its backing resource row is tombstoned. On a fresh data root the
-    // local `cloudTombstonedAt` suppression is gone, so the retracted project
-    // came back as a normal-looking team card (visibility=team, canOpen) for
-    // every member. Opening it registered a placeholder and the owner
-    // self-pull died with `resource_not_found`, silently — the ghost stayed
-    // in the list forever, and the unshare retry-trap (see
-    // vela-cli-resource-adapter.test.ts) meant no user action could clear it.
-    //
-    // The invariant: the catalog naming this caller as owner WHILE the
-    // published pull answers `resource_not_found` is the hub-authoritative
-    // signature of "曾共享已撤" (a half-landed retraction) — never of a live
-    // share. The owner's daemon must finish the retraction (remove the
-    // dangling catalog row) and retire the just-registered unmaterialized
-    // placeholder, instead of swallowing the pull error.
+  it('owner tombstone heal retires a local ghost without changing remote policy', async () => {
+    // Opening a missing root may retire an unmaterialized local placeholder,
+    // but a background read never withdraws content or changes visibility.
     const projectStore = fakeProjectStore();
     const markSharedProjectPlaceholder = vi.fn(
       (projectId: string, placeholder: boolean) => {
@@ -1549,6 +1548,8 @@ describe('collab sync routes', () => {
       );
     });
     const catalogRemove = vi.fn(async (_projectId: string, _principal?: unknown) => ({}));
+    const setVisibility = vi.fn(async () => {});
+    const ensurePrivate = vi.fn(async () => { throw new Error('heal must not ensure a project'); });
     const ownedContentSync = {
       request: vi.fn(async () => ({
         state: 'up_to_date' as const,
@@ -1596,7 +1597,10 @@ describe('collab sync routes', () => {
           pull,
           unpublish,
         },
-        teamProjectCatalog: { upsert: async () => ({}), remove: catalogRemove },
+        teamProjectCatalog: {
+          upsert: async () => ({}), remove: catalogRemove,
+          ensurePrivate, setVisibility,
+        },
       },
     );
 
@@ -1606,16 +1610,16 @@ describe('collab sync routes', () => {
     expect(ownedContentSync.request).toHaveBeenCalled();
     await vi.waitFor(() => expect(pull).toHaveBeenCalledOnce());
 
-    // The heal finishes the half-landed retraction hub-side …
-    await vi.waitFor(() => {
-      expect(catalogRemove).toHaveBeenCalled();
-    });
-    expect(catalogRemove.mock.calls[0]?.[0]).toBe('ghost-shared-p');
     // … retires the contentless placeholder this same open registered …
     await vi.waitFor(() => {
       expect(retireUnmaterializedSharedPlaceholder).toHaveBeenCalledWith('ghost-shared-p');
     });
     expect(projectStore.projects.has('ghost-shared-p')).toBe(false);
+    expect(catalogRemove).not.toHaveBeenCalled();
+    expect(unpublish).not.toHaveBeenCalled();
+    expect(setVisibility).not.toHaveBeenCalled();
+    expect(ensurePrivate).not.toHaveBeenCalled();
+    expect(runtime!.projectOwnerMemberId('ghost-shared-p', contextToResourceHubPrincipal(await fixedShareContextProvider(true).current({}))!)).toBeNull();
     // … and drops the cached catalog so the ghost card leaves the list now,
     // not one stale-while-revalidate TTL later.
     expect(invalidateTeamProjectCatalog).toHaveBeenCalled();
@@ -1745,64 +1749,25 @@ describe('collab sync routes', () => {
     expect(projectStore.registerCalls).toBe(1);
   });
 
-  it('drives the visibility-to-sync team-share intent through to synced', async () => {
-    const api = await startSyncServer(fixedShareContextProvider(true));
-    const intent = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
+  it.each(['project_team_share_requested', 'project_team_unshare_requested'])('dev sync-intent %s cannot write paired project policy', async event => {
+    const publish = vi.fn();
+    const unpublish = vi.fn();
+    const ensurePrivate = vi.fn(async () => { throw new Error('must use move'); });
+    const setVisibility = vi.fn(async () => {});
+    const upsert = vi.fn();
+    const remove = vi.fn();
+    const api = await startSyncServer(fixedShareContextProvider(true), undefined, {
+      adapter: { publish, unpublish },
+      teamProjectCatalog: { ensurePrivate, setVisibility, upsert, remove },
     });
-    expect(intent.status).toBe(200);
-    // Team-share is user-facing: the route waits for a durable resource version
-    // before reporting success, so teammates never see a catalog-only shell.
-    expect(intent.body.syncState).toBe('synced');
-    expect(intent.body.publishedVersion).toBe(1);
-    expect((await api.json('/api/projects/p1/collab/status')).body.publishedVersion).toBe(1);
-  });
-
-  it('moves a team-shared project back to local_only on unshare intent', async () => {
-    const api = await startSyncServer(fixedShareContextProvider(true));
-    await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
+    const response = await api.json('/api/projects/p1/collab/sync-intent', {
+      method: 'POST', body: { event, projectId: 'p1' },
     });
-    await api.awaitPublishedVersion('/api/projects/p1/collab/status', null);
-
-    const unshare = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_unshare_requested', projectId: 'p1' },
-    });
-
-    expect(unshare.status).toBe(200);
-    expect(unshare.body.syncState).toBe('local_only');
-    const status = await api.json('/api/projects/p1/collab/status');
-    expect(status.body.syncState).toBe('local_only');
-    expect(status.body.publishedVersion).toBeNull();
-  });
-
-  it('invalidates the team-project catalog on a sync-intent share and unshare', async () => {
-    // The display read behind `/api/workspace/projects/team` is served from a
-    // 3s SWR entry, so invalidation is part of the mutation contract now. The
-    // `/api/workspaces/:id/projects` move path already invalidates; this route
-    // — the one `od project share` and CollabDemoView drive — did not, so a
-    // catalog GET right after sharing could answer with the pre-share list
-    // until the freshness window expired or a hub event happened to arrive.
-    const invalidateTeamProjectCatalog = vi.fn();
-    const api = await startSyncServer(
-      fixedShareContextProvider(true),
-      { invalidateTeamProjectCatalog },
-    );
-
-    await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-    expect(invalidateTeamProjectCatalog).toHaveBeenCalledTimes(1);
-
-    await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_unshare_requested', projectId: 'p1' },
-    });
-    expect(invalidateTeamProjectCatalog).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe('PROJECT_VISIBILITY_REQUIRES_MOVE');
+    for (const mutation of [publish, unpublish, ensurePrivate, setVisibility, upsert, remove]) {
+      expect(mutation).not.toHaveBeenCalled();
+    }
   });
 
   it('accepts a visibility-changed intent as a no-op signal', async () => {
@@ -1824,96 +1789,26 @@ describe('collab sync routes', () => {
     expect(res.status).toBe(400);
   });
 
-  it('refuses a team-share intent from a member without canShareProjects (server-side gate)', async () => {
-    // The client hides the share affordance, but the daemon must not trust the
-    // client — a member whose context lacks canShareProjects is refused (403),
-    // and the project stays local_only (no publish is triggered).
-    const api = await startSyncServer(fixedShareContextProvider(false));
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('WORKSPACE_PROJECT_SHARE_DENIED');
+  it.each([true, false])('rejects legacy policy intents regardless of share permission: %s', async allowed => {
+    const api = await startSyncServer(fixedShareContextProvider(allowed));
+    for (const event of ['project_team_share_requested', 'project_team_unshare_requested']) {
+      const res = await api.json('/api/projects/p1/collab/sync-intent', {
+        method: 'POST', body: { event, projectId: 'p1' },
+      });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe('PROJECT_VISIBILITY_REQUIRES_MOVE');
+    }
     expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('local_only');
   });
 
-  it('refuses a team-share intent when no workspace context is available', async () => {
+  it('rejects legacy policy intents without a workspace, without exposing status', async () => {
     const api = await startSyncServer({ current: async () => null });
     const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
+      method: 'POST', body: { event: 'project_team_share_requested', projectId: 'p1' },
     });
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('WORKSPACE_PROJECT_SHARE_DENIED');
-    const status = await api.json('/api/projects/p1/collab/status');
-    expect(status.status).toBe(403);
-    expect(status.body.error).toBe('WORKSPACE_PROJECT_STATUS_DENIED');
-  });
-
-  it('honors a team-share intent from a member with canShareProjects', async () => {
-    const api = await startSyncServer(fixedShareContextProvider(true));
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-    expect(res.status).toBe(200);
-    expect(res.body.syncState).toBe('synced');
-    expect(res.body.publishedVersion).toBe(1);
-  });
-
-  it('treats an already shared project owned by another member as shared instead of republishing it', async () => {
-    let publishCalls = 0;
-    const api = await startSyncServer(
-      fixedShareContextProvider(true),
-      {
-        resolveSharedProject: async () => ({
-          projectId: 'p1',
-          ownerMemberId: 'wm-owner',
-          sharedAt: new Date(1).toISOString(),
-          name: 'Owner Project',
-        }),
-      },
-      {
-        adapter: {
-          publish: async () => {
-            publishCalls += 1;
-            throw new Error('resource hub should not be called');
-          },
-          syncLatest: async () => null,
-          pull: async () => null,
-          unpublish: async () => {},
-        },
-      },
-    );
-
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-
-    expect(res.status).toBe(200);
-    expect(res.body.syncState).toBe('synced');
-    expect(publishCalls).toBe(0);
-  });
-
-  it('refuses to unshare a project owned by another member', async () => {
-    const api = await startSyncServer(fixedShareContextProvider(true), {
-      resolveSharedProject: async () => ({
-        projectId: 'p1',
-        ownerMemberId: 'wm-owner',
-        sharedAt: new Date(1).toISOString(),
-        name: 'Owner Project',
-      }),
-    });
-
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_unshare_requested', projectId: 'p1' },
-    });
-
-    expect(res.status).toBe(403);
-    expect(res.body.error).toBe('WORKSPACE_PROJECT_UNSHARE_DENIED');
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('PROJECT_VISIBILITY_REQUIRES_MOVE');
+    expect((await api.json('/api/projects/p1/collab/status')).status).toBe(403);
   });
 
   it.each(['none', 'active', 'stopped', 'unavailable'] as const)('reads authoritative project/file state without any local publication: %s', async state => {
@@ -2179,7 +2074,13 @@ describe('collab sync routes', () => {
           ensureProject: async scope => ({ projectId: scope.projectId, ownerMemberId: scope.ownerMemberId, sharedAt: '2026-01-01T00:00:00.000Z' }),
           complete: createSharePublicationCompletion(db, createPublicFilePublicationRecorder(db, store, () => ({ enqueued: 0, skippedInbound: 0 })), outbox, true),
           prepare: async scope => ({
-            run: async args => runVelaResourceCommand(args.slice(1), scope.resourceTeamId),
+            run: async args => {
+              if (args[0] === 'team-projects') {
+                expect(args).toEqual(['team-projects', 'register-resource', scope.projectId, publicFileResourceIdFor(scope)]);
+                return JSON.stringify({ ok: true });
+              }
+              return runVelaResourceCommand(args.slice(1), scope.resourceTeamId);
+            },
           }),
           retry: vi.fn(),
         },
@@ -2817,7 +2718,7 @@ describe('collab sync routes', () => {
     expect(runVelaResourceCommand).not.toHaveBeenCalled();
   });
 
-  it('writes and removes the Vela team-project catalog around share intents', async () => {
+  it('writes discovery metadata on explicit share and retains the catalog on unshare', async () => {
     const writes: unknown[] = [];
     const removes: string[] = [];
     const api = await startSyncServer(
@@ -2846,11 +2747,7 @@ describe('collab sync routes', () => {
       },
     );
 
-    const share = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-    expect(share.status).toBe(200);
+    await expect(api.shareProject('p1')).resolves.toMatchObject({ version: 1 });
     expect(writes).toEqual([
       {
         projectId: 'p1',
@@ -2873,12 +2770,8 @@ describe('collab sync routes', () => {
       },
     ]);
 
-    const unshare = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_unshare_requested', projectId: 'p1' },
-    });
-    expect(unshare.status).toBe(200);
-    expect(removes).toEqual(['p1']);
+    await api.unshareProject('p1');
+    expect(removes).toEqual([]);
   });
 
   it('does not pretend a project is shared when the Vela catalog write fails', async () => {
@@ -2900,14 +2793,9 @@ describe('collab sync routes', () => {
       },
     );
 
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-    expect(res.status).toBe(502);
-    expect(res.body.error).toBe('TEAM_PROJECT_PUBLISH_UNAVAILABLE');
-    expect(unpublish).toHaveBeenCalledTimes(1);
-    expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('sync_failed');
+    await expect(api.shareProject('p1')).rejects.toThrow('catalog unavailable');
+    expect(unpublish).not.toHaveBeenCalled();
+    expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('local_only');
   });
 
   it('does not write the team catalog when resource publishing fails', async () => {
@@ -2933,15 +2821,9 @@ describe('collab sync routes', () => {
       },
     );
 
-    const res = await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
-
-    expect(res.status).toBe(502);
-    expect(res.body.error).toBe('TEAM_PROJECT_PUBLISH_UNAVAILABLE');
+    await expect(api.shareProject('p1')).rejects.toThrow('resource hub unavailable');
     expect(writes).toEqual([]);
-    expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('sync_failed');
+    expect((await api.json('/api/projects/p1/collab/status')).body.syncState).toBe('local_only');
   });
 
   it('rejects spoofed workspace headers without publishing, pulling, or materializing', async () => {
@@ -3016,7 +2898,7 @@ describe('collab sync routes', () => {
       },
     );
 
-    expect(intent.status).toBe(403);
+    expect(intent.status).toBe(409);
     expect(status.status).toBe(403);
     expect(pullResponse.status).toBe(403);
     expect(publish).not.toHaveBeenCalled();
@@ -3083,10 +2965,7 @@ describe('collab sync routes', () => {
     expect(before.status).toBe(403);
     expect(before.body.error).toBe('WORKSPACE_PROJECT_PULL_DENIED');
 
-    await api.json('/api/projects/p1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested', projectId: 'p1' },
-    });
+    await api.shareProject('p1');
     await api.awaitPublishedVersion('/api/projects/p1/collab/status', null);
     const after = await api.json('/api/projects/p1/collab/pull', { method: 'POST' });
     expect(after.body.version).toBe(1);
@@ -3204,10 +3083,7 @@ describe('collab sync routes', () => {
       resolvePullDir: (projectId) => `/does/not/exist/${projectId}`,
     });
 
-    await api.json('/api/projects/shared-register-fail/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-register-fail');
     await api.awaitPublishedVersion('/api/projects/shared-register-fail/collab/status', null);
     const pull = await api.json('/api/projects/shared-register-fail/collab/pull', { method: 'POST' });
     expect(pull.status).toBe(502);
@@ -3222,10 +3098,7 @@ describe('collab sync routes', () => {
     });
 
     expect(store.has('shared-1')).toBe(false);
-    await api.json('/api/projects/shared-1/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-1');
     await api.awaitPublishedVersion('/api/projects/shared-1/collab/status', null);
     const pull = await api.json('/api/projects/shared-1/collab/pull', { method: 'POST' });
     expect(pull.status).toBe(200);
@@ -3245,10 +3118,7 @@ describe('collab sync routes', () => {
       notifyFilesChanged,
     });
 
-    await api.json('/api/projects/shared-notify/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-notify');
     await api.awaitPublishedVersion('/api/projects/shared-notify/collab/status', null);
     expect(notifyFilesChanged).not.toHaveBeenCalled();
     const pull = await api.json('/api/projects/shared-notify/collab/pull', { method: 'POST' });
@@ -3272,10 +3142,7 @@ describe('collab sync routes', () => {
       notifyFilesChanged,
     });
 
-    await api.json('/api/projects/shared-notify-fail/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-notify-fail');
     await api.awaitPublishedVersion('/api/projects/shared-notify-fail/collab/status', null);
     const pull = await api.json('/api/projects/shared-notify-fail/collab/pull', { method: 'POST' });
     expect(pull.status).toBe(502);
@@ -3318,10 +3185,7 @@ describe('collab sync routes', () => {
       notifyProjectMetadataChanged,
     });
 
-    await api.json('/api/projects/shared-title-notify/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-title-notify');
     await api.awaitPublishedVersion('/api/projects/shared-title-notify/collab/status', null);
     expect(notifyProjectMetadataChanged).not.toHaveBeenCalled();
     const pull = await api.json('/api/projects/shared-title-notify/collab/pull', { method: 'POST' });
@@ -3349,10 +3213,7 @@ describe('collab sync routes', () => {
       notifyProjectMetadataChanged,
     });
 
-    await api.json('/api/projects/shared-title-steady/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-title-steady');
     await api.awaitPublishedVersion('/api/projects/shared-title-steady/collab/status', null);
     const pull = await api.json('/api/projects/shared-title-steady/collab/pull', { method: 'POST' });
     expect(pull.status).toBe(200);
@@ -3419,10 +3280,7 @@ describe('collab sync routes', () => {
       resolvePullDir: () => dir,
     });
 
-    await api.json('/api/projects/shared-2/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-2');
     await api.awaitPublishedVersion('/api/projects/shared-2/collab/status', null);
     await api.json('/api/projects/shared-2/collab/pull', { method: 'POST' });
     const registered = store.projects.get('shared-2');
@@ -3448,10 +3306,7 @@ describe('collab sync routes', () => {
       resolvePullDir: () => dir,
     });
 
-    await api.json('/api/projects/shared-skill/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-skill');
     await api.awaitPublishedVersion('/api/projects/shared-skill/collab/status', null);
     await api.json('/api/projects/shared-skill/collab/pull', { method: 'POST' });
     expect(store.projects.get('shared-skill')?.name).toBe('Emerald Editorial');
@@ -3481,10 +3336,7 @@ describe('collab sync routes', () => {
       resolvePullDir: () => dir,
     });
 
-    await api.json('/api/projects/shared-placeholder/collab/sync-intent', {
-      method: 'POST',
-      body: { event: 'project_team_share_requested' },
-    });
+    await api.shareProject('shared-placeholder');
     await api.awaitPublishedVersion('/api/projects/shared-placeholder/collab/status', null);
     await api.json('/api/projects/shared-placeholder/collab/pull', { method: 'POST' });
     expect(store.registerCalls).toBe(1);
