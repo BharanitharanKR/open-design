@@ -32,7 +32,7 @@ async function withRoutes(run: (url: string) => Promise<void>, onHostFault?: () 
   const app = express();
   const telemetry = registerTelemetryRoutes(app, {
     ...(onHostFault ? { onHostFault } : {}),
-    dataDir: '/unused', readAppConfig: vi.fn() as never, writeAppConfig: vi.fn() as never,
+    dataDir: '/unused', readAppConfig: vi.fn(async () => ({ telemetry: { metrics: true } })) as never, writeAppConfig: vi.fn() as never,
   });
   const server = app.listen(0, '127.0.0.1');
   try {
@@ -84,4 +84,25 @@ describe('CS01 telemetry HTTP boundary', () => {
       expect(captureSafety).toHaveBeenCalledWith(expect.objectContaining({ appVersion: '2.0.0' }));
     }, () => { markReceived(); return null; });
   });
+});
+
+it('drops memory events after opt-out, including callers bypassing the desktop sampler', async () => {
+  const app = express();
+  const telemetry = registerTelemetryRoutes(app, {
+    dataDir: '/unused', readAppConfig: vi.fn(async () => ({ telemetry: { metrics: false } })) as never,
+    writeAppConfig: vi.fn() as never,
+  });
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    if (!server.listening) await new Promise<void>(resolve => server.once('listening', resolve));
+    const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/observability/event`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ event: 'client_process_memory_sample', properties: metric }),
+    });
+    expect(response.status).toBe(200);
+    expect(captureSafety).not.toHaveBeenCalled();
+  } finally {
+    telemetry.disposeFatalHandlers();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });

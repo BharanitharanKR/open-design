@@ -1,17 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 
-// CS02-local contract until CS01's registry/types land. No page-load event is
-// a business Ready signal. OS click time is unavailable at this boundary.
-export type StartupType = "cold" | "warm" | "reopen";
+// Main owns the monotonic lifecycle; the shared analytics schema owns admission.
+// Page load is not business Ready. OS click time is unavailable here.
+export type StartupType = "cold" | "warm";
 export type StartupEvent = "client_launch_attempt" | "client_business_ready" | "client_launch_result";
 export type StartupPhase = "runtime_resolved" | "electron_ready" | "daemon_spawning" | "daemon_ready"
-  | "web_spawning" | "web_ready" | "desktop_entry" | "window_creating" | "window_revealed" | "business_ready";
+  | "web_spawning" | "web_ready" | "desktop_entry" | "window_creating" | "window_revealed" | "first_visible" | "business_ready";
 export type StartupReporter = (event: StartupEvent, properties: Record<string, unknown>) => Promise<unknown>;
 const processSessionId = randomUUID();
 
 export function createStartupTiming(input: {
   startupType: StartupType;
+  launchType?: "cold" | "warm";
   appSessionId?: string;
   startTime?: number;
   startedAt?: string;
@@ -22,8 +23,8 @@ export function createStartupTiming(input: {
   const now = input.now ?? (() => performance.now());
   const id = input.id ?? randomUUID;
   // performance.timeOrigin is Node's process origin, before ESM evaluation.
-  // A running-process activation has only an observed intent receipt time.
-  const start = input.startTime ?? (input.startupType === "cold" ? 0 : now());
+  // Classification never changes the origin; focus/restore is not a launch.
+  const start = input.startTime ?? 0;
   const startedAt = input.startedAt ?? new Date(performance.timeOrigin + start).toISOString();
   const context = { launch_attempt_id: id(), app_session_id: input.appSessionId ?? processSessionId };
   const offsets: Partial<Record<StartupPhase, number>> = {};
@@ -46,12 +47,17 @@ export function createStartupTiming(input: {
   }
   function emit(event: StartupEvent, extra: Record<string, unknown> = {}, offset = Math.max(lastOffset, now() - start)) {
     dispatch(event, {
-      ...context, event_id: id(), startup_type: input.startupType,
+      ...context, event_id: id(), startup_type: input.launchType ?? input.startupType,
+      launch_type: input.launchType ?? (input.startupType === "cold" ? "cold" : "warm"),
+      metric_schema_version: 1, telemetry_capability: "supported", measurement_boundary: "process_entry",
       started_at: startedAt, occurred_at: new Date(Date.parse(startedAt) + offset).toISOString(),
-      measurement_start: input.startupType === "cold" ? "process_entry" : "activation_received",
-      start_time_source: input.startupType === "cold" ? "node_performance_time_origin" : "main_process_monotonic_clock",
+      measurement_start: "process_entry",
+      start_time_source: "node_performance_time_origin",
       os_launch_time_available: false,
-      stage_offsets_ms: { ...offsets }, stage_durations_ms: { ...durations }, ...extra,
+      stage_offsets_ms: { ...offsets }, stage_durations_ms: { ...durations },
+      ...(offsets.window_revealed !== undefined ? { launch_to_window_shown: offsets.window_revealed } : {}),
+      ...(offsets.first_visible !== undefined ? { launch_to_first_visible: offsets.first_visible } : {}),
+      ...(offsets.business_ready !== undefined ? { launch_to_interactive: Math.max(offsets.business_ready, offsets.window_revealed ?? 0) } : {}), ...extra,
     });
   }
   function mark(phase: StartupPhase) {
@@ -64,7 +70,7 @@ export function createStartupTiming(input: {
     if (dataReady && offsets.window_revealed !== undefined) {
       terminal = true;
       emit("client_business_ready", { duration_ms: offset }, offset);
-      emit("client_launch_result", { outcome: "ready", duration_ms: offset }, offset);
+      emit("client_launch_result", { outcome: "ready", result: "ready", duration_ms: offset }, offset);
     }
   }
   emit("client_launch_attempt", {}, 0);
@@ -79,7 +85,8 @@ export function createStartupTiming(input: {
       if (terminal || !value || typeof value !== "object") return false;
       const signal = value as Record<string, unknown>;
       if (signal.launch_attempt_id !== context.launch_attempt_id || signal.app_session_id !== context.app_session_id
-        || signal.required_data_ready !== true || signal.actions_ready !== true) return false;
+        || (signal.readiness_point !== "first_visible" && (signal.required_data_ready !== true || signal.actions_ready !== true))) return false;
+      if (signal.readiness_point === "first_visible") { mark("first_visible"); return true; }
       dataReady = true;
       mark("business_ready");
       return true;
@@ -87,12 +94,9 @@ export function createStartupTiming(input: {
     finish(outcome: "failed" | "cancelled", reason: string) {
       if (terminal) return;
       terminal = true;
-      emit("client_launch_result", { outcome, reason, failure_stage: lastPhase, duration_ms: Math.max(lastOffset, now() - start) });
+      emit("client_launch_result", { outcome, result: outcome, reason, reason_code: reason, failure_stage: lastPhase, duration_ms: Math.max(lastOffset, now() - start) });
     },
     isPending: () => !terminal,
-    nextAttempt(startupType: "warm" | "reopen") {
-      return createStartupTiming({ startupType, appSessionId: context.app_session_id, report, now: input.now, id: input.id });
-    },
     async flush() { await Promise.all([...sending]); },
   };
 }
@@ -104,7 +108,6 @@ export interface StartupTiming {
   businessReady(value: unknown): boolean;
   finish(outcome: "failed" | "cancelled", reason: string): void;
   isPending(): boolean;
-  nextAttempt(startupType: "warm" | "reopen"): StartupTiming;
   flush(): Promise<void>;
 }
 

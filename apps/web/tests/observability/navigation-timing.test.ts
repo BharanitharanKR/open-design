@@ -198,3 +198,20 @@ describe('committed project readiness', () => {
     expect(results().map((e) => e?.status)).toEqual(['started', 'failed']);
   });
 });
+
+it('records first visible separately from interactive Ready and admits the canonical schema', async () => {
+  const { parseClientMetricEvent, buildClientTelemetryParams } = await import('@open-design/contracts/analytics');
+  navigationTiming.begin(home, { projectId: 'a' });
+  const id = navigationTiming.getSnapshot()!.id;
+  navigationTiming.firstVisible(id); navigationTiming.firstVisible(id);
+  expect(navigationTiming.isCurrent(id)).toBe(true);
+  navigationTiming.finish(id, 'ready');
+  const properties = vi.mocked(reportSafetyEvent).mock.calls
+    .filter(([event]) => event === 'client_navigation_result').map(([, value]) => value!);
+  expect(properties.map(value => value.result)).toEqual(['started', 'first_visible', 'ready']);
+  for (const value of properties) {
+    const common = buildClientTelemetryParams(value, { eventId: 'event', deviceId: 'install', appSessionId: 'session',
+      appVersion: '1.0.0', clientType: 'web', captureSource: 'web/test', env: 'test', reportedAt: new Date().toISOString() });
+    expect(parseClientMetricEvent('client_navigation_result', { ...value, ...common })).not.toBeNull();
+  }
+});

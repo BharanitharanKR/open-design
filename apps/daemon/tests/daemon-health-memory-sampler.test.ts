@@ -115,3 +115,18 @@ it('rejects intervals that Node would silently clamp to a hot loop', () => {
     expect(() => start({ sampleIntervalMs })).toThrow(RangeError);
   }
 });
+
+it('the optional daemon producer also emits an admissible shared metric', async () => {
+  const { buildClientTelemetryParams, parseClientMetricEvent } = await import('@open-design/contracts/analytics');
+  vi.useFakeTimers();
+  const health = start({ instrumentProcess: false });
+  const events: Parameters<DaemonHealthEventSink>[0][] = [];
+  health.attachSink(async event => { events.push(event); });
+  health.sampleNow();
+  await vi.advanceTimersByTimeAsync(0);
+  const point = events.find(event => event.eventName === 'client_process_memory_sample')!;
+  expect(point).toBeDefined();
+  const common = buildClientTelemetryParams(point.properties, { eventId: point.insertId!, deviceId: 'install',
+    clientType: 'daemon', captureSource: 'daemon/health', env: 'test', reportedAt: new Date().toISOString() });
+  expect(parseClientMetricEvent(point.eventName, { ...point.properties, ...common })).not.toBeNull();
+});

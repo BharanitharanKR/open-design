@@ -165,6 +165,7 @@ import {
 } from './components/home-hero/plugin-authoring';
 import { goBack, navigate, useRoute, type Route } from './router';
 import { navigationTiming } from './observability/navigation-timing';
+import { useStartupReady } from './observability/startup-ready';
 import {
   fetchDaemonConfig,
   DEFAULT_CONFIG,
@@ -1426,6 +1427,11 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  useStartupReady({
+    visible: route.kind === 'home' && daemonAppConfigReady,
+    interactive: route.kind === 'home' && daemonAppConfigReady && !projectsLoading
+      && !agentsLoading && !skillsLoading && !dsLoading && !promptTemplatesLoading,
+  });
   useLayoutEffect(() => {
     navigationTiming.observeRoute(route);
   }, [route]);
@@ -4021,7 +4027,9 @@ function AppInner() {
               accountGeneration: openingAccountGeneration,
             }
           : null;
-      navigate({ kind: 'project', projectId: id, fileName: routeFileName });
+      navigate({ kind: 'project', projectId: id, fileName: routeFileName }, {
+        onCancel: reason => { if (navigationId) navigationTiming.finish(navigationId, 'cancelled', reason); },
+      });
       return true;
     };
     const rememberHintAuthority = () => {

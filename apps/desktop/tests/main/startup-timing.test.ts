@@ -63,7 +63,7 @@ describe("process entry to business Ready", () => {
   });
 
   it("does not let a rejected reporter affect launch or Ready", async () => {
-    const timing = createStartupTiming({ startupType: "reopen", report: async () => { throw new Error("offline"); } });
+    const timing = createStartupTiming({ startupType: "warm", report: async () => { throw new Error("offline"); } });
     timing.mark("window_revealed");
     expect(timing.businessReady({ ...timing.context(), required_data_ready: true, actions_ready: true })).toBe(true);
     await timing.flush();
@@ -81,19 +81,13 @@ describe("process entry to business Ready", () => {
     expect(report.mock.calls[1]).toEqual(["client_launch_result", expect.objectContaining({ duration_ms: 500 })]);
   });
 
-  it("gives warm and reopened attempts fresh IDs in the same app session and excludes prior process uptime", () => {
-    const { timing } = fixture();
-    for (const type of ["warm", "reopen"] as const) {
-      const next = timing.nextAttempt(type);
-      expect(next.context().launch_attempt_id).not.toBe(timing.context().launch_attempt_id);
-      expect(next.context().app_session_id).toBe(timing.context().app_session_id);
-      const report = vi.fn(async (_event: string, _properties: Record<string, unknown>) => undefined);
-      next.setReporter(report);
-      next.finish("cancelled", "quit_before_ready");
-      // Reporter is retained by nextAttempt; replace it for this result only.
-      expect(report.mock.calls[0]).toEqual(["client_launch_result", expect.objectContaining({ measurement_start: "activation_received", startup_type: type })]);
-      expect(report.mock.calls[0]?.[1].duration_ms).toBe(0);
-    }
+  it("keeps a warm process launch at the main process origin", () => {
+    const report = vi.fn(async (_event: string, _properties: Record<string, unknown>) => undefined);
+    const timing = createStartupTiming({ startupType: "warm", now: () => 500, report });
+    timing.finish("cancelled", "quit_before_ready");
+    expect(report.mock.calls[1]).toEqual(["client_launch_result", expect.objectContaining({
+      measurement_start: "process_entry", startup_type: "warm", launch_type: "warm", duration_ms: 500,
+    })]);
   });
 });
 
@@ -110,13 +104,15 @@ it("the real IPC authorization rejects subframes, pets, foreign origins and dest
   const js = ts.transpileModule(`const authorize = ${callback};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const authorize = runInNewContext(`${js}\nauthorize`, {
     URL, BrowserWindow: { fromWebContents: (sender: unknown) => ({ webContents: sender }) },
-    desktop: { status: () => ({ url: "od://app/" }) },
+    desktop: { status: () => ({ url: "od://app/" }), ownsWebContents: (id: number) => id === 1 },
   }) as (event: unknown) => boolean;
   const mainFrame = {};
-  const event = { sender: { mainFrame, isDestroyed: () => false, getURL: () => "od://app/" }, senderFrame: mainFrame };
+  const event = { sender: { id: 1, mainFrame, isDestroyed: () => false, getURL: () => "od://app/" }, senderFrame: mainFrame };
   expect(authorize(event)).toBe(true);
   expect(authorize({ ...event, senderFrame: {} })).toBe(false);
-  for (const url of ["od://app/pet", "https://foreign.invalid/", "not-a-url"]) {
+  expect(authorize({ ...event, sender: { ...event.sender, id: 2, getURL: () => "od://app/pet" } })).toBe(false);
+  expect(authorize({ ...event, sender: { ...event.sender, getURL: () => "od://app/project/a" } })).toBe(true);
+  for (const url of ["https://foreign.invalid/", "not-a-url"]) {
     expect(authorize({ ...event, sender: { ...event.sender, getURL: () => url } })).toBe(false);
   }
   expect(authorize({ ...event, sender: { ...event.sender, isDestroyed: () => true } })).toBe(false);
@@ -155,4 +151,43 @@ it("exposes correlation and accepts Ready only from the authorized main frame, d
   expect(handlers.get("od:startup:business-ready")?.(allowed, signal)).toBe(true);
   dispose();
   expect(ipc.removeHandler.mock.calls.flat()).toEqual(["od:startup:context", "od:startup:business-ready"]);
+});
+
+it('uses the main process origin even for a warm process launch and serializes all three durations', async () => {
+  const { parseClientMetricEvent, buildClientTelemetryParams } = await import('@open-design/contracts/analytics');
+  let clock = 500;
+  const reports: { event: string; properties: Record<string, unknown> }[] = [];
+  const timing = createStartupTiming({ startupType: 'cold', launchType: 'warm', now: () => clock,
+    report: async (event, properties) => { reports.push({ event, properties }); } });
+  timing.mark('window_revealed'); clock = 600;
+  timing.businessReady({ ...timing.context(), readiness_point: 'first_visible' });
+  clock = 800;
+  timing.businessReady({ ...timing.context(), readiness_point: 'interactive_ready', required_data_ready: true, actions_ready: true });
+  expect(reports.at(-1)?.properties).toMatchObject({ launch_type: 'warm', launch_to_window_shown: 500,
+    launch_to_first_visible: 600, launch_to_interactive: 800, duration_ms: 800, result: 'ready' });
+  for (const { event, properties } of reports) {
+    const common = buildClientTelemetryParams(properties, { eventId: 'event', deviceId: 'install', appVersion: '1.0.0',
+      clientType: 'desktop', captureSource: 'desktop/test', env: 'test', reportedAt: new Date().toISOString() });
+    expect(parseClientMetricEvent(event, { ...properties, ...common })).not.toBeNull();
+  }
+});
+
+it('the actual preload bridge invokes only the two startup IPC channels', async () => {
+  const source = readFileSync(new URL('../../src/main/preload.cts', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('preload.cts', source, ts.ScriptTarget.Latest, true);
+  let property = '';
+  function visit(node: ts.Node) {
+    if (ts.isPropertyAssignment(node) && node.name.getText(ast) === 'startup') property = node.getText(ast);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  const invoke = vi.fn(async () => true);
+  const code = ts.transpileModule(`({ ${property} }).startup`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const bridge = runInNewContext(code, { ipcRenderer: { invoke } }) as {
+    context(): Promise<unknown>; signal(value: unknown): Promise<unknown>;
+  };
+  await bridge.context();
+  const signal = { launch_attempt_id: 'launch', app_session_id: 'session', readiness_point: 'first_visible' };
+  await bridge.signal(signal);
+  expect(invoke.mock.calls).toEqual([['od:startup:context'], ['od:startup:business-ready', signal]]);
 });

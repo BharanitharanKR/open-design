@@ -28,6 +28,7 @@
 // errors are module-resolution / daemon-exit messages, not user content, so this
 // bounds the exposure to build/OS strings rather than anything the user typed.
 
+import { buildClientTelemetryParams, isClientMetricEventName, parseClientMetricEvent } from "@open-design/contracts/analytics";
 import { readFile } from "node:fs/promises";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -386,11 +387,15 @@ export async function captureStartupFailure(
   const insertId = deps.insertId ?? randomInsertId();
   const appVersion =
     typeof args.properties.app_version === "string" ? args.properties.app_version : null;
+  const metric = isClientMetricEventName(args.event) ? parseClientMetricEvent(args.event, args.properties) : null;
+  if (isClientMetricEventName(args.event) && !metric) return;
   const body = JSON.stringify({
     api_key: key,
     event: args.event,
     distinct_id: args.distinctId,
-    properties: {
+    // Metric envelopes are already normalized and validated; the legacy
+    // crash envelope below must not overwrite their schema or client type.
+    properties: metric ? { ...metric, $insert_id: insertId } : {
       ...args.properties,
       // Shared safety-event envelope, mirroring captureSafety in
       // apps/daemon/src/analytics.ts. posthog-node-style manual enrichment:
@@ -450,11 +455,17 @@ export async function reportLaunchEvent(args: {
     const occurredAt = args.properties.occurred_at;
     const eventId = args.properties.event_id;
     if (typeof occurredAt !== "string" || typeof eventId !== "string") return;
-    await captureStartupFailure({
-      ...args, distinctId: identity.installationId, occurredAt,
-      properties: { ...args.properties, app_version: args.appVersion, channel: args.channel,
-        os_version: release(), arch: process.arch, reported_at: (deps.now ?? (() => new Date().toISOString()))() },
-    }, { ...deps, insertId: eventId });
+    const common = buildClientTelemetryParams(args.properties, {
+      eventId, deviceId: identity.installationId, appVersion: args.appVersion,
+      channel: args.channel, clientType: 'desktop', captureSource: CAPTURE_SOURCE,
+      env: resolveTelemetryEnv(), platform: process.platform, arch: process.arch,
+      osVersion: typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : null,
+      reportedAt: (deps.now ?? (() => new Date().toISOString()))(),
+    });
+    const properties = parseClientMetricEvent(args.event, { ...args.properties, ...common });
+    if (!properties) return;
+    await captureStartupFailure({ ...args, distinctId: identity.installationId, occurredAt, properties },
+      { ...deps, insertId: eventId });
   } catch { /* Missing identity or telemetry must never break startup. */ }
 }
 

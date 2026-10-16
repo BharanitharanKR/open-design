@@ -457,7 +457,8 @@ export function createAnalyticsService(args: {
       }
     },
     captureSafety: async ({ eventName, distinctId, appVersion, properties, insertId }) => {
-      // No consent re-check here — that's the entire point of this surface.
+      // Error/crash safety events bypass usage consent; periodic memory is
+      // the metrics exception and rechecks consent below.
       // We still fall back gracefully when the installationId is missing
       // (cold start before the daemon has stamped one in app-config) by
       // synthesizing an anonymous distinct id rooted at the process boot.
@@ -470,6 +471,10 @@ export function createAnalyticsService(args: {
       // See codex review on PR #2527 (Siri-Ray) for the original race.
       const resolvedInsertId = insertId ?? randomInsertId();
       try {
+        if (eventName === 'client_process_memory_sample') {
+          const config = await readAppConfig(args.dataDir);
+          if (config.telemetry?.metrics !== true) return;
+        }
         const resolvedDistinctId =
           distinctId && distinctId.length > 0
             ? distinctId

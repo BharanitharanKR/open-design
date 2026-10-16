@@ -43,7 +43,7 @@ describe('CS01 client metric contracts', () => {
     expect(registered).toHaveLength(events.length);
   });
 
-  it.each(['main', 'renderer', 'daemon'])('accepts %s samples with unsupported values explicitly null', (process_role) => {
+  it.each(['main', 'renderer', 'gpu', 'utility', 'daemon'])('accepts %s samples with unsupported values explicitly null', (process_role) => {
     expect(parseClientMetricEvent('client_process_memory_sample', {
       ...memory, process_role, rss_bytes: null, telemetry_capability: 'unsupported',
     })).not.toBeNull();
@@ -52,7 +52,7 @@ describe('CS01 client metric contracts', () => {
   it('rejects invalid measurements, unsupported enum values and missing correlation', () => {
     for (const patch of [
       { rss_bytes: -1 }, { heap_used_bytes: Number.NaN }, { external_bytes: undefined },
-      { sampling_interval_ms: 0 }, { process_instance_id: '' }, { process_role: 'gpu' },
+      { sampling_interval_ms: 0 }, { process_instance_id: '' }, { process_role: 'browser' },
       { sampled_at: 'yesterday' }, { device_id: undefined }, { metric_schema_version: 2 },
     ]) expect(parseClientMetricEvent('client_process_memory_sample', { ...memory, ...patch })).toBeNull();
     expect(parseClientMetricEvent('client_business_ready', { ...launch, duration_ms: null })).toBeNull();

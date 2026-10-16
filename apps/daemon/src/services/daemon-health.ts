@@ -153,7 +153,7 @@ export function daemonHealthPaths(dataRoot: string) {
 
 type Clock = () => number;
 
-/** Local CS04 fields; CS01 owns the shared event contract and admission. */
+/** Optional daemon curve context; the shared analytics layer owns event admission. */
 export type DaemonMemorySampleContext = {
   app_session_id: string;
   app_version: string | null;
@@ -164,6 +164,9 @@ export type DaemonMemorySampleContext = {
 };
 
 export type DaemonProcessMemorySample = DaemonMemorySampleContext & {
+  metric_schema_version: 1;
+  telemetry_capability: 'supported';
+  occurred_at: string;
   process_role: 'daemon';
   process_instance_id: string;
   uptime_ms: number;
@@ -357,6 +360,7 @@ export function createDaemonHealth(options: DaemonHealthOptions) {
     if (!memoryContext || !sink || memoryDeliveryBusy || stopped) return;
     const properties: DaemonProcessMemorySample = {
       ...memoryContext,
+      metric_schema_version: 1, telemetry_capability: 'supported', occurred_at: new Date(now()).toISOString(),
       app_version: checkpoint.appVersion ?? memoryContext.app_version,
       process_role: 'daemon',
       process_instance_id: checkpoint.bootId,

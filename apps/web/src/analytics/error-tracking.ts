@@ -130,7 +130,7 @@ const buffer: BufferedSafetyEvent[] = [];
 let installed = false;
 
 export function setExceptionTrackingContext(next: ExceptionTrackingContext): void {
-  context = next;
+  context = { ...next, appSessionId: next.appSessionId ?? context?.appSessionId };
   if (buffer.length === 0) return;
   const drain = buffer.splice(0, buffer.length);
   for (const item of drain) {

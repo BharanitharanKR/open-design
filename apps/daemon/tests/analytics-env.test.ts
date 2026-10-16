@@ -244,7 +244,7 @@ it('fills missing capture versions from packaged metadata and preserves original
   posthogCapture.mockReset();
   const dataDir = await mkdtemp(path.join(tmpdir(), 'od-cs01-replay-'));
   try {
-    await writeFile(path.join(dataDir, 'app-config.json'), JSON.stringify({ installationId: 'install-1' }));
+    await writeFile(path.join(dataDir, 'app-config.json'), JSON.stringify({ installationId: 'install-1', telemetry: { metrics: true } }));
     const { createAnalyticsService } = await import('../src/analytics.js');
     const analytics = createAnalyticsService({ dataDir, env: {
       POSTHOG_KEY: 'phc_test', OD_APP_VERSION: '2.0.0',
@@ -275,5 +275,18 @@ it('fills missing capture versions from packaged metadata and preserves original
     }
     expect(posthogCapture).toHaveBeenCalledTimes(3);
     await analytics.shutdown();
+  } finally { await rm(dataDir, { recursive: true, force: true }); }
+});
+
+it('suppresses memory safety captures when metrics consent is disabled', async () => {
+  posthogCapture.mockReset();
+  const dataDir = await mkdtemp(path.join(tmpdir(), 'od-memory-optout-'));
+  try {
+    await writeFile(path.join(dataDir, 'app-config.json'), JSON.stringify({ installationId: 'install-1', telemetry: { metrics: false } }));
+    const { createAnalyticsService } = await import('../src/analytics.js');
+    const service = createAnalyticsService({ dataDir, env: { POSTHOG_KEY: 'phc_test' } });
+    await service.captureSafety({ eventName: 'client_process_memory_sample', appVersion: '1.0.0', properties: {} });
+    expect(posthogCapture).not.toHaveBeenCalled();
+    await service.shutdown();
   } finally { await rm(dataDir, { recursive: true, force: true }); }
 });

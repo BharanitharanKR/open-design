@@ -1,3 +1,4 @@
+import { useStartupReady } from '../observability/startup-ready';
 import { navigationTiming, useProjectNavigationReady } from '../observability/navigation-timing';
 import { readRetriedErrorSurface, retriedErrorSurfaceKey, writeRetriedErrorSurface } from '../runtime/chat/retried-error-surface';
 import {
@@ -3769,10 +3770,7 @@ export function ProjectView({
   const newConversationDisabled = creatingConversation || projectMutationReadOnly;
   // CS03: actionable business Ready, independent of the chat first-paint
   // metric. Never accept a stale transcript or a merely mounted placeholder.
-  useProjectNavigationReady({
-    projectId: project.id,
-    conversationId: activeConversationId,
-    ready: Boolean(
+  const projectInteractiveReady = Boolean(
       detailedProject
       && !projectDetail.loading
       && !projectWorkspaceScopeState.loading
@@ -3783,7 +3781,13 @@ export function ProjectView({
       && messagesAuthorityKeyRef.current === projectRunAuthorityKey
       && !currentConversationSendDisabled
       && !newConversationDisabled
-    ),
+    );
+  useStartupReady({ visible: Boolean(detailedProject && !projectDetail.loading), interactive: projectInteractiveReady });
+  useProjectNavigationReady({
+    projectId: project.id,
+    conversationId: activeConversationId,
+    visible: Boolean(detailedProject && !projectDetail.loading),
+    ready: projectInteractiveReady,
     failure: projectWorkspaceScopeState.failure ? 'scope_unavailable'
       : projectDetail.error ? 'project_unavailable'
       : conversationLoadFailure ? 'conversations_unavailable'

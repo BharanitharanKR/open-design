@@ -27,7 +27,7 @@ import {
   applyOsLocaleSwitch,
   createSplashWindow,
   setSplashStage,
-  createStartupTiming,
+  createDesktopStartupTiming,
   type StartupTiming,
   type DesktopMainHandle,
 } from "@open-design/desktop/main";
@@ -298,7 +298,7 @@ async function main(): Promise<void> {
   // includes ESM/config work in this process, but not an earlier OS click or
   // a separate installed launcher process. Early events wait for identity.
   if (!deferredHeadless) {
-    packagedStartupTiming = createStartupTiming({ startupType: "cold" });
+    packagedStartupTiming = createDesktopStartupTiming({ appVersion: activeConfig.appVersion, startupType: "cold" });
     packagedStartupTiming.mark("runtime_resolved");
   }
 
@@ -502,7 +502,7 @@ async function main(): Promise<void> {
         url: sidecars.currentWebUrl(),
       }),
       launch: async () => {
-        packagedStartupTiming = createStartupTiming({ startupType: "reopen", report: reportPackagedLaunch });
+        packagedStartupTiming = createDesktopStartupTiming({ appVersion: activeConfig.appVersion, startupType: "cold", report: reportPackagedLaunch });
         splash = createSplashWindow();
         return await launchDesktop();
       },

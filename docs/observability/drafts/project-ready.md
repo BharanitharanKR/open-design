@@ -1,3 +1,6 @@
+> Historical CS03 draft. The integrated definitions, wiring and current limitations
+> are in [stability-metrics.md](../../telemetry/stability-metrics.md); that document supersedes this draft.
+
 # 进入项目 → Ready 口径卡（CS03 草稿，未评审／未发布）
 
 依据：本次任务给定的 `~/code/tmp/okr-1022-plan/plan.md` 第 2 项和第六章 CS03。此文件仅登记本分支候选口径，不代表公共合同、QA 或线上验收。

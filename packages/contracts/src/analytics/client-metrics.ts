@@ -40,6 +40,7 @@ const metricCommonSchema = clientTelemetryCommonSchema.extend({
 const launchFields = {
   launch_attempt_id: token,
   startup_type: z.enum(['cold', 'warm', 'reopen']),
+  launch_type: z.enum(['cold', 'warm']).optional(),
   // process_entry is NOT icon click time. os_launch requires a real OS timestamp.
   measurement_boundary: z.enum(['process_entry', 'os_launch']),
   started_at: time,
@@ -47,8 +48,16 @@ const launchFields = {
 const launchAttemptSchema = metricCommonSchema.extend(launchFields);
 // Ready means required business data is usable and input/new actions can execute;
 // DOM mount, first paint and Navigation Timing alone do not satisfy this contract.
-const businessReadySchema = launchAttemptSchema.extend({ duration_ms: measurement });
+const launchDurations = {
+  launch_to_window_shown: measurement.optional(),
+  launch_to_first_visible: measurement.optional(),
+  launch_to_interactive: measurement.optional(),
+  stage_offsets_ms: z.record(measurement).optional(),
+  stage_durations_ms: z.record(measurement).optional(),
+};
+const businessReadySchema = launchAttemptSchema.extend({ duration_ms: measurement, ...launchDurations });
 const launchResultSchema = launchAttemptSchema.extend({
+  ...launchDurations,
   result: z.enum(['ready', 'failed', 'cancelled', 'unknown']),
   duration_ms: measurement.nullable(),
   reason_code: token.optional(),
@@ -58,14 +67,15 @@ const navigationSchema = metricCommonSchema.extend({
   navigation_type: z.enum(['project_enter', 'conversation_switch', 'page_switch']),
   source_type: z.enum(['home', 'project', 'conversation', 'page', 'unknown']),
   target_type: z.enum(['home', 'project', 'conversation', 'page']),
-  result: z.enum(['started', 'ready', 'cancelled', 'failed']),
+  result: z.enum(['started', 'first_visible', 'ready', 'cancelled', 'failed']),
+  readiness_point: z.enum(['first_visible', 'interactive_ready']).optional(),
   started_at: time,
   duration_ms: measurement.nullable(),
   reason_code: token.optional(),
 }).refine((value) => value.result !== 'ready' || value.duration_ms !== null);
 const memorySchema = metricCommonSchema.extend({
-  process_role: z.enum(['main', 'renderer', 'daemon']),
-  // Opaque per-process UUID, never a PID or filesystem path.
+  process_role: z.enum(['main', 'renderer', 'gpu', 'utility', 'daemon']),
+  // Opaque per-process identifier, never a raw PID or filesystem path.
   process_instance_id: token,
   uptime_ms: measurement,
   rss_bytes: bytes,

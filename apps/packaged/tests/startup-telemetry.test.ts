@@ -1,3 +1,4 @@
+import { parseClientMetricEvent } from '@open-design/contracts/analytics';
 /**
  * Coverage for the packaged main-process startup-failure telemetry
  * (apps/packaged/src/startup-telemetry.ts).
@@ -38,7 +39,7 @@ describe('launch timing transport', () => {
       posthogKey: 'test-key', posthogHost: 'https://telemetry.invalid',
       installationRoot: null, namespace: 'test', appVersion: '0.25.1', channel: 'beta',
       event: 'client_launch_attempt' as const,
-      properties: { event_id: 'event-1', occurred_at: '2026-10-16T00:00:00.000Z', app_session_id: 'session-1', launch_attempt_id: 'launch-1' },
+      properties: { metric_schema_version: 1, telemetry_capability: 'supported', startup_type: 'cold', launch_type: 'warm', measurement_boundary: 'process_entry', started_at: '2026-10-16T00:00:00.000Z', event_id: 'event-1', occurred_at: '2026-10-16T00:00:00.000Z', app_session_id: 'session-1', launch_attempt_id: 'launch-1' },
     };
     await reportLaunchEvent(args, { fetchImpl });
     expect(fetchImpl).not.toHaveBeenCalled();
@@ -47,6 +48,8 @@ describe('launch timing transport', () => {
       writeFileSync(join(root, 'installation.json'), JSON.stringify({ installationId: 'installation-1' }));
       await reportLaunchEvent({ ...args, installationRoot: root }, { fetchImpl, now: () => '2026-10-16T00:00:02.000Z' });
       const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+      expect(body.properties).toMatchObject({ event_schema_version: 4, client_type: 'desktop' });
+      expect(parseClientMetricEvent(body.event, body.properties)).not.toBeNull();
       expect(body).toMatchObject({ event: 'client_launch_attempt', distinct_id: 'installation-1', timestamp: args.properties.occurred_at,
         properties: { ...args.properties, $insert_id: 'event-1', reported_at: '2026-10-16T00:00:02.000Z', channel: 'beta', app_version: '0.25.1' } });
     } finally { rmSync(root, { recursive: true, force: true }); }

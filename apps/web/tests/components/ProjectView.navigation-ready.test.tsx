@@ -258,10 +258,11 @@ describe('ProjectView business Ready wiring', () => {
     navigationTiming.begin({ kind: 'home', view: 'projects' }, { projectId: project.id });
     renderProjectView();
     await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
-    expect(results().map((e) => e?.status)).toEqual(['started']);
+    expect(results()[0]?.result).toBe('started');
+    expect(results().some(e => e?.result === 'ready')).toBe(false);
     await act(async () => { messages.resolve([]); });
-    await waitFor(() => expect(results().map((e) => e?.status)).toEqual(['started', 'ready']));
-    expect(results()[1]?.duration_ms).toBeGreaterThanOrEqual(0);
+    await waitFor(() => expect(results().map((e) => e?.status)).toEqual(['started', 'first_visible', 'ready']));
+    expect(results().at(-1)?.duration_ms).toBeGreaterThanOrEqual(0);
   });
 
   it('measures a conversation switch from its handler and waits for the new transcript', async () => {
@@ -274,10 +275,11 @@ describe('ProjectView business Ready wiring', () => {
     await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
     expect(results()).toEqual([]); // mounting is not a navigation intent
     fireEvent.click(screen.getByRole('button', { name: 'Switch conversation' }));
-    expect(results().map((e) => e?.status)).toEqual(['started']);
+    expect(results()[0]?.result).toBe('started');
+    expect(results().some(e => e?.result === 'ready')).toBe(false);
     await act(async () => { second.resolve([]); });
-    await waitFor(() => expect(results().map((e) => e?.status)).toEqual(['started', 'ready']));
-    expect(results()[1]?.navigation_type).toBe('conversation_switch');
+    await waitFor(() => expect(results().map((e) => e?.status)).toEqual(['started', 'first_visible', 'ready']));
+    expect(results().at(-1)?.navigation_type).toBe('conversation_switch');
   });
 
   it('does not call a mounted but still materializing project actionable Ready', async () => {
@@ -285,7 +287,8 @@ describe('ProjectView business Ready wiring', () => {
     renderProjectView({ materializationPending: true });
     await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
     await act(async () => { await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); });
-    expect(results().map((e) => e?.status)).toEqual(['started']);
+    expect(results().map((e) => e?.status)).toEqual(['started', 'first_visible']);
+    expect(results().some(e => e?.result === 'ready')).toBe(false);
   });
 
   it('does not turn a failed transcript read into Ready', async () => {
@@ -307,6 +310,7 @@ describe('ProjectView business Ready wiring', () => {
     act(() => navigationTiming.observeRoute({ kind: 'home' }));
     view.unmount();
     await act(async () => { messages.resolve([]); });
-    expect(results().map((e) => e?.status)).toEqual(['started', 'cancelled']);
+    expect(results().at(-1)?.result).toBe('cancelled');
+    expect(results().some(e => e?.result === 'ready')).toBe(false);
   });
 });

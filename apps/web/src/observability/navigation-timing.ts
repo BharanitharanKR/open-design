@@ -1,4 +1,4 @@
-// CS03-local candidate types. CS01 owns the eventual analytics contract.
+// Intent tracking is web-owned; emitted payloads use the shared metric schema.
 import { useLayoutEffect, useSyncExternalStore } from 'react';
 import { reportSafetyEvent } from '../analytics/error-tracking';
 import { clearChatOpenIntent, markChatOpenIntent } from './chat-health';
@@ -17,19 +17,22 @@ export type NavigationFailure =
   | 'scope_unavailable'
   | 'conversations_unavailable'
   | 'messages_unavailable';
-export type NavigationCancellation = 'superseded' | 'route_changed' | 'page_exit' | 'scope_changed';
+export type NavigationCancellation = 'superseded' | 'route_changed' | 'page_exit' | 'scope_changed' | 'guard_rejected' | 'same_route';
 export interface NavigationResult {
   navigation_id: string;
   navigation_type: 'project_entry' | 'conversation_switch';
   source_type: string;
   target_type: 'project' | 'conversation';
-  status: 'started' | 'ready' | 'cancelled' | 'failed';
+  status: 'started' | 'first_visible' | 'ready' | 'cancelled' | 'failed';
+  started_at: string;
   duration_ms: number;
   reason?: NavigationFailure | NavigationCancellation;
 }
 interface NavigationAttempt {
   id: string;
   startedAt: number;
+  startedAtIso: string;
+  firstVisible: boolean;
   source: string;
   projectId: string;
   conversationId?: string;
@@ -55,6 +58,7 @@ export function createNavigationTiming(deps: {
   const emit = (attempt: NavigationAttempt, status: NavigationResult['status'], reason?: NavigationResult['reason']) => {
     deps.emit({
       navigation_id: attempt.id,
+      started_at: attempt.startedAtIso,
       navigation_type: attempt.navigationType,
       source_type: attempt.sourceType,
       target_type: attempt.conversationId ? 'conversation' : 'project',
@@ -78,7 +82,7 @@ export function createNavigationTiming(deps: {
     begin(source: NavigationLocation, target: { projectId: string; conversationId?: string }): string {
       cancel('superseded');
       const attempt: NavigationAttempt = {
-        id: deps.id(), startedAt: deps.now(), source: routeKey(source),
+        id: deps.id(), startedAt: deps.now(), startedAtIso: new Date().toISOString(), firstVisible: false, source: routeKey(source),
         projectId: target.projectId, conversationId: target.conversationId,
         navigationType: target.conversationId ? 'conversation_switch' : 'project_entry',
         sourceType: source.kind === 'home' ? `home_${source.view ?? 'home'}` : source.kind,
@@ -95,6 +99,11 @@ export function createNavigationTiming(deps: {
         && (!active.conversationId || route.conversationId === active.conversationId);
       if (matchesTarget) arrived = true;
       else if (arrived || routeKey(route) !== active.source) cancel('route_changed');
+    },
+    firstVisible(id: string) {
+      if (!active || active.id !== id || active.firstVisible) return;
+      active.firstVisible = true;
+      emit(active, 'first_visible');
     },
     finish,
     cancel,
@@ -116,10 +125,18 @@ export const navigationTiming = createNavigationTiming({
   emit: (result) => {
     if (result.status === 'started') {
       markChatOpenIntent(result.navigation_type === 'project_entry' ? 'project_switch' : 'conversation_switch');
-    } else if (result.status !== 'ready') {
+    } else if (result.status !== 'ready' && result.status !== 'first_visible') {
       clearChatOpenIntent();
     }
-    reportSafetyEvent('client_navigation_result', { ...result });
+    reportSafetyEvent('client_navigation_result', { ...result,
+      navigation_type: result.navigation_type === 'project_entry' ? 'project_enter' : result.navigation_type,
+      source_type: result.source_type.startsWith('home') ? 'home'
+        : ['project', 'conversation', 'page'].includes(result.source_type) ? result.source_type : 'unknown',
+      result: result.status, reason_code: result.reason,
+      ...(result.status === 'ready' ? { readiness_point: 'interactive_ready' }
+        : result.status === 'first_visible' ? { readiness_point: 'first_visible' } : {}),
+      metric_schema_version: 1, telemetry_capability: 'supported',
+    });
   },
 });
 
@@ -131,10 +148,11 @@ export function useProjectNavigationReady(input: {
   projectId: string;
   conversationId: string | null;
   ready: boolean;
+  visible?: boolean;
   failure: NavigationFailure | null;
 }): void {
   const attempt = useSyncExternalStore(navigationTiming.subscribe, navigationTiming.getSnapshot, serverSnapshot);
-  const { projectId, conversationId, ready, failure } = input;
+  const { projectId, conversationId, ready, failure, visible = false } = input;
   useLayoutEffect(() => {
     if (!attempt || attempt.projectId !== projectId
       || (attempt.conversationId && attempt.conversationId !== conversationId)) return;
@@ -142,13 +160,16 @@ export function useProjectNavigationReady(input: {
       navigationTiming.finish(attempt.id, 'failed', failure);
       return;
     }
-    if (!ready) return;
+    if (!ready && !visible) return;
     let frame: number | null = null;
     const check = () => {
       if (document.visibilityState === 'hidden' || frame !== null) return;
       frame = requestAnimationFrame(() => {
         frame = null;
-        if (document.visibilityState !== 'hidden') navigationTiming.finish(attempt.id, 'ready');
+        if (document.visibilityState !== 'hidden') {
+          if (visible) navigationTiming.firstVisible(attempt.id);
+          if (ready) navigationTiming.finish(attempt.id, 'ready');
+        }
       });
     };
     check();
@@ -157,5 +178,5 @@ export function useProjectNavigationReady(input: {
       if (frame !== null) cancelAnimationFrame(frame);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [attempt, projectId, conversationId, ready, failure]);
+  }, [attempt, projectId, conversationId, ready, failure, visible]);
 }

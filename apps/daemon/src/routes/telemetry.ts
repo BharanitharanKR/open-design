@@ -9,6 +9,7 @@ import {
   CLIENT_EXPERIENCE_DIAGNOSTIC_EVENT,
   parseClientExperienceDiagnostic,
   type ClientExperienceDiagnostic,
+  buildClientTelemetryParams,
   isClientMetricEventName,
   parseClientMetricEvent,
 } from '@open-design/contracts/analytics';
@@ -273,9 +274,18 @@ export function registerTelemetryRoutes(app: Express, deps: RegisterTelemetryRou
     }
     const incidentId = ['desktop_unclean_exit', 'desktop_renderer_crash', 'desktop_child_process_crash', 'packaged_runtime_failed'].includes(eventName)
       ? deps.onHostFault?.(eventName, properties) : null;
+    if (eventName === 'client_process_memory_sample') {
+      const config = await deps.readAppConfig(dataDir);
+      if (config.telemetry?.metrics !== true) { res.json({ ok: true }); return; }
+    }
+    const metricCommon = buildClientTelemetryParams(properties, {
+      eventId: randomUUID(), deviceId: null, appVersion: (await appVersionPromise)?.version ?? null,
+      clientType: 'desktop', captureSource: 'desktop/observability', env: readTelemetryEnvironment(),
+      platform: process.platform, arch: process.arch, reportedAt: new Date().toISOString(),
+    });
     const metric = isClientMetricEventName(eventName)
       ? parseClientMetricEvent(eventName, {
-        ...properties, env: readTelemetryEnvironment(), reported_at: new Date().toISOString(),
+        ...properties, ...metricCommon,
       }) : null;
     if (isClientMetricEventName(eventName) && !metric) {
       res.status(400).json({ error: 'invalid client metric properties' });
