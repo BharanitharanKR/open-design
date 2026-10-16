@@ -33,6 +33,26 @@
   background: var(--share-ink);
 }
 
+/* Preflight has no measured fraction yet; animate immediately on click. */
+.uploadProgress:indeterminate {
+  background: linear-gradient(90deg, var(--share-track) 0% 25%, var(--share-ink) 50%, var(--share-track) 75% 100%);
+  background-size: 200% 100%;
+  animation: sharePreflightSweep 1.4s linear infinite;
+}
+
+.uploadProgress:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+@keyframes sharePreflightSweep {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uploadProgress:indeterminate { animation: none; }
+}
+
 /* K1/K4: comment-sync-pending replaces the entire published-link block with
    a single indicator — a progress bar for the first-publish backfill (K1,
    `reopened` absent/false) or a busy primary button for a verified reopen
