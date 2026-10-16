@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installMockOpenDesignHost } from "@open-design/host/testing";
 import type { OpenDesignHostDownloadResult } from "@open-design/host";
 import { resetWorkspaceAccountGeneration } from "../../src/collab/workspace-identity";
+import { resetConsumedActionRequestsForTests } from "../../src/runtime/action-request";
 import { FileViewer } from "../../src/components/FileViewer";
 import type { ProjectFile } from "../../src/types";
 
@@ -74,6 +75,7 @@ const history = {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+  resetConsumedActionRequestsForTests();
 	window.localStorage.clear();
 	resetWorkspaceAccountGeneration();
 	request.mockImplementation(async (input) => {
@@ -193,17 +195,20 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
       expect(nativeExports[0]?.[1]).toMatchObject({ method: 'POST' });
     },
   );
-	it.each(['toolbar', 'artifact-card'] as const)("retains a saved PDF completion from %s while focus refreshes sharing history", async entry => {
+	it.each((['toolbar', 'artifact-card'] as const).flatMap(entry =>
+    (['never-shared', 'shared', '503', 'rejection', 'invalid'] as const).map(outcome => ({ entry, outcome })),
+  ))("settles a saved PDF completion from $entry after focus history $outcome", async ({ entry, outcome }) => {
 		await readyViewer(entry === 'artifact-card');
 		let finishSave!: (response: Response) => void;
 		let finishHistory!: (response: Response) => void;
+    let rejectHistory!: (error: Error) => void;
 		const regularRequest = request.getMockImplementation()!;
 		request.mockImplementation((input, init) => {
 			if (String(input) === "/api/projects/project-guide/export/pdf") {
 				return new Promise<Response>(resolve => { finishSave = resolve; });
 			}
 			if (String(input) === "/api/projects/project-guide/share-state") {
-				return new Promise<Response>(resolve => { finishHistory = resolve; });
+				return new Promise<Response>((resolve, reject) => { finishHistory = resolve; rejectHistory = reject; });
 			}
 			return regularRequest(input, init);
 		});
@@ -214,9 +219,46 @@ describe("Owner P1 real FileViewer export-to-share chain", () => {
 		await waitFor(() => expect(seam.guideInput).toHaveBeenLastCalledWith(expect.objectContaining({ hasEverShared: null })));
 		await act(async () => { finishSave(Response.json({ ok: true })); });
 		expect(screen.queryByRole("status", { name: "Share the link, invite feedback" })).toBeNull();
-		await act(async () => { finishHistory(Response.json(history)); });
-		expect(await screen.findByRole("status", { name: "Share the link, invite feedback" })).toBeVisible();
+		await act(async () => {
+      if (outcome === 'rejection') rejectHistory(new Error('history unavailable'));
+      else finishHistory(outcome === '503' ? new Response(null, { status: 503 }) : Response.json(
+        outcome === 'invalid' ? {} : outcome === 'shared'
+          ? { ...history, bindingExists: true, hasEverShared: true, publications: [{ sourceFilePath: 'index.html', slug: 'stopped-page', status: 'stopped' }] }
+          : history,
+      ));
+    });
+    expect(seam.guideInput).toHaveBeenLastCalledWith(expect.objectContaining({
+      historyLoading: false, historyError: !['never-shared', 'shared'].includes(outcome),
+    }));
+    if (outcome === 'shared') {
+      expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+    } else {
+      const guide = screen.getByRole('status', { name: 'Share the link, invite feedback' });
+      expect(guide).toBeVisible();
+      expect(seam.track.mock.calls.filter(([event, props]) => event === 'surface_view' && props.area === 'share_guide')).toHaveLength(1);
+      fireEvent.click(within(guide).getByRole('button', { name: "Don't show again" }));
+      fireEvent(window, new Event('focus'));
+      await act(async () => finishHistory(Response.json(history)));
+      expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' })).toBeNull();
+      expect(seam.track.mock.calls.filter(([event, props]) => event === 'surface_view' && props.area === 'share_guide')).toHaveLength(1);
+    }
 	});
+  it.each(['success', 'cancelled', 'failed'] as const)('history already errored requires a confirmed %s export', async outcome => {
+    await readyViewer();
+    const regularRequest = request.getMockImplementation()!;
+    request.mockImplementation((input, init) => String(input) === '/api/projects/project-guide/share-state'
+      ? Promise.resolve(new Response(null, { status: 503 })) : regularRequest(input, init));
+    fireEvent(window, new Event('focus'));
+    await waitFor(() => expect(seam.guideInput).toHaveBeenLastCalledWith(expect.objectContaining({ historyLoading: false, hasEverShared: null })));
+    if (outcome === 'success') await exportHtml('pdf');
+    else {
+      seam.exportHtml.mockImplementation(() => outcome === 'cancelled' ? Promise.resolve('cancelled') : Promise.reject(new Error('save failed')));
+      await exportHtml();
+    }
+    await waitFor(() => expect(screen.queryByText(/Exporting/i)).toBeNull());
+    expect(seam.guideInput).toHaveBeenLastCalledWith(expect.objectContaining({ historyError: true }));
+    expect(screen.queryByRole('status', { name: 'Share the link, invite feedback' }) !== null).toBe(outcome === 'success');
+  });
 	it.each([{ ok: true, canceled: true }, { ok: false, error: 'save failed' }, {}])("does not offer a guide for native PDF result %j", async body => {
 		const regularRequest = request.getMockImplementation()!;
 		request.mockImplementation((input, init) => String(input) === '/api/projects/project-guide/export/pdf'

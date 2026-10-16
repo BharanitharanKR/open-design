@@ -1,16 +1,17 @@
-/** Eligibility consumes explicit history; a missing current URL is not history. */
+/** A failed history read permits a suggestion, never publication or overriding known sharing. */
 export function canOfferAfterExportShareGuide(input: {
   result: 'success' | 'cancelled' | 'failed';
   /** Host-composed identity + project + artifact scope captured when export starts. */
   originScope: string;
   currentScope: string;
   hasEverShared: boolean | null;
+  historyError?: boolean;
   neverShow: boolean | null;
   canOpenShare: boolean;
 }): boolean {
   return input.result === 'success'
     && input.originScope === input.currentScope
-    && input.hasEverShared === false
+    && (input.hasEverShared === false || (input.hasEverShared === null && input.historyError === true))
     && input.neverShow === false
     && input.canOpenShare;
 }
