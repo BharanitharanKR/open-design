@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { createWorkspaceTaskLeaseLifecycle } from './services/workspace-task-lease-lifecycle.js';
+import { VelaTaskLeaseError } from './integrations/vela-task-leases.js';
 
 import { usesProductionMarker, composeResumedRequest } from './strategies/od-next/request-resume.js';
 import { todoSnapshotHasUnfinishedWork } from '@open-design/contracts';
@@ -3499,6 +3501,11 @@ export async function startServer({
   const db = openDatabase(PROJECT_ROOT, { dataDir: RUNTIME_DATA_DIR });
   daemonHealth?.setStorageProbe(() => readSqlitePageStats({ db, file: db.name }));
   const amrTerminalReportOutbox = createAmrTerminalReportOutboxStore(db);
+  const amrTaskLeases = createWorkspaceTaskLeaseLifecycle({
+    onReleaseFailure: (runId) => console.warn(`[od] task lease cleanup pending TTL run=${runId}`),
+  });
+  const finalizeAmrTerminal = createAmrTerminalReportFinalizer(amrTerminalReportOutbox);
+
   const amrTerminalReportDelivery = createAmrTerminalReportDeliveryService({
     store: amrTerminalReportOutbox,
     env: { ...process.env, OD_DATA_DIR: RUNTIME_DATA_DIR },
@@ -8044,7 +8051,10 @@ export async function startServer({
           : null;
         if (promptBudget) run.promptBudgetDiagnostics = promptBudget;
       },
-      onTerminal: createAmrTerminalReportFinalizer(amrTerminalReportOutbox),
+      onTerminal: (run, status, terminalAt) => {
+        finalizeAmrTerminal(run, status, terminalAt);
+        void amrTaskLeases.finish(run.id, run.manualResumeAttemptCount ?? 0);
+      },
       beforeFinish: (run, status, _code, _signal, terminalAt) => {
         if (run.deliverableSyntaxValidation?.metrics) {
           run.deliverableSyntaxValidation = {
@@ -14437,12 +14447,7 @@ export async function startServer({
         def.streamFormat === CODEX_APP_SERVER_STREAM_FORMAT
           ? 'pipe'
           : 'ignore';
-      const env = applyAgentLaunchEnv({
-        ...agentSpawnEnv,
-        ...(mmdRouteLaunchEnv || {}),
-        ...odMediaEnv,
-        ...(byokOpenCodeProvider ? byokOpenCodeProvider.env : {}),
-        ...await openDesignAmrTraceEnvForRun({
+      const amrTraceEnv = await openDesignAmrTraceEnvForRun({
           agentId: def.id,
           runId: run.id,
           conversationId: run.conversationId,
@@ -14496,7 +14501,46 @@ export async function startServer({
               },
             });
           },
-        }),
+        });
+      let taskLeaseEnv: NodeJS.ProcessEnv = {};
+      if (def.id === 'amr') {
+        try {
+          const lease = await amrTaskLeases.start({
+            runId: run.id,
+            workspaceId: amrTraceEnv.OPEN_DESIGN_WORKSPACE_ID ?? '',
+            attempt: run.manualResumeAttemptCount ?? 0,
+          }, {
+            configuredEnv: configuredAgentEnv,
+            onLost: async (code) => {
+              run.errorCode = code;
+              await design.runs.cancel(run, 'workspace_task_lease_lost');
+            },
+          });
+          if (run.cancelRequested || design.runs.isTerminal(run.status)) {
+            await amrTaskLeases.finish(run.id, lease.attempt);
+            return;
+          }
+          taskLeaseEnv = {
+            OPEN_DESIGN_WORKSPACE_ID: lease.workspaceId,
+            OPEN_DESIGN_TASK_LEASE_TOKEN: lease.leaseToken,
+            OPEN_DESIGN_TASK_ATTEMPT: String(lease.attempt),
+          };
+        } catch (error) {
+          // Only an explicit server-side OFF decision preserves the legacy
+          // path. Missing CLI/API capability or transport errors are not OFF.
+          if (!(error instanceof VelaTaskLeaseError) || error.code !== 'workspace_task_leases_not_enabled') {
+            return failRun(error instanceof VelaTaskLeaseError ? error.code : 'workspace_task_lease_unavailable',
+              'Unable to verify the workspace task slot. Retry after the connection or client capability is restored.');
+          }
+        }
+      }
+      const env = applyAgentLaunchEnv({
+        ...agentSpawnEnv,
+        ...(mmdRouteLaunchEnv || {}),
+        ...odMediaEnv,
+        ...(byokOpenCodeProvider ? byokOpenCodeProvider.env : {}),
+        ...amrTraceEnv,
+        ...taskLeaseEnv,
         // OpenCode external-MCP injection (issue #2142). Layered AFTER
         // spawnEnvForAgent / odMediaEnv / configuredAgentEnv so the
         // daemon-built MCP config wins over a stale value the user
