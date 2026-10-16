@@ -642,6 +642,16 @@ test('[P0] sending preview comments opens the refreshed follow-up artifact', asy
   await expect(item.locator('.comment-side-avatar')).toHaveCSS('width', '20px');
   await expect(item.locator('.comment-side-avatar')).toHaveCSS('height', '20px');
   await expect(item.locator('.comment-side-avatar')).toHaveCSS('font-weight', '500');
+  const avatarSwatch = await item.locator('.comment-side-avatar').evaluate(element => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, foreground: style.color };
+  });
+  const savedPin = page.locator('.comment-saved-pin');
+  await expect(savedPin).toHaveCount(1);
+  await expect(savedPin).toHaveCSS('width', '28px');
+  await expect(savedPin).toHaveCSS('height', '28px');
+  await expect(savedPin).toHaveCSS('background-color', avatarSwatch.background);
+  await expect(savedPin).toHaveCSS('color', avatarSwatch.foreground);
   await expect
     .poll(async () => {
       const selectAll = sidePanel.getByRole('button', { name: /select all/i }).first();

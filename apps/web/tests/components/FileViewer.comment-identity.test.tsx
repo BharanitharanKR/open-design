@@ -24,6 +24,18 @@ function stubAccount(read: () => Promise<Response>) {
     return Response.json({});
   }));
 }
+async function savedPin() {
+  const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  await act(async () => {
+    window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: {
+      type: 'od:comment-targets', targets: [{
+        elementId: comment.elementId, selector: comment.selector, label: 'h2', text: '', htmlHint: '',
+        position: { x: 20, y: 40, width: 200, height: 40 },
+      }],
+    } }));
+  });
+  return (await screen.findByTestId('comment-saved-marker-pin')).querySelector('.comment-saved-pin');
+}
 beforeEach(() => resetWorkspaceAccountGeneration());
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); resetWorkspaceAccountGeneration(); });
 
@@ -36,9 +48,25 @@ it.each([
   fireEvent.click(screen.getByTestId('comment-panel-toggle'));
   const row = await screen.findByTestId('comment-side-item');
   expect(row.querySelector('.comment-side-avatar')).toHaveTextContent(initial);
-  expect(row.querySelector('.comment-side-avatar')).toHaveStyle({ background: commentAuthorAvatarColor('same-color').bg });
+  const swatch = commentAuthorAvatarColor(comment.authorKey!);
+  const pin = await savedPin();
+  expect(row.querySelector('.comment-side-avatar')).toHaveStyle({ background: swatch.bg, color: swatch.fg });
+  expect(pin).toHaveStyle({ background: swatch.bg, color: swatch.fg });
   if (name.trim()) expect(row).toHaveTextContent(name);
 });
+
+for (const authorKind of ['user', 'member'] as const) {
+  it(`keeps ${authorKind} pins and avatars on the shared fallback when authorKey is missing`, async () => {
+    stubAccount(async () => account('other'));
+    render(tree([{ ...comment, authorKind, authorKey: undefined, authorMemberId: 'not-a-color-key' }]));
+    fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    const row = await screen.findByTestId('comment-side-item');
+    const swatch = commentAuthorAvatarColor('');
+    expect(row.querySelector('.comment-side-avatar')).toHaveStyle({ background: swatch.bg, color: swatch.fg });
+    expect(await savedPin()).toHaveStyle({ background: swatch.bg, color: swatch.fg });
+    expect(row).toHaveTextContent(comment.note);
+  });
+}
 
 it('3650: keeps self public feedback visible but excludes it from external unread', async () => {
   stubAccount(async () => account('self'));

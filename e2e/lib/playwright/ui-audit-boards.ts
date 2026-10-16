@@ -70,7 +70,7 @@ for (const id of ['O1','O2','O3','O5','O6','O7','O8']) {
           || !Array.isArray(velaColors) || velaColors.length !== 2 || velaColors[0] !== velaColors[1]
           || odColors[0] !== velaColors[0] || vela.pinColor !== velaColors[0]
           || !Array.isArray(od.pinColors) || od.pinColors.length !== 2
-          || od.pinColors.some(color => color !== 'rgb(217, 106, 70)')) throw new Error('O5 author/pin colors did not match');
+          || od.pinColors.some(color => color !== odColors[0])) throw new Error('O5 author/pin colors did not match');
       styles = `同键头像 ${odColors[0]}；OD 图钉 ${od.pinColors[0]}；分享页图钉 ${vela.pinColor}`;
     }
     if (id === 'O6') {
