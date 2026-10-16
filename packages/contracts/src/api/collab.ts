@@ -1224,6 +1224,8 @@ export interface CollabCloudComment {
   anchoredVersion?: number;
   /** Last known-good bbox for the `lost` ghost pin. */
   lastGoodPosition?: PreviewCommentPosition;
+  /** Original epoch milliseconds, or 0 when a legacy record's creation time is unknown.
+   * Receivers must not replace missing/unknown time with their synchronization clock. */
   createdAt: number;
   updatedAt: number;
   /**

@@ -4441,6 +4441,7 @@ function FileVersionManagerModal({
 // bucket is keyed on calendar day, not elapsed duration, so a same-day
 // comment never reads as "N 天前"; days-ago/weeks-ago buckets are dropped.
 function formatCommentTime(ts: number, now: number, t: TranslateFn): string {
+  if (ts <= 0) return '—';
   const diff = now - ts;
   if (diff < 60_000) return t('common.justNow');
   const mins = Math.floor(diff / 60_000);
@@ -4479,9 +4480,10 @@ function commentActivityAt(comment: PreviewComment): number {
   );
 }
 
-/** Comment age is creation age; edits, resolution and synchronization cannot reset it. */
+/** Unknown creation age must not borrow an edit or receipt timestamp. */
 function commentCreatedAt(comment: PreviewComment): number {
-  return Number.isFinite(comment.createdAt) ? comment.createdAt : commentActivityAt(comment);
+  return Number.isFinite(comment.createdAt) && comment.createdAt > 0 && comment.createdAt <= Number.MAX_SAFE_INTEGER
+    ? comment.createdAt : 0;
 }
 
 /**
@@ -5059,7 +5061,7 @@ export function CommentSidePanel({
                     {t('fileViewer.speakerNotesSlide', { current: comment.slideIndex + 1, total: deckSlideCount })}
                   </span>
                 ) : null}
-                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment)) ?? undefined}>
+                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment) || undefined) ?? undefined}>
                   {formatCommentTime(commentCreatedAt(comment), commentClock, t)}
                 </span>
                 {sendable ? (
