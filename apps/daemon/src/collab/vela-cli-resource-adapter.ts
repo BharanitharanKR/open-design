@@ -277,7 +277,7 @@ export function createVelaCliResourceAdapter(
                 'vela resource pull response is missing the materialized version',
               );
             }
-            return materialized;
+            return { ...materialized, resourceId };
           } catch (error) {
             lastError = error;
             if (

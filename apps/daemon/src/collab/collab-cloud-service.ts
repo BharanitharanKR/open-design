@@ -67,6 +67,8 @@ export interface CollabCloudServiceDeps {
 	validateCommentRelayProjectBinding?: (
 		record: CommentRelayOutboxRecord,
 	) => boolean;
+	/** Distinct from project authority: unknown throws/retries; only proven retirement cancels. */
+	validateCommentRelayFile?: (record: CommentRelayOutboxRecord) => 'current' | 'retired';
 	/**
 	 * True when a personal record failed that witness only because its creator's
 	 * project was explicitly made team-visible. Such a record is re-queued as
@@ -297,6 +299,8 @@ export function previewCommentToCloud(
 		updatedAt: comment.updatedAt,
 	};
 	// Copy optional fields only when present (exactOptionalPropertyTypes-safe).
+	if (comment.sourceFileId !== undefined) cloud.sourceFileId = comment.sourceFileId;
+	if (comment.sourceFileId !== undefined) cloud.sourceFilePath = comment.filePath;
 	if (comment.style !== undefined) cloud.style = comment.style;
 	if (comment.selectionKind !== undefined)
 		cloud.selectionKind = comment.selectionKind;
@@ -337,6 +341,8 @@ function commentRelayPayload(comment: CollabCloudComment): CollabCloudComment {
 		createdAt: comment.createdAt,
 		updatedAt: comment.updatedAt,
 		deleted: true,
+		...(comment.sourceFileId !== undefined ? { sourceFileId: comment.sourceFileId } : {}),
+		...(comment.sourceFilePath !== undefined ? { sourceFilePath: comment.sourceFilePath } : {}),
 		note: '',
 		elementId: '',
 		selector: '',
@@ -755,6 +761,10 @@ export function createCollabCloudService(
 	): Promise<void> {
 		try {
 			if (deps.commentOutbox?.isCurrent && !deps.commentOutbox.isCurrent(record)) return;
+			if (deps.validateCommentRelayFile?.(record) === 'retired') {
+				deps.commentOutbox?.acknowledge(record);
+				return;
+			}
 			if (bindingCurrent && !bindingCurrent(record)) {
 				deferOutboxRecord(record, new Error("comment relay project binding unsettled; retry"));
 				return;
@@ -1520,7 +1530,9 @@ export function createCollabCloudService(
 			return !memberDrainIncomplete;
 		}
 		for (const incoming of comments) {
-			let comment = incoming;
+			const comment = incoming.deleted ? incoming : {
+				...incoming, filePath: incoming.sourceFilePath ?? incoming.filePath,
+			};
 			// Member records (including their tombstones, which the member stream
 			// also carries) are owned by the paged drain. A legacy tombstone carries
 			// no author kind, so only one whose stored target is a share-page
@@ -1532,24 +1544,6 @@ export function createCollabCloudService(
 					memberStore?.storedAuthorKind(projectId, incoming.id) !== "user"
 				)
 					continue;
-			}
-			// Tombstones intentionally have no publication identity: their trusted
-			// project-scoped stored target remains the deletion authority below.
-			if (!incoming.deleted && "publicationSlug" in incoming) {
-				const publicationSlug = incoming.publicationSlug;
-				if (typeof publicationSlug !== "string" || !publicationSlug.trim()) {
-					throw new Error("Invalid server publication identity");
-				}
-				if (!deps.resolvePublishedCommentSourcePath)
-					throw new Error("Publication mapping lookup is unavailable");
-				const filePath = deps.resolvePublishedCommentSourcePath({
-					projectId,
-					publicationSlug,
-					publishedPath: incoming.filePath,
-					context: requestContext,
-				});
-				if (filePath === null) continue;
-				comment = { ...incoming, filePath };
 			}
 			if (responseIdentity.relayScope === "personal") {
 				const allowed = responseIdentity.allowedFilePaths!;

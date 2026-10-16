@@ -55,7 +55,6 @@ for (const scenario of cases) it.each([false, true])(`${scenario.name}: HTTP pub
     resolveProjectDir: () => root,
     // Production wiring: the resolver reads current configuration on every GET.
     resolvePublicShareLink: (projectId, slug, amr) => recoveredUrl ? { url: recoveredUrl } : resolvePublicShareLink(projectId, slug, amr, scenario.env, scenario.configuredEnv),
-    readProjectShareState: async () => ({ projectId: 'p', bindingExists: true, hasEverShared: true, publications: [{ sourceFilePath: 'index.html', slug: fixtureShareSlug, status: 'active' }] }),
   });
   const server = createServer(app);
   try {

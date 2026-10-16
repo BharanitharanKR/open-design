@@ -1,6 +1,8 @@
+import { withCommentFileDeletion, type CommentFileDeletion } from '../../collab/comment-file-deletion.js';
 import { createHash, randomUUID } from 'node:crypto';
+import { trackedCommentFilePaths } from '../../collab/local-comment-files.js';
 import { CommentPreparationError, prepareCommentIdentity } from '../../services/comment-preparation.js';
-import { ProjectPublicFileStopPendingError, type PublicFileDeleteTarget } from '../../collab/project-public-file-stop.js';
+import { ProjectPublicFileStopPendingError } from '../../collab/project-public-file-stop.js';
 import type { ProjectDeleteResponse } from '@open-design/contracts';
 import { publicFileMutationHandler } from '../public-file-mutation-handler.js';
 import { createPublicFileMutations, type PublicFileMutations } from '../../collab/public-file-mutations.js';
@@ -9,6 +11,7 @@ import path from 'node:path';
 import { load } from 'cheerio';
 import {
   deleteWorkspaceArtifact,
+  deleteWorkspaceArtifactsInFolder,
   renameWorkspaceArtifactPath,
 } from '../../chat-artifacts/store.js';
 import type { Express, Request, Response } from 'express';
@@ -108,7 +111,7 @@ import {
 import { connectorService } from '../../connectors/service.js';
 import type { RouteDeps } from '../../server-context.js';
 import { listSkills } from '../../skills.js';
-import { isSafeId } from '../../projects.js';
+import { isSafeId, validateProjectPath } from '../../projects.js';
 import {
   ensureTeamProjectCommentConversations,
   getFirstProjectConversation,
@@ -339,7 +342,7 @@ function assertProjectCreatePreparationWithinDeadline(
 
 export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation' | 'collabSync'> {
   /** Stop public bindings before any catalog/local deletion; production supplies this capability. */
-  stopPublicFilesBeforeDelete?: (projectId: string) => Promise<void>;
+  stopPublicFilesBeforeDelete?: CommentFileDeletion;
   publicFileMutations?: PublicFileMutations;
   /**
    * Request-wide deadline for the read-only preparation POST /api/projects
@@ -434,6 +437,7 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
     comment: PreviewComment,
     context: WorkspaceCollabContext | null,
   ) => boolean | void;
+  prepareCommentFile?: (projectId: string, filePath: string, context: WorkspaceCollabContext | null) => Promise<string | undefined>;
   pullCommentsNow?: (projectId: string, context: WorkspaceCollabContext) => Promise<boolean>;
   onCommentsRead?: (
     projectId: string,
@@ -2078,6 +2082,7 @@ function cloneProjectMetadataForDuplicate(sourceProject: any): Record<string, un
     sourceProject?.metadata && typeof sourceProject.metadata === 'object'
       ? { ...sourceProject.metadata }
       : {};
+  delete sourceMetadata._commentFiles;
   delete sourceMetadata.baseDir;
   delete sourceMetadata.projectLocationId;
   delete sourceMetadata.fromTrustedPicker;
@@ -3953,6 +3958,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // originalBaseDir / importedFrom='folder' — only the import path
       // owns those state fields.
       if (metadata && typeof metadata === 'object') {
+        if ('_commentFiles' in metadata) return sendApiError(res, 400, 'BAD_REQUEST', '_commentFiles is daemon-owned');
         if ('baseDir' in metadata) {
           return sendApiError(
             res, 400, 'BAD_REQUEST',
@@ -5227,6 +5233,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // patching other metadata without ever losing their import root.
       if (patch.metadata === null) {
         const existing = getProject(db, req.params.id);
+        if (existing?.metadata?._commentFiles) return sendApiError(res, 400, 'BAD_REQUEST', '_commentFiles is daemon-owned');
         if (existing?.metadata?.strategyBinding) {
           return sendApiError(
             res,
@@ -5255,6 +5262,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       if (patch.metadata && typeof patch.metadata === 'object') {
         const existing = getProject(db, req.params.id);
         const existingMeta = existing?.metadata;
+        if ('_commentFiles' in patch.metadata) return sendApiError(res, 400, 'BAD_REQUEST', '_commentFiles is daemon-owned');
+        if (existingMeta?._commentFiles) patch.metadata._commentFiles = existingMeta._commentFiles;
         if (
           'localCatalogScopes' in patch.metadata
           && !sameLocalCatalogScopes(
@@ -5863,7 +5872,7 @@ export function registerProjectArtifactRoutes(app: Express, ctx: RegisterProject
 export interface RegisterProjectFileRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'uploads' | 'node' | 'projectStore' | 'projectFiles' | 'documents' | 'artifacts' | 'projectPreviewScopes'> {
   isProjectEditingBusy?: (projectId: string) => boolean;
   publicFileMutations?: PublicFileMutations;
-  stopPublicFilesBeforeDelete?: (projectId: string, target?: PublicFileDeleteTarget) => Promise<void>;
+  stopPublicFilesBeforeDelete?: CommentFileDeletion;
   verifyWorkspaceRequestAuthority?: VerifyWorkspaceRequestAuthority;
   authorizeProjectRequest?: AuthorizeProjectRequest;
   /** Startup-hydrated O(1) quarantine lookup for stale Team mirrors. */
@@ -5905,7 +5914,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     ctx.verifyWorkspaceRequestAuthority,
     ctx.isProjectUnmaterializedPlaceholder,
   );
-  const { listFiles, listProjectFolders, createProjectFolder, deleteProjectFolder, searchProjectFiles, readProjectFile, resolveProjectDir, resolveProjectFilePath, parseByteRange, renameProjectFile, deleteProjectFile, writeProjectFile, sanitizeName, sanitizePath, ensureProject } = ctx.projectFiles;
+  const { listFiles, listProjectFolders, createProjectFolder, deleteProjectFolder, searchProjectFiles, readProjectFile, resolveProjectDir, resolveProjectFilePath, resolveProjectDeletePath, parseByteRange, renameProjectFile, deleteProjectFile, writeProjectFile, sanitizeName, sanitizePath, ensureProject } = ctx.projectFiles;
   const { buildDocumentPreview } = ctx.documents;
   const { validateArtifactManifestInput } = ctx.artifacts;
   const { projectPreviewScopes } = ctx;
@@ -6772,17 +6781,15 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         project.id,
         'writeFiles',
       )) return;
-      const target = await resolveProjectFilePath(PROJECTS_DIR, project.id, folderPath, project.metadata);
-      if (!target.name || !(await ctx.node.fs.promises.stat(target.filePath)).isDirectory()) {
+      const target = await resolveProjectDeletePath(PROJECTS_DIR, project.id, folderPath, project.metadata);
+      if (!target.name) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'target must be a non-root folder');
       }
-      await ctx.stopPublicFilesBeforeDelete?.(project.id, { folderPath: target.name });
-      await deleteProjectFolder(
-        PROJECTS_DIR,
-        req.params.id,
-        folderPath,
-        project.metadata,
-      );
+      await withCommentFileDeletion(ctx.stopPublicFilesBeforeDelete, project.id, { folderPath: target.name }, async () => {
+        if (!(await ctx.node.fs.promises.stat(target.filePath)).isDirectory()) throw new Error('target must be a non-root folder');
+        await deleteProjectFolder(PROJECTS_DIR, req.params.id, folderPath, project.metadata);
+      });
+      deleteWorkspaceArtifactsInFolder(db, project.id, target.name);
       /** @type {import('@open-design/contracts').DeleteProjectFolderResponse} */
       const body = { ok: true };
       res.json(body);
@@ -7257,9 +7264,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         project.id,
         'writeFiles',
       )) return;
-      const target = await resolveProjectFilePath(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
-      await ctx.stopPublicFilesBeforeDelete?.(projectId, target.name);
-      await deleteProjectFile(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
+      const target = await resolveProjectDeletePath(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
+      await withCommentFileDeletion(ctx.stopPublicFilesBeforeDelete, projectId, target.name, async () => {
+        await deleteProjectFile(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
+      });
       await markProjectFileVersionStoreDeleted(PROJECTS_DIR, projectId, rawSplat, project?.metadata);
       // Tombstone, not delete: an HTML card must be able to say "the current
       // file is gone" rather than silently opening whatever later takes the
@@ -7687,9 +7695,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         next();
       });
     },
-    async (req, res) => {
+    publicFileMutationHandler(ctx.publicFileMutations, async (req, res) => {
       try {
-        const uploadProject = getProject(db, req.params.id);
+        const projectId = typeof req.params.id === 'string' ? req.params.id : '';
+        const uploadProject = getProject(db, projectId);
         const cleanupRejectedUpload = () => {
           if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
         };
@@ -7704,13 +7713,13 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
           getWorkspaceProject,
           getWorkspaceProjectByProjectId,
           db,
-          req.params.id,
+          projectId,
           'writeFiles',
         )) {
           cleanupRejectedUpload();
           return;
         }
-        await ensureProject(PROJECTS_DIR, req.params.id, uploadProject?.metadata);
+        await ensureProject(PROJECTS_DIR, projectId, uploadProject?.metadata);
         if (req.file) {
           try {
             const buf = await fs.promises.readFile(req.file.path);
@@ -7738,7 +7747,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
                 : undefined;
               const meta = await writeProjectFile(
                 PROJECTS_DIR,
-                req.params.id,
+                projectId,
                 desiredName,
                 buf,
                 {},
@@ -7767,7 +7776,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             const { meta, versionCapture } = uploadProject && requestedSource
               ? await withProjectFileVersionLock(
                 PROJECTS_DIR,
-                req.params.id,
+                projectId,
                 desiredName,
                 uploadProject.metadata,
                 (versionLock) => writeAndCapture(versionLock),
@@ -7839,14 +7848,14 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
           const meta = artifact === true
             ? await createProjectArtifactFile({
               projectsRoot: PROJECTS_DIR,
-              projectId: req.params.id,
+              projectId: projectId,
               input: { name, content, encoding, artifactManifest },
               metadata: uploadProject?.metadata,
               writeProjectFile,
             })
             : await writeProjectFile(
               PROJECTS_DIR,
-              req.params.id,
+              projectId,
               name,
               buf,
               {
@@ -7885,7 +7894,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         const { meta, versionCapture } = uploadProject && requestedSource
           ? await withProjectFileVersionLock(
             PROJECTS_DIR,
-            req.params.id,
+            projectId,
             desiredName,
             uploadProject.metadata,
             (versionLock) => writeAndCapture(versionLock),
@@ -7929,17 +7938,18 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         }
         sendApiError(res, 500, 'INTERNAL_ERROR', 'upload failed');
       }
-    },
+    }),
   );
 
-  app.post('/api/projects/:id/files/rename', async (req, res) => {
+  app.post('/api/projects/:id/files/rename', publicFileMutationHandler(ctx.publicFileMutations, async (req, res) => {
     try {
+      const projectId = typeof req.params.id === 'string' ? req.params.id : '';
       const { from, to } = req.body || {};
       if (typeof from !== 'string' || typeof to !== 'string') {
         return sendApiError(res, 400, 'BAD_REQUEST', 'from and to required');
       }
       if (rejectInternalVersionPath(res, from) || rejectInternalVersionPath(res, to)) return;
-      const project = getProject(db, req.params.id);
+      const project = getProject(db, projectId);
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
@@ -7953,16 +7963,23 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         project.id,
         'writeFiles',
       )) return;
+      // Use the exact validation/sanitization of renameProjectFile BEFORE any
+      // filesystem, version-store, artifact or alias mutation.
+      const oldName = validateProjectPath(from);
+      const newName = sanitizePath(to);
+      const tracked = trackedCommentFilePaths(db, projectId).some(filePath =>
+        [oldName, newName].some(name => filePath === name || filePath.startsWith(name + '/')));
+      if (tracked) return sendApiError(res, 409, 'CONFLICT', 'COMMENT_FILE_TRACKED_RENAME_UNSUPPORTED');
       const result = await renameProjectFile(
         PROJECTS_DIR,
-        req.params.id,
-        from,
-        to,
+        projectId,
+        oldName,
+        newName,
         project?.metadata,
       );
       await renameProjectFileVersionStore(
         PROJECTS_DIR,
-        req.params.id,
+        projectId,
         result.oldName,
         result.newName,
         project?.metadata,
@@ -7972,7 +7989,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       // and stays put, so an HTML card keeps opening the renamed latest while
       // an image card keeps opening its own frozen bytes.
       try {
-        renameWorkspaceArtifactPath(db, req.params.id, result.oldName, result.newName);
+        renameWorkspaceArtifactPath(db, projectId, result.oldName, result.newName);
       } catch (error) {
         console.warn('[chat-artifacts] rename bookkeeping failed', error);
       }
@@ -7989,7 +8006,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       }
       sendApiError(res, 400, 'BAD_REQUEST', message);
     }
-  });
+  }));
 
   app.delete('/api/projects/:id/files/:name', publicFileMutationHandler(ctx.publicFileMutations, async (req, res) => {
     try {
@@ -8011,9 +8028,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         delProject.id,
         'writeFiles',
       )) return;
-      const target = await resolveProjectFilePath(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
-      await ctx.stopPublicFilesBeforeDelete?.(delProject.id, target.name);
-      await deleteProjectFile(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
+      const target = await resolveProjectDeletePath(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
+      await withCommentFileDeletion(ctx.stopPublicFilesBeforeDelete, delProject.id, target.name, async () => {
+        await deleteProjectFile(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
+      });
       await markProjectFileVersionStoreDeleted(PROJECTS_DIR, req.params.id, req.params.name, delProject?.metadata);
       try {
         deleteWorkspaceArtifact(db, req.params.id, req.params.name);

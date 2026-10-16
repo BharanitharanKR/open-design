@@ -1,5 +1,8 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 export interface PublicFileMutations {
-  run<T>(projectId: string | readonly string[], operation: () => Promise<T>): Promise<T>;
+  /** Nested root publication may join its caller's still-active mutation lane. */
+  run<T>(projectId: string | readonly string[], operation: () => Promise<T>, options?: { joinCurrent?: true }): Promise<T>;
   withMoves<T>(projectIds: readonly string[], operation: () => Promise<T>): Promise<T>;
   captureReconciliation(): (projectId: string) => boolean;
 }
@@ -13,14 +16,28 @@ export interface PublicFileMutations {
  */
 export function createPublicFileMutations(): PublicFileMutations {
   const tails = new Map<string, Promise<void>>();
+  const ownership = new AsyncLocalStorage<ReadonlyMap<string, { active: boolean }>>();
   const moves = new Map<string, number>();
   const revisions = new Map<string, number>();
   let revision = 0;
-  async function run<T>(projectId: string | readonly string[], operation: () => Promise<T>): Promise<T> {
+  async function run<T>(projectId: string | readonly string[], operation: () => Promise<T>, options?: { joinCurrent?: true }): Promise<T> {
     const keys = [...new Set(typeof projectId === 'string' ? [projectId] : projectId)].sort();
+    const inherited = ownership.getStore();
+    if (options?.joinCurrent && keys.every(key => inherited?.get(key)?.active)) return operation();
     async function acquire(index: number): Promise<T> {
       const key = keys[index];
-      if (key === undefined) return operation();
+      if (key === undefined) {
+        const lease = { active: true };
+        const owned = new Map(inherited);
+        for (const heldKey of keys) owned.set(heldKey, lease);
+        try {
+          return await ownership.run(owned, operation);
+        } finally {
+          // Async descendants may outlive the caller; expired ownership is
+          // never permission to bypass a later request's queued mutation.
+          lease.active = false;
+        }
+      }
       const previous = tails.get(key) ?? Promise.resolve();
       let release!: () => void;
       const current = new Promise<void>((resolve) => { release = resolve; });

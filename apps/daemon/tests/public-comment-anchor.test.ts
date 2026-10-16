@@ -16,7 +16,7 @@ import { createVelaCliCollabClient } from '../src/collab/vela-cli-collab-client.
 
 let root: string | undefined;
 afterEach(() => { closeDatabase(); if (root) rmSync(root, { recursive: true, force: true }); root = undefined; });
-const scope = { resourceTeamId: 'workspace', ownerMemberId: 'owner', projectId: 'personal', filePath: 'pages/design.html' };
+const scope = { sourceFileId: '11111111-1111-4111-8111-111111111111', resourceTeamId: 'workspace', ownerMemberId: 'owner', projectId: 'personal', filePath: 'pages/design.html' };
 const publication = { slug: 'public-design', url: 'https://example.test/shared', fileName: scope.filePath };
 const mapping = createShareFileMapping([{ sourcePath: scope.filePath, file: 'index.html' }]);
 const context: WorkspaceCollabContext = {
@@ -40,7 +40,7 @@ async function expectInbound(db: ReturnType<typeof openDatabase>) {
   // Only the external CLI is substituted; eligibility, anchor lookup, alias mapping and merge are production code.
   const run = vi.fn(async () => JSON.stringify({ latestSeq: 1, comments: [{
     id: 'public-user-comment', authorKind: 'user', memberId: '', authorAppUserId: 'external-user', authorDisplayName: 'Guest',
-    publicationSlug: publication.slug, filePath: 'index.html', elementId: 'hero', selector: '#hero', label: 'Hero',
+    publicationSlug: publication.slug, sourceFileId: scope.sourceFileId, sourceFilePath: scope.filePath, filePath: 'index.html', elementId: 'hero', selector: '#hero', label: 'Hero',
     note: 'Increase heading size', status: 'open', position: { x: 1, y: 2, width: 30, height: 20 },
     createdAt: 10, updatedAt: 10, seq: 1,
   }] }));

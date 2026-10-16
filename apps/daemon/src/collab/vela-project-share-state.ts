@@ -73,12 +73,28 @@ export function parseProjectShareState(output: string, projectId: string): Proje
       || item.sourceFilePath.split('/').some(part => !part || part === '.' || part === '..')
       || !('slug' in item) || typeof item.slug !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.slug)
       || !('status' in item) || (item.status !== 'active' && item.status !== 'stopped')
-      || seen.has(item.sourceFilePath)) throw new Error('SHARE_STATE_INVALID');
-    seen.add(item.sourceFilePath);
+      || ('sourceFileId' in item && (typeof item.sourceFileId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.sourceFileId)))
+      || seen.has(item.slug)) throw new Error('SHARE_STATE_INVALID');
+    seen.add(item.slug);
     // Only an active publication has an address; a stopped one carries none.
     const amrLink = item.status === 'active' ? parseAmrShareLink(item, projectId, item.slug) : null;
-    return { sourceFilePath: item.sourceFilePath, slug: item.slug, status: item.status, ...(amrLink ? { amrLink } : {}) };
+    return { sourceFilePath: item.sourceFilePath, ...('sourceFileId' in item ? { sourceFileId: item.sourceFileId as string } : {}), slug: item.slug, status: item.status, ...(amrLink ? { amrLink } : {}) };
   });
   if (value.bindingExists !== (publications.length > 0)) throw new Error('SHARE_STATE_INVALID');
   return { projectId, bindingExists: value.bindingExists, hasEverShared: hasEverShared({ bindingExists: value.bindingExists }), publications };
+}
+
+export class UnboundFileShareIdentityError extends Error {
+  constructor() { super('SHARE_FILE_IDENTITY_UNAVAILABLE'); }
+}
+
+/** History contains retired aliases at reused paths. Only the current lifetime
+ * may drive file status/resume; an unbound live share is neither absence nor
+ * authority to infer/migrate its identity. Existing project history/stop stays usable. */
+export function currentFileSharePublication(history: ProjectShareState, filePath: string, sourceFileId?: string) {
+  if (sourceFileId && history.publications.some(item => item.sourceFilePath === filePath
+    && item.sourceFileId === undefined && item.status === 'active')) throw new UnboundFileShareIdentityError();
+  const matches = history.publications.filter(item => item.sourceFilePath === filePath
+    && (sourceFileId ? item.sourceFileId === sourceFileId : item.sourceFileId === undefined));
+  return matches.length === 1 ? matches[0] : undefined;
 }

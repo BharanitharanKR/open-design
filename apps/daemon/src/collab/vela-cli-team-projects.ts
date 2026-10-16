@@ -11,6 +11,7 @@ import {
 } from '../integrations/vela-command.js';
 import type { ResourceHubPrincipal } from './resource-principal.js';
 import { createSwrCache, type SwrCache } from './swr-cache.js';
+import { parseCommentFileState } from './comment-file-facts.js';
 
 const PROJECT_RESOURCE_PREFIX = 'project-';
 
@@ -455,7 +456,9 @@ function toTeamProject(input: unknown): TeamProject | null {
     const projectMetadata = recordObject(metadata.metadata);
     if (projectMetadata) {
       // SAFETY: this opaque app-owned DTO round-trips persisted catalog metadata.
-      project.metadata = projectMetadata as unknown as ProjectMetadata;
+      const unreserved = { ...projectMetadata };
+      delete unreserved._commentFiles;
+      project.metadata = unreserved as unknown as ProjectMetadata;
     }
     if (typeof metadata.createdAt === 'number') project.createdAt = metadata.createdAt;
     if (typeof metadata.updatedAt === 'number') project.updatedAt = metadata.updatedAt;
@@ -464,6 +467,9 @@ function toTeamProject(input: unknown): TeamProject | null {
     const updatedAt = Date.parse(record.updatedAt);
     if (Number.isFinite(updatedAt) && project.updatedAt === undefined) project.updatedAt = updatedAt;
   }
+  const commentFiles = parseCommentFileState(metadata?._commentFiles);
+  if (metadata?._commentFiles !== undefined && !commentFiles) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+  if (commentFiles) project.metadata = { kind: project.metadata?.kind ?? 'other', ...project.metadata, _commentFiles: commentFiles };
   const createdAt = Date.parse(record.createdAt);
   if (Number.isFinite(createdAt) && project.createdAt === undefined) project.createdAt = createdAt;
   return project;
@@ -676,8 +682,10 @@ function toFallbackTeamProject(resource: SharedResourceWire): TeamProject {
   if (typeof metadata.updatedAt === 'number') project.updatedAt = metadata.updatedAt;
   const projectMetadata = recordObject(metadata.metadata);
   if (projectMetadata) {
-    // SAFETY: this opaque app-owned DTO round-trips persisted catalog metadata.
-    project.metadata = projectMetadata as unknown as ProjectMetadata;
+    const unreserved = { ...projectMetadata };
+    delete unreserved._commentFiles;
+    // SAFETY: opaque app metadata is round-tripped only after removing authority-bearing fields.
+    project.metadata = unreserved as unknown as ProjectMetadata;
   }
   return project;
 }

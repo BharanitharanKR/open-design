@@ -8,7 +8,11 @@ import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import { expect, it } from 'vitest';
-import { openDatabase, closeDatabase, insertProject, ensureWorkspaceProject, getProject, getWorkspaceProject, getWorkspaceProjectByProjectId } from '../../src/db.js';
+import { openDatabase, closeDatabase, insertProject, ensureWorkspaceProject, getProject, getWorkspaceProject, getWorkspaceProjectByProjectId, updateProject } from '../../src/db.js';
+import type { CommentFileMutation, CommentFileState } from '@open-design/contracts';
+import { createCommentFileDeletion } from '../../src/collab/comment-file-deletion.js';
+import { createLocalCommentFiles } from '../../src/collab/local-comment-files.js';
+import { ensureWorkspaceArtifactForPath, getWorkspaceArtifact } from '../../src/chat-artifacts/store.js';
 import * as projectFiles from '../../src/projects.js';
 import { registerProjectFileRoutes } from '../../src/routes/project/index.js';
 import { createSqlitePublicFilePublicationStore } from '../../src/collab/public-file-publication-store.js';
@@ -25,7 +29,13 @@ it('failed stop preserves file bytes and durably records the exact residual', as
 it.each(['raw', 'files'] as const)('DELETE %s conceals internal paths in HTTP and CLI failures', async route => {
   await exercise(route, false, true);
 });
-async function exercise(route: 'raw' | 'files', fail: boolean, missing = false) {
+it.each(['raw', 'files'] as const)('DELETE %s filesystem EACCES leaves F1 live, retry retires only after unlink', async route => {
+  await exercise(route, false, false, true);
+});
+it.each(['raw', 'files'] as const)('DELETE %s post-unlink authority failure freezes old F1 until exact retry', async route => {
+  await exercise(route, false, false, false, true);
+});
+async function exercise(route: 'raw' | 'files', fail: boolean, missing = false, fsReject = false, remoteReject = false) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-file-stop-'));
   const projects = path.join(root, 'projects');
   const db = openDatabase(root);
@@ -45,13 +55,41 @@ async function exercise(route: 'raw' | 'files', fail: boolean, missing = false) 
       if (fail) throw new Error('offline');
       remote.delete(key.filePath);
     } }));
+    const local = createLocalCommentFiles(db);
+    const facts = ['index.html', 'sibling.html'].map(filePath => ({ sourceFileId: ensureWorkspaceArtifactForPath(db,
+      { projectId, path: filePath, kind: 'html' }).id, sourceFilePath: filePath, entryPath: filePath,
+      resourceId: 'root', versionId: 'v1', retired: false }));
+    let catalog: CommentFileState = { schemaVersion: 1, revision: 1, files: facts };
+    updateProject(db, projectId, { metadata: { _commentFiles: catalog } });
+    let retirementRequests = 0;
+    let authorityOffline = remoteReject;
+    const deletion = createCommentFileDeletion({ db, localFiles: local, hasActiveRun: () => false,
+      isPresent: async (_id, filePath) => fs.stat(path.join(projects, projectId, filePath)).then(() => true, error => {
+        if (error.code === 'ENOENT') return false; throw error;
+      }), stopPublicFiles: (key, target) => stop(key, target), runForWorkspace: () => async args => {
+        if (authorityOffline) throw new Error('offline catalog');
+        if (args[1] === 'upsert') {
+          retirementRequests++;
+          const mutation = JSON.parse(args[6]!)._commentFiles as CommentFileMutation;
+          catalog = { schemaVersion: 1, revision: catalog.revision + 1, files: catalog.files.map(fact =>
+            mutation.files.some(entry => entry.sourceFileId === fact.sourceFileId) ? { ...fact, retired: true } : fact) };
+        }
+        return JSON.stringify({ projectId, workspaceId: scope.resourceTeamId, ownerMemberId: scope.ownerMemberId,
+          resourceId: 'root', metadata: { _commentFiles: catalog } });
+      } });
+    let rejectUnlink = fsReject;
     const app = express(); app.use(express.json());
     registerProjectFileRoutes(app, {
       db, paths: { PROJECTS_DIR: projects }, http: { sendApiError: (res: express.Response, status: number, code: string, message: string) => res.status(status).json({ error: { code, message } }) },
-      projectStore: { getProject, getWorkspaceProject, getWorkspaceProjectByProjectId }, projectFiles,
+      projectStore: { getProject, getWorkspaceProject, getWorkspaceProjectByProjectId }, projectFiles: { ...projectFiles,
+        deleteProjectFile: async (...args: Parameters<typeof projectFiles.deleteProjectFile>) => {
+          if (rejectUnlink) throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
+          await projectFiles.deleteProjectFile(...args);
+        },
+      },
       node: { fs: nodeFs }, uploads: {}, documents: {}, artifacts: {}, projectPreviewScopes: {},
       publicFileMutations: createPublicFileMutations(),
-      stopPublicFilesBeforeDelete: (id: string, filePath?: string) => stop({ ...scope, projectId: id }, filePath),
+      stopPublicFilesBeforeDelete: deletion,
       verifyWorkspaceRequestAuthority: async () => ({ ok: true, context: workspaceContextFromDirectoryItem({ workspaceId: scope.resourceTeamId, workspaceMemberId: scope.ownerMemberId, workspaceName: 'W', workspaceType: 'personal', role: 'owner', memberStatus: 'active', lifecycleState: 'active' }) }),
     } as unknown as Parameters<typeof registerProjectFileRoutes>[1]);
     server = app.listen(0); await new Promise<void>(resolve => server!.once('listening', resolve));
@@ -78,7 +116,29 @@ async function exercise(route: 'raw' | 'files', fail: boolean, missing = false) 
       return;
     }
     const response = await fetch(`http://127.0.0.1:${address.port}/api/projects/${projectId}/${route}/index.html`, { method: 'DELETE', headers: { 'x-od-workspace-id': scope.resourceTeamId, 'x-od-workspace-member-id': scope.ownerMemberId } });
-    expect(response.status).toBe(fail ? 400 : 200);
+    expect(response.status).toBe(fail || fsReject || remoteReject ? 400 : 200);
+    if (fsReject || remoteReject) {
+      expect(retirementRequests).toBe(0);
+      expect(catalog.files).toEqual(facts);
+      if (fsReject) expect(getWorkspaceArtifact(db, facts[0]!.sourceFileId)?.deletedAt).toBeNull();
+      else expect(getWorkspaceArtifact(db, facts[0]!.sourceFileId)?.deletedAt).not.toBeNull();
+      if (fsReject) {
+        expect(await fs.readFile(path.join(projects, projectId, 'index.html'), 'utf8')).toBe('index.html');
+        expect(local.identity(projectId, 'index.html')).toBe(facts[0]!.sourceFileId);
+      } else {
+        expect(() => local.identity(projectId, 'index.html')).toThrow('COMMENT_FILE_RETIREMENT_PENDING');
+        await expect(fs.stat(path.join(projects, projectId, 'index.html'))).rejects.toMatchObject({ code: 'ENOENT' });
+      }
+      rejectUnlink = false;
+      authorityOffline = false;
+      const retry = await fetch(`http://127.0.0.1:${address.port}/api/projects/${projectId}/${route}/index.html`, { method: 'DELETE', headers: { 'x-od-workspace-id': scope.resourceTeamId, 'x-od-workspace-member-id': scope.ownerMemberId } });
+      expect(retry.status).toBe(200);
+      expect(retirementRequests).toBe(1);
+      expect(catalog.files).toEqual(facts.map((fact, index) => ({ ...fact, retired: index === 0 })));
+      expect(local.identity(projectId, 'index.html')).not.toBe(facts[0]!.sourceFileId);
+      expect(local.identity(projectId, 'sibling.html')).toBe(facts[1]!.sourceFileId);
+      return;
+    }
     expect(remote.has('index.html')).toBe(fail);
     expect(remote.has('sibling.html')).toBe(true);
     expect(store.get({ ...scope, filePath: 'sibling.html' })).not.toBeNull();

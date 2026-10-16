@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { commentFilesAtReceipt, parseCommentFileState } from './comment-file-facts.js';
 
 import {
   ensureTeamProjectCommentConversations,
@@ -166,7 +167,7 @@ export function materializePulledTeamMirror(
   input: RegisterPulledProjectInput,
   scope: TeamMirrorPullScope,
   receipt?: AuthorizedTeamProjectPullReceipt,
-  options: { placeholder?: boolean } = {},
+  options: { placeholder?: boolean; fileReceipt?: { resourceId: string; versionId: string } } = {},
 ): MaterializePulledTeamMirrorResult {
   if (
     receipt &&
@@ -195,11 +196,17 @@ export function materializePulledTeamMirror(
       : scope.ownerMemberId === scope.viewerMemberId
         ? scope.viewerMemberId
         : null;
-    const resourceHubResourceId =
-      scope.resourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
+    // Prefer the authoritative catalog scope. A native manual pull can supply
+    // the actual landed root when no catalog root was passed, but never a
+    // staged-pull cursor or permission to override an existing binding.
+    const resourceHubResourceId = scope.resourceId
+      ?? (!receipt && !options.placeholder ? options.fileReceipt?.resourceId : undefined)
+      ?? projectResourceIdFor(input.id, ownerPrincipal);
     if (
       !resourceHubResourceId.trim() ||
-      (receipt && receipt.resourceId !== resourceHubResourceId)
+      (receipt && receipt.resourceId !== resourceHubResourceId) ||
+      (!receipt && !options.placeholder && options.fileReceipt
+        && options.fileReceipt.resourceId !== resourceHubResourceId)
     ) {
       throw new Error(`team mirror receipt resource conflict for ${input.id}`);
     }
@@ -248,6 +255,18 @@ export function materializePulledTeamMirror(
       throw new Error(`team mirror binding conflict for ${input.id}`);
     }
 
+    const metadata = { kind: input.metadata?.kind ?? existing?.metadata?.kind ?? 'other' as const, ...(input.metadata ?? {}) };
+    delete metadata._commentFiles;
+    const previousFacts = parseCommentFileState(existing?.metadata?._commentFiles);
+    const incomingFacts = parseCommentFileState(input.metadata?._commentFiles);
+    if (input.metadata?._commentFiles !== undefined && !incomingFacts) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
+    // A normal native pull proves landed bytes, not an authorized-stage cursor.
+    // Keep those two witnesses distinct while matching facts to the exact root/version.
+    const fileReceipt = receipt ?? options.fileReceipt;
+    const adoptedFacts = fileReceipt && !options.placeholder
+      ? commentFilesAtReceipt(previousFacts, incomingFacts, fileReceipt, { authorizedCatalogRootId: resourceHubResourceId }) : previousFacts;
+    if (adoptedFacts) metadata._commentFiles = adoptedFacts;
+    input = { ...input, metadata };
     let localRecordChanged = false;
     const persistedInput = options.placeholder
       ? {
@@ -295,6 +314,15 @@ export function materializePulledTeamMirror(
         // Materialization is synchronization, not local activity. Preserve
         // the owner's content timestamp rather than stamping this daemon's
         // re-share observation time.
+        updatedAt: input.updatedAt,
+      });
+      localRecordChanged = true;
+    }
+    // Existing creator-attributed mirrors deliberately skip ordinary metadata
+    // refresh. Reserved receipt-backed fields still commit with their content.
+    if (existing && adoptedFacts && JSON.stringify(previousFacts) !== JSON.stringify(adoptedFacts)) {
+      updateProject(db, input.id, {
+        metadata: { ...(getProject(db, input.id)?.metadata ?? {}), _commentFiles: adoptedFacts },
         updatedAt: input.updatedAt,
       });
       localRecordChanged = true;

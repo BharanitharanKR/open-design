@@ -312,7 +312,7 @@ describe('createVelaCliResourceAdapter', () => {
     });
     const adapter = createVelaCliResourceAdapter({ ...OPTS, run });
     const result = await adapter.pull!({ projectId: 'p1' });
-    expect(result).toEqual({ version: 1, versionId: 'v1' });
+    expect(result).toEqual({ version: 1, versionId: 'v1', resourceId: 'project-p1' });
     expect(calls[0]).toEqual(['pull', 'design_system', 'project-p1', '/copies/p1', '--ref', 'published', '--json']);
   });
 

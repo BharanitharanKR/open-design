@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from 'express';
-import type { ReadProjectShareState } from '../collab/vela-project-share-state.js';
+import { currentFileSharePublication, UnboundFileShareIdentityError, type ReadProjectShareState } from '../collab/vela-project-share-state.js';
 import { publishReservedVelaShareVersion } from '../collab/vela-share-publish.js';
 import type { createShareAliasReservations } from '../collab/share-alias-reservation.js';
 import type { createSharePublicationCompletion } from '../collab/share-publication-completion.js';
@@ -128,6 +128,7 @@ export interface PulledProjectStore {
   materializeTeamMirror?: (
     input: RegisterPulledProjectInput,
     scope: TeamMirrorPullScope,
+    fileReceipt?: { resourceId: string; versionId: string },
   ) => { localRecordChanged: boolean };
   /** Atomically create a stamped, creator-less Team-bound first-open row. */
   materializeTeamPlaceholder?: (
@@ -262,6 +263,8 @@ export interface RegisterCollabSyncRoutesDeps {
   recordPublicFilePublication?: RecordPublicFilePublication;
   sharePublishing?: {
     ensureProject?(scope: PublicFilePublicationScope, principal: ResourceHubPrincipal, run: typeof runVelaCommand): Promise<TeamProject>;
+    sourceFileId?(scope: PublicFilePublicationScope): string;
+    admitFileReceipt?(scope: PublicFilePublicationScope, resourceId: string, versionId: string, entryPath: string, run: typeof runVelaCommand): Promise<void>;
     reservations: ReturnType<typeof createShareAliasReservations>;
     outbox: ShareBindingOutbox;
     complete: ReturnType<typeof createSharePublicationCompletion>;
@@ -1085,6 +1088,7 @@ export function registerCollabSyncRoutes(
     scope: TeamMirrorPullScope | null,
     teamProject: TeamProject | null,
     receipt?: AuthorizedTeamProjectPullReceipt,
+    fileReceipt?: { resourceId: string; versionId: string },
   ): boolean {
     if (!prepared || !projectStore) return false;
     const { existing, fallbackName, manifest, now, projectId } = prepared;
@@ -1119,7 +1123,9 @@ export function registerCollabSyncRoutes(
       if (!projectStore.materializeTeamMirror) {
         throw new Error('team mirror materializer unavailable');
       }
-      return projectStore.materializeTeamMirror(input, scope).localRecordChanged;
+      return (fileReceipt
+        ? projectStore.materializeTeamMirror(input, scope, fileReceipt)
+        : projectStore.materializeTeamMirror(input, scope)).localRecordChanged;
     }
     if (existing) {
       if (!projectStore.update) return false;
@@ -1366,6 +1372,7 @@ export function registerCollabSyncRoutes(
     const publisher = deps.sharePublishing;
     if (!publisher) return res.status(503).json({ error: 'PUBLIC_SHARE_PUBLISH_UNAVAILABLE' });
     const scope = publicFilePublicationScope(projectId, filePath, principal);
+    if (publisher.sourceFileId) scope.sourceFileId = publisher.sourceFileId(scope);
     // A stopped link cannot be reopened by the ordinary publish/update POST:
     // that path advances the alias and transfers fresh bytes. Only an explicit
     // request may reopen the immutable generation previously bound by Vela.
@@ -1388,7 +1395,13 @@ export function registerCollabSyncRoutes(
       if (!remoteState || remoteState.projectId !== projectId) {
         return fail(503, 'SHARE_STATE_UNAVAILABLE', 'remote_state');
       }
-      const stopped = remoteState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped');
+      let candidate: ReturnType<typeof currentFileSharePublication>;
+      try { candidate = currentFileSharePublication(remoteState, filePath, scope.sourceFileId); }
+      catch (error) {
+        if (error instanceof UnboundFileShareIdentityError) return fail(409, 'SHARE_FILE_IDENTITY_UNAVAILABLE');
+        throw error;
+      }
+      const stopped = candidate?.status === 'stopped' ? candidate : undefined;
       const localRevision = publicFilePublicationStore.getRevision(scope);
       if (!stopped || (localRevision && localRevision.slug !== stopped.slug)) {
         return fail(409, 'SHARE_RESUME_NOT_STOPPED');
@@ -1532,8 +1545,19 @@ export function registerCollabSyncRoutes(
     // Absence must be observed remotely, not inferred from a lost local row.
     // Unknown or pre-existing aliases must never be auto-stopped on a local failure.
     const previousState = await deps.readProjectShareState?.(scope).catch(() => null);
+    if (scope.sourceFileId && (!previousState || previousState.projectId !== projectId)) {
+      return res.status(503).json({ error: 'SHARE_STATE_UNAVAILABLE' });
+    }
+    try {
+      if (previousState) currentFileSharePublication(previousState, filePath, scope.sourceFileId);
+    } catch (error) {
+      if (error instanceof UnboundFileShareIdentityError) return res.status(409).json({ error: 'SHARE_FILE_IDENTITY_UNAVAILABLE' });
+      throw error;
+    }
     const stoppedSlug = previousState?.projectId === projectId
-      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped')?.slug
+      ? previousState.publications.find(item => item.sourceFilePath === filePath && item.status === 'stopped'
+        && (!scope.sourceFileId || item.sourceFileId === scope.sourceFileId)
+        && item.slug === publisher.reservations.reserve(scope).slug)?.slug
       : undefined;
     const resumed = await resumePendingShareBinding(scope, publicFilePublicationStore, publisher.outbox, prepared.run, stoppedSlug);
     if (resumed) {
@@ -1591,6 +1615,7 @@ export function registerCollabSyncRoutes(
         '--json',
       ]);
       const versionId = parseVelaPushVersionId(pushOutput);
+      await publisher.admitFileReceipt?.(scope, resourceId, versionId, sharePlan.entryPath, prepared.run);
       stage = 'snapshot';
       const result = await publishReservedVelaShareVersion({
         scope, resourceId, versionId, entryPath: sharePlan.entryPath,
@@ -1761,7 +1786,7 @@ export function registerCollabSyncRoutes(
       // The history DTO names lifecycle only; addresses go through the file read.
       const response: import('@open-design/contracts').ProjectShareHistoryResponse = {
         projectId: state.projectId, bindingExists: state.bindingExists, hasEverShared: state.hasEverShared,
-        publications: state.publications.map(({ sourceFilePath, slug, status }) => ({ sourceFilePath, slug, status })),
+        publications: state.publications.map(({ sourceFilePath, sourceFileId, slug, status }) => ({ sourceFilePath, ...(sourceFileId ? { sourceFileId } : {}), slug, status })),
       };
       return res.json(response);
     } catch {
@@ -1858,7 +1883,13 @@ export function registerCollabSyncRoutes(
       };
       return res.json(response);
     }
-    const remote = history.publications.find(item => item.sourceFilePath === filePath);
+    const sourceFileId = deps.sharePublishing?.sourceFileId?.(scope);
+    let remote: ReturnType<typeof currentFileSharePublication>;
+    try { remote = currentFileSharePublication(history, filePath, sourceFileId); }
+    catch (error) {
+      if (error instanceof UnboundFileShareIdentityError) return res.status(409).json({ error: 'SHARE_FILE_IDENTITY_UNAVAILABLE' });
+      throw error;
+    }
     let local = publicFilePublicationStore.get(scope);
     // A row that outlived a stop made elsewhere is not a live publication:
     // the owner should see the stopped state (and resume), not a dead link.
@@ -2138,6 +2169,12 @@ export function registerCollabSyncRoutes(
               scope,
               staged.stageDir,
             );
+            const selectedCatalogProject = resolveSharedProject
+              ? await resolveSharedProject(projectId, scope)
+              : null;
+            if (resolveSharedProject && (!selectedCatalogProject || selectedCatalogProject.ownerMemberId !== scope.ownerMemberId)) {
+              throw new Error('authorized team project catalog changed before promotion');
+            }
             if (!(await authorizedInvocationIsStillValid())) {
               throw new Error(
                 'authorized team project scope changed before promotion',
@@ -2169,7 +2206,7 @@ export function registerCollabSyncRoutes(
                   localRecordChanged: registerPreparedPulledProject(
                     prepared,
                     scope,
-                    null,
+                    selectedCatalogProject,
                     staged!.receipt,
                   ),
                 };
@@ -2400,6 +2437,10 @@ export function registerCollabSyncRoutes(
           prepared,
           scope,
           authoritativeSharedProject,
+          undefined,
+          result.resourceId?.trim() && result.versionId?.trim()
+            ? { resourceId: result.resourceId.trim(), versionId: result.versionId.trim() }
+            : undefined,
         );
       } catch (error) {
         console.warn('[od] failed to register pulled team project:', error);

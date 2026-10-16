@@ -1,14 +1,16 @@
 import { afterEach, expect, it } from 'vitest';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext } from '@open-design/contracts';
-import { closeDatabase, insertProject, insertConversation, openDatabase, mergeSyncedPreviewComment, listPreviewComments, getProjectPreviewComment } from '../src/db.js';
+import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext, type CommentFileState, type CollabCloudComment } from '@open-design/contracts';
+import { closeDatabase, insertProject, insertConversation, openDatabase, mergeSyncedPreviewComment, listPreviewComments, getProjectPreviewComment, updateProject } from '../src/db.js';
 import { createVelaCliCollabClient } from '../src/collab/vela-cli-collab-client.js';
 import { createCollabCloudService } from '../src/collab/collab-cloud-service.js';
 import { createSqlitePublicFilePublicationStore, migratePublicFilePublications } from '../src/collab/public-file-publication-store.js';
 import { migrateCommentRelayPublicationMappings, recordCommentRelayPublicationMapping, sourcePathForCurrentPublication } from '../src/collab/comment-relay-publication-mapping.js';
+
+import { normalizeCurrentFileComment } from '../src/collab/comment-file-facts.js';
 
 let root: string | undefined;
 afterEach(() => { closeDatabase(); if (root) rmSync(root, { recursive: true, force: true }); root = undefined; });
@@ -85,7 +87,7 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
   } finally { service.dispose(); }
 });
 
-it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambiguous'] as const)('replays e9e4564dc server-asserted alias into actual local source rows: %s', async scenario => {
+it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-missing', 'ambiguous'] as const)('uses current source identity without electing an alias from local history: %s', async scenario => {
   const wire = readFileSync(new URL('./fixtures/vela-share-downstream-e9e4564dc.json', import.meta.url), 'utf8');
   const captured = JSON.parse(wire);
   expect(captured.comments[0].publicationSlug).toBe('share-management-slug');
@@ -99,6 +101,18 @@ it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-
   migratePublicFilePublications(db); migrateCommentRelayPublicationMappings(db);
   const publications = createSqlitePublicFilePublicationStore(db);
   const scope = { resourceTeamId: 'fixture-space', ownerMemberId: 'member-owner', projectId, filePath: 'pages/source.html' };
+  const sourceFileId = randomUUID();
+  const state: CommentFileState = { schemaVersion: 1, revision: 1, files: [{ sourceFileId,
+    sourceFilePath: scope.filePath, entryPath: 'index.html', resourceId: 'source-root', versionId: 'v1', retired: false }] };
+  updateProject(db, projectId, { metadata: { _commentFiles: state } });
+  // Keep the historical capture unchanged. This separately constructed current
+  // protocol row is a controlled fixture, not a backfill of that old traffic.
+  const modern: CollabCloudComment = { id: 'modern-guest', projectId, conversationId: 'remote', seq: 5,
+    filePath: 'index.html', sourceFileId, sourceFilePath: scope.filePath, elementId: 'heading', selector: 'h1',
+    label: 'Heading', text: '', htmlHint: '', note: 'Current guest feedback', status: 'open',
+    position: { x: 0, y: 0, width: 1, height: 1 }, createdAt: 1010, updatedAt: 1011,
+    authorKind: 'user', authorAppUserId: 'share-fixture-viewer-app', memberId: '' };
+  const currentWire = JSON.stringify({ ...captured, comments: [...captured.comments, modern], latestSeq: 5 });
   db.transaction(() => {
     publications.set(scope, { slug: 'share-management-slug', url: 'https://example.test/s/share-management-slug', fileName: scope.filePath });
     recordCommentRelayPublicationMapping(db, scope, { ...publications.getRevision(scope)!, publicFilePath: 'index.html' });
@@ -119,14 +133,16 @@ it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-
     permissions: buildWorkspacePermissions({ role: 'owner', lifecycleState: 'active' }),
   };
   const calls: string[][] = [];
+  let mappingLookups = 0;
   const service = createCollabCloudService({
-    client: createVelaCliCollabClient({ run: async args => { calls.push(args); return wire; } }),
+    client: createVelaCliCollabClient({ run: async args => { calls.push(args); return currentWire; } }),
     listProjectIds: () => [], resolveLocalConversationId: () => 'local',
     resolveProjectWorkspaceContext: async () => context,
     isMemberSyncProjectShared: () => scenario === 'team',
     listPersonalCommentRelayFilePaths: () => new Set(scenario === 'team' ? [] : [scope.filePath]),
     ...(scenario === 'lookup-missing' ? {} : {
       resolvePublishedCommentSourcePath: ({ publicationSlug, publishedPath }: { publicationSlug: string; publishedPath: string }) => {
+        mappingLookups += 1;
         if (scenario === 'lookup-error') throw new Error('mapping unavailable');
         return sourcePathForCurrentPublication(db, { ...scope, slug: publicationSlug, publishedPath });
       },
@@ -135,21 +151,23 @@ it.each(['team', 'private-team', 'personal', 'stopped', 'lookup-error', 'lookup-
       const stored = getProjectPreviewComment(db, id, commentId);
       return stored ? { found: true, filePath: stored.filePath } : { found: false };
     },
-    mergeComment: ({ projectId: id, conversationId, comment }) => mergeSyncedPreviewComment(db, id, conversationId, comment),
+    mergeComment: ({ projectId: id, conversationId, comment }) => {
+      const current = normalizeCurrentFileComment(state, comment);
+      return current ? mergeSyncedPreviewComment(db, id, conversationId, current) : 'unchanged';
+    },
   });
   try {
-    const fails = ['lookup-error', 'lookup-missing', 'ambiguous'].includes(scenario);
-    expect(await service.pullProject(projectId, context)).toBe(!fails);
+    // These are local alias-cache conditions, not changes to the authenticated
+    // server's authorization verdict for this current source lifetime.
+    expect(await service.pullProject(projectId, context)).toBe(true);
     const rows = listPreviewComments(db, projectId, 'local');
-    if (scenario === 'stopped' || fails) expect(rows).toEqual([]);
-    else {
-      expect(rows.find(row => row.id === captured.comments[0].id)).toMatchObject({ filePath: scope.filePath, authorKind: 'user', authorAppUserId: 'share-fixture-viewer-app' });
-      expect(rows.some(row => row.id === captured.comments[1].id)).toBe(false);
-      // Historical member has no publication identity: never guess its source.
-      expect(rows.find(row => row.id === 'capture-member')?.filePath).toBe(scenario === 'team' ? 'index.html' : undefined);
-    }
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: modern.id, sourceFileId, filePath: scope.filePath,
+      authorKind: 'user', authorAppUserId: modern.authorAppUserId, createdAt: modern.createdAt });
+    expect(rows.some(row => captured.comments.some((old: { id: string }) => old.id === row.id))).toBe(false);
+    expect(mappingLookups).toBe(0);
     await service.pullProject(projectId, context);
-    expect(calls[1]?.slice(3, 5)).toEqual(['--since-seq', fails ? '0' : '4']);
+    expect(calls[1]?.slice(3, 5)).toEqual(['--since-seq', '5']);
   } finally { service.dispose(); }
 });
 
