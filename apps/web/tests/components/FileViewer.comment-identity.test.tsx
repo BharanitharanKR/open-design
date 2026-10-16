@@ -42,9 +42,10 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); resetWorkspaceAccountGenerat
 it.each([
   ['👩🏽‍💻 Engineer', '👩🏽‍💻'], ['👍🏽 Visitor', '👍🏽'], ['🇨🇳 Visitor', '🇨🇳'],
   ['e\u0301mile', 'E\u0301'], ['alice', 'A'], ['琼 Visitor', '琼'], ['', '?'], ['  ', '?'],
-])('3647: renders one complete avatar grapheme for %s without changing identity or color', async (name, initial) => {
+].flatMap(([name, initial]) => (['user', 'member'] as const).map(authorKind => ({ name: name!, initial: initial!, authorKind }))))(
+  'matches saved and active pins to the sidebar avatar grapheme for $authorKind $name', async ({ name, initial, authorKind }) => {
   stubAccount(async () => account('other'));
-  render(tree([{ ...comment, authorDisplayName: name }]));
+  render(tree([{ ...comment, authorKind, authorMemberId: 'member-author', authorDisplayName: name }]));
   fireEvent.click(screen.getByTestId('comment-panel-toggle'));
   const row = await screen.findByTestId('comment-side-item');
   expect(row.querySelector('.comment-side-avatar')).toHaveTextContent(initial);
@@ -52,6 +53,11 @@ it.each([
   const pin = await savedPin();
   expect(row.querySelector('.comment-side-avatar')).toHaveStyle({ background: swatch.bg, color: swatch.fg });
   expect(pin).toHaveStyle({ background: swatch.bg, color: swatch.fg });
+  expect(pin).toHaveTextContent(initial);
+  fireEvent.click(pin!);
+  const activePin = await screen.findByTestId('comment-active-pin');
+  expect(activePin).toHaveTextContent(initial);
+  expect(activePin).toHaveStyle({ background: swatch.bg, color: swatch.fg });
   if (name.trim()) expect(row).toHaveTextContent(name);
 });
 

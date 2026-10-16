@@ -4582,11 +4582,13 @@ function CommentAuthorIdentity({
   comment,
   currentUser,
   displayNumber,
+  initialOnly = false,
   t,
 }: {
   comment: PreviewComment;
   currentUser?: CollabCloudMemberDirectoryEntry | null;
   displayNumber: number;
+  initialOnly?: boolean;
   t: TranslateFn;
 }) {
   if (comment.authorKind === 'user') {
@@ -4596,6 +4598,7 @@ function CommentAuthorIdentity({
         displayName={comment.authorDisplayName?.trim() ?? ''}
         displayNumber={displayNumber}
         role="sharePage"
+        initialOnly={initialOnly}
         seed={comment.authorKey}
         t={t}
       />
@@ -4606,6 +4609,7 @@ function CommentAuthorIdentity({
       comment={comment}
       currentUser={currentUser}
       displayNumber={displayNumber}
+      initialOnly={initialOnly}
       t={t}
     />
   );
@@ -4615,11 +4619,13 @@ function MemberCommentAuthorIdentity({
   comment,
   currentUser,
   displayNumber,
+  initialOnly,
   t,
 }: {
   comment: PreviewComment;
   currentUser?: CollabCloudMemberDirectoryEntry | null;
   displayNumber: number;
+  initialOnly?: boolean;
   t: TranslateFn;
 }) {
   const { resolve: resolveCommentAuthor } = useTeamMembers(currentUser);
@@ -4630,6 +4636,7 @@ function MemberCommentAuthorIdentity({
       displayName={comment.authorDisplayName?.trim() || directoryAuthor?.displayName?.trim() || ''}
       displayNumber={displayNumber}
       role={directoryAuthor?.role}
+      initialOnly={initialOnly}
       seed={comment.authorKey}
       t={t}
     />
@@ -4641,6 +4648,7 @@ function CommentAuthorIdentityContent({
   displayName,
   displayNumber,
   role,
+  initialOnly = false,
   seed,
   t,
 }: {
@@ -4648,9 +4656,11 @@ function CommentAuthorIdentityContent({
   displayName: string;
   displayNumber: number;
   role?: CommentAuthorRole;
+  initialOnly?: boolean;
   seed?: string;
   t: TranslateFn;
 }) {
+  if (initialOnly) return <>{commentAuthorInitials(displayName)}</>;
   const avatarColor = commentAuthorAvatarColor(seed ?? '');
   return (
     <span className="comment-side-author" data-author-kind={comment.authorKind ?? 'member'}>
@@ -6071,6 +6081,7 @@ function anchorStateLabel(state: PreviewCommentAnchorState, t: TranslateFn): str
 
 function CommentPreviewOverlays({
   comments,
+  currentUser,
   provisionalPinNumber,
   liveTargets,
   hoveredTarget,
@@ -6092,6 +6103,7 @@ function CommentPreviewOverlays({
   t,
 }: {
   comments: PreviewComment[];
+  currentUser?: CollabCloudMemberDirectoryEntry | null;
   /** Next pin number for a brand-new comment. Computed by the caller over the
    *  file's comments across ALL statuses (see `provisionalNextPinNumber`) —
    *  wider than `comments`, which carries only the open ones the canvas pins. */
@@ -6213,6 +6225,7 @@ function CommentPreviewOverlays({
               height: bounds.height,
             }}
             data-testid={`comment-saved-marker-${comment.elementId}`}
+            data-pin-number={markerNumber}
             data-anchor-state={anchorState}
             onClick={() => onOpenCommentRef.current(comment, snapshot)}
           >
@@ -6229,12 +6242,12 @@ function CommentPreviewOverlays({
               aria-label={`Open comment for ${label}`}
               aria-description={tooltip}
             >
-              {markerNumber}
+              <CommentAuthorIdentity comment={comment} currentUser={currentUser} displayNumber={markerNumber} initialOnly t={t} />
             </button>
           </div>
         );
       }),
-    [visibleComments, scale, overlayOffset, t, driftLadder, activeExistingCommentId, activeTarget],
+    [visibleComments, scale, overlayOffset, t, driftLadder, activeExistingCommentId, activeTarget, currentUser],
   );
   const activeSavedIndex = activeExistingCommentId
     ? comments.findIndex((comment) => comment.id === activeExistingCommentId)
@@ -6271,9 +6284,12 @@ function CommentPreviewOverlays({
             ...(activePinColor ? { background: activePinColor.bg, color: activePinColor.fg } : {}),
           }}
           data-testid="comment-active-pin"
+          data-pin-number={activePinNumber}
           aria-hidden="true"
         >
-          {activePinNumber}
+          {activeSavedComment
+            ? <CommentAuthorIdentity comment={activeSavedComment} currentUser={currentUser} displayNumber={activePinNumber} initialOnly t={t} />
+            : commentAuthorInitials(currentUser?.displayName ?? '')}
         </div>
       ) : null}
       {boardTool === 'pod' && strokePoints.length > 1 ? (
@@ -18188,6 +18204,7 @@ function HtmlViewer({
               {boardMode ? (
                 <CommentPreviewOverlays
                   comments={commentCreateMode ? creationSortedSideComments : []}
+                  currentUser={commentAuthorSelf}
                   provisionalPinNumber={nextProvisionalPinNumber}
                   t={t}
                   driftLadder={collab.enabled}
