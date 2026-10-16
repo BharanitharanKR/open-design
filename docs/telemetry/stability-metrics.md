@@ -1,8 +1,8 @@
 # Stability telemetry metrics
 
-Authoritative definition: the 2026-10-16 integration request for
-`feat/okr-stability-telemetry`, based on `9b5dc619d`. This definition supersedes
-the CS02/CS03 local drafts wherever they differ. These are internal diagnostics;
+Authoritative definition for the integrated stability telemetry on this branch
+(based on `9b5dc619d`). This definition supersedes the earlier local launch and
+project-entry drafts wherever they differ. These are internal product diagnostics;
 no new user-facing capability or CLI command is introduced.
 
 ## Launch
