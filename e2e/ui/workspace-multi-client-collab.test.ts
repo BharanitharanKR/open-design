@@ -517,15 +517,12 @@ test('[P0] two isolated clients converge live content, presence, and owner unsha
           await expect(ownerPage.getByTestId('file-workspace')).toBeVisible({ timeout: T.long });
           await clickPreviewToolbarAction(ownerPage, 'board-mode-toggle', /^Comment$/);
           await clickPreviewToolbarAction(ownerPage, 'comment-panel-toggle', /^Comments \(\d+\)$/);
-          // This real authored file has legacy targets. Creating comments now
-          // requires explicit source-version consent and a fresh frame witness.
-          const consent = ownerPage.getByRole('alertdialog', { name: 'Prepare static comments · save source version' });
-          await expect(consent).toBeVisible();
-          await consent.getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(ownerPage.getByTestId('comment-identity-preparation')).toContainText('Preview ready', { timeout: T.long });
-          await clickPreviewToolbarAction(ownerPage, 'comment-panel-toggle', /^Comments \(\d+\)$/);
+          // The first toggle opens existing comments directly, even for legacy
+          // targets: reading feedback must not require a source-version save.
           await expect(ownerPage.getByTestId('comment-side-panel').getByTestId('comment-side-item')
             .filter({ hasText: COLLAB_COMMENT_NOTE })).toBeVisible({ timeout: T.medium });
+          await expect(ownerPage.getByRole('alertdialog', { name: 'Prepare static comments · save source version' })).toHaveCount(0);
+          await expect(ownerPage.getByTestId('comment-identity-preparation')).toHaveCount(0);
         })(),
       ]);
       expect(initialRead.ok()).toBeTruthy();
