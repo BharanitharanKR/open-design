@@ -351,38 +351,6 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
       }
     }
   };
-  const owns = (scope: string): boolean => authority(scope)?.generation != null;
-  const undurableRetirements = new Map<string, AssemblyRecord>();
-  const completed = new Map<string, Set<string>>();
-  // A failed owner can be replaced only after every dispatched operation has
-  // finished classification. No old response may write under its successor.
-  const inFlightAuthority = new Map<string, Set<string>>();
-  const writeFileAtomically = writeAuthorityFile;
-
-  /** Retire authority before deleting bytes; a failed rename may still permit overwriting the record. */
-  const retireReplay = (file: string, record: AssemblyRecord): boolean => {
-    refusedFiles.add(file);
-    undurableRetirements.set(file, record);
-    const retired = JSON.stringify({ ...record, replayRefused: true });
-    try {
-      writeFileAtomically(file, retired);
-      undurableRetirements.delete(file);
-      return true;
-    } catch {
-      try {
-        // This fallback only removes authority. A partial write is invalid JSON
-        // and therefore a cache miss; it can never manufacture a fresh grant.
-        fs.writeFileSync(file, retired);
-        const fd = fs.openSync(file, 'r+');
-        try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-        syncAuthorityDirectory(path.dirname(file));
-        undurableRetirements.delete(file);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-  };
 
   const parseAssembly = (file: string, expect?: TouchpointContentKey): AssemblyRecord | null => {
     try {
@@ -947,83 +915,6 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
     if (!tokens.size) completed.delete(scope);
   };
 
-  /** Recover all affected records together, so an unvisited locale cannot revive on restart. */
-  function isRefusalTombstone(file: string, scope: string): boolean {
-    try {
-      const value: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return isRecord(value) && value.version === ASSEMBLY_VERSION &&
-        value.kind === 'replay-refusal' && value.replayRefused === true && value.scope === scope;
-    } catch { return false; }
-  }
-
-  function retryRefusals(scope: string): void {
-    if (!owns(scope)) return;
-    for (const [file, key] of pendingKeyRefusals) {
-      if (key.scope !== scope) continue;
-      const record = parseAssembly(file, key);
-      if (record) {
-        if (retireReplay(file, record)) pendingKeyRefusals.delete(file);
-      } else {
-        // A temporarily unreadable record is not proof of absence. Replace its
-        // exact pathname with a tombstone before permitting journal settlement;
-        // this does not require enumerating other locales or reading old bytes.
-        try {
-          writeFileAtomically(file, JSON.stringify({ version: ASSEMBLY_VERSION, kind: 'replay-refusal', replayRefused: true, scope }));
-          pendingKeyRefusals.delete(file);
-        } catch { /* retain the obligation until durable replacement succeeds */ }
-      }
-    }
-    for (const [file, record] of [...undurableRetirements]) {
-      if (record.scope === scope) retireReplay(file, record);
-    }
-    const account = refusedScopes.get(scope);
-    const withdrawals = [...pendingWithdrawals.entries()].filter(([, value]) => value.scope === scope);
-    if (!account && !withdrawals.length) return;
-    let entries: { file: string; record: AssemblyRecord | null }[];
-    try {
-      const dir = assembliesDirFor(scope);
-      entries = fs.readdirSync(dir).filter(name => name.endsWith('.json')).map(name => {
-        const file = path.join(dir, name);
-        return { file, record: parseAssembly(file) };
-      });
-    } catch {
-      return;
-    }
-    if (account) {
-      let persisted = true;
-      for (const { file, record } of entries) {
-        if (account.has(file)) continue;
-        if (!record) { if (!isRefusalTombstone(file, scope)) persisted = false; continue; }
-        if (record.scope === scope && !retireReplay(file, record)) persisted = false;
-      }
-      if (persisted) refusedScopes.delete(scope);
-    }
-    for (const [name, withdrawal] of withdrawals) {
-      let persisted = true;
-      for (const { file, record } of entries) {
-        if (withdrawal.renewed.has(file)) continue;
-        if (!record) { if (!isRefusalTombstone(file, scope)) persisted = false; continue; }
-        if (record.scope !== scope || record.placementKey !== withdrawal.placementKey ||
-          !touchpointWithdrawalReclaims(withdrawal.body, record.identity)) continue;
-        if (!retireReplay(file, record)) persisted = false;
-        recordRevocation(record, withdrawal.observedAt);
-        reclaim(file, record);
-      }
-      if (persisted) pendingWithdrawals.delete(name);
-    }
-  }
-
-  const settleCompleted = (scope: string): void => {
-    retryRefusals(scope);
-    if (refusedScopes.has(scope) || [...pendingWithdrawals.values()].some(value => value.scope === scope) ||
-      [...pendingKeyRefusals.values()].some(value => value.scope === scope) ||
-      [...undurableRetirements.values()].some(value => value.scope === scope)) return;
-    const tokens = completed.get(scope);
-    if (!tokens) return;
-    for (const token of [...tokens]) if (authority(scope)?.settle(token)) tokens.delete(token);
-    if (!tokens.size) completed.delete(scope);
-  };
-
   return {
     beginAuthority(scope) {
       if (closed) return null;
@@ -1384,72 +1275,6 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
   function writeFresh(key: TouchpointContentKey, record: AssemblyRecord): void {
     if (!owns(key.scope)) return;
     record = { ...record, version: ASSEMBLY_VERSION, generation: authority(key.scope)!.generation! };
-    const file = assemblyFile(key);
-    const clock = { ...record.clock, observedAt: Math.max(record.clock.observedAt, nowEstimate()) };
-    try {
-      writeFileAtomically(file, JSON.stringify({ ...record, clock }));
-    } catch (error) {
-      // The new answer supersedes the old grant even when replacement fails.
-      // Retire the candidate, preserving its server-time ordering fence and
-      // reusable bytes; an older answer must not revive the previous window.
-      // Only a subsequent successfully stored online grant clears this block.
-      retireReplay(file, { ...record, clock });
-      armExpiryForFresh(file, record.schedule, Math.max(0, nowEstimate() - clock.fetchedAt));
-      throw error;
-    }
-    undurableRetirements.delete(file);
-    pendingKeyRefusals.delete(file);
-    refusedFiles.delete(file);
-    refusedScopes.get(key.scope)?.add(file);
-    for (const withdrawal of pendingWithdrawals.values()) {
-      if (withdrawal.scope === key.scope && withdrawal.placementKey === key.placementKey)
-        withdrawal.renewed.add(file);
-    }
-    retryRefusals(key.scope);
-    marks.set(file, { wall: clock.observedAt, at: performance.now() });
-    armExpiryForFresh(file, record.schedule, Math.max(0, nowEstimate() - clock.fetchedAt));
-  }
-
-  /**
-   * Persists what a trimmed renewal says about the delivery it renews.
-   *
-   * The bytes are unchanged by construction (the server trimmed against the
-   * very version `held` named), so only the envelope, schedule, identity and
-   * clock are replaced — with the same REPLACE, never-merge rule `remember`
-   * follows, so a renewal that ends the activity early takes effect offline
-   * too. Failing to persist retires offline authority; the rebuilt online
-   * answer remains available to the caller.
-   */
-  function adoptRenewal(
-    key: TouchpointContentKey,
-    record: AssemblyRecord,
-    full: Record<string, unknown>,
-    trimmed: Record<string, unknown>,
-    clock: CachedClock,
-  ): void {
-    try {
-      const identity = touchpointCachedIdentityOf(full);
-      if (answerPredatesRevocation(key.scope, identity, trimmed.serverTime)) return;
-      if (answerPredatesStored(key, trimmed.serverTime, record)) return;
-      writeFresh(key, {
-        ...record,
-        replayRefused: false,
-        schedule: touchpointScheduleOf(trimmed),
-        identity,
-        clock,
-        envelope: envelopeOf(trimmed),
-      });
-    } catch {
-      /* A cache that cannot be written changes nothing the caller has to act on. */
-    }
-  }
-
-  /**
-   * Writes a record that holds a fresh server answer, and everything a fresh
-   * answer resets: the elapsed-time baseline (including after an uncertain
-   * restart or a corrected device clock) and the expiry timer.
-   */
-  function writeFresh(key: TouchpointContentKey, record: AssemblyRecord): void {
     const file = assemblyFile(key);
     const clock = { ...record.clock, observedAt: Math.max(record.clock.observedAt, nowEstimate()) };
     try {

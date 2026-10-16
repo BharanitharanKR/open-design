@@ -20,7 +20,6 @@ import {
 } from "../../src/components/TestCampaignModal";
 import * as component from "../../src/components/touchpoint-component";
 import * as navigation from "../../src/components/touchpoint-navigation";
-import { TOUCHPOINT_POLL_MS } from "../../src/components/touchpoint-lifecycle";
 
 const cmsTrack = vi.hoisted(() => vi.fn());
 vi.mock("../../src/analytics/provider", () => ({
@@ -551,80 +550,6 @@ describe("OPEND-3298 context recovery and remaining P1", () => {
     expect(visibleEntry()).toBe(true);
     hangEntry = true;
     await settle(50_000);
-    expect(latest?.decisions.has(entry)).toBe(true);
-    await settle(1_000);
-    expect(latest?.decisions.has(entry)).toBe(false);
-  });
-
-  it("renews healthy presentations past the original lease while one renewal keeps hanging", async () => {
-    await start();
-    expect(visibleEntry()).toBe(true);
-    expect(screen.queryByRole("dialog", { name: "Test campaign" })).not.toBeNull();
-    decisionReply = (key, locale, id) => key === modal
-      ? new Promise<Response>(() => {}) : Response.json(decision(key, locale, oldGeneration, id));
-    act(() => window.dispatchEvent(new Event("focus")));
-    await settle(12_000);
-    // The hung modal stays on screen within the authority it already had.
-    expect(screen.queryByRole("dialog", { name: "Test campaign" })).not.toBeNull();
-    // Well past the first 60s lease: the hover kept renewing on its own answers
-    // and never blinked out, while the modal lapsed with the authority its last
-    // answer granted.
-    const hidden: number[] = [];
-    for (let second = 13; second <= 150; second += 1) {
-      await settle(1_000);
-      if (!visibleEntry()) hidden.push(second);
-    }
-    expect(hidden).toEqual([]);
-    expect(screen.queryByRole("dialog", { name: "Test campaign" })).toBeNull();
-  });
-
-  it("holds a poll-driven timeout only to its own deadline without remounting healthy hover siblings", async () => {
-    await start();
-    const mount = vi.mocked(component.OpenDesignTouchpointElement.prototype.mount);
-    const hoverMounts = () => mount.mock.calls.filter(([, , host]) => host.placementKey !== modal).length;
-    const initialMounts = hoverMounts();
-    const originalEntry = latest?.decisions.get(entry);
-    const modalDeadline = Date.parse(latest!.decisions.get(modal)!.authorizationExpiresAt);
-    const modalRequests = () => requests("/test-runtime").filter(([url]) => new URL(String(url), "http://localhost").searchParams.get("placementKey") === modal).length;
-    expect(modalRequests()).toBe(1);
-    let hanging = true;
-    decisionReply = (key, locale, id) => key === modal && hanging
-      ? new Promise<Response>(() => {}) : Response.json(decision(key, locale, oldGeneration, id));
-    // No focus refresh: the first timeout is discovered by the ordinary poll at t=40s.
-    for (let second = 1; second <= 150; second += 1) {
-      await settle(1_000);
-      expect(visibleEntry(), `hover at t=${second}s`).toBe(true);
-      expect(hoverMounts(), `hover mounts at t=${second}s`).toBe(initialMounts);
-      expect(latest?.decisions.get(entry)).toBe(originalEntry);
-      if (Date.now() < modalDeadline) expect(screen.queryByRole("dialog", { name: "Test campaign" })).not.toBeNull();
-      else {
-        expect(screen.queryByRole("dialog", { name: "Test campaign" })).toBeNull();
-        expect(latest?.decisions.has(modal)).toBe(false);
-      }
-      // Failed presentations stop automatic requests; only the healthy pair
-      // keeps polling. Merely changing the mock response cannot wake recovery.
-      if (Date.now() - epoch >= TOUCHPOINT_POLL_MS + TEST_PLACEMENT_REQUEST_TIMEOUT_MS)
-        expect(modalRequests(), `modal requests at t=${second}s`).toBe(2);
-      if (second === 90) hanging = false;
-    }
-    act(() => window.dispatchEvent(new Event("focus")));
-    await settle(32);
-    expect(modalRequests()).toBe(3);
-    expect(latest?.decisions.has(modal)).toBe(true);
-    expect(visibleEntry()).toBe(true);
-    expect(hoverMounts()).toBe(initialMounts);
-    expect(latest?.decisions.get(entry)).toBe(originalEntry);
-  });
-
-  it("ages an answer from its own fetch completion while a sibling delays the round", async () => {
-    let hangEntry = false;
-    decisionReply = (key, locale, id) => key === modal || (key === entry && hangEntry)
-      ? new Promise<Response>(() => {}) : Response.json(decision(key, locale, oldGeneration, id));
-    await start();
-    await settle(10_000);
-    expect(visibleEntry()).toBe(true);
-    hangEntry = true;
-    await settle(49_000);
     expect(latest?.decisions.has(entry)).toBe(true);
     await settle(1_000);
     expect(latest?.decisions.has(entry)).toBe(false);

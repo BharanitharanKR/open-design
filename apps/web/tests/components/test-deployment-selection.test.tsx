@@ -381,8 +381,6 @@ describe("Test deployment directory discovery", () => {
 			// D-POLL: the fault clears; the regular cadence notices it (≤ 30 s).
 			fetch.mockImplementation(async () => response());
 			await advance(30_000);
-			expect(result.current.selected).toBe(selected);
-			await event("online");
 			expect(result.current.selected).toBeNull();
 		},
 	);

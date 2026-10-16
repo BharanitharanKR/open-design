@@ -152,15 +152,10 @@ export function useTestDeploymentSelection({
 		let disposed = false;
 		let request: AbortController | null = null;
 		let timeout: ReturnType<typeof setTimeout> | undefined;
-		let failed = false;
 		const cancel = () => {
 			request?.abort();
 			request = null;
 			clearTimeout(timeout);
-		};
-		const pause = () => {
-			failed = true;
-			onRequestResult?.(true);
 		};
 		const pause = () => {
 			onRequestResult?.(true);
