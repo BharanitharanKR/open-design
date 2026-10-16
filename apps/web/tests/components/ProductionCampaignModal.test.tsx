@@ -11,7 +11,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 const openExternalUrlMock = vi.hoisted(() => vi.fn(async () => true));
 type CampaignHostGlobal = typeof globalThis & {
@@ -1868,33 +1868,25 @@ describe("ProductionCampaignModal device impressions", () => {
 		"requestAnimationFrame",
 		"cancelAnimationFrame",
 	] as const;
-	/**
-	 * Faking frames on its own is not enough, and on its own makes it worse: the
-	 * frame is requested only once `verifyWebTouchpoint` resolves, and that is
-	 * real asynchronous crypto which no amount of fake time can hurry. A single
-	 * fixed advance can therefore run out before the frame is even asked for.
-	 *
-	 * So step until the marker lands, and keep the two waits inside a step
-	 * separate. The real queue has to TURN for the crypto to finish; fake time
-	 * has to MOVE for the frame that records the impression to fire. Advancing
-	 * alone couples them — a step would buy exactly one turn of the real queue,
-	 * so a box that is slow at the crypto runs out of steps long before it runs
-	 * out of fake milliseconds. Yielding first decouples them. A healthy mount
-	 * leaves on the first step, so the budget is only ever paid by a mount that
-	 * is genuinely stuck, and the assertion then names that as the cause.
-	 */
+	let verification: MockInstance<typeof touchpointComponent.verifyWebTouchpoint>;
+	/** Wait for real cryptographic verification before advancing the fake frame.
+	 * Fixed event-loop turns cannot establish completion under CI worker load. */
 	const advanceToRecordedImpression = async (subject = "user-a", activity = "campaign-1") => {
-		for (let step = 0; step < 300 && localStorage.getItem(marker(subject, activity)) === null; step += 1)
-			await act(async () => {
-				for (let turn = 0; turn < 8; turn += 1) await new Promise(resolve => setImmediate(resolve));
-				await vi.advanceTimersByTimeAsync(16);
-			});
+		// Settle the mocked decision response and commit the current mount effect.
+		await act(async () => {});
+		const result = verification.mock.results.at(-1);
+		if (!result || result.type !== "return")
+			throw new Error("campaign verification did not start for the current mount");
+		await act(async () => { await result.value; });
+		await act(async () => { vi.advanceTimersToNextFrame(); });
 		expect(
 			localStorage.getItem(marker(subject, activity)),
-			"impression never recorded — the mount it follows most likely never resolved",
+			"verified campaign did not record its visible-frame impression",
 		).toBe("1");
 	};
 	beforeEach(() => {
+		// Observe the real verifier; do not replace integrity checks with a stub.
+		verification = vi.spyOn(touchpointComponent, "verifyWebTouchpoint");
 		(globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
 			client: { osLocale: "en-US", type: "desktop" },
 		};
@@ -2223,12 +2215,11 @@ describe("ProductionCampaignModal device impressions", () => {
 			vi.stubGlobal("fetch", fetchMock);
 			render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
 			await waitFor(() => expect(calls).toBe(1));
+			// A requested response is not a mounted host. Observe its real visibility
+			// record before capturing identity or starting the recovery poll.
+			await waitFor(() => expect(localStorage.getItem(marker())).toBe("1"));
 			const host = document.querySelector("opend-touchpoint");
 			expect(host).not.toBeNull();
-			// The host is inserted before its asynchronous mount finishes. Wait for
-			// the visibility record so this test cannot race a focus refresh against
-			// creation of the open-presentation guard it is meant to exercise.
-			await waitFor(() => expect(localStorage.getItem(marker())).toBe("1"));
 			await act(async () => {
 				fireEvent(window, new Event("focus"));
 			});
