@@ -54,6 +54,59 @@ describe('workspace root task lifecycle', () => {
     expect(lost).toHaveBeenCalledTimes(1);
     expect(update.mock.calls.map(([action])=>action)).toEqual(['admit','heartbeat','heartbeat','release']);
   });
+  it('rechecks a roster event received during an old heartbeat before waiting for another timer', async () => {
+    let completeOldHeartbeat!: (value: VelaTaskLease) => void;
+    let heartbeats = 0;
+    const lost = vi.fn(async () => {});
+    const releaseInterest = vi.fn();
+    const input = { runId: 'root', workspaceId: 'A', attempt: 0 };
+    const update = vi.fn(async (action, currentInput) => {
+      if (action === 'heartbeat') {
+        if (++heartbeats === 1) return new Promise<VelaTaskLease>(resolve => { completeOldHeartbeat = resolve; });
+        throw new VelaTaskLeaseError('workspace_task_forbidden');
+      }
+      return action === 'release' ? null : receipt(currentInput);
+    });
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({ update, retainWorkspace: () => releaseInterest });
+    await lifecycle.start(input, { onLost: lost });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(heartbeats).toBe(1);
+    // The server authorized this heartbeat before removal. Its delayed success
+    // cannot satisfy the roster event that happened after that authorization.
+    const rechecked = lifecycle.recheckWorkspace('A');
+    const duplicateEvent = lifecycle.recheckWorkspace('A');
+    completeOldHeartbeat(receipt(input));
+    await Promise.all([rechecked, duplicateEvent]);
+    expect(heartbeats).toBe(2);
+    expect(lost).toHaveBeenCalledExactlyOnceWith('workspace_task_forbidden');
+    expect(releaseInterest).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls.map(([action]) => action)).toEqual(['admit', 'heartbeat', 'heartbeat', 'release']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('does not transfer an in-flight roster recheck to a replacement attempt', async () => {
+    let completeOldHeartbeat!: (value: VelaTaskLease) => void;
+    const lost = vi.fn(async () => {});
+    const input = { runId: 'root', workspaceId: 'A', attempt: 0 };
+    const update = vi.fn(async (action, currentInput) => {
+      if (action === 'heartbeat' && currentInput.attempt === 0)
+        return new Promise<VelaTaskLease>(resolve => { completeOldHeartbeat = resolve; });
+      return action === 'release' ? null : receipt(currentInput);
+    });
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({ update });
+    await lifecycle.start(input, { onLost: lost });
+    await vi.advanceTimersByTimeAsync(30_000);
+    const rechecked = lifecycle.recheckWorkspace('A');
+    await lifecycle.finish('root', 0);
+    await lifecycle.start({ ...input, attempt: 1 }, { onLost: lost });
+    completeOldHeartbeat(receipt(input));
+    await rechecked;
+    expect(update.mock.calls.map(([action]) => action)).toEqual(['admit', 'heartbeat', 'release', 'admit']);
+    expect(lost).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(update).toHaveBeenLastCalledWith('heartbeat', expect.objectContaining({ attempt: 1 }), expect.anything());
+    await lifecycle.finish('root', 1);
+  });
   it('releases the SSE interest on terminal completion, and late rejection cannot stop a replacement attempt', async()=>{
     let rejectHeartbeat!:(error:Error)=>void;
     const released = vi.fn();

@@ -12,6 +12,7 @@ type Entry = {
   timer: ReturnType<typeof setTimeout> | null;
   starting: Promise<VelaTaskLease> | null;
   checking: Promise<void> | null;
+  recheckRequested: boolean;
   releaseInterest: (() => void) | null;
   onLost: (code: string) => Promise<void>;
 };
@@ -78,9 +79,14 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     entry.timer = null;
     const pending = (async () => {
       try {
-        const updated = await update('heartbeat', {...entry.input, workspaceId:entry.receipt!.workspaceId, leaseToken:entry.receipt!.leaseToken}, {configuredEnv:entry.configuredEnv});
-        if (!updated) throw new VelaTaskLeaseError('workspace_task_lease_invalid_response');
-        if (current(entry)) entry.receipt = updated;
+        do {
+          // An event received after this request began needs a newer authority
+          // check; a delayed success cannot consume that invalidation.
+          entry.recheckRequested = false;
+          const updated = await update('heartbeat', {...entry.input, workspaceId:entry.receipt!.workspaceId, leaseToken:entry.receipt!.leaseToken}, {configuredEnv:entry.configuredEnv});
+          if (!updated) throw new VelaTaskLeaseError('workspace_task_lease_invalid_response');
+          if (current(entry)) entry.receipt = updated;
+        } while (current(entry) && entry.recheckRequested);
       } catch (error) {
         await lose(entry, error instanceof VelaTaskLeaseError ? error.code : 'workspace_task_lease_unavailable');
       } finally {
@@ -112,7 +118,7 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
       }
       const entry: Entry = {
         input, configuredEnv: options.configuredEnv, onLost: options.onLost,
-        receipt: null, timer: null, starting: null, checking: null, releaseInterest: null,
+        receipt: null, timer: null, starting: null, checking: null, recheckRequested: false, releaseInterest: null,
       };
       entries.set(input.runId, entry);
       entry.starting = (async () => {
@@ -133,7 +139,10 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     },
     finish,
     async recheckWorkspace(workspaceId: string): Promise<void> {
-      await Promise.all([...entries.values()].filter(e => (e.receipt?.workspaceId ?? e.input.workspaceId) === workspaceId).map(check));
+      await Promise.all([...entries.values()].filter(e => (e.receipt?.workspaceId ?? e.input.workspaceId) === workspaceId).map(entry => {
+        entry.recheckRequested = true;
+        return check(entry);
+      }));
     },
     async revokeWorkspace(workspaceId: string): Promise<void> {
       await Promise.all([...entries.values()].filter(e => (e.receipt?.workspaceId ?? e.input.workspaceId) === workspaceId).map(e => lose(e, 'workspace_task_forbidden')));
