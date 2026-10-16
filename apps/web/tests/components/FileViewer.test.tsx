@@ -13990,19 +13990,19 @@ describe('FileViewer tweaks toolbar', () => {
     const shellRule = (selector: string) => rule(shellCss, selector);
 
     expect(coreRule('.comment-side-panel')).toContain('width: 320px;');
-    expect(coreRule('.comment-side-header')).toContain('padding: 10px 12px;');
-    expect(coreRule('.comment-side-list')).toContain('padding: 12px;');
-    expect(coreRule('.comment-side-list')).toContain('gap: 8px;');
-    expect(coreRule('.comment-side-item')).toContain('padding: 10px 12px 10px 8px;');
-    expect(coreRule('.comment-side-item')).toContain('border-radius: var(--radius);');
-    expect(coreRule('.comment-side-time')).toContain('font-size: 12px;');
-    expect(coreRule('.comment-side-check')).toContain('border: 1.5px solid var(--border);');
-    expect(coreRule('.comment-side-selectbar .primary')).toContain('background: var(--comment-accent);');
-    expect(shellRule('.comment-float-host')).toContain('width: min(360px, calc(100vw - 32px));');
-    expect(shellRule('.comment-float-host')).toContain('border: 1px solid var(--border);');
-    expect(shellRule('.comment-float-host')).toContain('box-shadow: var(--shadow-lg);');
-    expect(shellCss).toContain('padding-right: max(0px, min(388px, calc(100% - 160px)));');
-    expect(shellRule('.comment-float-host .comment-side-header')).toContain('min-height: 40px;');
+    expect(coreRule('.comment-side-header')).toContain('padding: 0 16px;');
+    expect(coreRule('.comment-side-list')).toContain('padding: 8px 12px;');
+    expect(coreRule('.comment-side-list')).toContain('gap: 6px;');
+    expect(coreRule('.comment-side-item')).toContain('padding: 6px 10px 6px 8px;');
+    expect(coreRule('.comment-side-item')).toContain('border-radius: 8px;');
+    expect(coreRule('.comment-side-time')).toContain('font-size: 10.5px;');
+    expect(coreRule('.comment-side-check')).toContain('border: 1px solid #CFCFCF;');
+    expect(coreRule('.comment-side-selectbar .primary')).toContain('background: #202020;');
+    expect(shellRule('.comment-float-host')).toContain('width: min(320px, calc(100vw - 32px));');
+    expect(shellRule('.comment-float-host')).toContain('border: 1px solid #E6E6E6;');
+    expect(shellRule('.comment-float-host')).toContain('box-shadow: none;');
+    expect(shellCss).toContain('padding-right: max(0px, min(348px, calc(100% - 160px)));');
+    expect(shellRule('.comment-float-host .comment-side-header')).toContain('min-height: 56px;');
   });
 
   it('folds only overflowing list bodies and keeps each disclosure independent of row reply', () => {
@@ -15585,7 +15585,7 @@ describe('LiveArtifactRefreshHistoryPanel', () => {
 
   it('keeps D1–D4 marker and deck-page presentation on the rendered selectors', () => {
     const css = readFileSync(join(process.cwd(), 'src/styles/viewer/core.css'), 'utf8');
-    expect(css).toMatch(/\.comment-saved-pin,\s*\.comment-active-pin[\s\S]*?width: 42px;[\s\S]*?height: 42px;[\s\S]*?border: 3px solid #fff;[\s\S]*?background: #d96a46;[\s\S]*?font-size: 18px;/);
+    expect(css).toMatch(/\.comment-saved-pin,\s*\.comment-active-pin[\s\S]*?width: 28px;[\s\S]*?height: 28px;[\s\S]*?border: 0;[\s\S]*?background: #282828;[\s\S]*?font-size: 12px;/);
     expect(css).not.toContain('.comment-saved-marker--lost .comment-saved-pin');
     expect(css).not.toContain('.comment-side-slide {');
   });
