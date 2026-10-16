@@ -346,7 +346,13 @@ app.whenReady().then(async () => {
       'utf8',
     )).trim();
     const electronPath = join(desktopRoot, 'node_modules', 'electron', 'dist', electronRelativePath);
-    const electronArgs = [probeDir, '--no-sandbox', '--enable-webgl', '--ignore-gpu-blocklist'];
+    const electronArgs = [
+      probeDir,
+      '--no-sandbox',
+      '--enable-webgl',
+      '--ignore-gpu-blocklist',
+      '--force-color-profile=srgb',
+    ];
     const command = process.platform === 'linux' ? 'xvfb-run' : electronPath;
     const args = process.platform === 'linux' ? ['-a', electronPath, ...electronArgs] : electronArgs;
     const env: NodeJS.ProcessEnv = {
