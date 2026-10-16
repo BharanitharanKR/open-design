@@ -1,24 +1,52 @@
-# OPEND-3378：elapsed 的十个原调用点
+# OPEND-3378: ten original `elapsed` call sites
 
-审计基线：CMS phase-2 API 2 host `7e6747b0e`。下表行号属于该固定基线；代码中的 C1–C10 标记用于后续定位，不以改动后的 `elapsed(` 文本数量冒充原十处。修复增加了恢复检查，并将 C3/C6 的持续时间预算改用单调时钟。
+Audit baseline: CMS phase-2 API 2 host `7e6747b0e`. Line numbers in the table
+refer to that fixed baseline. In-code markers C1–C10 are for later navigation;
+do not treat the post-change count of `elapsed(` text matches as the original
+ten sites. The fix adds recovery checks and moves C3/C6 duration budgets onto
+the monotonic clock.
 
-`monotonicElapsed` 是 `performance.now()` 的非负差值；`elapsed` 仍取单调差值与墙钟差值的最大值。墙钟回退不能增加授权时间；墙钟前跳或某些平台睡眠后的单调时钟停走，仍会阻止展示／交互。仅有墙钟显示到期、单调窗口尚未到期时，保留原授权但隐藏，最多每秒观察一次校正；校正后只有两种年龄都未到期才恢复，时钟锚点和有效期均不重置。单调到期、明确撤销、清空、身份变化和卸载都会终止恢复。
+`monotonicElapsed` is a non-negative `performance.now()` delta. `elapsed` still
+takes the maximum of the monotonic delta and the wall-clock delta. Wall-clock
+rollback cannot extend grant lifetime. A forward wall-clock jump, or monotonic
+stall after sleep on some platforms, still blocks display/interaction. When only
+the wall clock appears expired and the monotonic window has not, keep the original
+grant but hide it, observe for correction at most once per second; after
+correction, restore only if both ages are still within window — clock anchors and
+validity are never reset. Monotonic expiry, explicit withdrawal, clear, identity
+change, and unmount all end recovery.
 
-| 编号 / 基线行 | 用途 | 墙钟向前跳 | 墙钟向后跳 | 向前跳后校正回原时间线 |
+| Id / baseline line | Use | Wall clock jumps forward | Wall clock jumps backward | After forward jump, corrected back |
 |---|---|---|---|---|
-| C1 / 464 | `isCurrent`：挂载与交互门禁 | 超过窗口时返回 false，正在准备的 mount 仍按既有协议报告 fenced | 单调时钟继续限制窗口，不能延长 | 原 generation 尚在时可重新允许；隐藏过的 presentation 由恢复过程发布新 generation，不能让旧异步 mount 生效 |
-| C2 / 622 | 请求失败后的授权去留 | 普通失败仅暂停墙钟疑似到期的授权，不永久删除；服务端 withdrawal 仍立即撤销 | 未到单调期限继续保留；到期即删除 | 保留原 grant，可由 retain 或校正观察器恢复；失败不补时，明确 withdrawal 不可恢复 |
-| C3 / 633 | 本轮 fast retry 预算 | 改用单调差值，不会被墙钟跳过预算 | 不会补充预算 | 原预算继续运行；不依赖校正事件重新排 retry；仍受原两次 backoff、离线策略和 pause 约束 |
-| C4 / 659 | expiry timer 剩余时间 | 回调若仅见墙钟到期，隐藏并保留原 grant，观察校正；若单调也到期则永久撤销 | 到单调期限照常撤销 | 1s 观察器在事件循环允许时恢复原窗口内授权；不需要新 decision。真正到期／withdrawal 后不恢复；暂停的离线 grant 真实到期仍触发原回收请求 |
-| C5 / 720 | retain 恢复 set-aside lease | 不恢复展示，也不无条件清空原 grant；继续观察校正 | 单调期限以内可恢复 | 只恢复原时间窗；retain 不能创建或续期授权，无可恢复 grant 时保持空白 |
-| C6 / 744 | waiting/start-boundary 再请求 | 改用单调差值，前跳不能把 60s 等待压成 100ms | 不额外增加等待预算 | 等待原边界，仍按 MAX_TIMER_MS 分段；poll/resume 可先问服务器，但本地永不自行授权 |
-| C7 / 753 | 响应耗时是否耗尽有效期 | 只凭单调响应耗时决定永久丢弃；有效响应在墙钟疑似到期时暂停保存 | 不延长服务端给出的窗口 | 可自动首次挂载已收到的响应，无需等下一份 grant；请求起点不重置，过期响应仍丢弃 |
-| C8 / 779 | same-key 是否沿用 value/generation | 已挂载且同 key 的续期保持 generation；需恢复的 lease 必须满足两钟窗口 | 单调期限控制恢复，不能借回拨重放过期 lease | 仍挂载的继续保持；被隐藏／fenced 的通过恢复或后续有效 decision 发布可挂载的 generation |
-| C9 / 861 | resume 时刷新／隐藏／撤销 | 疑似过期先隐藏，原授权单调尚有效则保留；在线重验证与离线限制不变 | 有效展示不闪退，后台刷新；真正过期不可恢复 | 正常、设备离线和 server-fallback 分支均可恢复原有效授权；身份／撤销优先，不向旧账号恢复 |
-| C10 / 931 | 对外导出绝对 `deadline` | 仅做投影，可能变为「当前墙钟+0」；隐藏期间导出 0 | 用新墙钟投影剩余单调预算，不延长授权 | 有效原 lease 的投影回到原时间线；恢复后的 getter 同理。消费者不得把该投影视为永久撤销依据 |
+| C1 / 464 | `isCurrent`: mount and interaction gate | Returns false past the window; mounts in progress still report fenced per existing protocol | Monotonic clock still bounds the window; cannot extend | Same generation may be allowed again if still valid; a hidden presentation publishes a new generation on restore so stale async mounts cannot apply |
+| C2 / 622 | Keep or drop grant after request failure | Ordinary failures only pause grants that look wall-expired; do not permanently delete; server withdrawal still revokes immediately | Keep until monotonic deadline; delete when due | Keep original grant; retain or the correction observer may restore; failures do not add time; explicit withdrawal is not recoverable |
+| C3 / 633 | Fast-retry budget for this round | Uses monotonic delta; wall jump cannot skip the budget | Does not top up the budget | Original budget continues; does not reschedule retry on correction; still subject to two backoffs, offline policy, and pause |
+| C4 / 659 | Expiry timer remaining | If callback only sees wall expiry, hide and keep grant while observing correction; if monotonic also expired, revoke permanently | Revoke at monotonic deadline as usual | 1s observer restores within the original window when the event loop allows; no new decision required. True expiry/withdrawal does not restore; a paused offline grant that truly expires still fires the original reclaim |
+| C5 / 720 | Retain restores a set-aside lease | Does not restore display and does not unconditionally clear the grant; keep observing correction | May restore within the monotonic window | Restores only the original window; retain cannot create or renew grants; stays blank if nothing is recoverable |
+| C6 / 744 | waiting / start-boundary re-request | Uses monotonic delta; forward jump cannot crush a 60s wait into 100ms | Does not add wait budget | Waits for the original boundary; still chunked by MAX_TIMER_MS; poll/resume may ask the server first, but the client never self-authorizes |
+| C7 / 753 | Whether response latency exhausted validity | Permanent drop uses monotonic response cost only; a valid response that looks wall-expired is paused for save | Does not extend the server-issued window | May auto-mount a response already received without waiting for another grant; request start is not reset; expired responses still drop |
+| C8 / 779 | Whether same-key keeps value/generation | Mounted same-key renewals keep generation; leases that need restore must satisfy both clocks | Monotonic deadline governs restore; rollback cannot replay an expired lease | Still-mounted stays; hidden/fenced ones publish a mountable generation via restore or a later valid decision |
+| C9 / 861 | resume: refresh / hide / revoke | Suspected expiry hides first; keep grant while monotonic still valid; online revalidation and offline limits unchanged | Valid display does not flash away; background refresh; true expiry is not recoverable | Normal, device-offline, and server-fallback paths may restore the original valid grant; identity/revocation win; never restore to a previous account |
+| C10 / 931 | Exported absolute `deadline` | Projection only; may become “now + 0”; exports 0 while hidden | Projects remaining monotonic budget onto the new wall clock; does not extend the grant | Projection for a valid original lease returns to the original timeline; same after restore. Consumers must not treat the projection as permanent revocation |
 
-恢复检查里的新增 `elapsed` 读数沿用 C1/C4 的双时钟展示门禁。它只观察校正、不发网络请求、不更新 serverTime，不构成新的授权来源。补充的 failure/retain/decision/wake 读数用于区分「暂时疑似到期」与「真正到期」。
+New `elapsed` reads inside recovery checks reuse the C1/C4 dual-clock display gate.
+They only observe correction: no network, no `serverTime` update, and not a new
+grant source. Extra failure/retain/decision/wake reads distinguish “temporarily
+looks expired” from “truly expired”.
 
-三个缺陷的红测先于产品代码变更：`apps/web/tests/components/touchpoint-clock-recovery.test.ts` 中 failure、response、expiry callback 三例，在整合后的基线上均失败。修复后同样用例通过，另覆盖撤销、清空、身份变化、disabled、卸载、单调真实到期、墙钟回退、retry 和 waiting 边界；原 3376 用例保留。修复末轮为 212/212（原四文件 199 项 + 新文件 13 项）；离线暂停后真实到期的回收请求另有 red-offline-boundary.txt 红转绿证据。完整执行输出和固定 SHA 记录在本次交付目录 `~/code/tmp/cms2-3483-3378/` 的 red.txt、green.txt、summary.md。
+Three red tests landed before product changes
+(`apps/web/tests/components/touchpoint-clock-recovery.test.ts`: failure, response,
+expiry callback) and failed on the integrated baseline. After the fix the same
+cases pass, with additional coverage for revoke, clear, identity change, disabled,
+unmount, true monotonic expiry, wall rollback, retry, and waiting boundaries;
+original 3376 cases remain. Final focused run was 212/212 (199 in the original
+four files + 13 in the new file); offline-pause true-expiry reclaim has separate
+red→green evidence.
 
-限制：仅靠网页的 Date/performance 无法区分所有「系统睡眠」和「改系统时钟」情形。这里保留双时钟的保守隐藏规则，避免只用 performance.now 导致 macOS 睡眠后继续展示；只在校正后两钟均允许时恢复。1s 是观察周期，并非后台节流或睡眠期间的实时承诺。服务器明确撤销不会因校正恢复。本次是本机虚拟时钟与 mock 验证，未证明原生系统睡眠、Windows 或远端 Test/QA 验收。
+Limits: browser `Date` / `performance` alone cannot distinguish every “system
+sleep” from “system clock change”. Dual-clock conservative hide avoids keeping
+UI up after macOS sleep if only `performance.now` were used; restore only when
+both clocks allow after correction. 1s is the observe period, not a real-time
+promise under background throttling or sleep. Server withdrawal is never restored
+by correction. Validation here is local virtual-clock + mocks; native sleep/wake,
+Windows, and remote Test/QA acceptance are not claimed.
