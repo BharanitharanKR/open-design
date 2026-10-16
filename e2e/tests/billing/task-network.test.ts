@@ -79,6 +79,10 @@ test.skipIf(!fixturePath)('real task admission, stop, fenced retry and member re
   };
   const startedAt = new Date().toISOString();
   try {
+    const spoofed = await control<{status:number;providerCallsBefore:number;providerCallsAfter:number}>('spoof-auxiliary');
+    expect(spoofed.status).toBe(403);
+    expect(spoofed.providerCallsAfter).toBe(spoofed.providerCallsBefore);
+    records.push({name:'Free member cannot spoof auxiliary role for a routable non-Flash model',status:'pass',evidence:spoofed});
     await suite.with.toolsDev(async ({ webUrl }) => {
       await configure(webUrl);
       const request = await newRequest(webUrl);
