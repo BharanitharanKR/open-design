@@ -627,21 +627,31 @@ test('[P0] sending preview comments opens the refreshed follow-up artifact', asy
   await expect(floatingComposer).toHaveCount(0);
   await captureLane4CommentState(page, '06-panel-populated');
   await captureLane4CommentState(page, '06-author-self');
-  // The comment sidebar keeps main's appearance while preserving new comment behavior.
+  // Restore the reference skin while retaining the current comment behavior.
   const floatHost = page.locator('.comment-float-host').filter({ has: sidePanel });
-  await expect(floatHost).toHaveCSS('width', '360px');
+  await expect(floatHost).toHaveCSS('width', '320px');
   const header = sidePanel.locator('.comment-side-header');
-  await expect(header).toHaveCSS('padding', '10px 12px');
+  await expect(header).toHaveCSS('padding', '0px 16px');
   await expect(sidePanel.locator('.comment-side-title')).toHaveText('Comments');
   const list = sidePanel.locator('.comment-side-list');
-  await expect(list).toHaveCSS('padding', '16px 12px 12px');
-  await expect(list).toHaveCSS('gap', '8px');
+  await expect(list).toHaveCSS('padding', '8px 12px');
+  await expect(list).toHaveCSS('gap', '6px');
   const item = sidePanel.getByTestId('comment-side-item').first();
-  await expect(item).toHaveCSS('padding', '10px 12px 10px 8px');
-  await expect(item.locator('.comment-side-time')).toHaveCSS('font-size', '12px');
+  await expect(item).toHaveCSS('padding', '6px 10px 6px 8px');
+  await expect(item.locator('.comment-side-time')).toHaveCSS('font-size', '10.5px');
   await expect(item.locator('.comment-side-avatar')).toHaveCSS('width', '20px');
   await expect(item.locator('.comment-side-avatar')).toHaveCSS('height', '20px');
-  await expect(item.locator('.comment-side-avatar')).toHaveCSS('font-weight', '600');
+  await expect(item.locator('.comment-side-avatar')).toHaveCSS('font-weight', '500');
+  const avatarSwatch = await item.locator('.comment-side-avatar').evaluate(element => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, foreground: style.color };
+  });
+  const savedPin = page.locator('.comment-saved-pin');
+  await expect(savedPin).toHaveCount(1);
+  await expect(savedPin).toHaveCSS('width', '28px');
+  await expect(savedPin).toHaveCSS('height', '28px');
+  await expect(savedPin).toHaveCSS('background-color', avatarSwatch.background);
+  await expect(savedPin).toHaveCSS('color', avatarSwatch.foreground);
   await expect
     .poll(async () => {
       const selectAll = sidePanel.getByRole('button', { name: /select all/i }).first();
@@ -652,7 +662,7 @@ test('[P0] sending preview comments opens the refreshed follow-up artifact', asy
     .toBe(true);
   await expect(page.getByTestId('comment-side-send-claude')).toBeVisible();
   const selectbar = sidePanel.getByTestId('comment-side-selectbar');
-  await expect(selectbar).toHaveCSS('padding', '8px 12px');
+  await expect(selectbar).toHaveCSS('padding', '4px 14px 8px');
   await expect(item.locator('.comment-side-check')).toHaveAttribute('aria-pressed', 'true');
   const sendComments = sidePanel.getByTestId('comment-side-send-claude');
   await expect(sendComments).toBeEnabled();

@@ -11807,6 +11807,7 @@ describe('FileViewer tweaks toolbar', () => {
   it('keeps saved comment pins visible while adding another comment', async () => {
     const olderComment: PreviewComment = {
       id: 'comment-older',
+      authorKey: 'a'.repeat(64),
       projectId: 'project-1',
       conversationId: 'conversation-1',
       filePath: 'preview.html',
@@ -11824,6 +11825,7 @@ describe('FileViewer tweaks toolbar', () => {
     const newerComment: PreviewComment = {
       ...olderComment,
       id: 'comment-newer',
+      authorKey: 'b'.repeat(64),
       elementId: 'pin-newer',
       selector: '[data-od-pin="pin-newer"]',
       label: 'pin-newer',
@@ -11846,8 +11848,12 @@ describe('FileViewer tweaks toolbar', () => {
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
     expect(screen.getByTestId('comment-side-panel')).toBeTruthy();
-    expect(screen.getByTestId('comment-saved-marker-pin-older').textContent).toBe('1');
-    expect(screen.getByTestId('comment-saved-marker-pin-newer').textContent).toBe('2');
+    expect(screen.getByTestId('comment-saved-marker-pin-older').getAttribute('data-pin-number')).toBe('1');
+    expect(screen.getByTestId('comment-saved-marker-pin-newer').getAttribute('data-pin-number')).toBe('2');
+    const olderColor = commentAuthorAvatarColor(olderComment.authorKey!);
+    const newerColor = commentAuthorAvatarColor(newerComment.authorKey!);
+    expect(screen.getByTestId('comment-saved-marker-pin-older').querySelector('button')).toHaveStyle({ background: olderColor.bg, color: olderColor.fg });
+    expect(screen.getByTestId('comment-saved-marker-pin-newer').querySelector('button')).toHaveStyle({ background: newerColor.bg, color: newerColor.fg });
 
     clickAgentTool('board-mode-toggle');
 
@@ -11872,7 +11878,7 @@ describe('FileViewer tweaks toolbar', () => {
       },
     }));
 
-    expect((await screen.findByTestId('comment-active-pin')).textContent).toBe('3');
+    expect((await screen.findByTestId('comment-active-pin')).getAttribute('data-pin-number')).toBe('3');
     expect(screen.getByTestId('comment-saved-marker-pin-newer')).toBeTruthy();
     expect(screen.getByTestId('comment-saved-marker-pin-older')).toBeTruthy();
 
@@ -11882,7 +11888,8 @@ describe('FileViewer tweaks toolbar', () => {
       expect(activeItem?.className).toContain('active');
       expect(activeItem?.getAttribute('aria-current')).toBe('true');
     });
-    expect(screen.getByTestId('comment-active-pin').textContent).toBe('2');
+    expect(screen.getByTestId('comment-active-pin').getAttribute('data-pin-number')).toBe('2');
+    expect(screen.getByTestId('comment-active-pin')).toHaveStyle({ background: newerColor.bg, color: newerColor.fg });
     expect(document.querySelector('[data-comment-id="comment-older"]')?.className).not.toContain('active');
   });
 
@@ -11933,7 +11940,7 @@ describe('FileViewer tweaks toolbar', () => {
     }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('comment-saved-marker-hero').textContent).toBe('1');
+      expect(screen.getByTestId('comment-saved-marker-hero').getAttribute('data-pin-number')).toBe('1');
     });
 
     window.dispatchEvent(new MessageEvent('message', {
@@ -11950,13 +11957,13 @@ describe('FileViewer tweaks toolbar', () => {
       },
     }));
 
-    expect((await screen.findByTestId('comment-active-pin')).textContent).toBe('2');
+    expect((await screen.findByTestId('comment-active-pin')).getAttribute('data-pin-number')).toBe('2');
 
     fireEvent.click(screen.getByTestId('comment-saved-marker-hero'));
     await waitFor(() => {
       expect(document.querySelector('[data-comment-id="comment-saved"]')?.className).toContain('active');
     });
-    expect(screen.getByTestId('comment-active-pin').textContent).toBe('1');
+    expect(screen.getByTestId('comment-active-pin').getAttribute('data-pin-number')).toBe('1');
   });
 
   it('does not reuse a surviving pin number for a new comment after a deletion', async () => {
@@ -12011,7 +12018,7 @@ describe('FileViewer tweaks toolbar', () => {
     }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('comment-saved-marker-hero').textContent).toBe('2');
+      expect(screen.getByTestId('comment-saved-marker-hero').getAttribute('data-pin-number')).toBe('2');
     });
 
     window.dispatchEvent(new MessageEvent('message', {
@@ -12028,9 +12035,9 @@ describe('FileViewer tweaks toolbar', () => {
       },
     }));
 
-    expect((await screen.findByTestId('comment-active-pin')).textContent).toBe('3');
+    expect((await screen.findByTestId('comment-active-pin')).getAttribute('data-pin-number')).toBe('3');
     // The surviving marker keeps its permanent number.
-    expect(screen.getByTestId('comment-saved-marker-hero').textContent).toBe('2');
+    expect(screen.getByTestId('comment-saved-marker-hero').getAttribute('data-pin-number')).toBe('2');
   });
 
   it('does not reuse a retired pin number held by a non-open comment', async () => {
@@ -12083,7 +12090,7 @@ describe('FileViewer tweaks toolbar', () => {
       },
     }));
 
-    expect((await screen.findByTestId('comment-active-pin')).textContent).toBe('3');
+    expect((await screen.findByTestId('comment-active-pin')).getAttribute('data-pin-number')).toBe('3');
     // Resolved comments render no saved marker — their number is simply retired.
     expect(screen.queryByTestId('comment-saved-marker-hero')).toBeNull();
   });
@@ -12187,10 +12194,10 @@ describe('FileViewer tweaks toolbar', () => {
     }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('comment-saved-marker-shared-title').textContent).toBe('2');
+      expect(screen.getByTestId('comment-saved-marker-shared-title').getAttribute('data-pin-number')).toBe('2');
     });
     // Null slideIndex retains its slide-agnostic legacy behavior.
-    expect(screen.getByTestId('comment-saved-marker-legacy-title').textContent).toBe('3');
+    expect(screen.getByTestId('comment-saved-marker-legacy-title').getAttribute('data-pin-number')).toBe('3');
 
     const rows = screen.getAllByTestId('comment-side-item');
     expect(rows).toHaveLength(3);
@@ -12207,7 +12214,7 @@ describe('FileViewer tweaks toolbar', () => {
     // Cross-slide sidebar selection edits the comment, never the deck state.
     expect(postMessage).not.toHaveBeenCalledWith({ type: 'od:slide', action: 'go', index: 0 }, '*');
     expect(rows.find((row) => row.dataset.commentId === 'comment-slide-one')!.textContent).toContain('First slide note');
-    expect(screen.getByTestId('comment-saved-marker-shared-title').textContent).toBe('2');
+    expect(screen.getByTestId('comment-saved-marker-shared-title').getAttribute('data-pin-number')).toBe('2');
   });
 
   it('orders side comments by creation time (newest first) and displays creation age', () => {
@@ -12766,8 +12773,8 @@ describe('FileViewer tweaks toolbar', () => {
 
     fireEvent.click(screen.getByTestId('comment-panel-toggle'));
 
-    expect(screen.getByTestId('comment-saved-marker-pin-older').textContent).toBe('1');
-    expect(screen.getByTestId('comment-saved-marker-pin-newer').textContent).toBe('2');
+    expect(screen.getByTestId('comment-saved-marker-pin-older').getAttribute('data-pin-number')).toBe('1');
+    expect(screen.getByTestId('comment-saved-marker-pin-newer').getAttribute('data-pin-number')).toBe('2');
 
     const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
     window.dispatchEvent(new MessageEvent('message', {
@@ -12789,9 +12796,9 @@ describe('FileViewer tweaks toolbar', () => {
     fireEvent.click(screen.getByTestId('comment-popover-save'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('comment-saved-marker-pin-older').textContent).toBe('1');
-      expect(screen.getByTestId('comment-saved-marker-pin-newer').textContent).toBe('2');
-      expect(screen.getByTestId('comment-saved-marker-hero').textContent).toBe('3');
+      expect(screen.getByTestId('comment-saved-marker-pin-older').getAttribute('data-pin-number')).toBe('1');
+      expect(screen.getByTestId('comment-saved-marker-pin-newer').getAttribute('data-pin-number')).toBe('2');
+      expect(screen.getByTestId('comment-saved-marker-hero').getAttribute('data-pin-number')).toBe('3');
     });
   });
 
@@ -13689,6 +13696,45 @@ describe('FileViewer tweaks toolbar', () => {
     expect(within(item).getByText(/comment.authorRole.owner/)).toBeTruthy();
   });
 
+  it.each(['personal', 'team'] as const)('matches saved, active and draft initials to the current user in a %s workspace with an empty roster', async workspaceType => {
+    const context = {
+      ...(workspaceType === 'personal' ? personalWorkspaceContext() : teamWorkspaceContext()),
+      workspaceMemberId: 'wm-self', displayName: '琼羽',
+    };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes('/api/workspace/context')) return Response.json({ context });
+      if (String(input).includes('/api/workspace/members')) return Response.json({ members: [] });
+      return Response.json({});
+    }));
+    const comment: PreviewComment = {
+      id: 'mine', projectId: 'project-1', conversationId: 'conversation-1', filePath: 'preview.html',
+      elementId: 'hero-copy', selector: '[data-od-id="hero-copy"]', label: 'Hero', text: 'Hero',
+      htmlHint: '<p data-od-id="hero-copy">Hero</p>', position: { x: 16, y: 24, width: 320, height: 48 },
+      note: 'My comment', status: 'open', authorMemberId: 'wm-self', createdAt: 10, updatedAt: 10,
+    };
+    renderWithProjectWorkspace(<FileViewer projectId="project-1" projectKind="prototype"
+      file={htmlPreviewFile()} liveHtml='<html><body><p data-od-id="hero-copy">Hero</p></body></html>'
+      previewComments={[comment]} />, context);
+    fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    const row = await screen.findByTestId('comment-side-item');
+    await waitFor(() => expect(row.querySelector('.comment-side-avatar')).toHaveTextContent('琼'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    act(() => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: {
+      type: 'od:comment-targets', targets: [{ elementId: comment.elementId, selector: comment.selector,
+        label: comment.label, text: comment.text, htmlHint: comment.htmlHint, position: comment.position }],
+    } })));
+    const pin = await screen.findByTestId('comment-saved-marker-hero-copy');
+    expect(pin.querySelector('.comment-saved-pin')).toHaveTextContent('琼');
+    fireEvent.click(pin);
+    expect(await screen.findByTestId('comment-active-pin')).toHaveTextContent('琼');
+    act(() => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: {
+      type: 'od:comment-target', elementId: 'new-target', selector: 'h2', label: 'New target', text: '', htmlHint: '',
+      position: { x: 16, y: 80, width: 100, height: 30 },
+    } })));
+    expect(await screen.findByTestId('comment-active-pin')).toHaveTextContent('琼');
+    expect(screen.getByTestId('comment-active-pin')).toHaveAttribute('data-pin-number', '2');
+  });
+
   it('renders an unresolved member from its trusted display-name snapshot', async () => {
     vi.stubGlobal(
       'fetch',
@@ -13990,19 +14036,19 @@ describe('FileViewer tweaks toolbar', () => {
     const shellRule = (selector: string) => rule(shellCss, selector);
 
     expect(coreRule('.comment-side-panel')).toContain('width: 320px;');
-    expect(coreRule('.comment-side-header')).toContain('padding: 10px 12px;');
-    expect(coreRule('.comment-side-list')).toContain('padding: 12px;');
-    expect(coreRule('.comment-side-list')).toContain('gap: 8px;');
-    expect(coreRule('.comment-side-item')).toContain('padding: 10px 12px 10px 8px;');
-    expect(coreRule('.comment-side-item')).toContain('border-radius: var(--radius);');
-    expect(coreRule('.comment-side-time')).toContain('font-size: 12px;');
-    expect(coreRule('.comment-side-check')).toContain('border: 1.5px solid var(--border);');
-    expect(coreRule('.comment-side-selectbar .primary')).toContain('background: var(--comment-accent);');
-    expect(shellRule('.comment-float-host')).toContain('width: min(360px, calc(100vw - 32px));');
-    expect(shellRule('.comment-float-host')).toContain('border: 1px solid var(--border);');
-    expect(shellRule('.comment-float-host')).toContain('box-shadow: var(--shadow-lg);');
-    expect(shellCss).toContain('padding-right: max(0px, min(388px, calc(100% - 160px)));');
-    expect(shellRule('.comment-float-host .comment-side-header')).toContain('min-height: 40px;');
+    expect(coreRule('.comment-side-header')).toContain('padding: 0 16px;');
+    expect(coreRule('.comment-side-list')).toContain('padding: 8px 12px;');
+    expect(coreRule('.comment-side-list')).toContain('gap: 6px;');
+    expect(coreRule('.comment-side-item')).toContain('padding: 6px 10px 6px 8px;');
+    expect(coreRule('.comment-side-item')).toContain('border-radius: 8px;');
+    expect(coreRule('.comment-side-time')).toContain('font-size: 10.5px;');
+    expect(coreRule('.comment-side-check')).toContain('border: 1px solid #CFCFCF;');
+    expect(coreRule('.comment-side-selectbar .primary')).toContain('background: #202020;');
+    expect(shellRule('.comment-float-host')).toContain('width: min(320px, calc(100vw - 32px));');
+    expect(shellRule('.comment-float-host')).toContain('border: 1px solid #E6E6E6;');
+    expect(shellRule('.comment-float-host')).toContain('box-shadow: none;');
+    expect(shellCss).toContain('padding-right: max(0px, min(348px, calc(100% - 160px)));');
+    expect(shellRule('.comment-float-host .comment-side-header')).toContain('min-height: 56px;');
   });
 
   it('folds only overflowing list bodies and keeps each disclosure independent of row reply', () => {
@@ -15585,7 +15631,7 @@ describe('LiveArtifactRefreshHistoryPanel', () => {
 
   it('keeps D1–D4 marker and deck-page presentation on the rendered selectors', () => {
     const css = readFileSync(join(process.cwd(), 'src/styles/viewer/core.css'), 'utf8');
-    expect(css).toMatch(/\.comment-saved-pin,\s*\.comment-active-pin[\s\S]*?width: 42px;[\s\S]*?height: 42px;[\s\S]*?border: 3px solid #fff;[\s\S]*?background: #d96a46;[\s\S]*?font-size: 18px;/);
+    expect(css).toMatch(/\.comment-saved-pin,\s*\.comment-active-pin[\s\S]*?width: 28px;[\s\S]*?height: 28px;[\s\S]*?border: 0;[\s\S]*?background: #282828;[\s\S]*?font-size: 12px;/);
     expect(css).not.toContain('.comment-saved-marker--lost .comment-saved-pin');
     expect(css).not.toContain('.comment-side-slide {');
   });

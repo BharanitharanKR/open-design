@@ -271,7 +271,7 @@ test('capture isolated OD share entry, progress and failure states',async({page}
   const clientPins=page.locator('.comment-saved-pin');
   await expect(clientPins).toHaveCount(2);
   const pinColors=await clientPins.evaluateAll(pins=>pins.map(node=>getComputedStyle(node).backgroundColor));
-  expect(pinColors).toEqual(['rgb(217, 106, 70)','rgb(217, 106, 70)']);
+  expect(pinColors).toEqual(avatarColors);
   await save(page,'O5-OD','O5-OD',{avatarColors,pinColors,authorKey:'a'.repeat(64)});
   auditDuplicateAuthor=false;
   auditPalette=true;

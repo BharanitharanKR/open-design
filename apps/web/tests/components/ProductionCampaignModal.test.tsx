@@ -1869,23 +1869,39 @@ describe("ProductionCampaignModal device impressions", () => {
 		"cancelAnimationFrame",
 	] as const;
 	let verification: MockInstance<typeof touchpointComponent.verifyWebTouchpoint>;
-	/** Wait for real cryptographic verification before advancing the fake frame.
-	 * Fixed event-loop turns cannot establish completion under CI worker load. */
-	const advanceToRecordedImpression = async (subject = "user-a", activity = "campaign-1") => {
-		// Settle the mocked decision response and commit the current mount effect.
-		await act(async () => {});
+	/**
+	 * Verification and mount must settle on their real completion promises,
+	 * without spending authorization time while native crypto is pending.
+	 * Flush the decision at the current instant, wait for the actual mount,
+	 * then advance the single virtual frame that records the visible impression.
+	 */
+	const advanceToRecordedImpression = async (
+		subject = "user-a",
+		activity = "campaign-1",
+	) => {
+		if (localStorage.getItem(marker(subject, activity)) === "1") return;
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
 		const result = verification.mock.results.at(-1);
 		if (!result || result.type !== "return")
-			throw new Error("campaign verification did not start for the current mount");
-		await act(async () => { await result.value; });
-		await act(async () => { vi.advanceTimersToNextFrame(); });
-		expect(
-			localStorage.getItem(marker(subject, activity)),
-			"verified campaign did not record its visible-frame impression",
-		).toBe("1");
+			throw new Error("impression readiness requires a started content verification");
+		await act(async () => {
+			await result.value;
+			const mount = vi
+				.mocked(OpenDesignTouchpointElement.prototype.mount)
+				.mock.results.at(-1);
+			if (!mount || mount.type !== "return")
+				throw new Error("verified content did not start a mount");
+			await mount.value;
+		});
+		await act(async () => {
+			await vi.advanceTimersToNextFrame();
+		});
+		expect(localStorage.getItem(marker(subject, activity))).toBe("1");
 	};
 	beforeEach(() => {
-		// Observe the real verifier; do not replace integrity checks with a stub.
+		// Observe the real verifier; neither its crypto nor integrity checks are mocked.
 		verification = vi.spyOn(touchpointComponent, "verifyWebTouchpoint");
 		(globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
 			client: { osLocale: "en-US", type: "desktop" },
@@ -2019,12 +2035,46 @@ describe("ProductionCampaignModal device impressions", () => {
 		expect(document.querySelector("opend-touchpoint")).toBe(host);
 	});
 
-	// The same tab switch, but with time actually passing. The case above toggles
-	// visibility on the real clock with nothing in between, so it cannot tell "the
-	// lease was left alone" from "nothing had time to lapse". Forty-five seconds
-	// of a sixty-second authorization puts a poll tick inside the hidden spell and
-	// still leaves the lease the server's to renew, which is the shape a user
-	// actually produces by reading a mail and coming back.
+	it("waits for real verification without spending the authorization clock", async () => {
+		vi.useFakeTimers({ toFake: [...IMPRESSION_TIMERS] });
+		const now = new Date("2026-01-01T00:00:00.000Z");
+		vi.setSystemTime(now);
+		const digest = crypto.subtle.digest.bind(crypto.subtle);
+		let releaseVerification!: () => void;
+		const verificationGate = new Promise<void>((resolve) => {
+			releaseVerification = resolve;
+		});
+		let verificationStarted!: () => void;
+		const started = new Promise<void>((resolve) => {
+			verificationStarted = resolve;
+		});
+		vi.spyOn(crypto.subtle, "digest").mockImplementation(async (...args) => {
+			verificationStarted();
+			await verificationGate;
+			return digest(...args);
+		});
+		render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
+		const impression = advanceToRecordedImpression();
+		// Observe failures after releasing the external boundary, not as an
+		// unhandled rejection while the test is still inspecting pending work.
+		void impression.catch(() => undefined);
+		try {
+			await started;
+			expect(Date.now()).toBe(now.getTime());
+			expect(OpenDesignTouchpointElement.prototype.mount).not.toHaveBeenCalled();
+			expect(localStorage.getItem(marker())).toBeNull();
+		} finally {
+			releaseVerification();
+			await impression;
+		}
+		expect(localStorage.getItem(marker())).toBe("1");
+		expect(screen.getByRole("dialog")).toBeTruthy();
+	});
+
+	// The same tab switch, but with time actually passing. The visibility-only
+	// case cannot distinguish "the lease was left alone" from "nothing lapsed".
+	// Forty-five seconds of a sixty-second authorization puts a poll tick inside
+	// the hidden spell and still leaves the lease the server's to renew.
 	it("keeps the same host through a background spell shorter than its authorization", async () => {
 		vi.useFakeTimers({ toFake: [...IMPRESSION_TIMERS] });
 		vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
