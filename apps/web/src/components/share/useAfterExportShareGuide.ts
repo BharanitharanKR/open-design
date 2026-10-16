@@ -6,8 +6,9 @@ export function useAfterExportShareGuide(input: {
   scopeKey: string;
   appUserId: string | null;
   hasEverShared: boolean | null;
-  /** Only an in-flight history read may defer a saved export; errors remain unknown. */
+  /** In-flight reads defer a saved export; a settled error permits only the suggestion. */
   historyLoading?: boolean;
+  historyError?: boolean;
   enabled: boolean;
 }) {
   const live = useRef(input);
@@ -29,7 +30,7 @@ export function useAfterExportShareGuide(input: {
   const dismiss = useCallback(() => { setNotice(null); setPendingEpoch(null); }, []);
   // Save dialogs restore window focus before their completion callback. The host
   // refreshes history on focus, so retain a completed save until that read settles,
-  // without treating a failed/unknown read as permission to show the guide.
+  // then offer on known-never-shared or an explicit read failure, not idle/unknown.
   useEffect(() => {
     if (pendingEpoch === null) return;
     if (pendingEpoch !== epoch.current || !input.enabled) {
@@ -41,9 +42,9 @@ export function useAfterExportShareGuide(input: {
     const never = createShareGuidePreference(() => window.localStorage, input.appUserId).read();
     if (canOfferAfterExportShareGuide({
       result: 'success', originScope: String(pendingEpoch), currentScope: String(epoch.current),
-      hasEverShared: input.hasEverShared, neverShow: never, canOpenShare: input.enabled,
+      hasEverShared: input.hasEverShared, historyError: input.historyError, neverShow: never, canOpenShare: input.enabled,
     })) setNotice({ epoch: epoch.current, id: ++sequence.current });
-  }, [pendingEpoch, input.scopeKey, input.appUserId, input.hasEverShared, input.historyLoading, input.enabled]);
+  }, [pendingEpoch, input.scopeKey, input.appUserId, input.hasEverShared, input.historyLoading, input.historyError, input.enabled]);
   // Retained card callbacks must never suppress a newly selected account/scope.
   // Unlike export epochs, this generation is unaffected by StrictMode effect replay.
   const currentPreferenceScope = preferenceScope.current;
@@ -70,13 +71,18 @@ export function useAfterExportShareGuide(input: {
         originScope: startEpoch,
         currentScope: String(epoch.current),
         hasEverShared: current.hasEverShared,
+        historyError: current.historyError,
         neverShow: never,
         canOpenShare: current.enabled,
       })) setNotice({ epoch: epoch.current, id: ++sequence.current });
     };
   }, []);
   return {
-    noticeId: notice?.epoch === epoch.current && input.enabled && input.hasEverShared === false ? notice.id : null,
+    noticeId: notice && canOfferAfterExportShareGuide({
+      result: 'success', originScope: String(notice.epoch), currentScope: String(epoch.current),
+      hasEverShared: input.hasEverShared, historyError: input.historyError,
+      neverShow: false, canOpenShare: input.enabled,
+    }) ? notice.id : null,
     beginExport,
     dismiss,
     neverShow,

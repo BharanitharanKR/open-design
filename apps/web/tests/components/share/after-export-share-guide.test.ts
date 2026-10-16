@@ -13,6 +13,17 @@ describe('after-export share guide eligibility', () => {
   it.each([true, null] as const)('does not guess never-shared from history %s', hasEverShared => {
     expect(canOfferAfterExportShareGuide({ ...eligible, hasEverShared })).toBe(false);
   });
+  it('offers after a failed read without overriding confirmed sharing or other fences', () => {
+    const failedRead = { ...eligible, hasEverShared: null, historyError: true };
+    expect(canOfferAfterExportShareGuide(failedRead)).toBe(true);
+    expect(canOfferAfterExportShareGuide({ ...failedRead, hasEverShared: true })).toBe(false);
+    expect(canOfferAfterExportShareGuide({ ...failedRead, neverShow: true })).toBe(false);
+    expect(canOfferAfterExportShareGuide({ ...failedRead, neverShow: null })).toBe(false);
+    expect(canOfferAfterExportShareGuide({ ...failedRead, canOpenShare: false })).toBe(false);
+    for (const result of ['cancelled', 'failed'] as const) {
+      expect(canOfferAfterExportShareGuide({ ...failedRead, result })).toBe(false);
+    }
+  });
   it.each(['other-account/project/file', 'account/other-project/file', 'account/project/other-file'])('fences stale completion for %s', currentScope => {
     expect(canOfferAfterExportShareGuide({ ...eligible, currentScope })).toBe(false);
   });

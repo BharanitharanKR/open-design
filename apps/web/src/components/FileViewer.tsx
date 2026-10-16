@@ -15587,6 +15587,7 @@ function HtmlViewer({
     // The URL only invalidates the read; it never establishes binding history.
     hasEverShared: projectShareHistory?.hasEverShared ?? null,
     historyLoading: projectShareHistoryState.status === 'loading',
+    historyError: projectShareHistoryState.status === 'error',
     enabled: workspaceActive && !viewerOnly && rawCanShare && !streaming,
   });
   const rawCanDownload = source !== null && (isShareableArtifact || isMarkdownArtifact);
