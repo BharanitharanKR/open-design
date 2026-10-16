@@ -160,6 +160,8 @@ export interface PreviewComment {
   note: string;
   attachments?: PreviewCommentAttachment[];
   status: PreviewCommentStatus;
+  /** Epoch milliseconds; 0 means an older sync payload supplied no known creation time.
+   * Display unknown rather than borrowing updatedAt or the receiving device's clock. */
   createdAt: number;
   updatedAt: number;
   /**

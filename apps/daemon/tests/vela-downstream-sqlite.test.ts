@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type WorkspaceCollabContext, type CommentFileState, type CollabCloudComment } from '@open-design/contracts';
-import { closeDatabase, insertProject, insertConversation, openDatabase, mergeSyncedPreviewComment, listPreviewComments, getProjectPreviewComment, updateProject } from '../src/db.js';
+import { closeDatabase, insertProject, insertConversation, openDatabase, mergeSyncedPreviewComment, listPreviewComments, getProjectPreviewComment, updatePreviewCommentStatus, updateProject } from '../src/db.js';
 import { createVelaCliCollabClient } from '../src/collab/vela-cli-collab-client.js';
 import { createCollabCloudService } from '../src/collab/collab-cloud-service.js';
 import { createSqlitePublicFilePublicationStore, migratePublicFilePublications } from '../src/collab/public-file-publication-store.js';
@@ -26,7 +26,7 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
   expect(captured.comments[3]).not.toHaveProperty('filePath');
   expect(captured.comments[3]).not.toHaveProperty('label');
   root = mkdtempSync(join(tmpdir(), 'od-real-vela-wire-'));
-  const db = openDatabase(root);
+  const db = openDatabase(root, { dataDir: root });
   const projectId = 'share-management-project';
   insertProject(db, { id: projectId, name: 'Capture', createdAt: 1, updatedAt: 1 });
   insertConversation(db, { id: 'local', projectId, title: 'Local', createdAt: 1, updatedAt: 1 });
@@ -38,14 +38,14 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
     permissions: buildWorkspacePermissions({ role: 'owner', lifecycleState: 'active' }),
   };
   const calls: string[][] = [];
+  let wireReply = wire;
   const received: unknown[] = [];
   const errors: unknown[] = [];
   const client = createVelaCliCollabClient({ run: async (args, workspaceId) => {
     expect(workspaceId).toBe(context.workspaceId);
-    calls.push(args); return wire;
+    calls.push(args); return wireReply;
   } });
-  const before = Date.now();
-  const service = createCollabCloudService({
+  const createService = () => createCollabCloudService({
     client, listProjectIds: () => [], resolveLocalConversationId: () => 'local',
     resolveProjectWorkspaceContext: async () => context,
     listPersonalCommentRelayFilePaths: () => new Set(['index.html']),
@@ -63,6 +63,7 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
     },
     onError: (error) => errors.push(error),
   });
+  let service = createService();
   try {
     expect(await service.pullProject(projectId, context)).toBe(true);
     expect(errors).toEqual([]);
@@ -72,7 +73,8 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
     expect(rows.find((row) => row.id === captured.comments[0].id)).toMatchObject({
       label: 'heading', authorKind: 'user', authorAppUserId: 'share-fixture-viewer-app', authorMemberId: undefined,
     });
-    expect(rows.find((row) => row.id === captured.comments[0].id)!.createdAt).toBeGreaterThanOrEqual(before);
+    // Legacy wire has no creation time: preserve the note without presenting receipt as creation.
+    expect(rows.find((row) => row.id === captured.comments[0].id)).toMatchObject({ createdAt: 0, updatedAt: 0, sortKey: 0 });
     expect(rows.find((row) => row.id === 'capture-member')).toMatchObject({
       authorMemberId: 'member-owner', authorAppUserId: undefined, createdAt: captured.comments[2].createdAt,
     });
@@ -84,6 +86,24 @@ it.each(['team', 'personal'] as const)('replays unmodified Vela cb44e7597d HTTP 
       ['--since-seq', '0', '--author-kinds', 'member,user'],
       ['--since-seq', '4', '--author-kinds', 'member,user'],
     ]);
+    // A daemon restart replays from zero. This separately constructed future wire
+    // supplies authoritative creation times; the original capture stays unchanged.
+    const visitorId = captured.comments[0].id;
+    const originalCreatedAt = Date.parse('2026-10-14T20:17:46.576+08:00');
+    updatePreviewCommentStatus(db, projectId, 'local', visitorId, 'resolved');
+    service.dispose();
+    wireReply = JSON.stringify({ ...captured, comments: captured.comments.map((comment: Record<string, unknown>) =>
+      comment.deleted ? comment : { ...comment,
+        createdAt: comment.createdAt ?? originalCreatedAt,
+        updatedAt: comment.updatedAt ?? comment.createdAt ?? originalCreatedAt,
+      }) });
+    service = createService();
+    expect(await service.pullProject(projectId, context)).toBe(true);
+    expect(calls.at(-1)?.slice(3)).toEqual(['--since-seq', '0', '--author-kinds', 'member,user']);
+    expect(getProjectPreviewComment(db, projectId, visitorId)).toMatchObject({
+      createdAt: originalCreatedAt, sortKey: originalCreatedAt, status: 'resolved',
+      note: captured.comments[0].note,
+    });
   } finally { service.dispose(); }
 });
 
