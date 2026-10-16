@@ -48,7 +48,7 @@ function stubCoverProbe(status = 200, statusText = 'OK') {
     if (projectId) return new Response(JSON.stringify({
       projectId, hasEverShared: false, bindingExists: false, publications: [],
     }), { headers: { 'Content-Type': 'application/json' } });
-    return { ok: status >= 200 && status < 300, status, statusText } as Response;
+    return new Response('', { status, statusText });
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;

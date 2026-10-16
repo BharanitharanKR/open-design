@@ -330,6 +330,7 @@ import {
   previewIframeKeepAliveKey,
   useIframeKeepAlivePool,
 } from './IframeKeepAlivePool';
+import { bindMotionPreviewActivity, unbindMotionPreviewActivity } from '../runtime/motion-preview-activity';
 
 import type {
   ChatCommentAttachment,
@@ -8707,6 +8708,12 @@ function HtmlViewer({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const setUnpooledUrlPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
+    const previous = urlPreviewIframeRef.current;
+    if (previous && previous !== frame) unbindMotionPreviewActivity(previous);
+    urlPreviewIframeRef.current = frame;
+    if (frame) bindMotionPreviewActivity(frame);
+  }, []);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
   const srcDocNavigationCommittedRef = useRef<{
     frame: HTMLIFrameElement;
@@ -10631,10 +10638,12 @@ function HtmlViewer({
     && !needsPowered;
   const setSrcDocPreviewIframe = useCallback((frame: HTMLIFrameElement | null) => {
     if (srcDocPreviewIframeRef.current !== frame) {
+      if (srcDocPreviewIframeRef.current) unbindMotionPreviewActivity(srcDocPreviewIframeRef.current);
       srcDocNavigationCommittedRef.current = null;
       srcDocContentReadyRef.current = null;
     }
     srcDocPreviewIframeRef.current = frame;
+    if (frame) bindMotionPreviewActivity(frame);
     // A ref callback is the only synchronous witness when React replaces or
     // reattaches the active document. Keeping the generic active ref aligned
     // here prevents edit/style messages from being sent to the previous
@@ -11229,6 +11238,7 @@ function HtmlViewer({
         sourceFingerprint: sourceFingerprint ?? '',
         generation,
         srcDoc: previewSource ? buildSrcdoc(previewSource, {
+          motionPreview: true,
           deck: effectiveDeck,
           baseHref: srcDocBaseHref,
           initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
@@ -12132,10 +12142,13 @@ function HtmlViewer({
   ).searchParams.get('odEditStandby') || 0);
   const manualEditStandbyNavigationPending =
     manualEditUrlStandbyRevision > lastRenderedStandbyRevision;
-  const urlFrameSrc = filesRefreshPending && !manualEditStandbyNavigationPending
+  const selectedUrlFrameSrc = filesRefreshPending && !manualEditStandbyNavigationPending
     ? lastRenderedUrlFrameSrcRef.current
     : activePoweredPreviewSrcOverride ?? computedUrlFrameSrc;
-  lastRenderedUrlFrameSrcRef.current = urlFrameSrc;
+  lastRenderedUrlFrameSrcRef.current = selectedUrlFrameSrc;
+  const urlFrameSrc = selectedUrlFrameSrc === 'about:blank'
+    ? selectedUrlFrameSrc
+    : appendResourceQuery(selectedUrlFrameSrc, 'odMotionPreview=1');
   const urlFrameSandbox = usePoweredPreview
     ? POWERED_PREVIEW_SANDBOX
     : 'allow-scripts allow-downloads';
@@ -18002,6 +18015,7 @@ function HtmlViewer({
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
                           data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-motion-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -18042,12 +18056,13 @@ function HtmlViewer({
                         />
                       ) : (
                         <iframe
-                          ref={urlPreviewIframeRef}
+                          ref={setUnpooledUrlPreviewIframe}
                           data-testid={workspaceActive
                             ? (useUrlLoadPreview ? 'artifact-preview-frame' : 'artifact-preview-frame-url-load')
                             : `artifact-preview-frame-retained-${file.name}`}
                           data-od-render-mode="url-load"
                           data-od-active={mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
+                          data-od-motion-active={workspaceActive && mode === 'preview' && useUrlLoadPreview ? 'true' : 'false'}
                           data-od-handoff-visible={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                           data-od-handoff-pending={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                           aria-hidden={workspaceActive && mode === 'preview' && useUrlLoadPreview ? undefined : true}
@@ -18098,6 +18113,7 @@ function HtmlViewer({
                           : `artifact-preview-frame-srcdoc-retained-${file.name}`}
                         data-od-render-mode="srcdoc"
                         data-od-active={mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
+                        data-od-motion-active={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? 'true' : 'false'}
                         data-od-handoff-visible={keepSrcDocPaintedDuringManualEditExit ? 'true' : undefined}
                         data-od-handoff-pending={keepUrlPaintedDuringManualEditEntry ? 'true' : undefined}
                         aria-hidden={workspaceActive && mode === 'preview' && !useUrlLoadPreview ? undefined : true}
