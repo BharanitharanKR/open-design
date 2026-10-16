@@ -108,5 +108,14 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
       return entry.starting;
     },
     finish,
+    reportTerminal(runId: string, attempt: number, report: () => void): void {
+      try {
+        report();
+      } finally {
+        // A failed terminal outbox write must not keep renewing a dead task.
+        // Preserve the reporting error for the existing diagnostics/retry path.
+        void finish(runId, attempt);
+      }
+    },
   };
 }

@@ -8052,8 +8052,9 @@ export async function startServer({
         if (promptBudget) run.promptBudgetDiagnostics = promptBudget;
       },
       onTerminal: (run, status, terminalAt) => {
-        finalizeAmrTerminal(run, status, terminalAt);
-        void amrTaskLeases.finish(run.id, run.manualResumeAttemptCount ?? 0);
+        amrTaskLeases.reportTerminal(run.id, run.manualResumeAttemptCount ?? 0, () => {
+          finalizeAmrTerminal(run, status, terminalAt);
+        });
       },
       beforeFinish: (run, status, _code, _signal, terminalAt) => {
         if (run.deliverableSyntaxValidation?.metrics) {

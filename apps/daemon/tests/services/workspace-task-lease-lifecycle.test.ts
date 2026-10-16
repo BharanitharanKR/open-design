@@ -26,6 +26,18 @@ describe('workspace root task lifecycle', () => {
     expect(update).toHaveBeenCalledTimes(3);
     expect(lost).not.toHaveBeenCalled();
   });
+  it('releases a finished task even when persisting its terminal report throws', async () => {
+    const update = vi.fn(async (action, input) => action === 'release' ? null : receipt(input));
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({ update });
+    await lifecycle.start({ runId: 'root', workspaceId: 'A', attempt: 0 }, { onLost: async () => {} });
+    const storageFailure = new Error('terminal outbox write failed');
+    expect(() => lifecycle.reportTerminal('root', 0, () => { throw storageFailure; })).toThrow(storageFailure);
+    // The report failure remains observable; it cannot keep a dead child alive
+    // in the concurrency pool. Advancing past TTL must not send any heartbeat.
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(update.mock.calls.map(([action]) => action)).toEqual(['admit', 'release']);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('stops a process on heartbeat rejection without permitting an offline renewal', async () => {
     const order:string[]=[];
     const update = vi.fn(async (action, input) => {
