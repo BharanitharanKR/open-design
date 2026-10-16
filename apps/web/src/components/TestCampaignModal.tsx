@@ -1625,7 +1625,6 @@ export function TestCampaignModal({
 						? [selectedContext.contextId, selectedContext.generation, selectedContext.contextToken]
 						: [selectedContext.updatedAt]),
 					selectedContext.testerMemberId ?? null,
-					presented,
 				]),
 				// Convert the remaining placement grants to the lifecycle's load-start baseline.
 				validForMs: Math.max(...authorized.map(remaining)) + testElapsed(started),

@@ -1336,50 +1336,6 @@ export function createTouchpointContentCache(runtimeDataDir: string): Touchpoint
   }
 
   /**
-   * Writes a record that holds a fresh server answer, and everything a fresh
-   * answer resets: the elapsed-time baseline (including after an uncertain
-   * restart or a corrected device clock) and the expiry timer.
-   */
-  function writeFresh(key: TouchpointContentKey, record: AssemblyRecord): void {
-    const file = assemblyFile(key);
-    writeFileAtomically(file, JSON.stringify(record));
-    marks.set(file, { wall: record.clock.fetchedAt, at: performance.now() });
-    armExpiryForFresh(file, record.schedule);
-  }
-
-  /**
-   * Persists what a trimmed renewal says about the delivery it renews.
-   *
-   * The bytes are unchanged by construction (the server trimmed against the
-   * very version `held` named), so only the envelope, schedule, identity and
-   * clock are replaced — with the same REPLACE, never-merge rule `remember`
-   * follows, so a renewal that ends the activity early takes effect offline
-   * too. Best-effort like every write here: failing to persist leaves the
-   * previous record, never a wrong one being served now.
-   */
-  function adoptRenewal(
-    key: TouchpointContentKey,
-    record: AssemblyRecord,
-    full: Record<string, unknown>,
-    trimmed: Record<string, unknown>,
-  ): void {
-    try {
-      const identity = touchpointCachedIdentityOf(full);
-      if (answerPredatesRevocation(key.scope, identity, trimmed.serverTime)) return;
-      const fetchedAt = nowEstimate();
-      writeFresh(key, {
-        ...record,
-        schedule: touchpointScheduleOf(trimmed),
-        identity,
-        clock: { fetchedAt, observedAt: fetchedAt },
-        envelope: envelopeOf(trimmed),
-      });
-    } catch {
-      /* A cache that cannot be written changes nothing the caller has to act on. */
-    }
-  }
-
-  /**
    * Splices this record's content back into a decision envelope.
    *
    * Shared by the trimmed-response path and the offline replay, so the object
