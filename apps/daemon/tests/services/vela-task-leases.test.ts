@@ -11,6 +11,14 @@ describe('Vela task lease command adapter', () => {
     expect(await updateVelaTaskLease('admit', input, {run, configuredEnv})).toEqual(receipt);
     expect(run).toHaveBeenCalledWith(['run','lease','admit','--run-id','root','--attempt','0','--json'],configuredEnv);
   });
+  it('passes the selected model only on admission, not mutable heartbeat identity', async () => {
+    const run = vi.fn(async (_args: string[]) => JSON.stringify(receipt));
+    await updateVelaTaskLease('admit', {...input,modelId:'deepseek-v4.1-flash'}, {run});
+    expect(run.mock.calls[0]?.[0]).toContain('--model');
+    expect(run.mock.calls[0]?.[0]?.at(-1)).toBe('deepseek-v4.1-flash');
+    await updateVelaTaskLease('heartbeat', {...input, modelId:'other', leaseToken:receipt.leaseToken}, {run});
+    expect(run.mock.calls[1]?.[0]).not.toContain('--model');
+  });
   it('pins heartbeat to the original space, attempt and token', async () => {
     const run = vi.fn(async (_args: string[]) => JSON.stringify(receipt));
     await updateVelaTaskLease('heartbeat', {...input, workspaceId:receipt.workspaceId,leaseToken:receipt.leaseToken},{run});

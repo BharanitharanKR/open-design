@@ -13,6 +13,7 @@ export interface VelaTaskLeaseInput {
   runId: string;
   attempt: number;
   leaseToken?: string;
+  modelId?: string;
 }
 export class VelaTaskLeaseError extends Error {
   constructor(readonly code: string) {
@@ -32,6 +33,7 @@ export async function updateVelaTaskLease(
   const args = ['run', 'lease', action, '--run-id', input.runId, '--attempt', String(input.attempt), '--json'];
   if (input.workspaceId) args.push('--workspace-id', input.workspaceId);
   if (input.leaseToken) args.push('--lease-token', input.leaseToken);
+  if (action === 'admit' && input.modelId) args.push('--model', input.modelId);
   const run = options.run ?? ((command, configuredEnv) => runVelaCommand(command, { ...(configuredEnv ? {configuredEnv} : {}), timeoutMs: 20_000 }));
   let raw: unknown;
   try {

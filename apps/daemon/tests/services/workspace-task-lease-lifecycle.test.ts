@@ -26,6 +26,54 @@ describe('workspace root task lifecycle', () => {
     expect(update).toHaveBeenCalledTimes(3);
     expect(lost).not.toHaveBeenCalled();
   });
+  it('retains the original workspace carrier independently of UI and rechecks roster events immediately', async () => {
+    let removed = false;
+    const releaseInterest = vi.fn();
+    const retainWorkspace = vi.fn(() => releaseInterest);
+    const update = vi.fn(async (action, input) => {
+      if(action === 'heartbeat' && removed) throw new VelaTaskLeaseError('workspace_task_forbidden');
+      return action === 'release' ? null : receipt(input);
+    });
+    const lost = vi.fn(async()=>{});
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({update,retainWorkspace});
+    await lifecycle.start({runId:'root',workspaceId:'A',attempt:0},{onLost:lost});
+    expect(retainWorkspace).toHaveBeenCalledWith('A');
+    // UI may now show B. An unrelated event must not rebind or stop A.
+    await lifecycle.recheckWorkspace('B');
+    expect(update).toHaveBeenCalledTimes(1);
+    await lifecycle.recheckWorkspace('A');
+    expect(lost).not.toHaveBeenCalled();
+    expect(releaseInterest).not.toHaveBeenCalled();
+    removed = true;
+    await lifecycle.recheckWorkspace('A');
+    expect(lost).toHaveBeenCalledWith('workspace_task_forbidden');
+    expect(releaseInterest).toHaveBeenCalledTimes(1);
+    // No virtual time was advanced: the event bypasses the heartbeat delay.
+    await lifecycle.revokeWorkspace('A');
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(lost).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls.map(([action])=>action)).toEqual(['admit','heartbeat','heartbeat','release']);
+  });
+  it('releases the SSE interest on terminal completion, and late rejection cannot stop a replacement attempt', async()=>{
+    let rejectHeartbeat!:(error:Error)=>void;
+    const released = vi.fn();
+    const lost = vi.fn(async()=>{});
+    const update = vi.fn(async(action,input)=>{
+      if(action==='heartbeat' && input.attempt===0) return new Promise<VelaTaskLease>((_,reject)=>{rejectHeartbeat=reject;});
+      return action==='release'?null:receipt(input);
+    });
+    const lifecycle=createWorkspaceTaskLeaseLifecycle({update,retainWorkspace:()=>released});
+    await lifecycle.start({runId:'root',workspaceId:'A',attempt:0},{onLost:lost});
+    const checking=lifecycle.recheckWorkspace('A');
+    await lifecycle.finish('root',0);
+    await lifecycle.start({runId:'root',workspaceId:'A',attempt:1},{onLost:lost});
+    rejectHeartbeat(new VelaTaskLeaseError('workspace_task_forbidden'));
+    await checking;
+    expect(lost).not.toHaveBeenCalled();
+    expect(released).toHaveBeenCalledTimes(1);
+    await lifecycle.finish('root',1);
+    expect(released).toHaveBeenCalledTimes(2);
+  });
   it('releases a finished task even when persisting its terminal report throws', async () => {
     const update = vi.fn(async (action, input) => action === 'release' ? null : receipt(input));
     const lifecycle = createWorkspaceTaskLeaseLifecycle({ update });

@@ -11,6 +11,8 @@ type Entry = {
   receipt: VelaTaskLease | null;
   timer: ReturnType<typeof setTimeout> | null;
   starting: Promise<VelaTaskLease> | null;
+  checking: Promise<void> | null;
+  releaseInterest: (() => void) | null;
   onLost: (code: string) => Promise<void>;
 };
 
@@ -20,6 +22,7 @@ type Entry = {
 export function createWorkspaceTaskLeaseLifecycle(deps: {
   update?: typeof updateVelaTaskLease;
   onReleaseFailure?: (runId: string) => void;
+  retainWorkspace?: (workspaceId: string) => (() => void);
 } = {}) {
   const update = deps.update ?? updateVelaTaskLease;
   const entries = new Map<string, Entry>();
@@ -39,6 +42,8 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     const entry = entries.get(runId);
     if (!entry || entry.input.attempt !== attempt) return Promise.resolve();
     entries.delete(runId);
+    entry.releaseInterest?.();
+    entry.releaseInterest = null;
     if (entry.timer) clearTimeout(entry.timer);
     const completion = (async () => {
       try { await entry.starting; } catch { /* Canceled admission may still have returned a receipt. */ }
@@ -50,27 +55,45 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     });
     return completion;
   };
+  const lose = async (entry: Entry, code: string) => {
+    if (!current(entry)) return;
+    entries.delete(entry.input.runId);
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = null;
+    entry.releaseInterest?.();
+    entry.releaseInterest = null;
+    try { await entry.onLost(code); }
+    catch { deps.onReleaseFailure?.(entry.input.runId); }
+    finally {
+      // A revocation may arrive while admit is in flight. Release its eventual
+      // receipt without ever starting the child or a new heartbeat.
+      try { await entry.starting; } catch { /* Admission was canceled or denied. */ }
+      await release(entry);
+    }
+  };
+  const check = (entry: Entry): Promise<void> => {
+    if (!current(entry) || !entry.receipt) return Promise.resolve();
+    if (entry.checking) return entry.checking;
+    if (entry.timer) clearTimeout(entry.timer);
+    entry.timer = null;
+    const pending = (async () => {
+      try {
+        const updated = await update('heartbeat', {...entry.input, workspaceId:entry.receipt!.workspaceId, leaseToken:entry.receipt!.leaseToken}, {configuredEnv:entry.configuredEnv});
+        if (!updated) throw new VelaTaskLeaseError('workspace_task_lease_invalid_response');
+        if (current(entry)) entry.receipt = updated;
+      } catch (error) {
+        await lose(entry, error instanceof VelaTaskLeaseError ? error.code : 'workspace_task_lease_unavailable');
+      } finally {
+        entry.checking = null;
+        schedule(entry);
+      }
+    })();
+    entry.checking = pending;
+    return pending;
+  };
   const schedule = (entry: Entry) => {
     if (!current(entry) || !entry.receipt) return;
-    entry.timer = setTimeout(async () => {
-      entry.timer = null;
-      if (!current(entry) || !entry.receipt) return;
-      try {
-        const receipt = await update('heartbeat', { ...entry.input, workspaceId: entry.receipt.workspaceId, leaseToken: entry.receipt.leaseToken }, { configuredEnv: entry.configuredEnv });
-        if (!receipt) throw new VelaTaskLeaseError('workspace_task_lease_invalid_response');
-        if (!current(entry)) return;
-        entry.receipt = receipt;
-        schedule(entry);
-      } catch (error) {
-        if (!current(entry)) return;
-        entries.delete(entry.input.runId);
-        try {
-          await entry.onLost(error instanceof VelaTaskLeaseError ? error.code : 'workspace_task_lease_unavailable');
-        } catch {
-          deps.onReleaseFailure?.(entry.input.runId);
-        } finally { await release(entry); }
-      }
-    }, entry.receipt.heartbeatIntervalMs);
+    entry.timer = setTimeout(() => { void check(entry); }, entry.receipt.heartbeatIntervalMs);
     entry.timer.unref?.();
   };
   return {
@@ -89,7 +112,7 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
       }
       const entry: Entry = {
         input, configuredEnv: options.configuredEnv, onLost: options.onLost,
-        receipt: null, timer: null, starting: null,
+        receipt: null, timer: null, starting: null, checking: null, releaseInterest: null,
       };
       entries.set(input.runId, entry);
       entry.starting = (async () => {
@@ -98,6 +121,7 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
           if (!receipt) throw new VelaTaskLeaseError('workspace_task_lease_invalid_response');
           entry.receipt = receipt;
           if (!current(entry)) throw new VelaTaskLeaseError('workspace_task_canceled_before_start');
+          entry.releaseInterest = deps.retainWorkspace?.(receipt.workspaceId) ?? null;
           schedule(entry);
           return receipt;
         } catch (error) {
@@ -108,6 +132,12 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
       return entry.starting;
     },
     finish,
+    async recheckWorkspace(workspaceId: string): Promise<void> {
+      await Promise.all([...entries.values()].filter(e => (e.receipt?.workspaceId ?? e.input.workspaceId) === workspaceId).map(check));
+    },
+    async revokeWorkspace(workspaceId: string): Promise<void> {
+      await Promise.all([...entries.values()].filter(e => (e.receipt?.workspaceId ?? e.input.workspaceId) === workspaceId).map(e => lose(e, 'workspace_task_forbidden')));
+    },
     reportTerminal(runId: string, attempt: number, report: () => void): void {
       try {
         report();

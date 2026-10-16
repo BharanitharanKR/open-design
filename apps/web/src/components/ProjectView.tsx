@@ -9096,7 +9096,11 @@ export function ProjectView({
             }
             return acceptedDurableQueue(parkBlockedSend());
           }
-          if (gate.kind === 'unavailable') {
+          if (gate.kind === 'unavailable' || gate.kind === 'blocked') {
+            setError(t(gate.kind === 'blocked'
+              ? gate.reason === 'model_denied' ? 'chat.runError.title.modelUnavailable' : 'chat.runError.title.membershipConcurrencyLimit'
+              : 'home.amrGateUnavailable'));
+            if (meta?.composerOwnedDraft) return rejectBlockedSend();
             return acceptedDurableQueue(parkBlockedSend());
           }
           if (gate.kind === 'empty_not_blocked') {

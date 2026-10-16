@@ -3502,6 +3502,7 @@ export async function startServer({
   daemonHealth?.setStorageProbe(() => readSqlitePageStats({ db, file: db.name }));
   const amrTerminalReportOutbox = createAmrTerminalReportOutboxStore(db);
   const amrTaskLeases = createWorkspaceTaskLeaseLifecycle({
+    retainWorkspace: workspaceId => workspaceHubSubscriptions?.retainEventInterest(workspaceId) ?? (() => {}),
     onReleaseFailure: (runId) => console.warn(`[od] task lease cleanup pending TTL run=${runId}`),
   });
   const finalizeAmrTerminal = createAmrTerminalReportFinalizer(amrTerminalReportOutbox);
@@ -6320,6 +6321,7 @@ export async function startServer({
       console.info(
         `[od] hub workspace access revoked workspaceId=${exactWorkspaceId} reason=${reason ?? 'unknown'}`,
       );
+      void amrTaskLeases.revokeWorkspace(exactWorkspaceId);
       handleHubWorkspaceAccessRevoked(
         exactWorkspaceId,
         () => pollWorkspaceInvalidationForWorkspace(exactWorkspaceId),
@@ -6550,6 +6552,9 @@ export async function startServer({
           workspaceBillingRuntime.reconnect(subscribedWorkspaceId);
           break;
         case 'workspace-members-changed':
+          // The event invalidates membership; a server heartbeat verifies the
+          // exact original member before allowing its process to continue.
+          void amrTaskLeases.recheckWorkspace(eventWorkspaceId);
           workspaceDirectoryAuthority.invalidate('event_dirty');
           workspaceExactAuthorityCache.invalidate(eventWorkspaceId);
           workspaceExactContextCache.invalidate(
@@ -14509,6 +14514,7 @@ export async function startServer({
           const lease = await amrTaskLeases.start({
             runId: run.id,
             workspaceId: amrTraceEnv.OPEN_DESIGN_WORKSPACE_ID ?? '',
+            ...(typeof safeModel === 'string' && safeModel.trim() ? {modelId:safeModel.trim()} : {}),
             attempt: run.manualResumeAttemptCount ?? 0,
           }, {
             configuredEnv: configuredAgentEnv,
