@@ -47,7 +47,9 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     entry.releaseInterest = null;
     if (entry.timer) clearTimeout(entry.timer);
     const completion = (async () => {
-      try { await entry.starting; } catch { /* Canceled admission may still have returned a receipt. */ }
+      if (!entry.receipt) {
+        try { await entry.starting; } catch { /* Canceled admission may still have returned a receipt. */ }
+      }
       await release(entry);
     })();
     finishing.set(runId, completion);
@@ -68,7 +70,11 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
     finally {
       // A revocation may arrive while admit is in flight. Release its eventual
       // receipt without ever starting the child or a new heartbeat.
-      try { await entry.starting; } catch { /* Admission was canceled or denied. */ }
+      // Once a receipt exists, start may itself be awaiting this check. Do not
+      // await that same start promise before releasing its admitted token.
+      if (!entry.receipt) {
+        try { await entry.starting; } catch { /* Admission was canceled or denied. */ }
+      }
       await release(entry);
     }
   };
@@ -128,7 +134,9 @@ export function createWorkspaceTaskLeaseLifecycle(deps: {
           entry.receipt = receipt;
           if (!current(entry)) throw new VelaTaskLeaseError('workspace_task_canceled_before_start');
           entry.releaseInterest = deps.retainWorkspace?.(receipt.workspaceId) ?? null;
-          schedule(entry);
+          if (entry.recheckRequested) await check(entry);
+          else schedule(entry);
+          if (!current(entry)) throw new VelaTaskLeaseError('workspace_task_canceled_before_start');
           return receipt;
         } catch (error) {
           if (current(entry)) entries.delete(input.runId);

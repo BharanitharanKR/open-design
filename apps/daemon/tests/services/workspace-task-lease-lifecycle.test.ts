@@ -172,6 +172,45 @@ describe('workspace root task lifecycle', () => {
     expect(update.mock.calls.filter(([action])=>action==='release')).toHaveLength(1);
     await lifecycle.finish('root',1);
   });
+  it('checks a roster event received during admission before reporting the task ready', async () => {
+    let completeAdmit!: (value: VelaTaskLease) => void;
+    const lost = vi.fn(async () => {});
+    const input = { runId: 'root', workspaceId: 'A', attempt: 0 };
+    const update = vi.fn(async (action, currentInput) => {
+      if (action === 'admit') return new Promise<VelaTaskLease>(resolve => { completeAdmit = resolve; });
+      if (action === 'heartbeat') throw new VelaTaskLeaseError('workspace_task_forbidden');
+      return null;
+    });
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({ update });
+    const starting = lifecycle.start(input, { onLost: lost });
+    const outcome = starting.then(() => 'ready', error => error.message);
+    await lifecycle.recheckWorkspace('A');
+    completeAdmit(receipt(input));
+    expect(await outcome).toBe('workspace_task_canceled_before_start');
+    expect(update.mock.calls.map(([action]) => action)).toEqual(['admit', 'heartbeat', 'release']);
+    expect(lost).toHaveBeenCalledExactlyOnceWith('workspace_task_forbidden');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('keeps an admitted task whose post-event authority check succeeds, with one timer', async () => {
+    let completeAdmit!: (value: VelaTaskLease) => void;
+    const input = { runId: 'root', workspaceId: 'A', attempt: 0 };
+    const lost = vi.fn(async () => {});
+    const update = vi.fn(async (action, currentInput) => {
+      if (action === 'admit') return new Promise<VelaTaskLease>(resolve => { completeAdmit = resolve; });
+      return action === 'release' ? null : receipt(currentInput);
+    });
+    const lifecycle = createWorkspaceTaskLeaseLifecycle({ update });
+    const first = lifecycle.start(input, { onLost: lost });
+    const repeated = lifecycle.start(input, { onLost: lost });
+    await lifecycle.recheckWorkspace('A');
+    completeAdmit(receipt(input));
+    expect(await first).toEqual(await repeated);
+    expect(update.mock.calls.map(([action]) => action)).toEqual(['admit', 'heartbeat']);
+    expect(lost).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(1);
+    await lifecycle.finish('root', 0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('cancellation while admission is in flight releases the returned receipt and never starts heartbeat', async () => {
     let admit!:(value:VelaTaskLease)=>void;
     const update=vi.fn(async(action,input)=>action==='admit'?new Promise<VelaTaskLease>(resolve=>{admit=resolve;}):null);
