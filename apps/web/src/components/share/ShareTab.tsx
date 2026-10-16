@@ -387,11 +387,11 @@ export function ShareTab({
                         {/* Missing-reference exclusions remain non-blocking; failed checks
                             use the explicit recovery row above, never an upload error. */}
                         {publicationStatus !== 'stopped' || publishing ? (
-                        <ShareProgressButton variant="upload" value={publicationStatus === 'stopped' ? null : publishProgress} label={t('fileViewer.uploadingFile')}>
+                        <ShareProgressButton variant="upload" value={publicationStatus === 'stopped' ? null : publishProgress ?? (publishing ? undefined : null)} label={t('fileViewer.uploadingFile')}>
                         <ShareButton
                           variant="primary"
                           hoverLighten={false}
-                          transparentWhenBusy={publishing && publicationStatus !== 'stopped' && publishProgress !== null}
+                          transparentWhenBusy={publishing && publicationStatus !== 'stopped'}
                           role="menuitem"
                           disabled={streaming || viewerOnly || publishing || preflightFailed || planTooLarge || planBlocked || (initialUnpublished && !prepublishLinkAccess)}
                           aria-busy={publishing}

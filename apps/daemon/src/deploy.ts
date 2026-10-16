@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { javascriptImageReferences } from './artifacts/javascript-image-references.js';
 import { hash as blake3Hash } from 'blake3-wasm';
 import { listFiles, readProjectFile, resolveProjectFilePath, validateProjectPath } from './projects.js';
 import type { EntryIndexConflict, EntryIndexConflictDetails, EntryIndexConflictReferrer } from '@open-design/contracts';
@@ -42,11 +43,12 @@ type DeployFilePlan = {
 /** A reference found in a document, with where it sits for diagnostics. */
 type ReferenceSite = { ref: string; attribute: string; line?: number | undefined };
 /** A reference waiting in the walk queue: resolve `ref` against `base`; `from` is the containing file. */
-type PendingReference = ReferenceSite & { base: string; from: string };
+type PendingReference = ReferenceSite & { base: string; from: string; documentBase?: string };
 
 /** The entry page is always published at the site root under this name. */
 const PUBLISHED_ENTRY_PATH = 'index.html';
 const isHtmlPath = (p: string) => /\.html?$/i.test(p);
+const isJavaScriptPath = (p: string) => /\.(?:js|mjs|cjs)$/i.test(p);
 type DeployOptions = {
   metadata?: unknown;
   hookScriptUrl?: string;
@@ -255,9 +257,9 @@ function normalizeCloudflarePagesConfigHints(input: unknown, fallback: Cloudflar
 
 // Walk the entry HTML and everything it references, producing the full set
 // of files that would be uploaded for a deploy along with the lists of
-// missing and invalid references. Referenced CSS and HTML documents are
-// parsed too (see `walkReferencedFiles`). Does not throw on a partial result
-// so callers can distinguish between "ready to ship" and "ready except for
+// missing and invalid references. Referenced CSS/HTML are parsed too; public
+// shares additionally discover JavaScript image literals and module imports.
+// Does not throw on a partial result so callers can distinguish between "ready to ship" and "ready except for
 // these specific issues" without parsing an error string.
 export async function buildDeployFilePlan(projectsRoot: string, projectId: string, entryName: string, options: DeployOptions = {}): Promise<DeployFilePlan> {
   const entryPath = validateProjectPath(entryName);
@@ -285,7 +287,7 @@ export async function buildDeployFilePlan(projectsRoot: string, projectId: strin
     ? ((entry.artifactManifest as { supportingFiles?: string[] }).supportingFiles ?? [])
     : [];
   const seeds: PendingReference[] = [
-    ...htmlDocumentReferences(html, entryBase, entryPath),
+    ...htmlDocumentReferences(html, entryBase, entryPath, Boolean(options.assetUrlPolicy)),
     ...supportingFiles.map((ref) => ({
       ref, attribute: 'artifact manifest supportingFiles', base: entryBase, from: entryPath,
     })),
@@ -324,14 +326,17 @@ export async function buildDeployFilePlan(projectsRoot: string, projectId: strin
 /**
  * Breadth-first walk over every project file reachable from `seeds`.
  *
- * Each dequeued reference resolves against the directory of the file that
- * contains it. Readable files land in `files` under their logical project
- * path; `.css` and `.html`/`.htm` files are additionally parsed for their own
- * references, which join the queue (so iframes of iframes, and the
- * stylesheets and images they use, are all shipped).
+ * Each dequeued reference resolves against its recorded browser URL base.
+ * Readable files land in `files` under their logical project
+ * path; CSS/HTML references, JavaScript literal images and local module imports
+ * additionally join the queue. DOM image literals resolve against the owning
+ * HTML document; imports/import.meta URLs resolve against the script directory.
+ * Authored JavaScript bytes stay unchanged (this is not a runtime URL rebaser).
  *
- * Termination: a file is PARSED at most once per real path (`realpath`
- * relative to the project root, as `readProjectFile` reports it). The project
+ * Termination: HTML/CSS is PARSED at most once per real path (`realpath`
+ * relative to the project root, as `readProjectFile` reports it). JavaScript is
+ * parsed once per real path and owning document directory, of which there are
+ * finitely many because HTML is parsed only once per real path. The project
  * holds finitely many real files and each parse yields finitely many
  * references, so finitely many references are ever queued, and each is
  * dequeued exactly once. Logical-path dedupe (`visited`) alone is not enough:
@@ -369,6 +374,7 @@ async function walkReferencedFiles(
   const visited = new Set<string>([entryPath]);
   /** Real path -> directory its references were resolved against when parsed. */
   const parsedDirByRealPath = new Map<string, string>([[ctx.entryRealPath, path.posix.dirname(entryPath)]]);
+  const parsedScriptContexts = new Map<string, Set<string>>();
   const missing: string[] = [];
   const invalid: string[] = [];
   const conflictSites: PendingReference[] = [];
@@ -399,8 +405,11 @@ async function walkReferencedFiles(
         continue;
       }
     }
-    if (visited.has(safePath)) continue;
-    visited.add(safePath);
+    const documentBase = item.documentBase ?? item.base;
+    // One external script may run in multiple HTML documents with distinct DOM URL bases.
+    const visitKey = ctx.shareRewrite && isJavaScriptPath(safePath) ? `${safePath}\0${documentBase}` : safePath;
+    if (visited.has(visitKey)) continue;
+    visited.add(visitKey);
 
     let projectFile;
     try {
@@ -427,6 +436,17 @@ async function walkReferencedFiles(
     };
     files.set(safePath, file);
 
+    if (ctx.shareRewrite && isJavaScriptPath(safePath)) {
+      const contexts = parsedScriptContexts.get(projectFile.path) ?? new Set<string>();
+      if (contexts.has(documentBase)) continue;
+      contexts.add(documentBase);
+      parsedScriptContexts.set(projectFile.path, contexts);
+      pending.push(...javascriptImageReferences(projectFile.buffer.toString('utf8')).map(site => ({
+        ref: site.ref, attribute: 'JavaScript literal', line: site.line, from: safePath, documentBase,
+        base: site.relativeTo === 'script' ? path.posix.dirname(safePath) : documentBase,
+      })));
+      continue;
+    }
     const isHtml = isHtmlPath(safePath);
     if (!isHtml && !/\.css$/i.test(safePath)) continue;
     const text = projectFile.buffer.toString('utf8');
@@ -443,17 +463,39 @@ async function walkReferencedFiles(
     if (parsedDir !== undefined) continue;
     parsedDirByRealPath.set(projectFile.path, dir);
     pending.push(...(isHtml
-      ? htmlDocumentReferences(text, dir, safePath)
+      ? htmlDocumentReferences(text, dir, safePath, ctx.shareRewrite)
       : cssReferenceSites(text, '', 1).map((site) => ({ ...site, base: dir, from: safePath }))));
   }
 
   return { missing, invalid, conflictSites };
 }
 
-/** References an HTML document loads: attributes plus inline CSS. */
-function htmlDocumentReferences(html: string, base: string, from: string): PendingReference[] {
-  return [...htmlReferenceSites(html), ...inlineCssReferenceSites(html)]
-    .map((site) => ({ ...site, base, from }));
+/** References an HTML document loads, including literal runtime image data. */
+function htmlDocumentReferences(html: string, base: string, from: string, collectRuntimeImages: boolean): PendingReference[] {
+  return [...htmlReferenceSites(html), ...inlineCssReferenceSites(html),
+    ...(collectRuntimeImages ? inlineJavaScriptReferenceSites(html) : [])]
+    .map((site) => ({ ...site, base, from, documentBase: base }));
+}
+
+function inlineJavaScriptReferenceSites(html: string): ReferenceSite[] {
+  const sites: ReferenceSite[] = [];
+  const lineOf = lineLocator(html);
+  for (const tag of parseHtmlTags(html)) {
+    if (tag.name !== 'script') continue;
+    const attrs = parseHtmlAttributes(tag.attrs);
+    const type = (attrs.get('type') ?? '').trim().toLowerCase();
+    if (attrs.has('src') || (type && type !== 'module'
+      && !/^(?:text|application)\/(?:x-)?(?:java|ecma)script$/.test(type))) continue;
+    const start = html.indexOf('>', tag.offset) + 1;
+    const closing = /<\/script\s*>/gi;
+    closing.lastIndex = start;
+    const end = closing.exec(html)?.index ?? html.length;
+    sites.push(...javascriptImageReferences(html.slice(start, end)).map(site => ({
+      ref: site.ref, attribute: '<script> JavaScript literal',
+      line: site.line === undefined ? undefined : lineOf(start) + site.line - 1,
+    })));
+  }
+  return sites;
 }
 
 const ENTRY_INDEX_SUGGESTED_BASENAME = 'home';

@@ -199,6 +199,27 @@ describe('S1 first-publish visual seam', () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
+  it('shows animated progress immediately while the clicked share waits for preflight, without duplicate uploads', async () => {
+    let resolveFetch!: (value: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { resolveFetch = resolve; })));
+    const input = firstProps();
+    render(<ShareTab {...input} />);
+    const generate = screen.getByRole('menuitem', { name: 'fileViewer.generateAndCopyLink' });
+    fireEvent.click(generate);
+    const busy = screen.getByRole('menuitem');
+    expect(busy).toBe(generate);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    expect(busy.querySelector('.icon-spin')).not.toBeNull();
+    const progress = screen.getByRole('progressbar', { name: 'fileViewer.uploadingFile' });
+    expect(progress).not.toHaveAttribute('value');
+    fireEvent.click(busy);
+    expect(input.publishCurrentFilePublic).not.toHaveBeenCalled();
+    await act(async () => resolveFetch(Response.json({ fileCount: 1, totalBytes: 4, exceedsSizeLimit: false, exclusions: [] })));
+    expect(input.publishCurrentFilePublic).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
   it('keeps link-access selection usable while preflight is pending (OPEND-3536)', async () => {
     let resolveFetch!: (value: unknown) => void;
     vi.stubGlobal('fetch', vi.fn(() => new Promise(resolve => { resolveFetch = resolve; })));

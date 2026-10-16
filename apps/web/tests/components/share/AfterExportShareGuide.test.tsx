@@ -310,11 +310,66 @@ describe('export completion controller', () => {
     act(() => complete('success'));
     expect(result.current.noticeId).toBeNull();
   });
-  it.each(['failed-read', 'shared', 'old-scope', 'opt-out', 'dismissed'] as const)('discards pending completion after %s', reason => {
+  it('offers once when an in-flight read fails after saving, without replaying on recovery', () => {
+    const initial = { ...eligible, hasEverShared: null as boolean | null, historyLoading: true, historyError: false };
+    const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    const complete = result.current.beginExport();
+    act(() => complete('success'));
+    expect(result.current.noticeId).toBeNull();
+    rerender({ ...initial, historyLoading: false, historyError: true });
+    expect(result.current.noticeId).toBe(1);
+    act(() => result.current.dismiss());
+    rerender({ ...initial, hasEverShared: false, historyLoading: false });
+    act(() => complete('success'));
+    expect(result.current.noticeId).toBeNull();
+  });
+  it.each(['eligible', 'opt-out', 'unknown-preference', 'missing-account', 'disabled', 'shared', 'cancelled', 'failed'] as const)(
+    'failed history read preserves %s eligibility', mode => {
+      if (mode === 'opt-out') window.localStorage.setItem('od:after-export-share-guide:v1:account', '1');
+      if (mode === 'unknown-preference') window.localStorage.setItem('od:after-export-share-guide:v1:account', 'invalid');
+      const { result } = renderHook(() => useAfterExportShareGuide({
+        ...eligible, hasEverShared: mode === 'shared' ? true : null, historyError: true,
+        appUserId: mode === 'missing-account' ? null : eligible.appUserId, enabled: mode !== 'disabled',
+      }));
+      act(() => result.current.beginExport()(mode === 'cancelled' || mode === 'failed' ? mode : 'success'));
+      expect(result.current.noticeId).toBe(mode === 'eligible' ? 1 : null);
+      if (mode === 'opt-out') expect(window.localStorage.getItem('od:after-export-share-guide:v1:account')).toBe('1');
+    },
+  );
+  it.each(['scope', 'account', 'disabled', 'dismissed', 'opt-out', 'unmount'] as const)(
+    'failed pending history read does not revive completion after %s', mode => {
+      const initial = { ...eligible, appUserId: eligible.appUserId as string | null, hasEverShared: null as boolean | null, historyLoading: true, historyError: false };
+      const { result, rerender, unmount } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+      const complete = result.current.beginExport();
+      act(() => complete('success'));
+      if (mode === 'dismissed') act(() => result.current.dismiss());
+      if (mode === 'opt-out') act(() => { expect(result.current.neverShow()).toBe(true); });
+      if (mode === 'scope') rerender({ ...initial, scopeKey: 'other-file' });
+      if (mode === 'account') rerender({ ...initial, appUserId: 'other-account' });
+      if (mode === 'disabled') rerender({ ...initial, enabled: false });
+      if (mode === 'unmount') unmount();
+      else rerender({ ...initial, historyLoading: false, historyError: true });
+      act(() => complete('success'));
+      expect(result.current.noticeId).toBeNull();
+    },
+  );
+  it.each(['scope', 'account', 'unmount'] as const)('rejects a saved-export callback retained across %s even on history error', mode => {
+    const initial = { ...eligible, hasEverShared: null, historyError: true };
+    const { result, rerender, unmount } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
+    const complete = result.current.beginExport();
+    if (mode === 'unmount') unmount();
+    else {
+      rerender({ ...initial, scopeKey: mode === 'scope' ? 'other-file' : initial.scopeKey, appUserId: mode === 'account' ? 'other-account' : initial.appUserId });
+      rerender(initial);
+    }
+    act(() => complete('success'));
+    expect(result.current.noticeId).toBeNull();
+  });
+  it.each(['unknown-read', 'shared', 'old-scope', 'opt-out', 'dismissed'] as const)('discards pending completion after %s', reason => {
     const initial = { ...eligible, hasEverShared: null as boolean | null, historyLoading: true };
     const { result, rerender } = renderHook(input => useAfterExportShareGuide(input), { initialProps: initial });
     act(() => result.current.beginExport()('success'));
-    if (reason === 'failed-read') rerender({ ...initial, historyLoading: false });
+    if (reason === 'unknown-read') rerender({ ...initial, historyLoading: false });
     if (reason === 'shared') rerender({ ...initial, hasEverShared: true, historyLoading: false });
     if (reason === 'old-scope') rerender({ ...initial, scopeKey: 'other-file' });
     if (reason === 'opt-out') act(() => { expect(result.current.neverShow()).toBe(true); });

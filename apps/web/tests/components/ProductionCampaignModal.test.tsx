@@ -11,7 +11,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 
 const openExternalUrlMock = vi.hoisted(() => vi.fn(async () => true));
 type CampaignHostGlobal = typeof globalThis & {
@@ -1868,6 +1868,7 @@ describe("ProductionCampaignModal device impressions", () => {
 		"requestAnimationFrame",
 		"cancelAnimationFrame",
 	] as const;
+	let verification: MockInstance<typeof touchpointComponent.verifyWebTouchpoint>;
 	/**
 	 * Verification and mount must settle on their real completion promises,
 	 * without spending authorization time while native crypto is pending.
@@ -1882,13 +1883,11 @@ describe("ProductionCampaignModal device impressions", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		const verification = vi
-			.mocked(touchpointComponent.verifyWebTouchpoint)
-			.mock.results.at(-1);
-		if (!verification || verification.type !== "return")
+		const result = verification.mock.results.at(-1);
+		if (!result || result.type !== "return")
 			throw new Error("impression readiness requires a started content verification");
 		await act(async () => {
-			await verification.value;
+			await result.value;
 			const mount = vi
 				.mocked(OpenDesignTouchpointElement.prototype.mount)
 				.mock.results.at(-1);
@@ -1903,7 +1902,7 @@ describe("ProductionCampaignModal device impressions", () => {
 	};
 	beforeEach(() => {
 		// Observe the real verifier; neither its crypto nor integrity checks are mocked.
-		vi.spyOn(touchpointComponent, "verifyWebTouchpoint");
+		verification = vi.spyOn(touchpointComponent, "verifyWebTouchpoint");
 		(globalThis as CampaignHostGlobal).__openDesignCampaignTestHost = {
 			client: { osLocale: "en-US", type: "desktop" },
 		};
@@ -2266,12 +2265,11 @@ describe("ProductionCampaignModal device impressions", () => {
 			vi.stubGlobal("fetch", fetchMock);
 			render(<ProductionCampaignModal authenticated sessionSubject="user-a" />);
 			await waitFor(() => expect(calls).toBe(1));
+			// A requested response is not a mounted host. Observe its real visibility
+			// record before capturing identity or starting the recovery poll.
+			await waitFor(() => expect(localStorage.getItem(marker())).toBe("1"));
 			const host = document.querySelector("opend-touchpoint");
 			expect(host).not.toBeNull();
-			// The host is inserted before its asynchronous mount finishes. Wait for
-			// the visibility record so this test cannot race a focus refresh against
-			// creation of the open-presentation guard it is meant to exercise.
-			await waitFor(() => expect(localStorage.getItem(marker())).toBe("1"));
 			await act(async () => {
 				fireEvent(window, new Event("focus"));
 			});

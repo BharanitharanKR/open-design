@@ -1,9 +1,6 @@
 import { commentSelectorsMatch, commentUsesIdentity, ownerCommentNeedsLocation, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
 import { indexCommentTargets } from '../comments/target-index';
-import { useCommentPreparation } from '../comments/use-comment-preparation';
-import { useCommentPreparationConfirmation } from './CommentPreparationConfirmation';
-import { useSourcePreparationProof } from '../comments/use-source-preparation-proof';
-import commentPreparationStyles from './CommentPreparation.module.css';
+import { useShareSourceGuard } from './share/useShareSourceGuard';
 import { useExperienceError } from '../observability/use-experience-error';
 import { daemonErrorCodeProp, failureDetailProps } from '../analytics/failure-detail';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
@@ -4444,6 +4441,7 @@ function FileVersionManagerModal({
 // bucket is keyed on calendar day, not elapsed duration, so a same-day
 // comment never reads as "N 天前"; days-ago/weeks-ago buckets are dropped.
 function formatCommentTime(ts: number, now: number, t: TranslateFn): string {
+  if (ts <= 0) return '—';
   const diff = now - ts;
   if (diff < 60_000) return t('common.justNow');
   const mins = Math.floor(diff / 60_000);
@@ -4482,9 +4480,10 @@ function commentActivityAt(comment: PreviewComment): number {
   );
 }
 
-/** Comment age is creation age; edits, resolution and synchronization cannot reset it. */
+/** Unknown creation age must not borrow an edit or receipt timestamp. */
 function commentCreatedAt(comment: PreviewComment): number {
-  return Number.isFinite(comment.createdAt) ? comment.createdAt : commentActivityAt(comment);
+  return Number.isFinite(comment.createdAt) && comment.createdAt > 0 && comment.createdAt <= Number.MAX_SAFE_INTEGER
+    ? comment.createdAt : 0;
 }
 
 /**
@@ -5062,7 +5061,7 @@ export function CommentSidePanel({
                     {t('fileViewer.speakerNotesSlide', { current: comment.slideIndex + 1, total: deckSlideCount })}
                   </span>
                 ) : null}
-                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment)) ?? undefined}>
+                <span className="comment-side-time" title={formatAbsoluteDateTime(commentCreatedAt(comment) || undefined) ?? undefined}>
                   {formatCommentTime(commentCreatedAt(comment), commentClock, t)}
                 </span>
                 {sendable ? (
@@ -8182,21 +8181,13 @@ function HtmlViewer({
   }
 
   async function publishCurrentFilePublic(mode?: 'resume') {
-    if (!commentPreparation.validateLiveRevision()) return;
-    // Read-only source checking cannot gate restoration of an immutable share.
-    const preparationBusy = commentPreparation.busy && (mode !== 'resume' || !commentPreparation.revalidating);
-    if (streaming || viewerOnly || publishingPublicFile || preparationBusy) return;
-    // Never backfill an identity deliberately lost by a later edit/history restore.
-    // Resume restores the immutable publication and must not prepare current source.
-    const firstSupportedExposure = canPrepareCommentSource && mode !== 'resume' && (!fileShareStatus || fileShareStatus === 'none');
-    if (firstSupportedExposure && !hasVerifiedPreparation) {
-      await requestCommentPreparation();
-      return; // explicit second publish action, after the actual fresh frame is ready
-    }
-    // Share-plan can hold this callback across later unsaved input changes.
-    // Recheck its live revision even when preparation is already established.
-    if (canPrepareCommentSource && mode !== 'resume' && !commentPreparation.validatePublication(firstSupportedExposure)) {
-      beginPreparedDocumentWitness();
+    if (!shareSourceGuard.isCurrent()) return;
+    if (streaming || viewerOnly || publishingPublicFile) return;
+    // Sharing publishes authored bytes, independently of comment identity setup
+    // and its preview witness. Never prepare/mutate source as a side effect.
+    // Retained share-plan callbacks must still reject stale or unsettled edits.
+    if (guardShareSource && mode !== 'resume' && !shareSourceGuard.canPublish()) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
       return;
     }
     publicFileStateReadRef.current = null;
@@ -8308,11 +8299,11 @@ function HtmlViewer({
   }
 
   async function updateCurrentFilePublic() {
-    if (!commentPreparation.validateLiveRevision()) return;
+    if (!shareSourceGuard.isCurrent()) return;
     if (!canPublishPublic || streaming || viewerOnly || !publishedFileSlug || publishingPublicFile
       || updateInFlightRef.current || fileShareFreshness !== 'outdated' || fileShareStatus !== 'active') return;
-    if (canPrepareCommentSource && !commentPreparation.validatePublication(false)) {
-      beginPreparedDocumentWitness();
+    if (guardShareSource && !shareSourceGuard.canPublish()) {
+      setPublishFailureKey('fileViewer.publishFileFailed');
       return;
     }
     publicFileStateReadRef.current = null;
@@ -12653,77 +12644,31 @@ function HtmlViewer({
     && (resolveOwnerCommentAnchor(selectedLocationComment, liveCommentTargets, collab.publishedVersion ?? undefined).state === 'lost'
       || (missingCommentLocation?.commentId === selectedLocationComment.id && missingCommentLocation.previewKey === commentTargetsKey
         && missingCommentLocation.intent === commentLocationIntent)) ? selectedLocationComment.id : null;
-  const preparationComposerComment = currentActiveComposerComment();
-  // A strict-lost row has no composer. Its exact saved prefill is not new work,
-  // but any edit (including clearing that note) must still prevent publication.
+  const shareComposerComment = currentActiveComposerComment();
+  // A lost row's unchanged saved prefill is not unsaved work.
   const unchangedLostCommentPrefill = !activeCommentTarget && lostSelectedCommentId !== null
-    && preparationComposerComment?.id === lostSelectedCommentId
-    && commentDraft === preparationComposerComment.note;
-  const commentPreparationDraftUnsettled = !unchangedLostCommentPrefill && (
-    Boolean(commentDraft.trim()) || Boolean(preparationComposerComment && (activeCommentTarget || lostSelectedCommentId)
-      && commentDraft !== preparationComposerComment.note)
+    && shareComposerComment?.id === lostSelectedCommentId
+    && commentDraft === shareComposerComment.note;
+  const shareDraftUnsettled = !unchangedLostCommentPrefill && (
+    Boolean(commentDraft.trim()) || Boolean(shareComposerComment && (activeCommentTarget || lostSelectedCommentId)
+      && commentDraft !== shareComposerComment.note)
   );
-  // A routing-only large-file preview is not the authored document: it cannot
-  // witness a saved source version. Publication still preflights the real file.
-  const canPrepareCommentSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles)
+  const guardShareSource = workspaceActive && !viewerOnly && Boolean(workspaceContext?.permissions.canWriteSyncedFiles)
     && !needsPowered && !passiveLargeHtmlPreview && liveHtml === undefined;
-  const commentPreparationSettled = !streaming && !manualEditMode && !manualEditDraftDirty
+  const shareSourceSettled = !streaming && !manualEditMode && !manualEditDraftDirty
     && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
     && !manualEditPendingStyleRef.current && !inspectMode && !savingInspect && !drawOverlayOpen
-    && source !== null && !versionModalOpen && !filesRefreshPending && !commentPreparationDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
+    && source !== null && !versionModalOpen && !filesRefreshPending && !shareDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
     && !sendingBoardBatch && !_speakerNotesSaving && !publishingPublicFile;
-  const commentPreparationInputKey = useMemo(() => JSON.stringify([
+  const shareSourceInputKey = useMemo(() => JSON.stringify([
     source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes,
     boardImages.map(image => [image.name, image.size, image.lastModified]), manualEditDraft, speakerNotesDraft, workspaceActive,
   ]), [source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes, boardImages, manualEditDraft, speakerNotesDraft, workspaceActive]);
+  const shareSourceGuard = useShareSourceGuard({ projectId, fileName: file.name,
+    context: workspaceContext ?? null, inputKey: shareSourceInputKey, settled: shareSourceSettled });
   const commentIdentityFrameReady = commentTargetsReadyKey === commentTargetsKey
     && (useUrlLoadPreview ? urlSelectionBridgeReady
       : commentPreviewReady?.frame === iframeRef.current && commentPreviewReady.generation === srcDocTransportGeneration);
-  const sourcePreparationProof = useSourcePreparationProof({ enabled: canPrepareCommentSource,
-    projectId, fileName: file.name, context: workspaceContext ?? null, source, inputKey: commentPreparationInputKey });
-  const preparationConfirmation = useCommentPreparationConfirmation();
-  const commentPreparation = useCommentPreparation({
-    projectId, fileName: file.name, context: workspaceContext ?? null,
-    authorized: canPrepareCommentSource, settled: commentPreparationSettled,
-    inputKey: commentPreparationInputKey,
-    document: { source, key: commentTargetsKey, ready: commentIdentityFrameReady },
-    verifiedDocument: sourcePreparationProof.verifiedDocument,
-    readCurrentProof: sourcePreparationProof.revalidate,
-    confirm: preparationConfirmation.confirm,
-    apply: () => {
-      // Reload through the ordinary lifecycle, never from preview serialization.
-      // No comment submission/publication follows this source-version save.
-      reloadHtmlPreview();
-      setBoardMode(true);
-      setMode('preview');
-      void onFileSaved?.();
-    },
-  });
-  function requestCommentPreparation() {
-    if (!commentPreparation.saved && sourcePreparationProof.status !== 'ready') {
-      sourcePreparationProof.retry();
-      commentPreparation.reportBlocked(sourcePreparationProof.error ?? 'COMMENT_PREPARATION_PROOF_PENDING');
-      return Promise.resolve(false);
-    }
-    // A verified earlier source version prevents backfill after deliberate loss.
-    if (sourcePreparationProof.prior || commentPreparation.saved) return Promise.resolve(false);
-    return commentPreparation.prepare();
-  }
-  const hasVerifiedPreparation = Boolean(commentPreparation.saved) || sourcePreparationProof.prior;
-  function beginPreparedDocumentWitness() {
-    if (!commentPreparation.documentPending() || !commentPreparation.canStartDocumentWitness()) return;
-    // An explicit Comment/Publish action may enable the read-only bridge so
-    // that a reopened verified source can report targets. Creation stays off.
-    setBoardMode(true);
-    setMode('preview');
-  }
-  const commentsBlockedForPreparation = () => commentPreparation.documentPending()
-    || (canPrepareCommentSource && !hasVerifiedPreparation && !currentActiveComposerComment());
-  // Ordinary preview text decoding consumes a UTF-8 BOM; preparation uses exact
-  // authored bytes. This transport-only prefix does not change any target identity.
-  const previewMatchesPreparedSource = Boolean(commentPreparation.saved && source !== null
-    && source.replace(/^\uFEFF/, '') === commentPreparation.saved.source.replace(/^\uFEFF/, ''));
-  const preparedPreviewReady = previewMatchesPreparedSource && commentIdentityFrameReady && !commentPreparation.pendingDocument;
   const commentLocateRequestRef = useRef<{ requestId: string; commentId: string; previewKey: string; selector: string; targetId: string | null; scrolled: boolean; reportRevision: number } | null>(null);
   const commentLocateSequenceRef = useRef(0);
   const commentTargetReportRevisionRef = useRef(0);
@@ -15360,12 +15305,6 @@ function HtmlViewer({
   }
 
   function activateCommentCreateTool(returnFocusTarget?: HTMLElement | null) {
-    if (canPrepareCommentSource && !hasVerifiedPreparation) {
-      void requestCommentPreparation();
-      return; // select again after the saved document's real readiness witness
-    }
-    if (commentPreparation.busy) return;
-    if (commentPreparation.documentPending()) { beginPreparedDocumentWitness(); return; }
     if (returnFocusTarget) commentPanelReturnFocusRef.current = returnFocusTarget;
     fireArtifactToolbarClick('comment');
     void capturePreviewScrollPosition();
@@ -15500,7 +15439,7 @@ function HtmlViewer({
   }
 
   async function sendBoardBatch() {
-    if (!activeCommentTarget || !onSendBoardCommentAttachments || commentPreparation.busy || commentsBlockedForPreparation()) return;
+    if (!activeCommentTarget || !onSendBoardCommentAttachments) return;
     if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     const existingComment = currentActiveComposerComment();
     const sendingUnchangedSavedComment = Boolean(
@@ -15560,7 +15499,7 @@ function HtmlViewer({
   }
 
   async function savePersistentComment() {
-    if (!activeCommentTarget || !onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return;
+    if (!activeCommentTarget || !onSavePreviewComment) return;
     if (activeCommentTarget.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return;
     // Allow saving when there is text OR an attached image (image-only notes).
     if (!commentDraft.trim() && boardImages.length === 0 && currentActiveComposerAttachments().length === 0) return;
@@ -15589,7 +15528,7 @@ function HtmlViewer({
   }
 
   async function savePanelComment(note: string) {
-    if (!onSavePreviewComment || commentPreparation.busy || commentsBlockedForPreparation()) return false;
+    if (!onSavePreviewComment) return false;
     if (activeCommentTarget?.elementId.startsWith('cmt:') && !commentIdentityFrameReady) return false;
     const cleanNote = note.trim();
     if (!cleanNote) return false;
@@ -15655,6 +15594,7 @@ function HtmlViewer({
     // The URL only invalidates the read; it never establishes binding history.
     hasEverShared: projectShareHistory?.hasEverShared ?? null,
     historyLoading: projectShareHistoryState.status === 'loading',
+    historyError: projectShareHistoryState.status === 'error',
     enabled: workspaceActive && !viewerOnly && rawCanShare && !streaming,
   });
   const rawCanDownload = source !== null && (isShareableArtifact || isMarkdownArtifact);
@@ -17925,27 +17865,6 @@ function HtmlViewer({
               )}
             </div>
       </>)}
-      {preparationConfirmation.dialog}
-      {workspaceActive ? (
-        <div className={commentPreparationStyles.status} role="status" data-testid="comment-identity-preparation">
-          {!canPrepareCommentSource ? <span>{t('fileViewer.commentIdentityUnavailable')}</span> : null}
-          {canPrepareCommentSource && !hasVerifiedPreparation && (!fileShareStatus || fileShareStatus === 'none') ? (
-            <Button disabled={commentPreparation.busy || source === null || sourcePreparationProof.status === 'loading'} onClick={() => { void requestCommentPreparation(); }}>
-              {t('fileViewer.commentIdentityPrepare')}
-            </Button>
-          ) : null}
-          {canPrepareCommentSource && commentPreparation.pendingDocument ? (
-            <Button data-testid="comment-identity-revalidate" disabled={commentPreparation.busy || source === null}
-              onClick={() => { void commentPreparation.revalidateDocument().then(ok => { if (ok) beginPreparedDocumentWitness(); }); }}>
-              {t('fileViewer.retryLink')}
-            </Button>
-          ) : null}
-          {commentPreparation.busy ? <span>{t(commentPreparation.revalidating ? 'fileViewer.loading' : 'fileViewer.commentIdentitySaving')}</span> : null}
-          {commentPreparation.error ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({commentPreparation.error})</span> : null}
-          {sourcePreparationProof.error && !commentPreparation.saved ? <span role="alert">{t('fileViewer.commentIdentityFailed')} ({sourcePreparationProof.error})</span> : null}
-          {commentPreparation.saved && (commentPreparation.pendingDocument || previewMatchesPreparedSource) ? <span>{t(preparedPreviewReady ? 'fileViewer.commentIdentitySaved' : 'fileViewer.commentIdentityWaiting', { version: commentPreparation.saved.version.version })}</span> : null}
-        </div>
-      ) : null}
       <div className="viewer-body" ref={previewBodyRef}>
         {initialPreviewLoading ? (
           <FileViewerLoadingSkeleton />

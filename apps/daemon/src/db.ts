@@ -4449,6 +4449,43 @@ function syncedCommentLabel(incoming: unknown, stored: unknown, elementId: unkno
     ?? (element && !/^path-\d+(?:-\d+)*$/.test(element) ? element : 'Annotation');
 }
 
+function validSyncedCreationTime(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= Number.MAX_SAFE_INTEGER;
+}
+
+/** Preserve comments from legacy transports without inventing creation dates.
+ * Zero is the explicit unknown sentinel; updates may reuse a persisted date. */
+function syncedCommentCreationTime(incoming: unknown, stored: unknown): number {
+  if (validSyncedCreationTime(incoming)) return incoming;
+  if (validSyncedCreationTime(stored)) return stored;
+  return 0;
+}
+
+/** Immutable creation metadata can be recovered from an earlier, correlated
+ * cloud timestamp even when its content revision is stale. Never make a note
+ * younger, renumber pins, or override a user-dragged sidebar position. */
+function repairSyncedCommentCreationTime(
+  db: SqliteDb, projectId: string, comment: CollabCloudComment, existing: DbRow,
+): boolean {
+  if (!validSyncedCreationTime(comment.createdAt)
+    || (existing.createdAt !== 0 && (!validSyncedCreationTime(existing.createdAt) || comment.createdAt >= existing.createdAt))
+    || comment.filePath !== existing.filePath) return false;
+  const sameAuthor = comment.authorKind === 'user'
+    ? existing.authorKind === 'user' && typeof comment.authorAppUserId === 'string'
+      && Boolean(comment.authorAppUserId.trim()) && comment.authorAppUserId === existing.authorAppUserId
+    : (comment.authorKind === undefined || comment.authorKind === 'member')
+      && (existing.authorKind === null || existing.authorKind === 'member')
+      && typeof comment.memberId === 'string' && Boolean(comment.memberId.trim())
+      && comment.memberId.trim() === existing.authorMemberId;
+  if (!sameAuthor) return false;
+  const result = db.prepare(`UPDATE preview_comments SET
+    sort_key = CASE WHEN sort_key = created_at THEN ? ELSE sort_key END,
+    created_at = ? WHERE id = ? AND project_id = ? AND created_at = ?`)
+    .run(comment.createdAt, comment.createdAt, comment.id, projectId, existing.createdAt);
+  if (result.changes !== 1) throw new Error('Synced comment creation time was not persisted');
+  return true;
+}
+
 type SyncedRevision = { seq: number | null; updatedAt: number | null };
 
 /**
@@ -4509,7 +4546,6 @@ export function mergeSyncedPreviewComment(
   if (comment.deleted) {
     return deleteSyncedPreviewComment(db, projectId, comment.id) ? 'changed' : 'unchanged';
   }
-  const now = Date.now();
   const slideIndex = Number.isFinite(comment.slideIndex)
     ? Math.max(0, Math.round(comment.slideIndex as number))
     : null;
@@ -4529,7 +4565,6 @@ export function mergeSyncedPreviewComment(
   const anchoredVersion = Number.isFinite(comment.anchoredVersion)
     ? Math.max(0, Math.round(comment.anchoredVersion as number))
     : null;
-  const createdAt = Number.isFinite(comment.createdAt) ? comment.createdAt : now;
   // A missing `updatedAt` (share-page creates carry none) is NOT "now": that
   // made a replayed create look newer than every later revision. The best
   // business timestamp such a record has is its creation time.
@@ -4552,7 +4587,8 @@ export function mergeSyncedPreviewComment(
     : undefined;
   const authorKey = typeof comment.authorKey === 'string' ? comment.authorKey : undefined;
   const existing = db
-    .prepare(`SELECT updated_at AS updatedAt, label, author_key AS authorKey,
+    .prepare(`SELECT created_at AS createdAt, updated_at AS updatedAt, file_path AS filePath,
+                     label, author_key AS authorKey,
                      author_kind AS authorKind, author_member_id AS authorMemberId,
                      author_app_user_id AS authorAppUserId,
                      source_file_id AS sourceFileId,
@@ -4563,9 +4599,11 @@ export function mergeSyncedPreviewComment(
   if (existing && existing.sourceFileId !== (comment.sourceFileId ?? null)) {
     throw new Error('COMMENT_FILE_LIFETIME_CONFLICT');
   }
+  const createdAt = syncedCommentCreationTime(comment.createdAt, existing?.createdAt);
   const label = syncedCommentLabel(comment.label, existing?.label, comment.elementId);
   if (existing) {
-    // Keeps the existing row's conversation/created_at, refreshes mutable
+    const creationTimeChanged = repairSyncedCommentCreationTime(db, projectId, comment, existing);
+    // Keeps the existing conversation and repairs only correlated creation metadata; refreshes mutable
     // content/status/anchor state, and updates author fields only when the
     // incoming wire payload explicitly carries each trusted field. Legacy
     // payloads cannot erase them.
@@ -4601,9 +4639,9 @@ export function mergeSyncedPreviewComment(
         const hydrated = db.prepare(`UPDATE preview_comments SET author_key = ?
           WHERE id = ? AND project_id = ? AND author_key IS NULL`)
           .run(authorKey, comment.id, projectId);
-        return hydrated.changes === 1 ? 'changed' : 'unchanged';
+        return creationTimeChanged || hydrated.changes === 1 ? 'changed' : 'unchanged';
       }
-      return 'unchanged';
+      return creationTimeChanged ? 'changed' : 'unchanged';
     }
     // An incoming revision without its own `updatedAt` takes its creation
     // time, never the local clock (see incomingUpdatedAt above).

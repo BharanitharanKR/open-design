@@ -42,6 +42,20 @@ it.each([[57 * 60_000, 'common.minutesAgo:57'], [2 * 3_600_000, 'common.hoursAgo
   },
 );
 
+it.each([0, -1, NaN, Infinity, undefined])('3888: unknown creation time %s never borrows a recent update time', createdAt => {
+  const unknown = comment(2 * 3_600_000);
+  Reflect.set(unknown, 'createdAt', createdAt);
+  const view = render(panel([unknown]));
+  expect(time()).toHaveTextContent('—');
+  expect(time()).not.toHaveAttribute('title');
+  expect(time()).not.toHaveTextContent('common.justNow');
+  act(() => vi.advanceTimersByTime(60_000));
+  expect(time()).toHaveTextContent('—');
+  view.rerender(panel([{ ...unknown, createdAt: NOW - 2 * 3_600_000 }]));
+  expect(time()).toHaveTextContent('common.hoursAgo:2');
+  expect(time()).toHaveAttribute('title');
+});
+
 it('3888: an unchanged open panel advances just-now → minutes → hours with a controlled clock', () => {
   const original = comment(0);
   render(panel([original]));
