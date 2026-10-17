@@ -133,7 +133,7 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       const verifiedReady = stream.observations.filter(row => row.kind === 'upstream-ready').at(-1)!;
       let billingAfterReconnect: Record<string, unknown> = {};
       await expect.poll(async () => {
-        const response = await page.request.get(toolsDev.url.web(`/api/workspace/billing?scope=workspace&workspaceId=${encodeURIComponent(fixture.workspace)}`), { headers });
+        const response = await page.request.get(`${toolsDev.url.web('/api/workspace/billing')}?scope=workspace&workspaceId=${encodeURIComponent(fixture.workspace)}`, { headers });
         billingAfterReconnect = await response.json();
         await testInfo.attach('billing-reconnect-read', { body: JSON.stringify({ status: response.status(), body: billingAfterReconnect }), contentType: 'application/json' });
         expect(response.ok(), JSON.stringify(billingAfterReconnect)).toBeTruthy();
