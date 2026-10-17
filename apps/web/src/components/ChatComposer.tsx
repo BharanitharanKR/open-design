@@ -844,6 +844,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [slash, setSlash] = useState<{ q: string } | null>(null);
     const [slashIndex, setSlashIndex] = useState(0);
     const [uploading, setUploading] = useState(false);
+    const [preparingUploads, setPreparingUploads] = useState(0);
     const [uploadError, setUploadError] = useState<string | null>(null);
     /* 待发送托盘里【还没传完 / 传失败】的那几张卡(设计稿 #61 / #63)。
        它们不进 `staged` —— `staged` 是「能跟着这条消息发出去的附件」,而这几张
@@ -2431,11 +2432,23 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       }
     }
 
+    async function ensureUploadProject() {
+      // Project creation is part of preparing the selected attachment too.
+      // Count overlapping preparations; canceling a staged upload is tracked
+      // separately so an outstanding HTTP request cannot keep Send locked.
+      setPreparingUploads((count) => count + 1);
+      try {
+        return await ensureProject();
+      } finally {
+        setPreparingUploads((count) => count - 1);
+      }
+    }
+
     /** 只重发这一个文件。本地 `File` 还在 `pendingFilesRef` 里,失败时没有清掉。 */
     async function retryPendingUpload(pendingId: string) {
       const target = pendingUploads.find((item) => item.id === pendingId);
       if (!target || !pendingFilesRef.current.has(pendingId)) return;
-      const id = await ensureProject();
+      const id = await ensureUploadProject();
       if (!id) return;
       setUploadError(null);
       setPendingUploads((current) =>
@@ -2446,7 +2459,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     async function uploadFiles(files: File[]) {
       if (files.length === 0) return;
-      const id = await ensureProject();
+      const id = await ensureUploadProject();
       if (!id) return;
       setUploading(true);
       setUploadError(null);
@@ -3353,7 +3366,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
      * 而引用**是折进正文的**,所以同一时刻它非空。同一个问题、两处各算各的,
      * 早晚会分叉;分叉之后症状出现在离原因最远的地方(用户看到的是「按钮坏了」)。
      */
-    const canSend = !sendDisabled && hasComposerPayload;
+    const hasPendingUpload = preparingUploads > 0
+      || pendingUploads.some((item) => item.state === 'uploading')
+      || Boolean(externalPendingUploads?.some((item) => item.state === 'uploading'));
+    const canSend = !sendDisabled && !hasPendingUpload && hasComposerPayload;
     /**
      * 摆到台面上的那枚「已应用插件」芯片(OPEND-2412)。
      *
