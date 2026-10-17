@@ -175,10 +175,11 @@ test('[P1] uploading attachments block click and Enter until the real upload com
     expect(requests).toHaveLength(0); // Completion must not auto-send.
     await sendPrompt(page, prompt);
     expect(requests).toHaveLength(1);
+    expect(requests[0]!.postDataJSON().message).toBe(`## user\n${prompt}`);
     expect(requests[0]!.postDataJSON().attachments).toContain('send-together.txt');
     await expect(input).toHaveText('');
     await testInfo.attach('submitted-upload', { body: Buffer.from(JSON.stringify({
-      prompt: requests[0]!.postDataJSON().prompt,
+      message: requests[0]!.postDataJSON().message,
       attachments: requests[0]!.postDataJSON().attachments,
       requests: requests.length,
     })), contentType: 'application/json' });
