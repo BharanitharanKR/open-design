@@ -1532,4 +1532,153 @@ describe('WorkspaceBillingRuntimeCoordinator', () => {
     expect(peak).toBeLessThanOrEqual(2);
     runtime.dispose();
   });
+
+  it('applies jitter to retry delays', async () => {
+    vi.useFakeTimers();
+    let fetchCount = 0;
+    const retryDelays: number[] = [];
+    let lastFetchTime = 0;
+
+    const runtime = createWorkspaceBillingRuntimeCoordinator({
+      fetchProjection: async () => {
+        const now = Date.now();
+        if (fetchCount > 0) {
+          retryDelays.push(now - lastFetchTime);
+        }
+        lastFetchTime = now;
+        fetchCount += 1;
+        throw new Error('simulated fetch failure');
+      },
+      retryDelaysMs: [5_000, 15_000, 30_000],
+      scheduler: {
+        now: () => Date.now(),
+        setTimeout: (cb, ms) => setTimeout(cb, ms),
+        clearTimeout: (timer) => clearTimeout(timer),
+        setInterval: (cb, ms) => setInterval(cb, ms),
+        clearInterval: (timer) => clearInterval(timer),
+        random: () => 0.5, // deterministic jitter: 0.8 + 0.5 * 0.4 = 1.0
+      },
+    });
+
+    void runtime.read(KEY_A);
+    
+    // Wait for initial fetch + 2 retries
+    await vi.waitFor(() => expect(fetchCount).toBeGreaterThanOrEqual(1));
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.waitFor(() => expect(fetchCount).toBeGreaterThanOrEqual(2));
+    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.waitFor(() => expect(fetchCount).toBeGreaterThanOrEqual(3));
+
+    // Verify jitter was applied (should be exactly base delay with jitter=1.0)
+    expect(retryDelays[0]).toBeGreaterThanOrEqual(4_000); // 5s * 0.8
+    expect(retryDelays[0]).toBeLessThanOrEqual(6_000);     // 5s * 1.2
+    
+    runtime.dispose();
+  });
+
+  it('does not refresh billing on disconnect (setRealtimeHealthy false)', async () => {
+    let fetchCount = 0;
+    const runtime = createWorkspaceBillingRuntimeCoordinator({
+      fetchProjection: async () => {
+        fetchCount += 1;
+        return projection('workspace-a', 'member-a', '1.00');
+      },
+    });
+
+    runtime.setClientInterests({
+      clientId: 'test',
+      clientGeneration: '1',
+      interests: [KEY_A],
+    });
+
+    await runtime.read(KEY_A, { clientId: 'test', clientGeneration: '1' });
+    const afterConnect = fetchCount;
+
+    // Simulate disconnect
+    runtime.setRealtimeHealthy('workspace-a', false);
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Should NOT have triggered a billing refresh
+    expect(fetchCount).toBe(afterConnect);
+
+    runtime.dispose();
+  });
+
+  it('refreshes billing after reconnect with explicit reconnect() call', async () => {
+    let fetchCount = 0;
+    const runtime = createWorkspaceBillingRuntimeCoordinator({
+      fetchProjection: async () => {
+        fetchCount += 1;
+        return projection('workspace-a', 'member-a', `${fetchCount}.00`);
+      },
+    });
+
+    runtime.setClientInterests({
+      clientId: 'test',
+      clientGeneration: '1',
+      interests: [KEY_A],
+    });
+
+    await runtime.read(KEY_A, { clientId: 'test', clientGeneration: '1' });
+    const afterConnect = fetchCount;
+
+    // Simulate disconnect (should NOT refresh)
+    runtime.setRealtimeHealthy('workspace-a', false);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetchCount).toBe(afterConnect);
+
+    // Simulate reconnect via explicit reconnect() call
+    runtime.reconnect('workspace-a');
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Should have triggered a billing refresh
+    expect(fetchCount).toBe(afterConnect + 1);
+
+    runtime.dispose();
+  });
+
+  it('honors Retry-After from 503 errors', async () => {
+    vi.useFakeTimers();
+    let fetchCount = 0;
+    const retryDelays: number[] = [];
+    let lastFetchTime = 0;
+
+    const runtime = createWorkspaceBillingRuntimeCoordinator({
+      fetchProjection: async () => {
+        const now = Date.now();
+        if (fetchCount > 0) {
+          retryDelays.push(now - lastFetchTime);
+        }
+        lastFetchTime = now;
+        fetchCount += 1;
+        
+        if (fetchCount === 1) {
+          // First attempt: 503 with Retry-After: 3 seconds
+          const error: Error & { retryAfter?: number } = new Error('database_busy');
+          (error as Error & { code: string }).code = 'database_busy';
+          error.retryAfter = 3; // seconds
+          throw error;
+        }
+        
+        return projection('workspace-a', 'member-a', '1.00');
+      },
+      retryDelaysMs: [1_000], // base retry is 1s, but should honor 3s from Retry-After
+    });
+
+    void runtime.read(KEY_A);
+    
+    await vi.waitFor(() => expect(fetchCount).toBe(1));
+    
+    // Should wait ~3s (Retry-After) not 1s (base delay)
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(fetchCount).toBe(1); // Still waiting
+    
+    await vi.advanceTimersByTimeAsync(1_500);
+    await vi.waitFor(() => expect(fetchCount).toBe(2));
+
+    // Verify retry delay honored Retry-After
+    expect(retryDelays[0]).toBeGreaterThanOrEqual(2_900);
+    
+    runtime.dispose();
+  });
 });
