@@ -127,9 +127,13 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
           && event.transaction_id === wallet.transaction_id);
         expect(ownerEvents, 'Notification must target the current legal member').not.toHaveLength(0);
         for (const source of ownerEvents) {
-          const received = walletEvents.find(event => event.data.revision === source.payload.revision
+          const matches = (event: typeof walletEvents[number]) => event.data.revision === source.payload.revision
             && event.data.workspaceId === fixture.workspace
-            && event.data.workspaceMemberId === fixture.profiles.owner.memberId);
+            && event.data.workspaceMemberId === fixture.profiles.owner.memberId;
+          // Wait for the actual delivery signal, then enforce the source-based
+          // deadline below; waiting longer cannot make a late delivery pass.
+          await expect.poll(() => walletEvents.some(matches), { timeout: T.short }).toBe(true);
+          const received = walletEvents.find(matches);
           expect(received, 'The actual source event must reach the active workspace browser').toBeDefined();
           const latency = Date.parse(received!.receivedAt) - Date.parse(source.payload.at);
           expect(latency).toBeGreaterThanOrEqual(0);
