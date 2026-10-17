@@ -134,8 +134,9 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       let billingAfterReconnect: Record<string, unknown> = {};
       await expect.poll(async () => {
         const response = await page.request.get(toolsDev.url.web(`/api/workspace/billing?scope=workspace&workspaceId=${encodeURIComponent(fixture.workspace)}`), { headers });
-        expect(response.ok()).toBeTruthy();
         billingAfterReconnect = await response.json();
+        await testInfo.attach('billing-reconnect-read', { body: JSON.stringify({ status: response.status(), body: billingAfterReconnect }), contentType: 'application/json' });
+        expect(response.ok(), JSON.stringify(billingAfterReconnect)).toBeTruthy();
         const state = billingAfterReconnect.workspaceRuntime as { status: string; reason: string; observedAt: string | null };
         return state.status === 'fresh' && state.reason === 'reconnect'
           && Date.parse(state.observedAt ?? '') >= verifiedReady.at;
