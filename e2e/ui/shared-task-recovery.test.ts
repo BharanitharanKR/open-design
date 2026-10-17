@@ -87,9 +87,10 @@ for (const change of ['remove', 'fill'] as const) {
       await expect.poll(async () => (await (await page.request.get(toolsDev.url.web(`/api/runs/${runId}`), { headers })).json()).status, { timeout: T.long }).toMatch(/failed|canceled/);
       const rejected = await (await page.request.get(toolsDev.url.web(`/api/runs/${runId}`), { headers })).json();
       expect(rejected.childPid).toBeNull();
-      if (change === 'fill') expect(rejected.errorCode).toBe('workspace_task_concurrency_exceeded');
+      expect(rejected.errorCode).toBe(change === 'fill' ? 'workspace_task_concurrency_exceeded' : 'workspace_task_forbidden');
       await expect(page.getByTestId('chat-composer-input')).toHaveText(prompt, { timeout: T.long });
       await expect(page.getByTestId('staged-attachments')).toContainText('payment-context.txt');
+      if (change === 'remove') await expect(page.getByText('This run was stopped at your request.', { exact: true })).toHaveCount(0);
       expect((await provider('evidence')).providerCalls).toBe(before.providerCalls);
       const state = await control('state');
       const admission = state.requests.find(r => r.path === `/api/v1/open-design/runs/${runId}/lease/admit`);

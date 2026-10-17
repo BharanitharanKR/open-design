@@ -1309,6 +1309,34 @@ describe('2026-09-14 retry replaces the old error surface without erasing histor
 });
 
 describe('shared final admission is distinct from local queue acceptance', () => {
+  it.each(['status-first', 'transport-first'] as const)('returns the draft when revocation arrives %s before execution starts', async (order) => {
+    conversationMessages = [];
+    type Options = Parameters<typeof import('../../src/providers/daemon').streamViaDaemon>[0];
+    let options: Options | undefined;
+    let close!: () => void;
+    streamViaDaemon.mockImplementation((value: Options) => {
+      options = value;
+      value.onRunCreated?.('revoked-before-start');
+      return new Promise<void>(resolve => { close = resolve; });
+    });
+    renderProjectView(amrConfig);
+    await waitForConversation();
+    await waitFor(() => expect(screen.getByTestId('send-message')).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId('send-message'));
+    await waitFor(() => expect(options).toBeDefined());
+    const revoked = () => {
+      options!.onRunStatus?.('canceled');
+      options!.onCancelOrigin?.('unknown');
+      options!.handlers.onDone('');
+    };
+    if (order === 'status-first') act(revoked);
+    await act(async () => close());
+    await waitFor(() => expect(sendOutcomes).toEqual(['restore-draft']));
+    if (order === 'transport-first') act(revoked);
+    act(() => options!.handlers.onRunStarted?.('revoked-before-start'));
+    expect(sendOutcomes).toEqual(['restore-draft']);
+  });
+
   it.each(['started', 'rejected'] as const)('waits for actual execution %s before settling the composer send', async (outcome) => {
     conversationMessages = [];
     type Options = Parameters<typeof import('../../src/providers/daemon').streamViaDaemon>[0];

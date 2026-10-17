@@ -1675,8 +1675,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       snapshot: ComposerSendSnapshot,
       keptWorkspaceContextIds: ReadonlySet<string>,
     ): boolean {
-      const text = editorRef.current?.getText() ?? draftRef.current;
-      if (text.trim()) return true;
+      // Enter runs inside a Lexical update: React can commit reset() before
+      // that editor update clears its old text. The synchronous draft mirror
+      // already reflects reset and every subsequent user edit.
+      if (draftRef.current.trim()) return true;
       const current = latestComposerContentRef.current;
       if (!current) return false;
       return (

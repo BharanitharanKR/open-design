@@ -2,6 +2,8 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
+import { flushSync } from 'react-dom';
+import { KEY_ENTER_COMMAND } from 'lexical';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,7 +12,7 @@ import {
   type ChatSendOutcome,
 } from '../../src/components/ChatComposer';
 import type { ChatQuote } from '../../src/runtime/chat/quote-selection';
-import { composerText, flushMounts, typeAndSettle } from '../helpers/lexical-composer';
+import { composerText, flushMounts, getComposerEditor, typeAndSettle } from '../helpers/lexical-composer';
 
 /*
  * OPEND-3392: the host already paints the sent turn (and flips to Working)
@@ -111,6 +113,22 @@ describe('ChatComposer clears on submit (OPEND-3392)', () => {
     await act(async () => send.settle('restore-draft'));
     await waitFor(() => expect(composerText()).toBe('keep this exact prompt'));
     expect(onRestoreQuotes).toHaveBeenCalledWith(quotes);
+  });
+
+  it('restores after Enter flushes React reset before Lexical commits its cleared state', async () => {
+    const send = deferredSend();
+    renderComposer({ onSend: send.onSend });
+    await flushMounts();
+    await typeAndSettle('restore after authority changes');
+    // Enter handlers run inside a Lexical update. React may commit the reset
+    // before that outer update commits the editor's previous nonempty state.
+    const editor = getComposerEditor();
+    act(() => editor.update(() => {
+      flushSync(() => editor.dispatchCommand(KEY_ENTER_COMMAND, null));
+    }, { discrete: true }));
+    await waitFor(() => expect(composerText().trim()).toBe(''));
+    await act(async () => send.settle('restore-draft'));
+    expect(composerText()).toBe('restore after authority changes');
   });
 
   it('puts the prompt back when the send throws', async () => {
