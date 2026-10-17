@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test, expect } from '@/playwright/suite';
 import { seedBrowserConfig, expectWorkspaceReady, dismissPrivacyDialog, sendPrompt } from '@/playwright/amr';
 import { warmPlaywrightDaemonRuntime, warmPlaywrightWebRuntime } from '@/playwright/runtime-lifecycle';
+import { T } from '@/timeouts';
 
 type Fixture = {
   name: string; sourceSha: string; fixtureUrl: string; fixtureToken: string;
@@ -15,7 +16,7 @@ test('final shared task admission rejection restores the real composer draft', a
   test.skip(!fixturePath, 'Needs the explicitly owned shared-task-leases sandbox');
   test.setTimeout(180_000);
   const fixture = JSON.parse(readFileSync(fixturePath!, 'utf8')) as Fixture;
-  expect(fixture.name).toBe('shared-task-leases');
+  expect(['shared-task-leases', 'shared-task-runtime-boundaries']).toContain(fixture.name);
   expect(new URL(fixture.fixtureUrl).hostname).toBe('127.0.0.1');
   const control = async (action: string, body: object = {}) => {
     const response = await fetch(`${fixture.fixtureUrl}/control/${action}`, {
@@ -53,6 +54,12 @@ test('final shared task admission rejection restores the real composer draft', a
   let runId: string | undefined;
   let queueStatus: number | undefined;
   let retryRunId: string | undefined;
+  const submissions: { workspace: string | undefined; body: unknown }[] = [];
+  page.on('request', request => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/runs') {
+      submissions.push({ workspace: request.headers()['x-od-workspace-id'], body: request.postDataJSON() });
+    }
+  });
   // This barrier only changes the owned fixture between the real preflight and
   // final admission. Both HTTP responses come from the actual daemon/API.
   await page.route('**/api/runs', async route => {
@@ -87,7 +94,32 @@ test('final shared task admission rejection restores the real composer draft', a
     await testInfo.attach('real-admission-evidence', { body: JSON.stringify({ amrSha: fixture.sourceSha,
       queueStatus, runId, run: { status: run.status, errorCode: run.errorCode, childPid: run.childPid }, providerCallsBefore: before.providerCalls, providerCallsAfter: after.providerCalls }), contentType: 'application/json' });
     await page.unroute('**/api/runs');
+    // RUN-010: disconnect the real browser transport, restore funding while it
+    // cannot receive events, then reconnect without clicking send/retry.
+    const submissionCount = submissions.length;
+    await page.context().setOffline(true);
+    expect(await page.evaluate(() => navigator.onLine)).toBe(false);
     await control('balance', { credits: 1000000 });
+    await page.context().setOffline(false);
+    expect(await page.evaluate(() => navigator.onLine)).toBe(true);
+    const reconnected = await page.request.get(toolsDev.url.web('/api/health'));
+    expect(reconnected.ok()).toBeTruthy();
+    // This real observation window protects browser reconnect/SSE scheduling;
+    // a virtual clock cannot drive the separate daemon and browser transports.
+    const reconnectDeadline = Date.now() + T.short;
+    do {
+      const snapshot = await control('evidence');
+      expect(snapshot.providerCalls).toBe(before.providerCalls);
+      expect(snapshot.runs).toEqual(after.runs);
+      expect(submissions).toHaveLength(submissionCount);
+      await expect(page.getByTestId('chat-composer-input')).toHaveText(prompt);
+      await expect(page.getByTestId('staged-attachments')).toContainText('draft-context.txt');
+    } while (Date.now() < reconnectDeadline);
+    await testInfo.attach('RUN-010-reconnect-without-submit', { body: JSON.stringify({
+      amrSha: fixture.sourceSha, runId, workspace: fixture.workspace,
+      observationMs: T.short, submissions: submissionCount, providerCalls: before.providerCalls,
+      scope: 'final-admission rejection only; running-debt and switch-to-B remain separate',
+    }), contentType: 'application/json' });
     await control('hold', { hold: true });
     const queued = page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname === '/api/runs');
@@ -96,6 +128,8 @@ test('final shared task admission rejection restores the real composer draft', a
     expect(accepted.status()).toBe(202);
     retryRunId = (await accepted.json() as { runId: string }).runId;
     expect(retryRunId).not.toBe(runId);
+    expect(submissions).toHaveLength(submissionCount + 1);
+    expect(submissions.at(-1)?.workspace).toBe(fixture.workspace);
     await expect(page.getByTestId('chat-send-pending')).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByTestId('chat-composer-input')).toHaveText('');
     await expect(page.getByTestId('staged-attachments')).toHaveCount(0);
@@ -115,6 +149,7 @@ test('final shared task admission rejection restores the real composer draft', a
     await testInfo.attach('successful-retry-evidence', { body: JSON.stringify({ runId: retryRunId,
       childPid: running.childPid, status: 'canceled', starts: 1, retainedAttachment: 'draft-context.txt' }), contentType: 'application/json' });
   } finally {
+    await page.context().setOffline(false);
     if (retryRunId) await page.request.post(toolsDev.url.web(`/api/runs/${retryRunId}/cancel`), { headers, data: {} }).catch(() => undefined);
     await control('hold', { hold: false });
     await control('balance', { credits: 1000000 });
