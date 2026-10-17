@@ -4,6 +4,7 @@ import { test, expect } from '@/playwright/suite';
 import { seedBrowserConfig, expectWorkspaceReady, dismissPrivacyDialog, sendPrompt } from '@/playwright/amr';
 import { warmPlaywrightDaemonRuntime, warmPlaywrightWebRuntime } from '@/playwright/runtime-lifecycle';
 import { T } from '@/timeouts';
+import { createWorkspaceStreamProxy } from '@/playwright/workspace-stream-proxy';
 
 type Fixture = {
   name: string; sourceSha: string; fixtureUrl: string; fixtureToken: string;
@@ -27,10 +28,12 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       expect(response.ok).toBeTruthy();
       return response.json() as Promise<Record<string, unknown>>;
     };
+    const stream = await createWorkspaceStreamProxy(fixture.urls.api, fixture.workspace);
+    try {
     await toolsDev.stopWeb();
     await toolsDev.startWeb({
       AMR_HOME: fixture.profiles.owner.home, VELA_PROFILE: 'local',
-      VELA_API_URL: fixture.urls.api, VELA_LINK_URL: fixture.urls.link, OD_NEXT_STRATEGY_ROLLOUT: 'off', OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
+      VELA_API_URL: stream.url, VELA_LINK_URL: fixture.urls.link, OD_NEXT_STRATEGY_ROLLOUT: 'off', OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
     });
     await warmPlaywrightDaemonRuntime(toolsDev.url.daemon('/api/health'));
     await warmPlaywrightWebRuntime(toolsDev.url.web('/'));
@@ -79,6 +82,8 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await page.goto(toolsDev.url.web(`/projects/${project.project.id}`), { waitUntil: 'domcontentloaded' });
       await dismissPrivacyDialog(page);
       await expectWorkspaceReady(page);
+      await expect.poll(() => stream.observations.filter(row => row.kind === 'upstream-ready'
+        && row.workspaceId === fixture.workspace).length, { timeout: T.xlong }).toBeGreaterThan(0);
       await page.getByTestId('chat-file-input').setInputFiles({ name: 'draft-context.txt', mimeType: 'text/plain', buffer: Buffer.from('Retain this exact attachment when final admission rejects.') });
       await expect(page.getByTestId('staged-attachments').locator('.msg-att-doc[title="draft-context.txt"]')).not.toHaveClass(/is-up|is-fail/);
       const prompt = `Preserve this rejected draft ${randomUUID()}`;
@@ -104,18 +109,29 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
         await expect(page.getByTestId('amr-balance-dialog')).toBeVisible();
       }
       await page.unroute('**/api/runs');
-      // RUN-010: disconnect the real browser transport, restore funding while it
-      // cannot receive events, then reconnect without clicking send/retry.
+      // Cut the daemon's actual AMR workspace stream, not the browser network.
+      // The proxy forwards genuine AMR ready frames and never invents events.
       const submissionCount = submissions.length;
-      await page.context().setOffline(true);
-      expect(await page.evaluate(() => navigator.onLine)).toBe(false);
-      await control('balance', { credits: 1000000 });
-      await page.context().setOffline(false);
+      const readyBefore = stream.observations.filter(row => row.kind === 'upstream-ready').length;
+      stream.disconnect();
+      await expect.poll(() => stream.observations.some(row => row.kind === 'blocked-attempt'), { timeout: T.xlong }).toBe(true);
       expect(await page.evaluate(() => navigator.onLine)).toBe(true);
-      const reconnected = await page.request.get(toolsDev.url.web('/api/health'));
-      expect(reconnected.ok()).toBeTruthy();
-      // This real observation window protects browser reconnect/SSE scheduling;
-      // a virtual clock cannot drive the separate daemon and browser transports.
+      await control('balance', { credits: 1000000 });
+      stream.reconnect();
+      await expect.poll(() => stream.observations.filter(row => row.kind === 'upstream-ready'
+        && row.workspaceId === fixture.workspace).length, { timeout: T.xlong }).toBeGreaterThan(readyBefore);
+      const verifiedReady = stream.observations.filter(row => row.kind === 'upstream-ready').at(-1)!;
+      let billingAfterReconnect: Record<string, unknown> = {};
+      await expect.poll(async () => {
+        const response = await page.request.get(toolsDev.url.web(`/api/workspace/billing?scope=workspace&workspaceId=${encodeURIComponent(fixture.workspace)}`), { headers });
+        expect(response.ok()).toBeTruthy();
+        billingAfterReconnect = await response.json();
+        const state = billingAfterReconnect.workspaceRuntime as { status: string; reason: string; observedAt: string | null };
+        return state.status === 'fresh' && state.reason === 'reconnect'
+          && Date.parse(state.observedAt ?? '') >= verifiedReady.at;
+      }, { timeout: T.xlong }).toBe(true);
+      // Observe only after the real ready + daemon billing catch-up have been
+      // witnessed. This window is not used as a substitute for reconnect.
       const reconnectDeadline = Date.now() + T.short;
       do {
         const snapshot = await control('evidence');
@@ -130,8 +146,10 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await testInfo.attach('RUN-010-reconnect-without-submit', { body: JSON.stringify({
         amrSha: fixture.sourceSha, runId, workspace: fixture.workspace,
         phase, observationMs: T.short, submissions: submissionCount, providerCalls: after.providerCalls,
-        scope: 'real offline/reconnect after final-admission rejection or running debt; manual retry in original workspace',
+        stream: stream.observations, billingAfterReconnect,
+        scope: 'actual daemon→AMR stream disconnect, verified upstream ready and billing runtime reconnect catch-up; no automatic submit; manual retry in original workspace',
       }), contentType: 'application/json' });
+      await testInfo.attach('RUN-010-after-backend-reconnect', { body: await page.screenshot(), contentType: 'image/png' });
       await control('tool-round', { enabled: false });
       const dialog = page.getByTestId('amr-balance-dialog');
       if (await dialog.isVisible()) await dialog.getByRole('button', { name: 'Not now', exact: true }).click();
@@ -165,11 +183,16 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await testInfo.attach('successful-retry-evidence', { body: JSON.stringify({ phase, amrSha: fixture.sourceSha,
         initialRunId: runId, retryRunId, workspace: fixture.workspace, submissions, usage, final, starts: 1 }), contentType: 'application/json' });
     } finally {
-      await page.context().setOffline(false);
+      stream.reconnect();
       if (retryRunId) await page.request.post(toolsDev.url.web(`/api/runs/${retryRunId}/cancel`), { headers, data: {} }).catch(() => undefined);
       await control('hold', { hold: false });
       await control('tool-round', { enabled: false });
       await control('balance', { credits: 1000000 });
+    }
+    } finally {
+      await testInfo.attach('RUN-010-backend-stream-observations', { body: JSON.stringify(stream.observations), contentType: 'application/json' });
+      await toolsDev.stopWeb();
+      await stream.close();
     }
   });
 
