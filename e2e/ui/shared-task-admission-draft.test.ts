@@ -74,7 +74,7 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
     try {
       await control('hold', { hold: false });
       await control('tool-round', { enabled: phase === 'running-exhaustion' });
-      await control('balance', { credits: phase === 'running-exhaustion' ? 1 : 1000000 });
+      await control('balance', { credits: phase === 'running-exhaustion' ? 10 : 1000000 });
       const before = await control('evidence');
       await page.goto(toolsDev.url.web(`/projects/${project.project.id}`), { waitUntil: 'domcontentloaded' });
       await dismissPrivacyDialog(page);
@@ -92,6 +92,7 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await expect.poll(async () => (await (await page.request.get(toolsDev.url.web(`/api/runs/${runId}`), { headers })).json()).status, { timeout: T.xlong }).toBe('failed');
       const run = await (await page.request.get(toolsDev.url.web(`/api/runs/${runId}`), { headers })).json();
       const after = await control('evidence');
+      await testInfo.attach('initial-failure-evidence', { body: JSON.stringify({ phase, runId, run, before, after }), contentType: 'application/json' });
       if (phase === 'pre-admission') {
         expect(run).toMatchObject({ status: 'failed', errorCode: 'insufficient_balance', childPid: null });
         await expect(page.getByTestId('chat-composer-input')).toHaveText(prompt);
@@ -102,7 +103,6 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
         expect(Number((after.wallet as { wallet_debt_credits: string }).wallet_debt_credits)).toBeGreaterThan(0);
         await expect(page.getByTestId('amr-balance-dialog')).toBeVisible();
       }
-      await testInfo.attach('initial-failure-evidence', { body: JSON.stringify({ phase, runId, run, before, after }), contentType: 'application/json' });
       await page.unroute('**/api/runs');
       // RUN-010: disconnect the real browser transport, restore funding while it
       // cannot receive events, then reconnect without clicking send/retry.
