@@ -205,6 +205,13 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await toolsDev.stopWeb();
       await stream.close();
       await rm(proxyHome, { recursive: true, force: true });
+      // The worker-scoped suite resolves the next test's baseURL before its
+      // body. Restore the canonical runtime without the per-test proxy.
+      await toolsDev.startWeb({
+        AMR_HOME: fixture.profiles.owner.home, VELA_PROFILE: 'local',
+        VELA_API_URL: fixture.urls.api, VELA_LINK_URL: fixture.urls.link,
+        OD_NEXT_STRATEGY_ROLLOUT: 'off', OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
+      });
     }
   });
 
