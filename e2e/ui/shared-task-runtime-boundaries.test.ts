@@ -23,13 +23,14 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
       method: 'POST', headers: { authorization: `Bearer ${fixture.fixtureToken}`, 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
-    expect(response.ok).toBeTruthy();
+    expect(response.ok, await response.clone().text()).toBeTruthy();
     return response.json() as Promise<Record<string, unknown>>;
   };
   await toolsDev.stopWeb();
   await toolsDev.startWeb({
     AMR_HOME: fixture.profiles.owner.home, VELA_PROFILE: 'local',
     VELA_API_URL: fixture.urls.api, VELA_LINK_URL: fixture.urls.link, OD_NEXT_STRATEGY_ROLLOUT: 'off',
+    OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
   });
   await warmPlaywrightDaemonRuntime(toolsDev.url.daemon('/api/health'));
   await warmPlaywrightWebRuntime(toolsDev.url.web('/'));
@@ -54,8 +55,16 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
 
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Network.enable');
-  const walletEvents: { receivedAt: string; data: unknown }[] = [];
+  const walletEvents: { receivedAt: string; data: { workspaceId?: string; workspaceMemberId?: string; revision?: string; at?: number } }[] = [];
+  const streamFrames: { receivedAt: string; eventName: string; data: string }[] = [];
+  const streamRequests: { url: string; at: string }[] = [];
+  cdp.on('Network.requestWillBeSent', event => {
+    if (event.request.url.includes('/api/workspace/events')) streamRequests.push({ url: event.request.url, at: new Date().toISOString() });
+  });
   cdp.on('Network.eventSourceMessageReceived', event => {
+    if (['ready', 'wallet-balance-changed', 'billing-changed', 'source-status'].includes(event.eventName)) {
+      streamFrames.push({ receivedAt: new Date().toISOString(), eventName: event.eventName, data: event.data });
+    }
     if (event.eventName === 'wallet-balance-changed') {
       walletEvents.push({ receivedAt: new Date().toISOString(), data: JSON.parse(event.data) });
     }
@@ -103,13 +112,26 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
         const usages = after.usage as { charge_credits: string; success: boolean }[];
         const prior = (before.usage as unknown[]).length;
         expect(usages.slice(prior).some(usage => usage.success && Number(usage.charge_credits) > credits)).toBe(true);
+        const priorSeqs = new Set((before.sourceEvents as { seq: string }[]).map(event => event.seq));
+        const sourceEvents = (after.sourceEvents as { seq: string; type: string; payload: {
+          at: string; workspaceId: string; workspaceMemberId?: string; revision?: string;
+        } }[]).filter(event => event.type === 'wallet-balance-changed' && !priorSeqs.has(event.seq));
+        expect(sourceEvents, 'Actual settlement must publish a durable wallet event').not.toHaveLength(0);
+        const ownerEvents = sourceEvents.filter(event => event.payload.workspaceMemberId === fixture.profiles.owner.memberId);
+        expect(ownerEvents, 'Notification must target the current legal member').not.toHaveLength(0);
+        for (const source of ownerEvents) {
+          const received = walletEvents.find(event => event.data.revision === source.payload.revision
+            && event.data.workspaceId === fixture.workspace);
+          expect(received, 'The actual source event must reach the active workspace browser').toBeDefined();
+          expect(Date.parse(received!.receivedAt) - Date.parse(source.payload.at)).toBeLessThanOrEqual(1000);
+        }
       }
     }
   } finally {
     await testInfo.attach('RUN-005-tool-boundary-evidence', { body: JSON.stringify({
       amrSha: fixture.sourceSha, source: 'real OD/CLI/Link/API; local model provider',
-      evidence, walletEvents,
-      notificationLatency: 'raw client receipt timestamps only; server emission correlation still required',
+      evidence, walletEvents, streamFrames, streamRequests,
+      notificationLatency: 'Durable API source event at → browser CDP receipt, matched by revision and workspace; limit1000ms',
     }), contentType: 'application/json' });
     for (const runId of runs) await page.request.post(toolsDev.url.web(`/api/runs/${runId}/cancel`), { headers, data: {} }).catch(() => undefined);
     await control('tool-round', { enabled: false });
