@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { test, expect } from '@/playwright/suite';
 import { seedBrowserConfig, expectWorkspaceReady, dismissPrivacyDialog, sendPrompt } from '@/playwright/amr';
@@ -29,10 +31,18 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       return response.json() as Promise<Record<string, unknown>>;
     };
     const stream = await createWorkspaceStreamProxy(fixture.urls.api, fixture.workspace);
+    // Stored profile API URL takes precedence over VELA_API_URL. Use an owned
+    // private copy so the real control client connects through the fault proxy.
+    const proxyHome = join(toolsDev.root, 'scratch', `run010-profile-${phase}`);
+    await mkdir(proxyHome, { recursive: true, mode: 0o700 });
+    const profile = JSON.parse(readFileSync(join(fixture.profiles.owner.home, 'config.json'), 'utf8')) as { profiles: Record<string, { apiUrl: string }> };
+    expect(profile.profiles.local?.apiUrl).toBe(fixture.urls.api);
+    profile.profiles.local!.apiUrl = stream.url;
+    await writeFile(join(proxyHome, 'config.json'), JSON.stringify(profile), { mode: 0o600 });
     try {
     await toolsDev.stopWeb();
     await toolsDev.startWeb({
-      AMR_HOME: fixture.profiles.owner.home, VELA_PROFILE: 'local',
+      AMR_HOME: proxyHome, VELA_PROFILE: 'local',
       VELA_API_URL: stream.url, VELA_LINK_URL: fixture.urls.link, OD_NEXT_STRATEGY_ROLLOUT: 'off', OD_WORKSPACE_CONTEXT_SOURCE: 'vela',
     });
     await warmPlaywrightDaemonRuntime(toolsDev.url.daemon('/api/health'));
@@ -193,6 +203,7 @@ for (const phase of ['pre-admission', 'running-exhaustion'] as const) {
       await testInfo.attach('RUN-010-backend-stream-observations', { body: JSON.stringify(stream.observations), contentType: 'application/json' });
       await toolsDev.stopWeb();
       await stream.close();
+      await rm(proxyHome, { recursive: true, force: true });
     }
   });
 
