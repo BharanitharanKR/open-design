@@ -59,6 +59,8 @@ for (const change of ['remove', 'fill'] as const) {
     let status: number | undefined;
     await page.route('**/api/runs', async route => {
       if (route.request().method() !== 'POST') return route.continue();
+      // Upload placeholders display the filename before the attachment exists.
+      expect(route.request().postDataJSON().attachments).toContain('payment-context.txt');
       // Change persisted money after actual GET preflight, not its HTTP response.
       await control('empty');
       const response = await route.fetch();
@@ -70,7 +72,7 @@ for (const change of ['remove', 'fill'] as const) {
       await dismissPrivacyDialog(page); await expectWorkspaceReady(page);
       const prompt = `Keep my payment-waiting draft ${randomUUID()}`;
       await page.getByTestId('chat-file-input').setInputFiles({ name: 'payment-context.txt', mimeType: 'text/plain', buffer: Buffer.from('Keep this file when final authority changes during payment.') });
-      await expect(page.getByTestId('staged-attachments')).toContainText('payment-context.txt');
+      await expect(page.getByTestId('staged-attachments').locator('.msg-att-doc[title="payment-context.txt"]')).not.toHaveClass(/is-up|is-fail/);
       const before = await provider('evidence');
       const paymentIdsBefore = new Set((await control('state')).payments.map(p => p.attemptId));
       const paymentBefore = paymentIdsBefore.size;
