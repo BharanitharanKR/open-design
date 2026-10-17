@@ -119,10 +119,19 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
         expect(sourceEvents, 'Actual settlement must publish a durable wallet event').not.toHaveLength(0);
         const wallet = after.wallet as { transaction_id: string; wallet_debt_credits: string; wallet_revision: string };
         expect(Number(wallet.wallet_debt_credits)).toBeGreaterThan(0);
-        const settlements = after.settlements as { transaction_id: string; request_id: string; wallet_debt_incurred_credits: string }[];
-        const debit = settlements.find(row => row.transaction_id === wallet.transaction_id
-          && Number(row.wallet_debt_incurred_credits) > 0);
-        expect(debit, 'Negative balance must belong to the actual settled usage transaction').toBeDefined();
+        const settlements = after.settlements as { transaction_id: string; request_id: string;
+          wallet_debt_incurred_credits: string; projection_state: string;
+          allocations: { transaction_id: string; amount: string }[] }[];
+        const priorRequests = new Set((before.settlements as { request_id: string }[]).map(row => row.request_id));
+        const debit = settlements.find(row => !priorRequests.has(row.request_id)
+          && Number(row.wallet_debt_incurred_credits) === Number(wallet.wallet_debt_credits));
+        expect(debit, 'Negative balance must belong to a newly settled usage').toBeDefined();
+        // Projection ACK legitimately updates credit_usages after commit. The
+        // immutable allocation retains the settlement transaction's xmin.
+        expect(debit!.projection_state).toBe('acknowledged');
+        expect(debit!.allocations).not.toHaveLength(0);
+        expect(debit!.allocations.every(row => row.transaction_id === wallet.transaction_id)).toBe(true);
+        expect(debit!.allocations.reduce((sum, row) => sum + Number(row.amount), 0)).toBe(credits);
         const ownerEvents = sourceEvents.filter(event => event.payload.workspaceMemberId === fixture.profiles.owner.memberId
           && event.transaction_id === wallet.transaction_id);
         expect(ownerEvents, 'Notification must target the current legal member').not.toHaveLength(0);
@@ -149,7 +158,7 @@ test('RUN-005: a real tool round continues with funds and cannot call the provid
     await testInfo.attach('RUN-005-tool-boundary-evidence', { body: JSON.stringify({
       amrSha: fixture.sourceSha, source: 'real OD/CLI/Link/API; local model provider',
       evidence, walletEvents, streamFrames, streamRequests,
-      notificationLatency: 'Negative money/usage/event xmin match; durable source at → browser receipt matched by revision/member/workspace; limit1000ms',
+      notificationLatency: 'Negative money/immutable allocation/event xmin match; usage projection ACK sampled separately; durable source at → browser receipt matched by revision/member/workspace; limit1000ms',
     }), contentType: 'application/json' });
     for (const runId of runs) await page.request.post(toolsDev.url.web(`/api/runs/${runId}/cancel`), { headers, data: {} }).catch(() => undefined);
     await control('tool-round', { enabled: false });
