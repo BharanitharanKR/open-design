@@ -38,15 +38,17 @@ vi.mock('node:crypto', async (importOriginal) => {
   };
 });
 
-import { closeDatabase, openDatabase } from '../src/db.js';
+import { closeDatabase, listMessages, openDatabase, upsertMessage } from '../src/db.js';
 import { AGENT_DEFS } from '../src/runtimes/registry.js';
 import { agentBinEnvKey } from '../src/runtimes/executables.js';
+import { execAgentFile } from '../src/runtimes/invocation.js';
 import {
   getInstalledPlugin,
   resolvePluginFolder,
   upsertInstalledPlugin,
 } from '../src/plugins/registry.js';
 import { startServer } from '../src/server.js';
+import * as automaticProduction from '../src/strategies/od-next/automatic-simple-production.js';
 import {
   getStrategyTaskExecution
 } from '../src/strategies/task-store.js';
@@ -108,6 +110,7 @@ type Invocation = {
 };
 
 const THREAD_ID = '019fffaa-0000-7000-8000-000000000010';
+const PRODUCTION_FOLLOW_UP_SUGGESTIONS = ['完善落地页的移动端布局', '为演示文稿添加目录页', '统一页面与演示文稿的配色'];
 const execFileP = promisify(execFile);
 const DAEMON_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = path.resolve(DAEMON_ROOT, '../..');
@@ -214,6 +217,30 @@ describe('OD Next automatic production through the real server', () => {
         }
       }
     }
+  });
+
+  it.each([
+    ['public', 'models'], ['public', 'auth'],
+    ['strategy', 'models'], ['strategy', 'auth'],
+  ] as const)('%s Codex fixture answers %s probes without stdin or a generation', async (kind, probe) => {
+    binDir = await mkdtemp(path.join(os.tmpdir(), 'od-next-codex-probes-'));
+    const fixture = kind === 'public'
+      ? await writePublicRolloutCodex(binDir, 'probe-metadata')
+      : await writeStrategyCodex(binDir);
+    const def = AGENT_DEFS.find(agent => agent.id === 'codex')!;
+    const probeDefinition = probe === 'models' ? def.listModels! : def.authProbe!;
+    // Use the real probe launcher: stdin stays open, as it does during detection.
+    // The timeout is only a failure bound; successful probes exit on their own.
+    const { stdout } = await execAgentFile(fixture.bin, probeDefinition.args, {
+      cwd: binDir,
+      timeout: probeDefinition.timeoutMs,
+    });
+    if (probe === 'models') {
+      expect(def.listModels!.parse(String(stdout))).toContainEqual({ id: 'gpt-5.5', label: 'gpt-5.5' });
+    } else {
+      expect(stdout).toContain('Logged in using ChatGPT');
+    }
+    await expect(readFile(fixture.logPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('isolates host CLI probes while retaining real selected Codex detection and preflight', async () => {
@@ -652,9 +679,33 @@ process.exit(127);
   // the packaged child environment allowlist carries no `OD_NEXT_*` key.
   it('marker protocol automatically resumes Codex once and preserves files despite a missing canonical entry', async () => {
     const fixture = await createPublicRolloutFixture('marker-production', 'design');
+    await verifyProductionHostProtocol(fixture, 'marker-production');
+  });
+
+  it('marker protocol persists production follow-up suggestions with the current run key', async () => {
+    const fixture = await createPublicRolloutFixture('marker-production-suggestions', 'design');
+    await verifyProductionHostProtocol(fixture, 'marker-production-suggestions');
+  });
+
+  async function verifyProductionHostProtocol(
+    fixture: Awaited<ReturnType<typeof createPublicRolloutFixture>>,
+    label: string,
+  ) {
+    const prepareContinuation = automaticProduction.prepareAutomaticStrategyContinuation;
+    let repeatPreparation: (() => ReturnType<typeof prepareContinuation>) | undefined;
+    vi.spyOn(automaticProduction, 'prepareAutomaticStrategyContinuation').mockImplementation(input => {
+      const first = prepareContinuation(input);
+      if (first.start) {
+        // Replay the real server callback after delivery: invoking createMeta
+        // again before start would overwrite its pending chat body. A fresh
+        // host nonce must still reuse the original physical Run and prompt.
+        repeatPreparation = () => prepareContinuation(input);
+      }
+      return first;
+    });
     started = fixture.started; binDir = fixture.binDir;
     process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
-    const created = await postRun(started.url, publicRunRequest(fixture, 'Create a landing page and a presentation.', 'marker-production'));
+    const created = await postRun(started.url, publicRunRequest(fixture, 'Create a landing page and a presentation.', label));
     const request = await waitForRunTerminal(started.url, created.runId as string);
     expect(request.status, JSON.stringify(request)).toBe('succeeded');
     const task = await waitForTask(created.strategyTask!.taskExecutionId, 'completed');
@@ -663,18 +714,45 @@ process.exit(127);
     const production = await waitForRunTerminal(started.url, task.latestRunId);
     expect(production.status).toBe('succeeded');
     expect(production.strategyTask).toMatchObject({ outcome: 'completed', terminal: true, deliverableValid: false });
+    expect(repeatPreparation).toBeTypeOf('function');
+    const repeated = repeatPreparation!();
+    expect(repeated.start).toBe(false);
+    expect(repeated.prepared?.kind).toBe('reused');
+    expect(repeated.prepared?.run.id).toBe(task.latestRunId);
     const invocations = await readProjectInvocations(fixture.logPath, fixture.projectId);
     expect(invocations).toHaveLength(2);
     expect(invocations[1]!.argv).toContain('resume');
     expect(invocations[1]!.stdin).toContain('This is the production turn');
     expect(invocations[1]!.stdin).not.toContain('planContractHash=');
+    const events = (await readFile(production.eventsLogPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    const doneKeys = events.filter(event => event.event === 'agent' && event.data?.type === 'done_key');
+    expect(doneKeys).toHaveLength(1);
+    const productionKey = doneKeys[0]!.data.key;
+    expect(productionKey).toMatch(/^[a-f0-9]{16}$/);
+    expect(invocations[1]!.stdin).toContain(`<od-done key="${productionKey}"/>`);
+    expect(invocations[1]!.stdin).toContain(`<od-next key="${productionKey}" value=`);
+    expect(invocations[1]!.stdin).toContain(`<od-focus key="${productionKey}"`);
+    const suggestionsExpected = label === 'marker-production-suggestions';
+    const suggestions = events.filter(event => event.event === 'agent' && event.data?.type === 'next_steps');
+    // Suggestions are optional display hints, not a completion requirement.
+    expect(suggestions.map(event => event.data.suggestions)).toEqual(suggestionsExpected ? [PRODUCTION_FOLLOW_UP_SUGGESTIONS] : []);
+    const visibleText = events
+      .filter(event => event.event === 'agent' && event.data?.type === 'text_delta')
+      .map(event => event.data.delta).join('');
+    expect(visibleText).not.toContain('<od-next');
     expect(await readFile(path.join(invocations[1]!.cwd, 'landing.html'), 'utf8')).toContain('Landing');
     expect(await readFile(path.join(invocations[1]!.cwd, 'deck.html'), 'utf8')).toContain('Deck');
     const response = await fetch(`${started.url}/api/projects/${fixture.projectId}/conversations/${fixture.conversationId}/messages`);
-    const history = await response.json() as { messages: Array<{ content: string; strategyTaskDelivered?: boolean }> };
+    const history = await response.json() as {
+      messages: Array<{ content: string; strategyTaskDelivered?: boolean; events?: Array<{ kind: string; suggestions?: string[] }> }>;
+    };
     expect(JSON.stringify(history)).not.toContain('od-production-ready');
+    expect(JSON.stringify(history)).not.toContain('<od-next');
+    const persistedSuggestions = history.messages.flatMap(message => (message.events ?? [])
+      .filter(event => event.kind === 'next_steps').map(event => event.suggestions));
+    expect(persistedSuggestions).toEqual(suggestionsExpected ? [PRODUCTION_FOLLOW_UP_SUGGESTIONS] : []);
     expect(history.messages.some(message => message.strategyTaskDelivered)).toBe(false);
-  });
+  }
 
   it.each(['missing-session', 'expired-session'] as const)('marker production cold-starts with its plan when %s', async mode => {
     const fixture = await createPublicRolloutFixture(`marker-${mode}`, 'design');
@@ -705,6 +783,34 @@ process.exit(127);
     expect(settled.runs[0]?.settlementReason).toBe('continued');
     expect(settled.runs).toHaveLength(2);
   });
+
+  it.each(['identical', 'conflicting', 'malformed'] as const)(
+    'produces once despite %s repeated retired runtime-state blocks', async mode => {
+      const fixture = await createPublicRolloutFixture(`marker-duplicate-state-${mode}`, 'design');
+      started = fixture.started; binDir = fixture.binDir;
+      process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
+      const created = await postRun(started.url, publicRunRequest(fixture,
+        'Create a landing page from the plan.', `duplicate-state-${mode}`));
+      const request = await waitForRunTerminal(started.url, created.runId as string);
+      expect(request.status, JSON.stringify(request)).toBe('succeeded');
+      const task = await waitForTask(created.strategyTask!.taskExecutionId, 'completed');
+      expect(task.runs.map(run => run.inputStage)).toEqual(['request', 'production']);
+      expect(task.planContract).toBeUndefined();
+      const production = await waitForRunTerminal(started.url, task.latestRunId);
+      expect(production.status, JSON.stringify(production)).toBe('succeeded');
+      const calls = await readProjectInvocations(fixture.logPath, fixture.projectId);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]!.argv).toContain('resume');
+      expect(calls[1]!.stdin).toContain('This is the production turn');
+      expect(await readFile(path.join(calls[1]!.cwd, 'landing.html'), 'utf8')).toContain('Landing');
+      const response = await fetch(`${started.url}/api/projects/${fixture.projectId}/conversations/${fixture.conversationId}/messages`);
+      const history = await response.json() as { messages: Array<{ content: string }> };
+      expect(response.status).toBe(200);
+      expect(history.messages.some(message => message.content.includes('Plan: create a blue landing page.'))).toBe(true);
+      expect(JSON.stringify(history)).not.toContain('open-design-runtime-state');
+      expect(JSON.stringify(history)).not.toContain('od-production-ready');
+    }, 45_000,
+  );
 
   it('does not cold-replay production after a tool ran before resume failure', async () => {
     const fixture = await createPublicRolloutFixture('marker-expired-side-effect', 'design');
@@ -1015,6 +1121,55 @@ process.exit(127);
       expect(retry.runId).toBe(continued.runId);
       expect((await readProjectInvocations(fixture.logPath, fixture.projectId))).toHaveLength(2);
     }, 45_000);
+
+  it('sends compact historical context to the agent while still accepting another clarification form', async () => {
+    const fixture = await createPublicRolloutFixture('marker-question', 'design');
+    started = fixture.started; binDir = fixture.binDir;
+    process.env.OD_NEXT_STRATEGY_LOCAL_SYNTHETIC_CANARY = '1';
+    const original = 'Original handoff request: create a blue page with keyboard navigation.';
+    const first = await postRun(started.url, publicRunRequest(fixture, original, 'history-context-first'));
+    const previous = await waitForTask(first.strategyTask!.taskExecutionId, 'completed');
+    await waitForRunTerminal(started.url, previous.latestRunId);
+    const callsBefore = await readProjectInvocations(fixture.logPath, fixture.projectId);
+    const body = '<!doctype html><html><body>' + 'STORED_PAGE_BODY_SENTINEL'.repeat(1000) + '</body></html>';
+    await writeFile(path.join(callsBefore[0]!.cwd, 'history-page.html'), body);
+    const prior = listMessages(database(), fixture.conversationId)
+      .find(message => message.runId === previous.latestRunId)!;
+    expect(prior).toBeDefined();
+    upsertMessage(database(), fixture.conversationId, {
+      ...prior,
+      content: 'Plan: keep the blue palette and keyboard navigation.\n'
+        + '<question-form id="scope">{"questions":[{"id":"audience","label":"Who is this for?"}]}</question-form>\n'
+        + `<artifact identifier="history-page" type="text/html" title="Existing page">${body}</artifact>`,
+      producedFiles: [{ name: 'history-page.html', path: 'history-page.html', size: body.length,
+        mtime: Date.now(), kind: 'html', mime: 'text/html',
+        artifactManifest: { metadata: { identifier: 'history-page' } } }],
+    });
+    const followup = 'Continue the blue page. Ask for more detail if useful.';
+    const next = await postRun(started.url, {
+      ...publicRunRequest(fixture, followup, 'history-context-second'),
+      // Changed instructions require the full bundle rather than native incremental input.
+      systemPrompt: 'Current instruction: retain keyboard navigation.',
+    });
+    const current = await waitForTask(next.strategyTask!.taskExecutionId, 'completed');
+    expect((await waitForRunTerminal(started.url, current.latestRunId)).status).toBe('succeeded');
+    const calls = await readProjectInvocations(fixture.logPath, fixture.projectId);
+    expect(calls).toHaveLength(2);
+    const context = parseOdNextPromptBundleV2(calls[1]!.stdin).context.priorTranscript!;
+    for (const text of [original, 'blue palette', 'keyboard navigation', 'Who is this for?', 'history-page.html']) {
+      expect(context).toContain(text);
+    }
+    expect(context).not.toContain('STORED_PAGE_BODY_SENTINEL');
+    expect(context).not.toContain('<question-form');
+    expect(context).not.toContain('already answered');
+    expect(calls[1]!.stdin).toContain(followup);
+    // The fixture agent asks the same question again. It remains an ordinary
+    // succeeded reply: historical formatting must never become a repetition gate.
+    const reply = listMessages(database(), fixture.conversationId)
+      .find(message => message.runId === current.latestRunId)!;
+    expect(reply.content).toContain('<question-form id="scope">');
+    expect(reply.content).toContain('Who is this for?');
+  }, 45_000);
 
   it('rejects a handoff during an active run and continues under the current strategy after daemon restart', async () => {
     const fixture = await createPublicRolloutFixture('marker-handoff', 'design');
@@ -2826,6 +2981,9 @@ const argv = process.argv.slice(2);
 const logPath = ${JSON.stringify(logPath)};
 if (argv.includes('--version')) { console.log(${JSON.stringify(agentCliVersion)}); process.exit(0); }
 if (argv.includes('--help')) { console.log('Usage: codex exec'); process.exit(0); }
+// Metadata probes never consume a generation prompt on stdin.
+if (argv[0] === 'debug' && argv[1] === 'models') { console.log(JSON.stringify({ models: [{ id: 'gpt-5.5' }] })); process.exit(0); }
+if (argv[0] === 'login' && argv[1] === 'status') { console.log('Logged in using ChatGPT'); process.exit(0); }
 let stdin = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => { stdin += chunk; });
@@ -2867,7 +3025,26 @@ process.stdin.on('end', () => {
     return;
   }
   let text = 'Ordinary public run completed.';
-  if (${JSON.stringify(label)} === 'marker-handoff') {
+  if (${JSON.stringify(label)}.startsWith('marker-duplicate-state-')) {
+    const mode = ${JSON.stringify(label)}.slice('marker-duplicate-state-'.length);
+    if (stdin.includes('This is the production turn')) {
+      fs.writeFileSync('landing.html', '<!doctype html><html><body>Landing</body></html>');
+      text = 'Wrote landing.html.';
+    } else {
+      const key = /<od-production-ready key="([a-f0-9]+)"/.exec(stdin)?.[1];
+      if (!key) throw new Error('Current host marker key was not injected');
+      const state = {
+        schema: 'open-design.strategy-state/v2', route: 'full_plan', inputStage: 'request',
+        outcome: 'plan_ready', executionMode: 'simple', executionIntent: 'produce', reasonCodes: [],
+      };
+      const bodies = mode === 'malformed' ? ['{broken}', '{also broken}']
+        : [JSON.stringify(state), JSON.stringify(mode === 'conflicting'
+          ? { ...state, executionMode: null, executionIntent: 'plan_only' } : state)];
+      text = 'Plan: create a blue landing page.\\n'
+        + bodies.map(body => '<open-design-runtime-state>\\n' + body + '\\n</open-design-runtime-state>').join('\\n')
+        + '\\n<od-production-ready key="' + key + '" />';
+    }
+  } else if (${JSON.stringify(label)} === 'marker-handoff') {
     if (stdin.includes('Historical task context.')) {
       fs.writeFileSync('index.html', '<!doctype html><html><body>Dog battle</body></html>');
       text = 'Delivered index.html.';
@@ -2881,11 +3058,17 @@ process.stdin.on('end', () => {
       if (!key) throw new Error('Current host marker key was not injected');
       text = 'Plan: deliver a standalone dog image only.\\n<od-production-ready key="' + key + '" />';
     }
-  } else if (['marker-production', 'marker-missing-session', 'marker-expired-session', 'marker-expired-side-effect', 'marker-tool-split'].includes(${JSON.stringify(label)})) {
+  } else if (['marker-production', 'marker-production-suggestions', 'marker-missing-session', 'marker-expired-session', 'marker-expired-side-effect', 'marker-tool-split'].includes(${JSON.stringify(label)})) {
     if (stdin.includes('This is the production turn')) {
       fs.writeFileSync('landing.html', '<!doctype html><html><body>Landing</body></html>');
       fs.writeFileSync('deck.html', '<!doctype html><html><body>Deck</body></html>');
       text = 'Wrote landing.html and deck.html.\\n<open-design-runtime-state>\\n{broken}\\n</open-design-runtime-state>';
+      if (${JSON.stringify(label)} === 'marker-production-suggestions') {
+        const key = /<od-next key="([a-f0-9]+)"/.exec(stdin)?.[1];
+        if (!key) throw new Error('Current next-step marker key was not injected');
+        text += '\\n' + ${JSON.stringify(PRODUCTION_FOLLOW_UP_SUGGESTIONS)}
+          .map(value => '<od-next key="' + key + '" value="' + value + '"/>').join('\\n');
+      }
     } else {
       const key = /<od-production-ready key="([a-f0-9]+)"/.exec(stdin)?.[1];
       if (!key) throw new Error('Current host marker key was not injected');
@@ -3122,6 +3305,9 @@ const logPath = ${JSON.stringify(logPath)};
 ${probeLogPath ? `if (argv.includes('--version') || argv.includes('--help') || argv[0] === 'debug' && argv[1] === 'models' || argv[0] === 'login' && argv[1] === 'status') fs.appendFileSync(${JSON.stringify(probeLogPath)}, JSON.stringify(argv) + '\\n');` : ''}
 if (argv.includes('--version')) { console.log('codex-cli 0.147.0'); process.exit(0); }
 if (argv.includes('--help')) { console.log('Usage: codex exec [--sandbox MODE]'); process.exit(0); }
+// Answer probes before failure/generation handling, without waiting for stdin.
+if (argv[0] === 'debug' && argv[1] === 'models') { console.log(JSON.stringify({ models: [{ id: 'gpt-5.5' }] })); process.exit(0); }
+if (argv[0] === 'login' && argv[1] === 'status') { console.log('Logged in using ChatGPT'); process.exit(0); }
 if (fs.existsSync(logPath + '.fail-start')) {
   process.stderr.write('fixture: process exited before session start\\n');
   process.exit(1);
