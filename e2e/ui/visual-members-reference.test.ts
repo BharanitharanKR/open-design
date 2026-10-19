@@ -270,3 +270,61 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
     } finally { deliver?.(); }
   });
 }
+
+test('[P1] B23 existing member is a row error with editable email retained', async ({ page }) => {
+  const dialog = await setup(page, 'owner');
+  await page.route('**/api/workspace/invite', route => route.fulfill({ json: { results: [{ email: 'lee@example.com', ok: false, error: 'already_member' }] } }));
+  const input = dialog.locator('input[type="email"]');
+  await input.fill('lee@example.com');
+  await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
+  await expect(dialog.getByText('该邮箱已是团队成员。')).toBeVisible();
+  await expect(input).toHaveValue('lee@example.com');
+  await expect(input).toBeEditable();
+  await page.mouse.move(1300, 800);
+  await capture(page, 'B23');
+  await input.fill('new@example.com');
+  await expect(dialog.getByText('该邮箱已是团队成员。')).toHaveCount(0);
+});
+
+test('[P1] B25 whole request failure is inline and preserves retryable form', async ({ page }) => {
+  const dialog = await setup(page, 'owner');
+  let calls = 0;
+  await page.route('**/api/workspace/invite', route => { calls += 1; return route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }); });
+  const input = dialog.locator('input[type="email"]');
+  await input.fill('lee@example.com');
+  const submit = dialog.getByRole('button', { name: '发送邀请', exact: true });
+  await submit.click();
+  await expect(dialog.getByRole('alert')).toHaveText('邀请发送失败，请检查网络后重试。');
+  await expect(input).toHaveValue('lee@example.com');
+  await expect(input).toBeEditable();
+  await expect(submit).toBeEnabled();
+  expect(calls).toBe(1);
+  await page.mouse.move(1300, 800);
+  await capture(page, 'B25');
+});
+
+test('[P1] B10 partial success then corrected retry closes with actual cumulative count two', async ({ page }) => {
+  const dialog = await setup(page, 'owner');
+  let calls = 0;
+  await page.route('**/api/workspace/invite', route => {
+    calls += 1;
+    return route.fulfill({ json: { results: calls === 1 ? [
+      { email: 'mika@example.com', ok: true, inviteId: 'visual-one' },
+      { email: 'lee@example.com', ok: false, error: 'active_pending_invite' },
+    ] : [{ email: 'corrected@example.com', ok: true, inviteId: 'visual-two' }] } });
+  });
+  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  await dialog.locator('input[type="email"]').nth(0).fill('mika@example.com');
+  await dialog.locator('input[type="email"]').nth(1).fill('lee@example.com');
+  await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
+  await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
+  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await dialog.locator('input[type="email"]').fill('corrected@example.com');
+  await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: '已向 2 位同事发送邀请' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
+  expect(calls).toBe(2);
+  await page.mouse.move(1300, 800);
+  await capture(page, 'B10');
+});
