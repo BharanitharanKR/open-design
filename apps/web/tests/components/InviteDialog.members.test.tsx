@@ -54,6 +54,23 @@ describe('member-line invitation states', () => {
     expect(dispatch.mock.calls.map(([event]) => event).filter(event => event.type === 'od:workspace-invites-sent').map(event => (event as CustomEvent).detail.totalCount)).toEqual([1, 2]);
     expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ invites: [{ email: 'corrected@example.com', role: 'member' }] });
   });
+  it('retries only unsent rows unchanged after a partial no-session result', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(response([
+      { email: 'sent@example.com', ok: true },
+      { email: 'unsent@example.com', ok: false, error: 'no_session' },
+    ])).mockResolvedValueOnce(response([{ email: 'unsent@example.com', ok: true }]));
+    vi.stubGlobal('fetch', fetcher);
+    const close = vi.fn();
+    render(<InviteDialog open workspaceContext={owner} onClose={close} />);
+    email('sent@example.com');
+    fireEvent.click(screen.getByRole('button', { name: /添加成员|add member/i }));
+    email('unsent@example.com', 1); fireEvent.click(sendButton());
+    await waitFor(() => expect(screen.getAllByRole('textbox')).toHaveLength(1));
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('unsent@example.com');
+    fireEvent.click(sendButton());
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ invites: [{ email: 'unsent@example.com', role: 'member' }] });
+  });
   it('disables every editable control while sending and retains all inputs on transport failure', async () => {
     let reject!: (reason: unknown) => void;
     vi.stubGlobal('fetch', vi.fn(() => new Promise((_resolve, fail) => { reject = fail; })));

@@ -440,12 +440,17 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
     }
 
     const results: WorkspaceInviteCreateResult[] = [];
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
       const outcome = await createInvite({ email: item.email, role: item.role, workspaceId }, requestEnv);
-      // The vela session is workspace-wide: if it is missing for one invite it is
-      // missing for all, so short-circuit to a single 401 instead of N failures.
       if (!outcome.ok && outcome.error === 'no_session') {
-        return res.status(401).json({ error: 'no_session' });
+        // Preserve the legacy unauthenticated response before any row completes.
+        // A session can disappear between rows; do not discard confirmed results
+        // or send further rows after that point, as retries must exclude successes.
+        if (results.length === 0) return res.status(401).json({ error: 'no_session' });
+        results.push(...items.slice(index).map(pending => ({
+          email: pending.email, ok: false as const, error: 'no_session',
+        })));
+        break;
       }
       results.push(
         outcome.ok
