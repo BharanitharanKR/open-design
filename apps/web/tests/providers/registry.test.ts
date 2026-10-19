@@ -19,6 +19,10 @@ import {
   deployProjectFile,
   createDesignSystemDraft,
   fetchAgentsStream,
+  fetchSkills,
+  fetchDesignTemplates,
+  fetchDesignSystems,
+  fetchPromptTemplates,
   fetchCloudflarePagesZones,
   fetchDeployConfig,
   fetchDesignSystemsResult,
@@ -45,6 +49,41 @@ import {
   upsertPreviewComment,
   writeProjectTextFileDetailed,
 } from '../../src/providers/registry';
+
+describe('required startup catalog reads', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  const readers = [
+    () => fetchSkills(null, { throwOnError: true }),
+    () => fetchDesignTemplates({ throwOnError: true }),
+    () => fetchDesignSystems(null, { throwOnError: true }),
+    () => fetchPromptTemplates({ throwOnError: true }),
+  ];
+
+  it.each(readers.map((read, index) => ({ read, index })))(
+    'distinguishes failed requests from successful empty catalog $index', async ({ read }) => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+      await expect(read()).rejects.toThrow();
+      vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+      await expect(read()).rejects.toThrow();
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('{')));
+      await expect(read()).rejects.toThrow();
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({})));
+      await expect(read()).rejects.toThrow();
+      vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+        skills: [], designTemplates: [], designSystems: [], promptTemplates: [],
+      })));
+      await expect(read()).resolves.toEqual([]);
+    },
+  );
+
+  it('keeps the existing empty-list fallback for callers without strict reads', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+    await expect(Promise.all([
+      fetchSkills(), fetchDesignTemplates(), fetchDesignSystems(), fetchPromptTemplates(),
+    ])).resolves.toEqual([[], [], [], []]);
+  });
+});
 
 describe('skill operation diagnostics', () => {
   afterEach(() => {

@@ -279,16 +279,19 @@ export async function fetchAgentsStream(args: {
 // Omit for callers that want the unfiltered, pre-workspace-isolation list.
 export async function fetchSkills(
   workspaceContext?: WorkspaceCollabContext | null,
+  options?: { throwOnError?: boolean },
 ): Promise<SkillSummary[]> {
   try {
     const resp = await fetch(
       '/api/skills',
       workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : undefined,
     );
-    if (!resp.ok) return [];
+    if (!resp.ok) throw new Error(`skills ${resp.status}`);
     const json = (await resp.json()) as { skills: SkillSummary[] };
+    if (options?.throwOnError && !Array.isArray(json?.skills)) throw new Error('Invalid skills catalog');
     return json.skills ?? [];
-  } catch {
+  } catch (error) {
+    if (options?.throwOnError) throw error;
     return [];
   }
 }
@@ -313,13 +316,15 @@ export async function fetchProjectMediaTasks(
 // fetched from a separate registry root so the EntryView Templates tab
 // and Settings → Skills surface stay decoupled. See
 // specs/current/skills-and-design-templates.md.
-export async function fetchDesignTemplates(): Promise<SkillSummary[]> {
+export async function fetchDesignTemplates(options?: { throwOnError?: boolean }): Promise<SkillSummary[]> {
   try {
     const resp = await fetch('/api/design-templates');
-    if (!resp.ok) return [];
+    if (!resp.ok) throw new Error(`designTemplates ${resp.status}`);
     const json = (await resp.json()) as { designTemplates: SkillSummary[] };
+    if (options?.throwOnError && !Array.isArray(json?.designTemplates)) throw new Error('Invalid designTemplates catalog');
     return json.designTemplates ?? [];
-  } catch {
+  } catch (error) {
+    if (options?.throwOnError) throw error;
     return [];
   }
 }
@@ -603,6 +608,7 @@ export async function fetchDesignSystems(
   options?: FetchDesignSystemsOptions,
 ): Promise<DesignSystemSummary[]> {
   const result = await fetchDesignSystemsResult(workspaceContext, options);
+  if (!result.ok && options?.throwOnError) throw new Error('Design systems unavailable');
   return result.ok ? result.designSystems : [];
 }
 
@@ -616,6 +622,8 @@ export type DesignSystemsResult =
   | { ok: false };
 
 export interface FetchDesignSystemsOptions {
+  /** Startup readiness requires a successful catalog read, including empty catalogs. */
+  throwOnError?: boolean;
   /**
    * A realtime mutation invalidated the Team index. Every forced call starts
    * its own authoritative read; distinct mutations must never join an older
@@ -681,10 +689,11 @@ async function materializeTeamDesignSystems(
     };
     if (options?.forceTeamMaterialization) evictCoalescedGet(cacheKey);
     return await coalescedGet(cacheKey, readTeamIndex);
-  } catch {
+  } catch (error) {
     // Keep personal/built-in systems usable while the remote team index is
     // temporarily unavailable. The scoped catalog request below remains the
     // authority and still fails closed for an invalid Workspace identity.
+    if (options?.throwOnError) throw error;
     return new Set();
   }
 }
@@ -774,7 +783,7 @@ async function readDesignSystemCatalog(
   if (options?.forceTeamMaterialization || options?.materializedTeamIds) {
     evictCoalescedGet(cacheKey);
   }
-  return coalescedGet(cacheKey, async () => {
+  const catalog = await coalescedGet(cacheKey, async () => {
     const resp = await fetch('/api/design-systems', {
       ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
     });
@@ -782,8 +791,10 @@ async function readDesignSystemCatalog(
     // failure, so the next reader retries instead of joining a dead entry.
     if (!resp.ok) throw new Error(`design-systems ${resp.status}`);
     const json = (await resp.json()) as { designSystems?: DesignSystemSummary[] };
-    return json.designSystems ?? [];
+    return json.designSystems;
   }, CATALOG_SINGLE_FLIGHT_ONLY_MS);
+  if (options?.throwOnError && !Array.isArray(catalog)) throw new Error('Invalid design systems catalog');
+  return catalog ?? [];
 }
 
 export async function fetchDesignSystemsResult(
@@ -1256,13 +1267,15 @@ async function readImportError(resp: Response): Promise<SkillImportError> {
   };
 }
 
-export async function fetchPromptTemplates(): Promise<PromptTemplateSummary[]> {
+export async function fetchPromptTemplates(options?: { throwOnError?: boolean }): Promise<PromptTemplateSummary[]> {
   try {
     const resp = await fetch('/api/prompt-templates');
-    if (!resp.ok) return [];
+    if (!resp.ok) throw new Error(`promptTemplates ${resp.status}`);
     const json = (await resp.json()) as { promptTemplates: PromptTemplateSummary[] };
+    if (options?.throwOnError && !Array.isArray(json?.promptTemplates)) throw new Error('Invalid promptTemplates catalog');
     return json.promptTemplates ?? [];
-  } catch {
+  } catch (error) {
+    if (options?.throwOnError) throw error;
     return [];
   }
 }

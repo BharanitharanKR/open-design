@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { navigate } from '../../src/router';
 import {
@@ -939,6 +940,54 @@ describe('App project creation routing', () => {
     workspaceInvalidationHarness.onActive.length = 0;
   });
 
+  it('declares Home business Ready after successful empty required catalogs', async () => {
+    mockedListProjects.mockResolvedValue([]);
+    const signal = vi.fn(async (_value: { readiness_point?: string }) => true);
+    const restore = installMockOpenDesignHost({ host: {
+      startup: { context: async () => ({ launch_attempt_id: 'launch', app_session_id: 'session' }), signal },
+    } });
+    try {
+      render(<App />);
+      await waitFor(() => expect(signal).toHaveBeenCalledWith(expect.objectContaining({ readiness_point: 'interactive_ready' })));
+    } finally { restore(); }
+  });
+
+  it.each(['projects', 'agents', 'config', 'skills', 'designTemplates', 'designSystems', 'promptTemplates'] as const)('does not declare Home business Ready when required %s fail', async (resource) => {
+    mockedListProjects.mockResolvedValue([]);
+    if (resource === 'projects') mockedListProjects.mockRejectedValue(new Error('catalog unavailable'));
+    else if (resource === 'agents') mockedFetchAgentsStream.mockRejectedValue(new Error('agents unavailable'));
+    else if (resource === 'config') mockedFetchDaemonConfig.mockResolvedValue(null);
+    else {
+      // Exercise the actual provider's failure semantics with the App readiness
+      // gates; a mocked rejected promise misses providers that swallow failures.
+      const actual = await vi.importActual<typeof import('../../src/providers/registry')>('../../src/providers/registry');
+      if (resource === 'skills') mockedFetchSkills.mockImplementation(actual.fetchSkills);
+      if (resource === 'designTemplates') mockedFetchDesignTemplates.mockImplementation(actual.fetchDesignTemplates);
+      if (resource === 'designSystems') mockedFetchDesignSystems.mockImplementation(actual.fetchDesignSystems);
+      if (resource === 'promptTemplates') mockedFetchPromptTemplates.mockImplementation(actual.fetchPromptTemplates);
+      const endpoint = { skills: '/api/skills', designTemplates: '/api/design-templates', designSystems: '/api/design-systems', promptTemplates: '/api/prompt-templates' }[resource];
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => (
+        new URL(String(input), 'http://d.local').pathname === endpoint
+          ? new Response('', { status: 503 }) : Response.json({})
+      )));
+    }
+    const signal = vi.fn(async (_value: { readiness_point?: string }) => true);
+    const restore = installMockOpenDesignHost({ host: {
+      startup: { context: async () => ({ launch_attempt_id: 'launch', app_session_id: 'session' }), signal },
+    } });
+    try {
+      render(<App />);
+      if (resource !== 'config') {
+        await waitFor(() => expect(signal).toHaveBeenCalledWith(expect.objectContaining({ readiness_point: 'first_visible' })));
+      } else {
+        await waitFor(() => expect(mockedFetchDaemonConfig).toHaveBeenCalled());
+      }
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      expect(signal.mock.calls.some(([value]) => value.readiness_point === 'interactive_ready')).toBe(false);
+    } finally { restore(); }
+  });
+
   it('routes mutations and limits global focus catch-up to Skills and Design Systems', async () => {
     const context = workspaceContext('ws-resources', 'wm-resources');
     stubWorkspaceContext(context.workspaceId, context.workspaceMemberId);
@@ -981,7 +1030,7 @@ describe('App project creation routing', () => {
         workspaceId: context.workspaceId,
         workspaceMemberId: context.workspaceMemberId,
       }),
-      { forceTeamMaterialization: true },
+      { forceTeamMaterialization: true, throwOnError: true },
     );
     expect(mockedFetchSkills).toHaveBeenCalledTimes(1);
 

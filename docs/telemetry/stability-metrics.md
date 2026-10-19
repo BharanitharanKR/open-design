@@ -30,8 +30,15 @@ The renderer obtains attempt/session IDs through the optional host `startup`
 bridge. Preload forwards only context/readiness messages; main verifies the
 owning main WebContents, top frame and app origin. Pet/splash/foreign frames
 cannot declare Ready. Merely mounting a loading placeholder or showing a window
-does not declare business readiness. Home waits for config and its resource
-loads; a project waits for current detail, workspace scope, conversation/message
+does not declare business readiness. Home requires a successful project-list
+read for the current account/workspace/view, with no failure recorded for that
+scope, successful agent discovery and config, and current-scope resource catalogs;
+merely clearing loading flags is insufficient. Skills, design templates, design
+systems and prompt templates must each finish a successful catalog read; a
+successful empty catalog is usable, while a failed request cannot declare Home
+Ready. Workspace-scoped catalogs must succeed under the current identity.
+Non-startup callers retain their existing empty-list fallback on request failure. A project waits for current detail,
+workspace scope, conversation/message
 authority, initialized messages and enabled send/new-conversation actions. The
 layout effect runs after the corresponding React controls commit. A hidden
 window waits for foreground reveal. Later route changes cancel pending effects.
