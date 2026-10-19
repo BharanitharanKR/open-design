@@ -841,6 +841,8 @@ export const tr: Dict = {
   'entry.useEverywhereTitle': 'Her yerde kullan',
   'entry.useEverywhereAria': '“Her yerde kullan” kılavuzunu aç (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "Çalışma alanları",
+  "workspaceSwitcher.limitReached": "50 çalışma alanı sınırına ulaşıldı",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Tüm projeler",

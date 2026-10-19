@@ -841,6 +841,8 @@ export const ko: Dict = {
   'entry.useEverywhereTitle': '어디서나 사용',
   'entry.useEverywhereAria': '‘어디서나 사용’ 가이드 열기 (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "워크스페이스",
+  "workspaceSwitcher.limitReached": "최대 50개에 도달했습니다",
   'workspaceSwitcher.invite': '동료 초대',
   'workspaceSwitcher.createTeam': '새 팀',
   "workspaceSwitcher.draftsTooltip": "모든 프로젝트",

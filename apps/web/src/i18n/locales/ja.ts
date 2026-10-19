@@ -841,6 +841,8 @@ export const ja: Dict = {
   'entry.useEverywhereTitle': 'どこでも使う',
   'entry.useEverywhereAria': '「どこでも使う」ガイドを開く（CLI、MCP、HTTP、Skills）',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "ワークスペース",
+  "workspaceSwitcher.limitReached": "上限の50件に達しました",
   'workspaceSwitcher.invite': 'メンバーを招待',
   'workspaceSwitcher.createTeam': '新しいチーム',
   "workspaceSwitcher.draftsTooltip": "すべてのプロジェクト",

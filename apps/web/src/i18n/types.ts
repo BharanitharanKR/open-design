@@ -1178,6 +1178,8 @@ export interface Dict {
   'entry.useEverywhereTitle': string;
   'entry.useEverywhereAria': string;
   'entry.workspaceTeamsLabel': string;
+  'workspaceSwitcher.title': string;
+  'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.invite': string;
   'workspaceSwitcher.createTeam': string;
   'workspaceSwitcher.draftsTooltip': string;

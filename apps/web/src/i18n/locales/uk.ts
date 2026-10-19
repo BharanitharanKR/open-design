@@ -841,6 +841,8 @@ export const uk: Dict = {
   'entry.useEverywhereTitle': 'Використовувати скрізь',
   'entry.useEverywhereAria': 'Відкрити довідник «Використовувати скрізь» (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "Робочі простори",
+  "workspaceSwitcher.limitReached": "Досягнуто ліміту 50 просторів",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Усі проєкти",

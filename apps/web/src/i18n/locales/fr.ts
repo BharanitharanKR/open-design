@@ -841,6 +841,8 @@ export const fr: Dict = {
   'entry.useEverywhereTitle': 'Utiliser partout',
   'entry.useEverywhereAria': 'Ouvrir le guide « Utiliser partout » (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Équipes',
+  "workspaceSwitcher.title": "Espaces de travail",
+  "workspaceSwitcher.limitReached": "Limite de 50 espaces atteinte",
   'workspaceSwitcher.invite': 'Inviter un collègue',
   'workspaceSwitcher.createTeam': 'Nouvelle équipe',
   "workspaceSwitcher.draftsTooltip": "Tous les projets",

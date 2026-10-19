@@ -844,6 +844,8 @@ export const zhCN: Dict = {
   "entry.useEverywhereTitle": "随处使用",
   "entry.useEverywhereAria": "打开「随处使用」指南（CLI、MCP、HTTP、Skills）",
   "entry.workspaceTeamsLabel": "团队版",
+  "workspaceSwitcher.title": "工作空间",
+  "workspaceSwitcher.limitReached": "已达 50 个上限",
   "workspaceSwitcher.invite": "邀请同事",
   "workspaceSwitcher.createTeam": "新建团队",
   "workspaceSwitcher.draftsTooltip": "全部项目",

@@ -841,6 +841,8 @@ export const fa: Dict = {
   'entry.useEverywhereTitle': 'استفاده در همه‌جا',
   'entry.useEverywhereAria': 'باز کردن راهنمای «استفاده در همه‌جا» (CLI، MCP، HTTP، Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "فضاهای کاری",
+  "workspaceSwitcher.limitReached": "به سقف ۵۰ فضای کاری رسیدید",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "همه پروژه‌ها",

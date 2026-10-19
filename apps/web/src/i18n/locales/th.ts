@@ -841,6 +841,8 @@ export const th: Dict = {
   'entry.useEverywhereTitle': 'ใช้ได้ทุกที่',
   'entry.useEverywhereAria': 'เปิดคู่มือ Use Everywhere (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "พื้นที่ทำงาน",
+  "workspaceSwitcher.limitReached": "ถึงขีดจำกัด 50 พื้นที่แล้ว",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "โปรเจกต์ทั้งหมด",

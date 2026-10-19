@@ -841,6 +841,8 @@ export const ru: Dict = {
   'entry.useEverywhereTitle': 'Использовать везде',
   'entry.useEverywhereAria': 'Открыть руководство «Использовать везде» (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Команды',
+  "workspaceSwitcher.title": "Рабочие пространства",
+  "workspaceSwitcher.limitReached": "Достигнут лимит в 50 пространств",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Все проекты",

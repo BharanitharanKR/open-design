@@ -841,6 +841,8 @@ export const id: Dict = {
   'entry.useEverywhereTitle': 'Gunakan di mana saja',
   'entry.useEverywhereAria': 'Buka panduan “Gunakan di mana saja” (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "Ruang kerja",
+  "workspaceSwitcher.limitReached": "Batas 50 ruang kerja tercapai",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Semua proyek",

@@ -841,6 +841,8 @@ export const ptBR: Dict = {
   'entry.useEverywhereTitle': 'Usar em qualquer lugar',
   'entry.useEverywhereAria': 'Abrir o guia “Usar em qualquer lugar” (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "Espaços de trabalho",
+  "workspaceSwitcher.limitReached": "Limite de 50 espaços atingido",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Todos os projetos",

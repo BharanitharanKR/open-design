@@ -841,6 +841,8 @@ export const hu: Dict = {
   'entry.useEverywhereTitle': 'Használat bárhol',
   'entry.useEverywhereAria': '„Használat bárhol” útmutató megnyitása (CLI, MCP, HTTP, Skills)',
   'entry.workspaceTeamsLabel': 'Teams',
+  "workspaceSwitcher.title": "Munkaterületek",
+  "workspaceSwitcher.limitReached": "Elérte az 50 munkaterületes korlátot",
   'workspaceSwitcher.invite': 'Invite colleague',
   'workspaceSwitcher.createTeam': 'New team',
   "workspaceSwitcher.draftsTooltip": "Összes projekt",

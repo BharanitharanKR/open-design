@@ -846,6 +846,8 @@ export const zhTW: Dict = {
   "entry.useEverywhereTitle": "隨處使用",
   "entry.useEverywhereAria": "開啟「隨處使用」指南（CLI、MCP、HTTP、Skills）",
   "entry.workspaceTeamsLabel": "團隊版",
+  "workspaceSwitcher.title": "工作空間",
+  "workspaceSwitcher.limitReached": "已達 50 個上限",
   "workspaceSwitcher.invite": "邀請同事",
   "workspaceSwitcher.createTeam": "新建團隊",
   "workspaceSwitcher.draftsTooltip": "全部專案",
