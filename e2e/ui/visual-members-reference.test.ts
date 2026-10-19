@@ -328,3 +328,65 @@ test('[P1] B10 partial success then corrected retry closes with actual cumulativ
   await page.mouse.move(1300, 800);
   await capture(page, 'B10');
 });
+
+test('[P1] A07 create workspace hands off to a browser without adding a client form', async ({ page }) => {
+  const menu = await setup(page, 'owner', false);
+  const create = menu.getByTestId('entry-nav-create-team');
+  const href = await create.getAttribute('href');
+  expect(href).toBeTruthy();
+  await page.context().route('https://console.example.test/**', route => route.fulfill({ contentType: 'text/html', body: '<title>Controlled console handoff</title><p>External navigation witness only</p>' }));
+  await capture(page, 'A07');
+  const popupPromise = page.waitForEvent('popup');
+  await create.click();
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(href!);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByTestId('workspace-switcher')).toBeVisible();
+  await popup.close();
+});
+
+test('[P1] C12 joined directory appears without account logout and switches by exact identity', async ({ page }) => {
+  let deliver!: () => void;
+  const gate = new Promise<void>(resolve => { deliver = resolve; });
+  let delivered = false;
+  let joined = false;
+  let directoryReads = 0;
+  let activeId = 'members-visual-workspace';
+  const writes: unknown[] = [];
+  const logoutRequests: string[] = [];
+  page.on('request', request => { if (/\/(?:logout|signout|sign-out)(?:[/?]|$)/.test(request.url())) logoutRequests.push(request.url()); });
+  try {
+    const menu = await setup(page, 'owner', false, 2, { beforeHome: async current => {
+      const added = { ...current, workspaceId: 'members-joined-design', workspaceMemberId: 'members-joined-owner', workspaceName: 'Design space' };
+      await page.route('**/api/workspace/directory', route => {
+        directoryReads += 1;
+        return route.fulfill({ json: { items: joined ? [current, added] : [current], activeWorkspaceId: activeId } });
+      });
+      await page.route('**/api/workspace/context', route => route.fulfill({ json: { context: route.request().headers()['x-od-workspace-id'] === added.workspaceId ? added : current } }));
+      await page.route('**/api/workspace/active', route => {
+        writes.push(route.request().postDataJSON()); activeId = added.workspaceId;
+        return route.fulfill({ json: { activeWorkspaceId: activeId, context: added } });
+      });
+      await page.route('**/api/workspace/events**', async route => {
+        await gate;
+        if (delivered) return route.fulfill({ status: 204 });
+        delivered = true;
+        return route.fulfill({ contentType: 'text/event-stream', body: `event: ready\ndata: {}\n\nevent: workspace-context-changed\ndata: ${JSON.stringify({ type: 'workspace-context-changed', at: new Date().toISOString() })}\n\n` });
+      });
+    } });
+    await expect(menu.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveCount(0);
+    await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
+    const before = directoryReads;
+    joined = true; deliver();
+    await expect.poll(() => directoryReads).toBeGreaterThan(before);
+    await page.getByTestId('workspace-switcher').click();
+    await page.getByRole('menuitem', { name: 'Design space', exact: true }).click();
+    await expect(page.getByTestId('workspace-switcher')).toContainText('Design space');
+    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? '{}').workspaceId)).toBe('members-joined-design');
+    expect(writes).toEqual([{ workspaceId: 'members-joined-design', workspaceMemberId: 'members-joined-owner' }]);
+    expect(logoutRequests).toEqual([]);
+    await page.getByTestId('workspace-switcher').click();
+    await expect(page.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveAttribute('aria-current', 'true');
+    await capture(page, 'C12');
+  } finally { deliver?.(); }
+});
