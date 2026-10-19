@@ -34,6 +34,7 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
   const [dismissal, setDismissal] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(0);
+  const [sentGeneration, setSentGeneration] = useState(0);
   const principal = context ? `${context.workspaceId}:${context.workspaceMemberId}` : '';
   useEffect(() => {
     setOpen(false);
@@ -66,6 +67,7 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
       if (!context || detail?.workspaceId !== context.workspaceId
         || detail?.workspaceMemberId !== context.workspaceMemberId
         || !Number.isInteger(detail?.count) || detail.count <= 0) return;
+      setSentGeneration(previous => previous + 1);
       setSent(Number.isInteger(detail.totalCount) && detail.totalCount >= detail.count ? detail.totalCount : detail.count);
       if (storageKey) {
         setDismissal(storageKey);
@@ -79,7 +81,7 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
     if (!sent) return;
     const timer = window.setTimeout(() => setSent(0), 4000);
     return () => window.clearTimeout(timer);
-  }, [sent]);
+  }, [sent, sentGeneration]);
   if (!context || context.memberStatus !== 'active'
     || context.lifecycleState !== 'active' || !context.permissions.canInviteMembers) return null;
   return (

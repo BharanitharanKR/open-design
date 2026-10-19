@@ -43,6 +43,20 @@ describe('home invitation entry', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole('status')).toBeNull();
   });
+  it('gives each independent same-size successful batch a fresh four seconds', () => {
+    vi.useFakeTimers();
+    render(view());
+    const success = () => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } }));
+    act(success);
+    act(() => vi.advanceTimersByTime(3999));
+    act(success);
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('status').textContent).toBe('已向 1 位同事发送邀请');
+    act(() => vi.advanceTimersByTime(3998));
+    expect(screen.getByRole('status')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
   it('reports the cumulative confirmed successes after retrying failed rows', () => {
     render(view());
     act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
