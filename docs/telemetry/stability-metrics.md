@@ -33,7 +33,9 @@ cannot declare Ready. Merely mounting a loading placeholder or showing a window
 does not declare business readiness. Home requires a successful project-list
 read for the current account/workspace/view, with no failure recorded for that
 scope, successful agent discovery and config, and current-scope resource catalogs;
-merely clearing loading flags is insufficient. A project waits for current detail,
+merely clearing loading flags is insufficient. Known limit: the skills, design-template, design-system and prompt-template
+catalog providers currently return an empty list on request failure, so a failed
+catalog read is indistinguishable from an empty catalog and does not block Home Ready. A project waits for current detail,
 workspace scope, conversation/message
 authority, initialized messages and enabled send/new-conversation actions. The
 layout effect runs after the corresponding React controls commit. A hidden
