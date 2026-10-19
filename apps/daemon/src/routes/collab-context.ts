@@ -333,8 +333,12 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
   const consumeInvite = deps.consumeInvite ?? ((nonce: string) => consumeInviteContinuation(nonce, {
     configuredEnv: configuredEnv(),
   }));
-  const createInvite =
-    deps.createInvite ?? ((input: CreateWorkspaceInviteInput) => createWorkspaceInvite(input));
+  const createInvite = (
+    input: CreateWorkspaceInviteInput,
+    requestEnv: Record<string, string>,
+  ) => deps.createInvite
+    ? deps.createInvite(input)
+    : createWorkspaceInvite(input, { configuredEnv: requestEnv });
   const fetchBilling = deps.fetchBilling ?? (() => fetchVelaBillingSummary());
   const fetchWorkspaceBillingProjection =
     deps.fetchWorkspaceBillingProjection ??
@@ -422,10 +426,11 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
     const items = parseInviteCreateItems(req.body);
     if (items.length === 0) return res.status(400).json({ error: 'missing_invites' });
 
+    const requestEnv = { ...configuredEnv() };
     const verified = await verifyWorkspaceRequestContext({
       req,
       fetchWorkspaceDirectory,
-      configuredEnv: configuredEnv(),
+      configuredEnv: requestEnv,
       requireTeam: true,
     });
     if (!verified.ok) return sendWorkspaceVerificationFailure(res, verified);
@@ -437,7 +442,7 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
 
     const results: WorkspaceInviteCreateResult[] = [];
     for (const item of items) {
-      const outcome = await createInvite({ email: item.email, role: item.role, workspaceId });
+      const outcome = await createInvite({ email: item.email, role: item.role, workspaceId }, requestEnv);
       // The vela session is workspace-wide: if it is missing for one invite it is
       // missing for all, so short-circuit to a single 401 instead of N failures.
       if (!outcome.ok && outcome.error === 'no_session') {

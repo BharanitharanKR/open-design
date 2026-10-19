@@ -211,9 +211,6 @@ function resolveCommentWorkspaceContext(
     binding,
     revoked: false,
     local: resolveOptionalLocalWorkspaceRequestAuthority(req),
-    fallbackContext: () => {
-      throw new Error('fixture invariant: every request must carry workspace headers');
-    },
   });
 }
 

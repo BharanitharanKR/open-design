@@ -5273,20 +5273,12 @@ export async function startServer({
     projectId: string,
   ) => {
     const binding = getWorkspaceProjectByProjectId(db, projectId);
-    const persistedMemberId = binding?.createdByWorkspaceMemberId?.trim() || 'local-user';
     return resolveLocalProjectCommentWorkspaceContext({
       binding,
       revoked: revokedTeamProjectMirrors.has(projectId),
-      local: resolveOptionalLocalWorkspaceRequestAuthority(req),
-      fallbackContext: () => workspaceContextFromDirectoryItem({
-        workspaceId: binding?.workspaceId ?? '',
-        workspaceName: binding?.workspaceId ?? '',
-        workspaceType: binding?.visibility === 'team' ? 'team' : 'personal',
-        workspaceMemberId: persistedMemberId,
-        role: 'member',
-        memberStatus: 'active',
-        lifecycleState: 'active',
-      }, configuredAmrEnv()),
+      local: binding?.workspaceId
+        ? resolveOptionalLocalWorkspaceRequestAuthority(req)
+        : { ok: true, context: null },
     });
   };
   const resolveProjectCommentWorkspaceContext = (

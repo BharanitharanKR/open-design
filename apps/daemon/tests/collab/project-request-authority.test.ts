@@ -780,3 +780,16 @@ describe('createAuthorizeProjectRequest', () => {
     expect(sendApiError).not.toHaveBeenCalled();
   });
 });
+
+
+describe('MEM-5276CF5002 comment identity', () => {
+  it.each(['team', 'personal'])('rejects a headerless %s comment write rather than impersonating its creator', async (visibility) => {
+    const row = { workspaceId: 'workspace-a', visibility, resourceState: 'active', createdByWorkspaceMemberId: 'owner' };
+    const sendApiError = vi.fn();
+    const authorize = createAuthorizeProjectRequest({
+      db: {}, getWorkspaceProject: () => row, getWorkspaceProjectByProjectId: () => row, sendApiError,
+    });
+    expect(await authorize(request({}), response(), 'project-a', { mode: 'write', capability: 'comment' })).toBe(false);
+    expect(sendApiError).toHaveBeenLastCalledWith(expect.anything(), 400, 'WORKSPACE_CONTEXT_REQUIRED', expect.any(String));
+  });
+});
