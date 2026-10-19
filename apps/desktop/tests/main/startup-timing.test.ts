@@ -191,3 +191,32 @@ it('the actual preload bridge invokes only the two startup IPC channels', async 
   await bridge.signal(signal);
   expect(invoke.mock.calls).toEqual([['od:startup:context'], ['od:startup:business-ready', signal]]);
 });
+
+
+it("does not time same-process headless window restoration or its retry", async () => {
+  const source = readFileSync(new URL("../../src/main/index.ts", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true);
+  const declarations = ast.statements.filter(node => ts.isFunctionDeclaration(node)
+    && ["runDesktopMain", "createDesktopStartupTiming"].includes(node.name?.text ?? ""));
+  const marker = vi.fn(() => ({ launchType: "cold", end: vi.fn() }));
+  const report = vi.fn(async () => undefined);
+  let calls = 0;
+  const code = declarations.map(node => node.getText(ast).replace(/^export /, "")).join("\n");
+  const run = runInNewContext(ts.transpileModule(`${code}; runDesktopMain;`, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  }).outputText, {
+    createStartupTiming, beginLaunchMarker: marker,
+    app: { getPath: () => "unused", getVersion: () => "1.0.0", once: vi.fn() }, process: { once: vi.fn() },
+    runDesktopMainWithTiming: async (_runtime: unknown, _options: unknown, timing: ReturnType<typeof createStartupTiming>) => {
+      timing.setReporter(report);
+      timing.mark("window_revealed");
+      timing.businessReady({ ...timing.context(), required_data_ready: true, actions_ready: true });
+      if (++calls === 1) throw new Error("restore failed");
+      return "restored";
+    },
+  }) as (runtime: unknown, options: unknown) => Promise<unknown>;
+  await expect(run({}, { startupTiming: null })).rejects.toThrow("restore failed");
+  await expect(run({}, { startupTiming: null })).resolves.toBe("restored");
+  expect(marker).not.toHaveBeenCalled();
+  expect(report).not.toHaveBeenCalled();
+});

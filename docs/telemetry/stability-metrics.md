@@ -12,7 +12,9 @@ sidecar startup. Start is Node's main-process `performance.timeOrigin` (monotoni
 offset zero), never Electron `ready`, module evaluation, window creation, or
 an inferred OS icon click. Installed launcher work before this process is outside
 the span. Hidden-window activation/focus does not start another process launch.
-Headless-only/delegating processes do not synthesize desktop success.
+Headless-only/delegating processes do not synthesize desktop success. Restoring
+a window in the same deferred headless process, including retries after a failed
+restore, does not create a launch attempt or any launch timing.
 
 `client_launch_attempt`, `client_business_ready`, and `client_launch_result`
 share `launch_attempt_id` and `app_session_id`. Terminal results are idempotent.

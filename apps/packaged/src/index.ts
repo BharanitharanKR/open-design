@@ -425,7 +425,7 @@ async function main(): Promise<void> {
     return await desktopHandle.invoke(action, input);
   };
   const launchDesktop = async (): Promise<DesktopMainHandle> => await runDesktopMain(runtime, {
-    startupTiming: packagedStartupTiming ?? undefined,
+    startupTiming: deferredHeadless ? null : packagedStartupTiming ?? undefined,
     splashWindow: splash?.window,
     splashStartedAt: splash?.startedAt,
     async beforeShutdown(record) {
@@ -502,13 +502,10 @@ async function main(): Promise<void> {
         url: sidecars.currentWebUrl(),
       }),
       launch: async () => {
-        packagedStartupTiming = createDesktopStartupTiming({ appVersion: activeConfig.appVersion, startupType: "cold", report: reportPackagedLaunch });
         splash = createSplashWindow();
         return await launchDesktop();
       },
       onRestoreFailed: (error) => {
-        packagedStartupTiming?.finish("failed", "desktop_restore_failed");
-        packagedStartupTiming = null;
         packagedLogger?.error("failed to restore desktop from headless runtime", { error });
         if (splash != null && !splash.window.isDestroyed()) splash.window.destroy();
         splash = null;

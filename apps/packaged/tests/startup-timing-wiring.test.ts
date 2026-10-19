@@ -60,3 +60,21 @@ describe("packaged launch timing wiring", () => {
     expect(exit).toHaveBeenCalledExactlyOnceWith(1);
   });
 });
+
+
+it("does not create a process launch for deferred restores, including a failed restore retry", async () => {
+  const launch = select(node => ts.isPropertyAssignment(node) && node.name.getText(ast) === "launch") as ts.PropertyAssignment;
+  const timing = select(node => ts.isPropertyAssignment(node) && node.name.getText(ast) === "startupTiming") as ts.PropertyAssignment;
+  const create = vi.fn();
+  const launchDesktop = vi.fn().mockRejectedValueOnce(new Error("restore failed")).mockResolvedValueOnce("restored");
+  const globals = {
+    deferredHeadless: true, packagedStartupTiming: null, activeConfig: { appVersion: "1.0.0" },
+    createDesktopStartupTiming: create, reportPackagedLaunch: vi.fn(),
+    createSplashWindow: vi.fn(), splash: null, launchDesktop,
+  };
+  expect(evaluate(timing.initializer.getText(ast), globals)).toBeNull();
+  const restore = evaluate(`(${launch.initializer.getText(ast)})`, globals) as () => Promise<unknown>;
+  await expect(restore()).rejects.toThrow("restore failed");
+  await expect(restore()).resolves.toBe("restored");
+  expect(create).not.toHaveBeenCalled();
+});

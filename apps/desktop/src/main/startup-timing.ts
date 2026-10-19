@@ -12,6 +12,7 @@ const processSessionId = randomUUID();
 
 export function createStartupTiming(input: {
   startupType: StartupType;
+  enabled?: boolean;
   launchType?: "cold" | "warm";
   appSessionId?: string;
   startTime?: number;
@@ -20,6 +21,16 @@ export function createStartupTiming(input: {
   id?: () => string;
   report?: StartupReporter;
 }): StartupTiming {
+  if (input.enabled === false) {
+    // Keep the process session available to other diagnostics without creating
+    // a launch, a marker, timing phases, or a buffered report for window restore.
+    const context = { launch_attempt_id: randomUUID(), app_session_id: processSessionId };
+    return {
+      context: () => ({ ...context }), mark: () => {}, setReporter: () => {},
+      businessReady: () => false, finish: () => {}, isPending: () => false,
+      flush: async () => {},
+    };
+  }
   const now = input.now ?? (() => performance.now());
   const id = input.id ?? randomUUID;
   // performance.timeOrigin is Node's process origin, before ESM evaluation.

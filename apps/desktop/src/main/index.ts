@@ -199,7 +199,7 @@ export function applyLoopbackConnectionLimitSwitch(electronApp: Electron.App): v
 
 export type DesktopMainOptions = {
   /** Carries the packaged process origin and sidecar phases into desktop. */
-  startupTiming?: StartupTiming;
+  startupTiming?: StartupTiming | null;
   beforeShutdown?: (record?: (event: UpdateLifecycleObservation) => Promise<void>) => Promise<void>;
   /** Prevent packaged renderer traffic from reaching sidecars as they retire. */
   quiesceRendererTransport?: () => void | Promise<void>;
@@ -666,6 +666,7 @@ function summarizeDesktopIpcInput(input: unknown): Record<string, unknown> | nul
 /** Keep classification independent of the process-origin measurement. */
 export function createDesktopStartupTiming(options: Parameters<typeof createStartupTiming>[0] & { appVersion?: string | null } = { startupType: "cold" }): StartupTiming {
   const { appVersion, ...timingOptions } = options;
+  if (timingOptions.enabled === false) return createStartupTiming(timingOptions);
   const marker = beginLaunchMarker(app.getPath("userData"), appVersion ?? app.getVersion());
   app.once("will-quit", marker.end);
   process.once("exit", marker.end);
@@ -692,7 +693,7 @@ export async function runDesktopMain(
   options: DesktopMainOptions,
 ): Promise<DesktopMainHandle> {
   const startupTiming = options.startupTiming ?? createDesktopStartupTiming({
-    startupType: "cold", appVersion: options.update?.currentVersion,
+    startupType: "cold", appVersion: options.update?.currentVersion, enabled: options.startupTiming !== null,
   });
   try {
     return await runDesktopMainWithTiming(runtime, options, startupTiming);
