@@ -137,7 +137,16 @@ export async function enforceLocalProjectDataPlaneRequest(input: {
       'workspace project mutation is not allowed',
     );
   }
-  if (options.capability === 'comment' && row.visibility === 'team') return true;
+  if (options.capability === 'comment') {
+    if (!claimed) {
+      return deny(
+        400,
+        'WORKSPACE_CONTEXT_REQUIRED',
+        'workspace context is required',
+      );
+    }
+    if (row.visibility === 'team') return true;
+  }
   if (!claimed && row.visibility === 'team') {
     return deny(
       400,
