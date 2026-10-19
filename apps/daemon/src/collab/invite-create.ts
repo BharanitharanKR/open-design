@@ -38,6 +38,8 @@ export interface CreateWorkspaceInviteOptions {
   fetch?: typeof fetch;
   /** Injectable for tests; defaults to reading ~/.amr / env. */
   readSession?: typeof readVelaControlApiContext;
+  /** Settings-selected AMR account used by the authorizing workspace directory. */
+  configuredEnv?: Record<string, string>;
   timeoutMs?: number;
 }
 
@@ -62,7 +64,7 @@ export async function createWorkspaceInvite(
   const workspaceId = input.workspaceId.trim();
   if (!workspaceId) return { ok: false, status: 409, error: 'no_workspace' };
 
-  const session = readSession();
+  const session = readSession(process.env, options.configuredEnv ?? {});
   if (!session || !session.controlKey || !session.apiUrl) {
     return { ok: false, status: 401, error: 'no_session' };
   }
