@@ -2022,6 +2022,10 @@ describe("ProductionCampaignModal device impressions", () => {
 			throw new Error("impression readiness requires a started content verification");
 		await act(async () => {
 			await result.value;
+		});
+		// The host awaits the verifier through its observability wrapper. Let
+		// that continuation settle before observing the subsequent mount.
+		await act(async () => {
 			const mount = vi
 				.mocked(OpenDesignTouchpointElement.prototype.mount)
 				.mock.results.at(-1);
