@@ -1,7 +1,8 @@
 import { assertCommentFileNotPending } from './comment-file-retirements.js';
 import type Database from 'better-sqlite3';
 import type { CommentFileFact } from '@open-design/contracts';
-import { ensureWorkspaceArtifactForPath } from '../chat-artifacts/store.js';
+import { ensureWorkspaceArtifactForPath, getLiveWorkspaceArtifactByPath } from '../chat-artifacts/store.js';
+import { rebindLocalCommentFileIdentity } from './comment-file-identity-recovery.js';
 import { getProject, getWorkspaceProjectByProjectId, updateProject } from '../db.js';
 import type { runVelaCommand } from '../integrations/vela-command.js';
 import { commitCommentFileFacts, retiredCommentFileMutation } from './comment-file-authority.js';
@@ -60,6 +61,7 @@ export function createLocalCommentFiles(db: Database.Database) {
     paths: Array<{ sourceFilePath: string; entryPath: string; sourceFileId?: string }>; run: typeof runVelaCommand;
   }) {
     creator(input.projectId, input.workspaceId, input.creatorMemberId);
+    const recoveries = new Map<string, string>();
     const files = input.paths.map(file => {
       if (!canonicalCommentFilePath(file.sourceFilePath)) throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
       assertCommentFileNotPending(db, input.projectId, { filePath: file.sourceFilePath });
@@ -67,13 +69,34 @@ export function createLocalCommentFiles(db: Database.Database) {
         .some(fact => fact.sourceFilePath === file.sourceFilePath);
       const sourceFileId = !known && file.sourceFileId ? file.sourceFileId : identity(input.projectId, file.sourceFilePath);
       if (file.sourceFileId && file.sourceFileId !== sourceFileId) throw new Error('COMMENT_FILE_LIFETIME_CONFLICT');
+      const local = !known && file.sourceFileId ? getLiveWorkspaceArtifactByPath(db, input.projectId, file.sourceFilePath) : null;
+      if (local && local.id !== sourceFileId) {
+        assertCommentFileNotPending(db, input.projectId, { sourceFileId: local.id });
+        recoveries.set(file.sourceFilePath, local.id);
+      }
       return { sourceFilePath: file.sourceFilePath, entryPath: file.entryPath, sourceFileId, retired: false };
     });
     if (!files.length) return;
     const state = await commitCommentFileFacts({ ...input, files });
-    creator(input.projectId, input.workspaceId, input.creatorMemberId);
-    const adopted = commentFilesAtReceipt(parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles), state, input);
-    updateProject(db, input.projectId, { metadata: { ...getProject(db, input.projectId)?.metadata, _commentFiles: adopted } });
+    db.transaction(() => {
+      creator(input.projectId, input.workspaceId, input.creatorMemberId);
+      const previous = parseCommentFileState(getProject(db, input.projectId)?.metadata?._commentFiles);
+      const adopted = commentFilesAtReceipt(previous, state, input);
+      for (const file of files) {
+        const localSourceFileId = recoveries.get(file.sourceFilePath);
+        if (!localSourceFileId) continue;
+        assertCommentFileNotPending(db, input.projectId, { filePath: file.sourceFilePath, sourceFileId: localSourceFileId });
+        if (getLiveWorkspaceArtifactByPath(db, input.projectId, file.sourceFilePath)?.id !== localSourceFileId
+          || previous?.files.some(fact => fact.sourceFileId === localSourceFileId)
+          || state.files.some(fact => fact.sourceFileId === localSourceFileId)) {
+          throw new Error('COMMENT_FILE_LIFETIME_CONFLICT');
+        }
+        rebindLocalCommentFileIdentity(db, { projectId: input.projectId, workspaceId: input.workspaceId,
+          creatorMemberId: input.creatorMemberId, filePath: file.sourceFilePath,
+          localSourceFileId, sourceFileId: file.sourceFileId });
+      }
+      updateProject(db, input.projectId, { metadata: { ...getProject(db, input.projectId)?.metadata, _commentFiles: adopted } });
+    })();
   }
   /** One catalog CAS and one local adoption for the captured original lifetimes.
    * A failed later receipt must not retire an earlier file in a folder operation. */
