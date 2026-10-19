@@ -1370,7 +1370,7 @@ export function TestCampaignModal({
 						try {
 							return await read();
 						} catch (error) {
-							if (!current() || requestSignal.aborted || error instanceof SyntaxError) throw error;
+							if (!current() || requestSignal.aborted || ((error instanceof Error || error instanceof DOMException) && error.name === "AbortError") || error instanceof SyntaxError) throw error;
 							throw Object.assign(error instanceof Error ? error : new Error("touchpoint_body_transfer_failed"), {
 								failure_stage: "transfer", error_code: "network_error", status: response.status,
 							});

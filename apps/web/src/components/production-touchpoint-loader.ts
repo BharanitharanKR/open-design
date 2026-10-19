@@ -123,7 +123,7 @@ export async function loadProductionTouchpointDecision(placementKey: string, loc
 		const readBody = async <T,>(read: () => Promise<T>): Promise<T> => {
 			try { return await read(); }
 			catch (error) {
-				if (signal.aborted || (error instanceof Error && error.name === "AbortError") || error instanceof SyntaxError) throw error;
+				if (signal.aborted || ((error instanceof Error || error instanceof DOMException) && error.name === "AbortError") || error instanceof SyntaxError) throw error;
 				throw Object.assign(error instanceof Error ? error : new Error("touchpoint_body_transfer_failed"), {
 					failure_stage: "transfer", error_code: "network_error", status: response.status,
 				});
@@ -148,7 +148,7 @@ export async function loadProductionTouchpointDecision(placementKey: string, loc
 		}
 		return { kind: "decision", value, receivedAt: Date.now(), offlineReplay: touchpointOfflineReplayOf(value) };
 	} catch (error) {
-		if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
+		if (signal.aborted || ((error instanceof Error || error instanceof DOMException) && error.name === "AbortError")) throw error;
 		const transfer = !!error && typeof error === "object" && "failure_stage" in error && error.failure_stage === "transfer";
 		if (observed) observation?.failure(observed, transfer || error instanceof ProductionTouchpointLoadError ? error : new Error("decode_error"));
 		if (transfer || error instanceof ProductionTouchpointLoadError) throw error;

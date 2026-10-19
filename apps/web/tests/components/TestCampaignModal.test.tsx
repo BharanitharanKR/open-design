@@ -1809,6 +1809,26 @@ it('OBS-004 records a body transfer failure with received status and one termina
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
+it('OBS-004 preserves an active body AbortError without adding transfer metadata', async () => {
+  const base = fetches();
+  const error = new DOMException('aborted', 'AbortError');
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (!url.includes('/test-runtime?')) return base(url);
+    const response = Response.json(runtime());
+    vi.spyOn(response, 'text').mockRejectedValue(error);
+    return response;
+  }));
+  render(<TestCampaignHarness authenticated />);
+  await screen.findByTestId('touchpoint-test-selector');
+  fireEvent.change(screen.getByLabelText('Test activity'), { target: { value: 'deployment-1' } });
+  const facts = () => vi.mocked(touchpointLoadQueue('test').enqueue).mock.calls.map(([record]) => record);
+  await waitFor(() => expect(facts().filter(record => record.kind === 'terminal')).toHaveLength(1));
+  expect(error.name).toBe('AbortError');
+  expect(error).not.toHaveProperty('failure_stage');
+  expect(error).not.toHaveProperty('error_code');
+  expect(facts().some(record => record.failure_stage === 'transfer')).toBe(false);
+});
+
 it('OBS-004 preserves a late body AbortError after unmount without classifying cancellation as transfer failure', async () => {
   const base = fetches();
   const error = new DOMException('aborted', 'AbortError');
