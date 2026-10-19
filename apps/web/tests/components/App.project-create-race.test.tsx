@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { navigate } from '../../src/router';
 import {
@@ -937,6 +938,35 @@ describe('App project creation routing', () => {
     resetCoalescedGet();
     workspaceInvalidationHarness.handlers.length = 0;
     workspaceInvalidationHarness.onActive.length = 0;
+  });
+
+  it('declares Home business Ready after successful empty required catalogs', async () => {
+    mockedListProjects.mockResolvedValue([]);
+    const signal = vi.fn(async (_value: { readiness_point?: string }) => true);
+    const restore = installMockOpenDesignHost({ host: {
+      startup: { context: async () => ({ launch_attempt_id: 'launch', app_session_id: 'session' }), signal },
+    } });
+    try {
+      render(<App />);
+      await waitFor(() => expect(signal).toHaveBeenCalledWith(expect.objectContaining({ readiness_point: 'interactive_ready' })));
+    } finally { restore(); }
+  });
+
+  it.each(['projects', 'agents'] as const)('does not declare Home business Ready when required %s fail', async (resource) => {
+    mockedListProjects.mockResolvedValue([]);
+    if (resource === 'projects') mockedListProjects.mockRejectedValue(new Error('catalog unavailable'));
+    else mockedFetchAgentsStream.mockRejectedValue(new Error('agents unavailable'));
+    const signal = vi.fn(async (_value: { readiness_point?: string }) => true);
+    const restore = installMockOpenDesignHost({ host: {
+      startup: { context: async () => ({ launch_attempt_id: 'launch', app_session_id: 'session' }), signal },
+    } });
+    try {
+      render(<App />);
+      await waitFor(() => expect(signal).toHaveBeenCalledWith(expect.objectContaining({ readiness_point: 'first_visible' })));
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      expect(signal.mock.calls.some(([value]) => value.readiness_point === 'interactive_ready')).toBe(false);
+    } finally { restore(); }
   });
 
   it('routes mutations and limits global focus catch-up to Skills and Design Systems', async () => {

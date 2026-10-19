@@ -1175,6 +1175,7 @@ function AppInner() {
   const [homeAmrBalanceGateBlock, setHomeAmrBalanceGateBlock] =
     useState<HomeAmrBalanceGateBlock | null>(null);
   const [appliedProjectListWitness, setAppliedProjectListWitness] = useState<{
+    displayKey: string;
     scopeKey: string;
     generation: number;
     workspaceView: WorkspaceProjectListView | undefined;
@@ -1387,6 +1388,7 @@ function AppInner() {
   // which probes CLI versions and can take seconds on cold start). The entry
   // view picks the right flag for whichever tab the user is currently on.
   const [agentsLoading, setAgentsLoading] = useState(true);
+  const [agentsReady, setAgentsReady] = useState(false);
   const [skillsLoading, setSkillsLoading] = useState(true);
   // Functional skills and design templates are two independent registry reads
   // that gate ONE loader: the EntryView must not stop spinning until both have
@@ -1427,11 +1429,6 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
-  useStartupReady({
-    visible: route.kind === 'home' && daemonAppConfigReady,
-    interactive: route.kind === 'home' && daemonAppConfigReady && !projectsLoading
-      && !agentsLoading && !skillsLoading && !dsLoading && !promptTemplatesLoading,
-  });
   useLayoutEffect(() => {
     navigationTiming.observeRoute(route);
   }, [route]);
@@ -1467,6 +1464,16 @@ function AppInner() {
     accountGeneration: projectDisplayAccountGeneration,
     context: workspaceContext,
     view: effectiveWorkspaceProjectView,
+  });
+  useStartupReady({
+    visible: route.kind === 'home' && daemonAppConfigReady,
+    interactive: route.kind === 'home' && daemonAppConfigReady && !workspaceContextLoading
+      && !workspaceContextState.identityChangePending && !projectsLoading
+      && appliedProjectListWitness?.displayKey === currentProjectDisplayKey
+      && projectListFailure?.displayKey !== currentProjectDisplayKey
+      && agentsReady && !agentsLoading && !skillsLoading && !dsLoading && !promptTemplatesLoading
+      && workspaceSkills.identity === currentWorkspaceCatalogIdentity
+      && workspaceDesignSystems.identity === currentWorkspaceCatalogIdentity,
   });
   // Display snapshots are deliberately separate from authorization. They may
   // prevent a warm view from flashing a loader, but every network read and
@@ -1519,6 +1526,7 @@ function AppInner() {
   // proxy starved (see apps/packaged/src/index.ts ignore-connections-limit
   // note for the other half of that fix).
   const beginAgentStreamRequest = useCallback(() => {
+    setAgentsReady(false);
     agentStreamAbortRef.current?.abort();
     agentStreamAbortRef.current = new AbortController();
     agentStreamRequestSeqRef.current += 1;
@@ -1705,6 +1713,7 @@ function AppInner() {
         ? null
         : failure);
     setAppliedProjectListWitness({
+      displayKey: request.displayKey,
       scopeKey: request.scopeKey,
       generation: request.generation,
       workspaceView: request.workspaceView,
@@ -2191,6 +2200,7 @@ function AppInner() {
       })
         .then((list) => {
           if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+          setAgentsReady(true);
           reportAgentDetectDiagnostics(analytics.track, list);
           setAgents(
             mergeAmrModelsIntoAgents(
@@ -3031,6 +3041,7 @@ function AppInner() {
         const ordered = orderAgentsByRegistry(next);
         reportAgentDetectDiagnostics(analytics.track, ordered);
         if (isCurrentAgentStreamRequest(agentRequestId)) {
+          setAgentsReady(true);
           setAgents(mergeAmrModelsIntoAgents(ordered, amrModelsRef.current));
           setAgentsLoading(false);
         }
