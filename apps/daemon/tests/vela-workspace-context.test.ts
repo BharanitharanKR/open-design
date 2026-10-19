@@ -11,6 +11,7 @@ import {
   createVelaWorkspaceContextProvider,
   fetchVelaWorkspaceDirectory,
   mapVelaWorkspaceContext,
+  mapVelaWorkspaceDirectory,
   resolveVelaWorkspaceHubEventsEndpoint,
   velaWorkspaceDirectoryIdentityForSession,
   workspaceContextFromDirectoryItem,
@@ -1452,5 +1453,16 @@ describe('workspace authority failure evidence', () => {
       expect(record).toHaveBeenCalledWith(expect.objectContaining({ source: 'workspace-directory', status: 503 }));
       expect(record.mock.calls[0]![0]).not.toHaveProperty('controlKey');
     } finally { record.mockRestore(); }
+  });
+});
+
+
+describe('workspace directory verified default marker', () => {
+  it('preserves only the upstream boolean true default marker', () => {
+    const row = { workspaceId: 'w', workspaceName: 'Default', workspaceType: 'personal', workspaceMemberId: 'm', role: 'owner', memberStatus: 'active', lifecycleState: 'active' };
+    expect(mapVelaWorkspaceDirectory({ items: [{ ...row, isDefault: true }] })[0]).toMatchObject({ isDefault: true });
+    for (const value of [false, 'true', 1, undefined]) {
+      expect(mapVelaWorkspaceDirectory({ items: [{ ...row, isDefault: value }] })[0]).not.toHaveProperty('isDefault');
+    }
   });
 });

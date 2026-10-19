@@ -206,6 +206,7 @@ function mapVelaWorkspaceDirectoryItem(input: unknown): WorkspaceDirectoryItem |
   if (!MEMBER_STATUSES.has(raw.memberStatus as WorkspaceMemberStatus)) return null;
   if (!LIFECYCLE_STATES.has(raw.lifecycleState as WorkspaceLifecycleState)) return null;
   const item: WorkspaceDirectoryItem = {
+    ...(raw.isDefault === true ? { isDefault: true } : {}),
     workspaceId,
     workspaceName,
     workspaceType: raw.workspaceType as WorkspaceType,

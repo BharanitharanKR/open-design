@@ -1,3 +1,4 @@
+import { clearWorkspaceRemoval, currentWorkspaceRemoval, recordWorkspaceRemoval } from './workspace-removal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   TeamProject,
@@ -580,6 +581,7 @@ function workspaceDirectoryItemFromContext(
 
 /** Test seam: clear the module-level context cache between tests. */
 export function resetWorkspaceContextCache(): void {
+  clearWorkspaceRemoval();
   cachedWorkspaceContext = null;
   cachedWorkspaceContextGeneration = 'initial';
   workspaceContextRevision = 0;
@@ -712,6 +714,7 @@ export function useWorkspaceContext(): WorkspaceContextState {
       exactScopeOnly?: boolean;
     } = {},
   ) => {
+    if (currentWorkspaceRemoval()) return;
     const requestEpoch = ++requestEpochRef.current;
     const requestGeneration = workspaceContextRequestToken;
     if (options.markLoading && mountedRef.current) {
@@ -744,13 +747,24 @@ export function useWorkspaceContext(): WorkspaceContextState {
           : await readWorkspaceDirectoryForCurrentGeneration();
       }
       if (
-        !mountedRef.current
+        currentWorkspaceRemoval()
+        || !mountedRef.current
         || requestEpochRef.current !== requestEpoch
         || workspaceContextRequestToken !== requestGeneration
       ) return;
+      // A dirty directory can arrive before the terminal member revocation.
+      // Keep a live tab's exact selection until its explicit transition: absence
+      // is neither proof of removal nor authority to choose another Workspace.
+      const retainedSelection = requestedSelection && cachedWorkspaceContext
+        && cachedWorkspaceContextGeneration === requestGeneration
+        && cachedWorkspaceContext.workspaceId === requestedSelection.workspaceId
+        && cachedWorkspaceContext.workspaceMemberId === requestedSelection.workspaceMemberId
+        && directory && !directory.items.some(item => item.workspaceId === requestedSelection.workspaceId
+          && item.workspaceMemberId === requestedSelection.workspaceMemberId)
+        ? workspaceDirectoryItemFromContext(cachedWorkspaceContext) : null;
       const selected = exactScopeContext
         ? workspaceDirectoryItemFromContext(exactScopeContext)
-        : chooseWorkspaceForTab(
+        : retainedSelection ?? chooseWorkspaceForTab(
             directory?.items ?? [],
             directory?.activeWorkspaceId ?? null,
           );
@@ -823,7 +837,8 @@ export function useWorkspaceContext(): WorkspaceContextState {
         ? await forceCoalescedGet(coalesceKey, fetchContext)
         : await coalescedGet(coalesceKey, fetchContext);
       if (
-        !mountedRef.current
+        currentWorkspaceRemoval()
+        || !mountedRef.current
         || requestEpochRef.current !== requestEpoch
         || workspaceContextRequestToken !== requestGeneration
       ) return;
@@ -850,7 +865,8 @@ export function useWorkspaceContext(): WorkspaceContextState {
       });
     } catch (error) {
       if (
-        !mountedRef.current
+        currentWorkspaceRemoval()
+        || !mountedRef.current
         || requestEpochRef.current !== requestEpoch
         || workspaceContextRequestToken !== requestGeneration
       ) return;
@@ -897,7 +913,16 @@ export function useWorkspaceContext(): WorkspaceContextState {
     // A pushed invalidation is authoritative new state. Reusing either settled
     // one-second cache here can keep a revoked Team membership selected until
     // the SSE-floor poll runs much later.
-    { 'workspace-context-changed': () => void loadContext({ fresh: true }) },
+    { 'workspace-context-changed': (event) => {
+      if (!workspaceContextIdentityChangePending
+        && cachedWorkspaceContextGeneration === workspaceContextRequestToken
+        && recordWorkspaceRemoval(event, state.context)) {
+        requestEpochRef.current += 1;
+        setState(prev => ({ ...prev, context: null, resourceReadIdentity: null, identityChangePending: true, loading: false }));
+        return;
+      }
+      void loadContext({ fresh: true });
+    } },
     {
       workspaceContext: state.context,
       // Reconnect is the gap-closing snapshot in the thin-event model. It must
@@ -969,6 +994,7 @@ export function useWorkspaceContext(): WorkspaceContextState {
     };
     const onStorage = (event: StorageEvent) => {
       if (event.key !== WORKSPACE_ACCOUNT_BOUNDARY_STORAGE_KEY) return;
+      clearWorkspaceRemoval();
       // The acting tab advanced its own token inside `notifyWorkspaceContextRefresh`;
       // a passive tab learns of the change only here. Advancing to the stamp the
       // acting tab WROTE keeps this idempotent across the many mounted consumers
@@ -1092,6 +1118,7 @@ export function notifyWorkspaceContextRefresh(
   seed?: { context: WorkspaceCollabContext } | null,
 ): void {
   if (typeof window === 'undefined') return;
+  clearWorkspaceRemoval();
   const stamp = `${Date.now()}:${localIdentityChangeSeq + 1}`;
   // Advance BEFORE dispatching: this call is the one place that knows a genuine
   // identity change just happened, and every handler the dispatch below runs must

@@ -1193,6 +1193,10 @@ export interface Dict {
   'entry.useEverywhereTitle': string;
   'entry.useEverywhereAria': string;
   'entry.workspaceTeamsLabel': string;
+  'workspaceRemoval.confirm': string;
+  'workspaceRemoval.title': string;
+  'workspaceRemoval.description': string;
+  'workspaceRemoval.retry': string;
   'workspaceSwitcher.title': string;
   'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.invite': string;

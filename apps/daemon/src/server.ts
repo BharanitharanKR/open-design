@@ -1641,7 +1641,7 @@ function emitProjectEvent(projectId, payload) {
 // scope, and broad delivery would reveal cross-workspace activity timing.
 function emitWorkspaceEvent(
   workspaceId: string,
-  payload: { type: string; at?: number },
+  payload: { type: string; at?: number; memberRemoval?: { workspaceId: string; workspaceMemberId: string; reason: 'member-removed' } },
 ): boolean {
   return emitWorkspaceEventToScope(
     workspaceEventSinks,
@@ -1745,12 +1745,13 @@ export function handleHubWorkspaceAccessRevoked(
   pollWorkspaceInvalidation: () => Promise<void>,
   invalidateWorkspaceDirectory: () => void,
   revokeWorkspaceBilling: (workspaceId: string) => void,
+  memberRemoval?: { workspaceId: string; workspaceMemberId: string; reason: 'member-removed' },
 ): void {
   invalidateWorkspaceDirectory();
   revokeWorkspaceBilling(workspaceId);
   emitWorkspaceEvent(
     workspaceId,
-    { type: 'workspace-context-changed', at: Date.now() },
+    { type: 'workspace-context-changed', at: Date.now(), ...(memberRemoval ? { memberRemoval } : {}) },
   );
   void pollWorkspaceInvalidation().catch(() => undefined);
 }
@@ -6246,7 +6247,7 @@ export async function startServer({
           `actualWorkspaceId=${actualWorkspaceId ?? 'unknown'}`,
       );
     },
-    onAccessRevoked: ({ workspaceId, identityKey, reason }) => {
+    onAccessRevoked: ({ workspaceId, workspaceMemberId, identityKey, reason }) => {
       if (
         identityKey
         && identityKey !== currentWorkspaceDirectoryIdentity()
@@ -6274,6 +6275,9 @@ export async function startServer({
             revokedWorkspaceId,
             'vela-access-revoked',
           ),
+        reason === 'member-removed' && workspaceId && workspaceMemberId
+          ? { workspaceId, workspaceMemberId, reason: 'member-removed' }
+          : undefined,
       );
       recordWorkspaceAuthorityRevocationClear(
         workspaceAuthorityCacheMode,

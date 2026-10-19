@@ -410,6 +410,8 @@ export interface WorkspaceContextResponse {
 
 /** A workspace visible to the signed-in Vela identity. Mirrors B's directory item. */
 export interface WorkspaceDirectoryItem {
+  /** Verified owner default supplied by the upstream account directory. */
+  isDefault?: boolean;
   workspaceId: string;
   workspaceName: string;
   workspaceIconKey?: string;

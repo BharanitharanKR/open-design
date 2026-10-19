@@ -113,7 +113,7 @@ describe('useWorkspaceContext invalidation freshness', () => {
     OpeningEventSource.autoOpen = true;
   });
 
-  it('revalidates the directory after a pushed membership revocation', async () => {
+  it('does not treat a dirty missing directory row as removal or automatic default selection', async () => {
     OpeningEventSource.autoOpen = false;
     let membershipActive = true;
     let directoryReads = 0;
@@ -153,8 +153,25 @@ describe('useWorkspaceContext invalidation freshness', () => {
     await waitFor(() => {
       expect(directoryReads).toBe(2);
       expect(contextReads).toBe(2);
-      expect(hook.result.current.context?.workspaceId).toBe(PERSONAL_CONTEXT.workspaceId);
+      expect(hook.result.current.context?.workspaceId).toBe(TEAM_CONTEXT.workspaceId);
+      expect(hook.result.current.failure).toBe('unavailable');
     });
+  });
+
+  it('freezes an exact removed identity until verified recovery', async () => {
+    OpeningEventSource.autoOpen = false;
+    const fetch = vi.fn(async (input: RequestInfo | URL) => String(input) === '/api/workspace/directory'
+      ? jsonResponse(workspaceDirectoryFixture([TEAM_CONTEXT])) : jsonResponse({ context: TEAM_CONTEXT }));
+    vi.stubGlobal('fetch', fetch);
+    const hook = renderHook(() => useWorkspaceContext());
+    await waitFor(() => expect(hook.result.current.context?.workspaceId).toBe(TEAM_CONTEXT.workspaceId));
+    const reads = fetch.mock.calls.length;
+    await act(async () => { OpeningEventSource.instances[0]?.emit('workspace-context-changed', {
+      type: 'workspace-context-changed', memberRemoval: { reason: 'member-removed', workspaceId: TEAM_CONTEXT.workspaceId, workspaceMemberId: TEAM_CONTEXT.workspaceMemberId },
+    }); });
+    expect(hook.result.current.context).toBeNull(); expect(hook.result.current.resourceReadIdentity).toBeNull();
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    expect(fetch).toHaveBeenCalledTimes(reads);
   });
 
   it('uses a fresh snapshot when the workspace stream first connects', async () => {
