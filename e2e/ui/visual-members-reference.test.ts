@@ -217,7 +217,7 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
     let contextReads = 0;
     const writes: unknown[] = [];
     try {
-      await setup(page, 'owner', false, 2, { workspaceName: 'Design space', beforeHome: async current => {
+      await setup(page, 'owner', false, 2, { workspaceName: 'Xiaoyi’s Workspace', beforeHome: async current => {
         const fallback = { ...current, workspaceId: 'members-default', workspaceMemberId: 'members-default-owner', workspaceName: 'Xiaoyi’s Workspace', isDefault: true };
         await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: removed && exact ? [fallback] : removed && removal === 'other-workspace' ? [{ ...current, isDefault: false }] : [{ ...current, isDefault: false }, fallback], activeWorkspaceId: switched ? fallback.workspaceId : current.workspaceId } }));
         await page.route('**/api/workspace/context', route => {
@@ -246,7 +246,7 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
       if (!exact) {
         await expect.poll(() => contextReads).toBeGreaterThan(before);
         await expect(page.getByRole('alertdialog')).toHaveCount(0);
-        await expect(page.getByTestId('workspace-switcher')).toContainText('Design space');
+        await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
         await expect(page.getByTestId('home-hero')).toBeVisible();
         expect(writes).toEqual([]);
         if (removal === 'other-workspace') await capture(page, 'H02');
@@ -254,7 +254,7 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
       }
       const dialog = page.getByRole('alertdialog');
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('heading')).toContainText('Design space');
+      await expect(dialog.getByRole('heading')).toContainText('Xiaoyi’s Workspace');
       await expect(page.getByTestId('home-hero')).toHaveCount(0);
       await capture(page, 'H01');
       await dialog.getByRole('button').click();
@@ -264,6 +264,7 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
       await expect(dialog).toHaveCount(0);
       await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
       await expect(page.getByTestId('home-hero')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? '{}').workspaceId)).toBe('members-default');
       expect(writes).toEqual(Array.from({ length: 2 }, () => ({ workspaceId: 'members-default', workspaceMemberId: 'members-default-owner' })));
       await capture(page, 'H12');
     } finally { deliver?.(); }
