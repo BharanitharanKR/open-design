@@ -21,7 +21,7 @@
 .remove { width:24px;min-width:24px;height:28px;min-height:28px;padding:0;border:0;background:transparent;box-shadow:none;color:var(--invite-muted); }
 .lineError,.error { margin:8px 0 0;font-size:12px;line-height:20px;color:var(--invite-error); }
 .lineError { grid-column:1/-1; }
-.add { display:inline-flex;align-items:center;gap:5px;height:20px;min-height:20px;margin-top:8px;padding:0;border:0;border-radius:0;background:transparent;color:var(--invite-label);font-size:12px;font-weight:400;box-shadow:none; }
+.add { display:flex;align-items:center;gap:5px;width:max-content;height:28px;min-height:28px;margin-top:8px;padding:0;border:0;border-radius:0;background:transparent;color:var(--invite-label);font-size:12px;font-weight:400;box-shadow:none; }
 .footer { display:flex;justify-content:flex-end;gap:8px;min-height:36px;margin-top:20px; }
 .cancel,.submit { min-width:64px;height:36px;min-height:36px;padding:0 16px;border:0;border-radius:10px;font-size:14px;font-weight:500;line-height:20px;box-shadow:none; }
 .cancel { background:var(--invite-secondary-bg);color:var(--invite-text); }
