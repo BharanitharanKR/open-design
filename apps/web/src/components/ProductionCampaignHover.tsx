@@ -287,9 +287,17 @@ export function ProductionCampaignHover({
 				!entry ||
 				!layer ||
 				entry.valid.decision.activityId !== layer.valid.decision.activityId ||
-				entry.valid.decision.deploymentId !== layer.valid.decision.deploymentId
-			)
+				entry.valid.decision.deploymentId !== layer.valid.decision.deploymentId ||
+				entry.valid.decision.content.id !== layer.valid.decision.content.id ||
+				(entryLoaded.value as RuntimeDecision).endsAt !==
+					(layerLoaded.value as RuntimeDecision).endsAt
+			) {
+				emitWebTouchpointDiagnostic({
+					code: "touchpoint_pair_mismatch",
+					detail: "opend.home.hover-entry:opend.home.hover-layer",
+				});
 				return { kind: "clear" };
+			}
 			await Promise.all([
 				prepareCmsTouchpointContent(
 					observation.forDecision(ENTRY_PLACEMENT, entry.valid.decision),
@@ -325,14 +333,8 @@ export function ProductionCampaignHover({
 						),
 					],
 				]),
-				// The pair is refused above unless both halves agree on activity and
-				// deployment, so one `touchpointContentIdentity` covers those for
-				// both. The layer's own content version is NOT implied by the
-				// entry's — whether a deployment always hands both placements the
-				// same `content.id` is a server-side property this side cannot
-				// check — and it was previously tracked only by accident, through
-				// the layer's credential. Name it, so a layer swapped underneath
-				// the pair still rebuilds.
+				// Admission requires a single activity, deployment, content version
+				// and schedule. Keep the existing mount key for compatible renewals.
 				key: `${touchpointContentIdentity(entry.valid.decision)}:${layer.valid.decision.content.id}`,
 				validForMs: Math.min(entry.validForMs, layer.validForMs),
 				// The pair is only as scheduled as its shorter half.

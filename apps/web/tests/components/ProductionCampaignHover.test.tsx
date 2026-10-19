@@ -61,7 +61,7 @@ import * as touchpointComponent from "../../src/components/touchpoint-component"
 import { clearTestRuntimeSession, setTestRuntimeSession, type TestRuntimeSession } from "../../src/components/TestCampaignModal";
 
 const content = (placementKey: string) => ({
-	id: `version-${placementKey}`,
+	id: "version-hover-pair",
 	placementKey,
 	locale: "en-US",
 	manifest: {
@@ -227,7 +227,7 @@ describe("ProductionCampaignHover", () => {
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
 		await waitFor(() => expect(mount).toHaveBeenCalledTimes(2));
 		const entry = root.querySelector("opend-touchpoint");
-		await waitFor(() => expect(entry?.shadowRoot?.querySelector("img")).toHaveAttribute("src", "blob:version-opend.home.hover-entry"));
+		await waitFor(() => expect(entry?.shadowRoot?.querySelector("img")).toHaveAttribute("src", "blob:version-hover-pair"));
 		await waitFor(() => expect(entry).not.toHaveAttribute("hidden"));
 		rects.mockRestore();
 	});
@@ -249,8 +249,8 @@ describe("ProductionCampaignHover", () => {
 		await waitFor(() => expect(entry).not.toHaveAttribute("hidden"));
 		const entryImage = entry.shadowRoot?.querySelector("img");
 		const layerImage = layer.shadowRoot?.querySelector("img");
-		expect(entryImage).toHaveAttribute("src", "blob:version-opend.home.hover-entry");
-		expect(layerImage).toHaveAttribute("src", "blob:version-opend.home.hover-layer");
+		expect(entryImage).toHaveAttribute("src", "blob:version-hover-pair");
+		expect(layerImage).toHaveAttribute("src", "blob:version-hover-pair");
 		fireEvent.pointerEnter(entry);
 		await waitFor(() => expect(entry).toHaveAttribute("aria-expanded", "true"));
 		const initialImages = [entryImage, layerImage];
@@ -327,7 +327,7 @@ describe("ProductionCampaignHover", () => {
 	// content the server has replaced. (The claim that the two content ids are
 	// always equal is a server-side property this side cannot check — and these
 	// fixtures, which give each placement its own version, assume they are not.)
-	it("still remounts the pair when only the layer's content version changes", async () => {
+	it("remounts both placements when the shared content version changes", async () => {
 		useRealOverlay.current = true;
 		vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
 		const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({ length: 1, item: () => null } as unknown as DOMRectList);
@@ -336,7 +336,7 @@ describe("ProductionCampaignHover", () => {
 			image.src = entryUrl;
 			this.shadowRoot?.replaceChildren(image);
 		});
-		let layerVersion = "version-opend.home.hover-layer";
+		let layerVersion = "version-hover-pair";
 		const longLived = (placementKey: string) => {
 			const now = Date.now();
 			const base = decision(placementKey, {
@@ -344,9 +344,7 @@ describe("ProductionCampaignHover", () => {
 				authorizationExpiresAt: new Date(now + 30 * 60_000).toISOString(),
 				endsAt: new Date(now + 40 * 60_000).toISOString(),
 			});
-			return placementKey === "opend.home.hover-layer"
-				? { ...base, content: { ...base.content, id: layerVersion } }
-				: base;
+			return { ...base, content: { ...base.content, id: layerVersion } };
 		};
 		const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(longLived(url.includes("hover-entry") ? "opend.home.hover-entry" : "opend.home.hover-layer")), { status: 200 }));
 		vi.stubGlobal("fetch", fetchMock);
@@ -355,18 +353,16 @@ describe("ProductionCampaignHover", () => {
 		const [entry, layer] = Array.from(root.querySelectorAll<OpenDesignTouchpointElement>("opend-touchpoint"));
 		if (!entry || !layer) throw new Error("expected paired hover elements");
 		await waitFor(() => expect(mount).toHaveBeenCalledTimes(2));
-		layerVersion = "version-opend.home.hover-layer-2";
+		layerVersion = "version-hover-pair-2";
 		await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
 		await act(async () => {});
 		await waitFor(() => expect(mount).toHaveBeenCalledTimes(4));
-		// The mocked verifier names each Blob after the content it verified, so
-		// the layer's rendered bytes say which version actually reached the
-		// screen. Stale content here is the whole risk of dropping the layer's
-		// credential from the key without naming its content version.
+		// Both placements come from the same immutable multi-placement version.
+		// The layer must render the new version too, rather than retain old bytes.
 		const rebuiltLayer = Array.from(root.querySelectorAll<OpenDesignTouchpointElement>("opend-touchpoint"))[1];
 		expect(rebuiltLayer?.shadowRoot?.querySelector("img")).toHaveAttribute(
 			"src",
-			"blob:version-opend.home.hover-layer-2",
+			"blob:version-hover-pair-2",
 		);
 		rects.mockRestore();
 	});
@@ -556,6 +552,54 @@ describe("ProductionCampaignHover", () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId("production-hover-overlay")).toBeNull(),
 		);
+	});
+
+	it.each(["activityId", "deploymentId", "content.id", "endsAt", "endsAt-format"])(
+		"HST-007 rejects %s mismatch initially and on renewal, then restores a coherent pair",
+		async (field) => {
+			vi.useFakeTimers();
+			let mismatch = true;
+			const fetchMock = vi.fn(async (url: string) => {
+				const key = url.includes("hover-entry") ? "opend.home.hover-entry" : "opend.home.hover-layer";
+				const value = decision(key);
+				if (mismatch && key.endsWith("layer")) {
+					if (field === "content.id") value.content.id = "different-version";
+					else if (field === "endsAt-format") value.endsAt = "2030-01-01T00:05:00+00:00";
+					else Object.assign(value, { [field]: field === "endsAt" ? "2030-01-01T00:06:00.000Z" : "different-identity" });
+				}
+				return Response.json(value);
+			});
+			vi.stubGlobal("fetch", fetchMock);
+			await act(async () => { render(<ProductionCampaignHover authenticated sessionSubject="hst007" />); });
+			expect(screen.queryByTestId("production-hover-overlay")).toBeNull();
+			expect(diagnosticSpy).toHaveBeenCalledWith({ code: "touchpoint_pair_mismatch", detail: "opend.home.hover-entry:opend.home.hover-layer" });
+			mismatch = false;
+			await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+			expect(screen.queryByTestId("production-hover-overlay")).not.toBeNull();
+			mismatch = true;
+			diagnosticSpy.mockClear();
+			await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+			expect(screen.queryByTestId("production-hover-overlay")).toBeNull();
+			expect(diagnosticSpy).toHaveBeenCalledWith({ code: "touchpoint_pair_mismatch", detail: "opend.home.hover-entry:opend.home.hover-layer" });
+			mismatch = false;
+			await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
+			expect(screen.queryByTestId("production-hover-overlay")).not.toBeNull();
+		},
+	);
+
+	it("HST-007 admits equal content and schedule with independent authorization deadlines", async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+			const key = url.includes("hover-entry") ? "opend.home.hover-entry" : "opend.home.hover-layer";
+			return Response.json(decision(key, { authorizationExpiresAt: key.endsWith("entry") ? "2030-01-01T00:00:10.000Z" : "2030-01-01T00:00:20.000Z" }));
+		}));
+		await act(async () => { render(<ProductionCampaignHover authenticated sessionSubject="hst007" />); });
+		expect(screen.queryByTestId("production-hover-overlay")).not.toBeNull();
+		expect(diagnosticSpy).not.toHaveBeenCalled();
+		// No successful renewal may extend the shorter half of this grant.
+		vi.mocked(fetch).mockImplementation(() => new Promise(() => {}));
+		await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+		expect(screen.queryByTestId("production-hover-overlay")).toBeNull();
 	});
 
 	it("fails closed for genuinely mismatched activity experiences", async () => {
@@ -815,12 +859,12 @@ describe("ProductionCampaignHover", () => {
 		const latestEntry = () => (overlaySpy.mock.lastCall?.[0] as { entry: { id: string } }).entry.id;
 		await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
 		const next = (key: string) => new Response(JSON.stringify(decision(key, {
-			deploymentId: "deployment-2", content: { ...content(key), id: `next-${key}` },
+			deploymentId: "deployment-2", content: { ...content(key), id: "next-hover-pair" },
 		})), { status: 200 });
 		await act(async () => { resolvers[0]!(next("opend.home.hover-entry")); });
-		expect(latestEntry()).toBe("version-opend.home.hover-entry");
+		expect(latestEntry()).toBe("version-hover-pair");
 		await act(async () => { resolvers[1]!(next("opend.home.hover-layer")); });
-		expect(latestEntry()).toBe("next-opend.home.hover-entry");
+		expect(latestEntry()).toBe("next-hover-pair");
 	});
 
 	it.each(["account", "locale"] as const)("fences a late matching withdrawal after a %s change", async (change) => {
@@ -833,7 +877,7 @@ describe("ProductionCampaignHover", () => {
 			if (fetchMock.mock.calls.length === 4) { pendingSignal = init.signal!; return pending; }
 			const fresh = fetchMock.mock.calls.length > 2;
 			return Promise.resolve(new Response(JSON.stringify(decision(key, { content: {
-				...content(key), id: fresh ? `fresh-${key}` : `version-${key}`,
+				...content(key), id: fresh ? "fresh-hover-pair" : "version-hover-pair",
 				locale: url.includes("locale=zh-CN") ? "zh-CN" : "en-US",
 			} })), { status: 200 }));
 		});
@@ -842,7 +886,7 @@ describe("ProductionCampaignHover", () => {
 		let view!: ReturnType<typeof render>;
 		await act(async () => { view = render(element("account-a")); });
 		await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
-		expect((overlaySpy.mock.lastCall?.[0] as { entry: { id: string } }).entry.id).toBe("version-opend.home.hover-entry");
+		expect((overlaySpy.mock.lastCall?.[0] as { entry: { id: string } }).entry.id).toBe("version-hover-pair");
 		await act(async () => {
 			if (change === "account") view.rerender(element("account-b"));
 			else screen.getByRole("button", { name: "Switch locale" }).click();
@@ -850,7 +894,7 @@ describe("ProductionCampaignHover", () => {
 		expect(pendingSignal.aborted).toBe(true);
 		expect(fetchMock).toHaveBeenCalledTimes(6);
 		const mounted = screen.getByTestId("production-hover-overlay");
-		expect((overlaySpy.mock.lastCall?.[0] as { entry: { id: string } }).entry.id).toBe("fresh-opend.home.hover-entry");
+		expect((overlaySpy.mock.lastCall?.[0] as { entry: { id: string } }).entry.id).toBe("fresh-hover-pair");
 		await act(async () => { resolveLate(revocation(decision("opend.home.hover-layer"))); });
 		expect(screen.getByTestId("production-hover-overlay")).toBe(mounted);
 		expect(diagnosticSpy).not.toHaveBeenCalled();
@@ -1027,7 +1071,7 @@ describe('online timeout recovery', () => {
       if (mode === 'fresh') return Promise.resolve(fresh(placement));
       if (placement.endsWith('hover-entry')) return Promise.resolve(new Response(JSON.stringify({
         error: 'production_runtime_revoked', receipt: {
-          activityId: 'activity-1', deploymentId: 'other', contentVersionId: `version-${placement}`, touchpointDecisionId: `decision-${placement}`,
+          activityId: 'activity-1', deploymentId: 'other', contentVersionId: "version-hover-pair", touchpointDecisionId: `decision-${placement}`,
         },
       }), { status: 410 }));
       signal = init.signal as AbortSignal;
