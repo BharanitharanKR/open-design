@@ -264,9 +264,10 @@ describe("visual investigation witnesses (not pixel reproductions)", () => {
 		const entry = document.querySelector("opend-touchpoint")!;
 		await act(async () => { fireEvent.pointerEnter(entry); });
 		const layer = screen.getByRole("dialog") as HTMLElement;
-		expect(layer.style.left).toBe("1432px");
+		// 16px safe edge per the adaptive size spec (was 8px before the margin fix).
+		expect(layer.style.left).toBe("1424px");
 		expect(layer.style.top).toBe("52px");
-		expect(layer.style.maxWidth).toBe("1904px");
+		expect(layer.style.maxWidth).toBe("1888px");
 		expect(layer.style.transform).toBe("");
 		expect(layer.style.getPropertyValue("zoom")).toBe("");
 	});
@@ -520,7 +521,7 @@ it.each([
 	"pointer_leave",
 	"outside_focus",
 	"auto",
-])("B2 real SDK hover %s never attributes X", async (control) => {
+])("B2 real SDK hover %s close attribution", async (control) => {
 	const nextSdks = new Map<string, TouchpointSdk>();
 	const onLayerClose = vi.fn();
 	let authorized = true;
@@ -582,5 +583,8 @@ it.each([
 		await act(async () => {
 			await layerSdk.dispatchAction("try");
 		});
-	expect(onLayerClose).not.toHaveBeenCalled();
+	// CMS-HST-003: an explicit Escape close is recorded once, like the modal
+	// (Escape -> "close"); passive dismissals never record a close.
+	if (control === "Escape") expect(onLayerClose).toHaveBeenCalledTimes(1);
+	else expect(onLayerClose).not.toHaveBeenCalled();
 });
