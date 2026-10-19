@@ -844,7 +844,7 @@ export const tr: Dict = {
   "workspaceSwitcher.title": "Çalışma alanları",
   "workspaceSwitcher.limitReached": "50 çalışma alanı sınırına ulaşıldı",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Yeni çalışma alanı",
   "workspaceSwitcher.draftsTooltip": "Tüm projeler",
   "workspaceSwitcher.allProjectsTooltip": "Takım projeleri",
   "entry.primaryNavAria": "Primary",

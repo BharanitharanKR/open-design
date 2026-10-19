@@ -844,7 +844,7 @@ export const hu: Dict = {
   "workspaceSwitcher.title": "Munkaterületek",
   "workspaceSwitcher.limitReached": "Elérte az 50 munkaterületes korlátot",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Új munkaterület",
   "workspaceSwitcher.draftsTooltip": "Összes projekt",
   "workspaceSwitcher.allProjectsTooltip": "Csapatprojektek",
   "entry.primaryNavAria": "Primary",

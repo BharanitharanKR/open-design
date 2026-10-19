@@ -844,7 +844,7 @@ export const ar: Dict = {
   "workspaceSwitcher.title": "مساحات العمل",
   "workspaceSwitcher.limitReached": "تم الوصول إلى الحد الأقصى البالغ 50 مساحة",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "مساحة عمل جديدة",
   "workspaceSwitcher.draftsTooltip": "جميع المشاريع",
   "workspaceSwitcher.allProjectsTooltip": "مشاريع الفريق",
   "entry.primaryNavAria": "Primary",

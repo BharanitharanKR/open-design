@@ -844,7 +844,7 @@ export const id: Dict = {
   "workspaceSwitcher.title": "Ruang kerja",
   "workspaceSwitcher.limitReached": "Batas 50 ruang kerja tercapai",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Ruang kerja baru",
   "workspaceSwitcher.draftsTooltip": "Semua proyek",
   "workspaceSwitcher.allProjectsTooltip": "Proyek tim",
   "entry.primaryNavAria": "Primary",

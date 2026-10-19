@@ -844,7 +844,7 @@ export const ru: Dict = {
   "workspaceSwitcher.title": "Рабочие пространства",
   "workspaceSwitcher.limitReached": "Достигнут лимит в 50 пространств",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Новое рабочее пространство",
   "workspaceSwitcher.draftsTooltip": "Все проекты",
   "workspaceSwitcher.allProjectsTooltip": "Командные проекты",
   "entry.primaryNavAria": "Primary",

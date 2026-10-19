@@ -1630,6 +1630,26 @@ describe('POST /api/workspace/invite', () => {
     expect(called).toBe(true);
   });
 
+  it.each(['removed', 'locked', 'missing'] as const)('rejects %s invitation authority without creating an invitation', async (state) => {
+    let called = false;
+    const api = await startContextServer({
+      fetchWorkspaceDirectory: async () => {
+        const result = directory('member');
+        return { ...result, items: state === 'missing' ? [] : result.items.map(item => ({
+          ...item,
+          memberStatus: state === 'removed' ? 'removed' as const : 'active' as const,
+          lifecycleState: state === 'locked' ? 'locked' as const : 'active' as const,
+        })) };
+      },
+      createInvite: async () => { called = true; return { ok: true, inviteId: 'must-not-create' }; },
+    });
+    const response = await api.req('/api/workspace/invite', {
+      method: 'POST', headers, body: { invites: [{ email: 'new@example.test', role: 'member' }] },
+    });
+    expect(response.status).toBe(403);
+    expect(called).toBe(false);
+  });
+
   it('short-circuits to 401 no_session', async () => {
     const api = await startContextServer({
       fetchWorkspaceDirectory: async () => directory('admin'),

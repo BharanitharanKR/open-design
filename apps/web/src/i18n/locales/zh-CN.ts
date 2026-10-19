@@ -847,7 +847,7 @@ export const zhCN: Dict = {
   "workspaceSwitcher.title": "工作空间",
   "workspaceSwitcher.limitReached": "已达 50 个上限",
   "workspaceSwitcher.invite": "邀请同事",
-  "workspaceSwitcher.createTeam": "新建团队",
+  "workspaceSwitcher.createTeam": "新建工作空间",
   "workspaceSwitcher.draftsTooltip": "全部项目",
   "workspaceSwitcher.allProjectsTooltip": "团队项目",
   "entry.primaryNavAria": "主导航",

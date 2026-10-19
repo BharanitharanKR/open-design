@@ -844,7 +844,7 @@ export const uk: Dict = {
   "workspaceSwitcher.title": "Робочі простори",
   "workspaceSwitcher.limitReached": "Досягнуто ліміту 50 просторів",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Новий робочий простір",
   "workspaceSwitcher.draftsTooltip": "Усі проєкти",
   "workspaceSwitcher.allProjectsTooltip": "Командні проєкти",
   "entry.primaryNavAria": "Primary",

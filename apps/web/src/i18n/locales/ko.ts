@@ -844,7 +844,7 @@ export const ko: Dict = {
   "workspaceSwitcher.title": "워크스페이스",
   "workspaceSwitcher.limitReached": "최대 50개에 도달했습니다",
   'workspaceSwitcher.invite': '동료 초대',
-  'workspaceSwitcher.createTeam': '새 팀',
+  'workspaceSwitcher.createTeam': "새 워크스페이스",
   "workspaceSwitcher.draftsTooltip": "모든 프로젝트",
   "workspaceSwitcher.allProjectsTooltip": "팀 프로젝트",
   "entry.primaryNavAria": "Primary",

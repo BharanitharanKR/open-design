@@ -844,7 +844,7 @@ export const pl: Dict = {
   "workspaceSwitcher.title": "Obszary robocze",
   "workspaceSwitcher.limitReached": "Osiągnięto limit 50 obszarów",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Nowy obszar roboczy",
   "workspaceSwitcher.draftsTooltip": "Wszystkie projekty",
   "workspaceSwitcher.allProjectsTooltip": "Projekty zespołowe",
   "entry.primaryNavAria": "Primary",

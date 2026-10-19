@@ -844,7 +844,7 @@ export const de: Dict = {
   "workspaceSwitcher.title": "Arbeitsbereiche",
   "workspaceSwitcher.limitReached": "Maximum von 50 Arbeitsbereichen erreicht",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Neuer Arbeitsbereich",
   "workspaceSwitcher.draftsTooltip": "Alle Projekte",
   "workspaceSwitcher.allProjectsTooltip": "Teamprojekte",
   "entry.primaryNavAria": "Primary",

@@ -844,7 +844,7 @@ export const ptBR: Dict = {
   "workspaceSwitcher.title": "Espaços de trabalho",
   "workspaceSwitcher.limitReached": "Limite de 50 espaços atingido",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "Novo espaço de trabalho",
   "workspaceSwitcher.draftsTooltip": "Todos os projetos",
   "workspaceSwitcher.allProjectsTooltip": "Projetos da equipe",
   "entry.primaryNavAria": "Primary",

@@ -844,7 +844,7 @@ export const th: Dict = {
   "workspaceSwitcher.title": "พื้นที่ทำงาน",
   "workspaceSwitcher.limitReached": "ถึงขีดจำกัด 50 พื้นที่แล้ว",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "พื้นที่ทำงานใหม่",
   "workspaceSwitcher.draftsTooltip": "โปรเจกต์ทั้งหมด",
   "workspaceSwitcher.allProjectsTooltip": "โปรเจกต์ทีม",
   "entry.primaryNavAria": "Primary",

@@ -844,7 +844,7 @@ export const fa: Dict = {
   "workspaceSwitcher.title": "فضاهای کاری",
   "workspaceSwitcher.limitReached": "به سقف ۵۰ فضای کاری رسیدید",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "فضای کاری جدید",
   "workspaceSwitcher.draftsTooltip": "همه پروژه‌ها",
   "workspaceSwitcher.allProjectsTooltip": "پروژه‌های تیم",
   "entry.primaryNavAria": "Primary",

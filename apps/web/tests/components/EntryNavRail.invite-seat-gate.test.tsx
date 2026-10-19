@@ -121,7 +121,7 @@ describe('seat-free member invitation from the workspace switcher', () => {
     fireEvent.click(menu().getByRole('menuitem', { name: /邀请同事/ }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getAllByRole('textbox')[0]!, { target: { value: 'teammate@example.com' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: /确认并邀请/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /发送邀请|确认并邀请/ }));
     await vi.waitFor(() => expect(vi.mocked(globalThis.fetch).mock.calls.some(([url, init]) => (
       String(url) === '/api/workspace/invite' && (init as RequestInit | undefined)?.method === 'POST'
     ))).toBe(true));

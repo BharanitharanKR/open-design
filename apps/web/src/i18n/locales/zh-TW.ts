@@ -849,7 +849,7 @@ export const zhTW: Dict = {
   "workspaceSwitcher.title": "工作空間",
   "workspaceSwitcher.limitReached": "已達 50 個上限",
   "workspaceSwitcher.invite": "邀請同事",
-  "workspaceSwitcher.createTeam": "新建團隊",
+  "workspaceSwitcher.createTeam": "新增工作空間",
   "workspaceSwitcher.draftsTooltip": "全部專案",
   "workspaceSwitcher.allProjectsTooltip": "團隊專案",
   "entry.primaryNavAria": "Primary",

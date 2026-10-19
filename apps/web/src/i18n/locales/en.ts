@@ -844,7 +844,7 @@ export const en: Dict = {
   "workspaceSwitcher.title": "Workspaces",
   "workspaceSwitcher.limitReached": "Maximum of 50 workspaces reached",
   'workspaceSwitcher.invite': 'Invite colleague',
-  'workspaceSwitcher.createTeam': 'New team',
+  'workspaceSwitcher.createTeam': "New workspace",
   "workspaceSwitcher.draftsTooltip": "All projects",
   "workspaceSwitcher.allProjectsTooltip": "Team projects",
   "entry.primaryNavAria": "Primary",

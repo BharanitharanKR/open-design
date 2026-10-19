@@ -844,7 +844,7 @@ export const ja: Dict = {
   "workspaceSwitcher.title": "ワークスペース",
   "workspaceSwitcher.limitReached": "上限の50件に達しました",
   'workspaceSwitcher.invite': 'メンバーを招待',
-  'workspaceSwitcher.createTeam': '新しいチーム',
+  'workspaceSwitcher.createTeam': "ワークスペースを作成",
   "workspaceSwitcher.draftsTooltip": "すべてのプロジェクト",
   "workspaceSwitcher.allProjectsTooltip": "チームプロジェクト",
   "entry.primaryNavAria": "Primary",
