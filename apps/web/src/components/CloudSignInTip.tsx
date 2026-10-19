@@ -248,7 +248,7 @@ export function CloudSignInTip() {
           role={signing ? 'status' : undefined}
         >
           {signing ? <Icon name="spinner" size={14} /> : null}
-          <span>{signing ? t('settings.amrSigningIn') : t('entry.cloudCreditsCta')}</span>
+          <span>{signing ? t('settings.amrSigningIn') : t('settings.amrSignIn')}</span>
         </span>
       </div>
       {signing ? (

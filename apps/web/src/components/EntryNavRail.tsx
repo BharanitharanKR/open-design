@@ -2715,10 +2715,9 @@ export function EntryNavRail({
               — social links above an identity row whose trailing slot is the
               message-centre bell. The identity here is the local mode itself
               (there is no account to name), and opening it lands in Settings,
-              where the local CLI / BYOK configuration lives. It sits UNDER the
-              sign-in card so the identity row stays the rail's last line on
-              both branches, and the card keeps its own slot as the one
-              sign-in entry. */}
+              where the local CLI / BYOK configuration lives. The sign-in card
+              owns the final footer slot in local mode; these account and social
+              controls remain reachable above it. */}
           <div
             className="entry-nav-rail__account-dock entry-nav-rail__account-dock--local"
             data-testid="entry-nav-local-account-dock"
