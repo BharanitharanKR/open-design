@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@/playwright/suite';
@@ -25,7 +25,10 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
     sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId: current.workspaceId, workspaceMemberId: current.workspaceMemberId }));
   }, context);
   await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: [context, {...context,workspaceId:'members-visual-design-space',workspaceMemberId:'members-visual-design-member',workspaceName:'Design space'}], activeWorkspaceId: context.workspaceId } }));
-  await page.route('**/api/workspace/context', route => route.fulfill({ json: { context } }));
+  await page.route('**/api/workspace/context', route => {
+    const selected = route.request().headers()['x-od-workspace-id'];
+    return route.fulfill({ json: { context: selected === 'members-visual-design-space' ? { ...context, workspaceId: selected, workspaceMemberId: 'members-visual-design-member', workspaceName: 'Design space' } : context } });
+  });
   await page.route('**/api/workspace/projects/team', route => route.fulfill({ json: { projects: [] } }));
   await gotoVisualHome(page);
   await ensureRailOpen(page);
@@ -39,6 +42,9 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
 async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
   await page.evaluate(async () => { await document.fonts.ready; });
+  await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+  const metrics = await page.evaluate(() => Object.fromEntries(['panel', 'context', 'labels', 'row', 'close'].map(name => { const el = document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
+  await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   await page.screenshot({ path: path.join(artifactRoot, `${state}.png`), animations: 'disabled' });
 }
 for (const [state, role] of [['B02', 'owner'], ['B03', 'member'], ['B27', 'admin']] as const) {
@@ -126,7 +132,8 @@ test('[P1] A01 local identity shows cloud sign-in entry', async ({ page }) => {
 
 test('[P1] A03 and A05 dismissal persists across reload while header invite remains', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.keyboard.press('Escape');
+  await page.getByTestId('workspace-switcher').click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await expect(banner).toBeVisible();
   await capture(page, 'A03');
@@ -152,7 +159,8 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
 
 test('[P1] banner dismissal is scoped to account identity', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.keyboard.press('Escape');
+  await page.getByTestId('workspace-switcher').click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await banner.getByRole('button', { name: '关闭邀请横条' }).click();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('od.invitation-banner.dismissed:u1'))).toBe('1');
