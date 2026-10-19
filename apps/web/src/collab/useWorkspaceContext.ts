@@ -759,7 +759,7 @@ export function useWorkspaceContext(): WorkspaceContextState {
         && cachedWorkspaceContextGeneration === requestGeneration
         && cachedWorkspaceContext.workspaceId === requestedSelection.workspaceId
         && cachedWorkspaceContext.workspaceMemberId === requestedSelection.workspaceMemberId
-        && directory && !directory.items.some(item => item.workspaceId === requestedSelection.workspaceId
+        && directory && !selectableWorkspaceItems(directory.items).some(item => item.workspaceId === requestedSelection.workspaceId
           && item.workspaceMemberId === requestedSelection.workspaceMemberId)
         ? workspaceDirectoryItemFromContext(cachedWorkspaceContext) : null;
       const selected = exactScopeContext

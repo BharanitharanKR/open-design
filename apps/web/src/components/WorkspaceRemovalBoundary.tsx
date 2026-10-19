@@ -1,3 +1,4 @@
+import { Button } from '@open-design/components';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { WorkspaceActiveResponse } from '@open-design/contracts';
 import { useT } from '../i18n';
@@ -63,7 +64,7 @@ export function WorkspaceRemovalBoundary({ children }: { children: ReactNode }) 
         <h2 id="workspace-removal-title">{t('workspaceRemoval.title', { name: notice.workspaceName })}</h2>
         <p id="workspace-removal-message">{t('workspaceRemoval.description')}</p>
         {failed ? <p className={styles.error} role="alert">{t('workspaceRemoval.retry')}</p> : null}
-        <div className={styles.actions}><button ref={button} type="button" disabled={pending} onClick={() => void confirm()}>{t('workspaceRemoval.confirm')}</button></div>
+        <div className={styles.actions}><Button ref={button} className={styles.confirm} variant="primary" type="button" disabled={pending} onClick={() => void confirm()}>{t('workspaceRemoval.confirm')}</Button></div>
       </section>
     </div>
   </div>;

@@ -1,3 +1,4 @@
+import { currentWorkspaceRemoval } from '../collab/workspace-removal';
 import { CodingPlanUsage } from './CodingPlanUsage';
 import planCardStyles from './PersonalPlanCard.module.css';
 import styles from './EntryNavRail.module.css';
@@ -1348,7 +1349,9 @@ export function EntryTopRightCluster({
     window.open(billingUpgradeUrl, '_blank', 'noopener,noreferrer');
     window.setTimeout(() => {
       notifyWorkspaceBillingRefresh();
-      notifyWorkspaceContextRefresh();
+      // This delayed billing nudge is not an account boundary. A terminal
+      // removal may have arrived after the browser opened; preserve its gate.
+      if (!currentWorkspaceRemoval()) notifyWorkspaceContextRefresh();
     }, 3000);
   }
 

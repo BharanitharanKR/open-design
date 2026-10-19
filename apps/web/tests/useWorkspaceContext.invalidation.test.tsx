@@ -113,7 +113,7 @@ describe('useWorkspaceContext invalidation freshness', () => {
     OpeningEventSource.autoOpen = true;
   });
 
-  it('does not treat a dirty missing directory row as removal or automatic default selection', async () => {
+  it.each(['missing', 'removed', 'deleted'] as const)('retains the exact selected identity while awaiting terminal proof for %s directory rows', async (mode) => {
     OpeningEventSource.autoOpen = false;
     let membershipActive = true;
     let directoryReads = 0;
@@ -122,8 +122,10 @@ describe('useWorkspaceContext invalidation freshness', () => {
       const url = String(input);
       if (url === '/api/workspace/directory') {
         directoryReads += 1;
-        return jsonResponse(workspaceDirectoryFixture([
-          membershipActive ? TEAM_CONTEXT : PERSONAL_CONTEXT,
+        return jsonResponse(workspaceDirectoryFixture(membershipActive ? [TEAM_CONTEXT] : [
+          ...(mode === 'missing' ? [] : [{ ...TEAM_CONTEXT,
+            ...(mode === 'removed' ? { memberStatus: 'removed' as const } : { lifecycleState: 'deleted' as const }),
+          }]), PERSONAL_CONTEXT,
         ]));
       }
       if (url === '/api/workspace/context') {
