@@ -355,7 +355,7 @@ export function normalizeStrategySettlementReason(value: unknown): StrategySettl
   return StrategySettlementReasonV2Schema.parse(value);
 }
 
-/** Host-owned presentation identity and clock, independent of physical task lineage. */
+/** Host-owned status and clock for the automatic Runs of one request. */
 export const TaskDisplayProjectionSchema = z.object({
   id: z.string().min(1),
   revision: z.number().int().nonnegative(),

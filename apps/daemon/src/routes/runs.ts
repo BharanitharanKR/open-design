@@ -1453,25 +1453,11 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
         });
     }
     let previousStrategyTask: StrategyTaskExecutionRecord | null = null;
-    let displayContinuationOfTaskExecutionId: string | undefined;
     try {
       previousStrategyTask = resolveStrategyHandoff(db, requestBody, design.runs.list({
         projectId: typeof requestBody.projectId === 'string' ? requestBody.projectId : undefined,
         conversationId: typeof requestBody.conversationId === 'string' ? requestBody.conversationId : undefined,
       }));
-      if (requestBody.taskDisplayContinuation !== undefined) {
-        const source = requestBody.taskDisplayContinuation as { sourceRunId?: unknown; kind?: unknown } | null;
-        const last = previousStrategyTask?.runs.at(-1);
-        const resumable = last?.settlementFacts?.todoUnfinished === true
-          || ['failed', 'canceled'].includes(last?.settlementFacts?.physicalStatus ?? '');
-        if (!previousStrategyTask || !source || typeof source !== 'object'
-          || source.sourceRunId !== previousStrategyTask.latestRunId
-          || !(source.kind === 'question' ? last?.settlementReason === 'question'
-            : source.kind === 'resume' && resumable)) {
-          throw new StrategyHandoffError(409, 'TASK_DISPLAY_SOURCE_MISMATCH', 'presentation continuation source is not an awaiting question or recoverable task');
-        }
-        displayContinuationOfTaskExecutionId = previousStrategyTask.taskExecutionId;
-      }
     } catch (error) {
       if (error instanceof StrategyHandoffError) return sendApiError(res, error.status, error.code, error.message);
       if (error instanceof InvalidStrategyTaskRecordError || error instanceof InvalidFrozenSkillPackageError) {
@@ -2642,7 +2628,6 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
                       frozenSkillPackage,
                       promptBundleText: preparedPromptBundleText,
                       ...(previousStrategyTask ? { continuedFromTaskExecutionId: previousStrategyTask.taskExecutionId } : {}),
-                      ...(displayContinuationOfTaskExecutionId ? { displayContinuationOfTaskExecutionId } : {}),
                       taskInputManifestSha256: initialTaskInputSnapshot.manifestSha256,
                     });
                     // The route stays unlocked through the request turn so the

@@ -6,8 +6,7 @@ import type { BuildTurnInput, ExecutionShell, TurnBlock } from './contract';
 
 export type TaskPresentation = { owner: boolean; display: TaskDisplayProjection; messages: ChatMessage[] };
 export type PresentedChatMessage = ChatMessage & { taskPresentation?: TaskPresentation };
-export type TaskRecordPart = { key: string; shell: ExecutionShell } | { key: string; text: string }
-  | { key: string; marker: 'waiting' | 'continuation' };
+export type TaskRecordPart = { key: string; shell: ExecutionShell } | { key: string; text: string };
 export type TaskRecordContext = {
   mediaTasksByRunId?: ReadonlyMap<string, ProjectMediaTask[]>;
   previousTodosByMessageId?: ReadonlyMap<string, BuildTurnInput['previousTodos']>;
@@ -102,12 +101,7 @@ export function automaticTaskProse(blocks: readonly TurnBlock[], index: number, 
 
 export function taskRecordParts(messages: ChatMessage[], nowMs?: number, context?: TaskRecordContext): TaskRecordPart[] {
   const parts: TaskRecordPart[] = [];
-  let previousTask: string | undefined;
   for (const message of messages) {
-    if (previousTask && previousTask !== message.strategyTaskExecutionId) {
-      parts.push({ key: `${message.id}:continue`, marker: 'continuation' });
-    }
-    previousTask = message.strategyTaskExecutionId;
     const events = message.events?.length ? message.events : message.content.trim() ? [{ kind: 'text' as const, text: message.content }] : [];
     const blocks = buildTurnBlocks({ events: dedupeToolUsesById(dropSupersededInFlightToolUses(events)),
       mediaTasks: message.runId ? context?.mediaTasksByRunId?.get(message.runId) : undefined,
@@ -121,9 +115,6 @@ export function taskRecordParts(messages: ChatMessage[], nowMs?: number, context
       if (block.kind === 'shell' && (block.items.length || block.segments.length)) parts.push({ key, shell: block });
       else if (block.kind === 'prose' && automaticTaskProse(blocks, index, message, messages)) parts.push({ key, text: block.text });
     });
-    if (/<question-form\b/i.test(message.content) && message !== messages.at(-1)) {
-      parts.push({ key: `${message.id}:wait`, marker: 'waiting' });
-    }
   }
   return parts;
 }

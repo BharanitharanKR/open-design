@@ -15,7 +15,7 @@
  *    这一档沿用「进行中」,而下方那行「已手动停止」在历史回合上是 hover 才揭示的,
  *    于是一轮停掉的活在屏幕上常驻的唯一说法是「进行中」。判据见 `head` 里的注释。)
  */
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactElement, type ReactNode } from 'react';
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
 import type { ExecutionShell as ShellData, ImageRow as ImageRowData, ShellItem, ThinkingTokens, TodoSegment } from '../../runtime/chat/contract';
@@ -63,6 +63,10 @@ export const SLOW_UPSTREAM_AFTER_MS = 60_000;
 export const WAITING_FIRST_OUTPUT_AFTER_MS = 60_000;
 
 export interface ExecutionShellProps {
+  /** Aggregated Runs share this existing status header and folding lifecycle. */
+  children?: ReactNode;
+  /** Carry a user's choice across automatic Run handoff, for this mounted turn only. */
+  foldPreference?: MutableRefObject<boolean | undefined>;
   /** Task aggregation keeps each Run's local row semantics without another outer shell. */
   bodyOnly?: boolean;
   shell: ShellData;
@@ -122,6 +126,8 @@ export function ExecutionShell({
   deferCollapsedBodies = true,
   concluded = false,
   bodyOnly = false,
+  children,
+  foldPreference,
   odCardScope,
   onBrandBrowserAssistConfirm,
 }: ExecutionShellProps): ReactElement {
@@ -168,8 +174,8 @@ export function ExecutionShell({
    * 「停在哪一步」也藏了。
    */
   const lifecycleOpen = (running && !concluded) || shell.stopped;
-  const [open, setOpen] = useState(lifecycleOpen);
-  const [userToggled, setUserToggled] = useState(false);
+  const [open, setOpen] = useState(foldPreference?.current ?? lifecycleOpen);
+  const [userToggled, setUserToggled] = useState(foldPreference?.current !== undefined);
   useEffect(() => {
     if (!userToggled) setOpen(lifecycleOpen);
   }, [lifecycleOpen, userToggled]);
@@ -188,9 +194,12 @@ export function ExecutionShell({
   const openRef = useRef(open);
   openRef.current = open;
   const onToggle = useCallback((next: boolean) => {
-    if (next !== openRef.current) setUserToggled(true);
+    if (next !== openRef.current) {
+      setUserToggled(true);
+      if (foldPreference) foldPreference.current = next;
+    }
     setOpen(next);
-  }, []);
+  }, [foldPreference]);
 
   const head = (() => {
     if (shell.status === 'failed') {
@@ -345,7 +354,7 @@ export function ExecutionShell({
    */
   const hasTodo = shell.items.some((item) => item.kind === 'todo' || item.kind === 'plan');
 
-  const body = items.length
+  const body = children ?? (items.length
         ? items.map((item, i) => renderItem(item, i, {
             t, onOpenFile, fileScope,
             onRetryImage: runTerminal ? onRetryImage : undefined,
@@ -357,10 +366,10 @@ export function ExecutionShell({
             mutedThoughtsIndex: mutedThoughtsIndexOf(items, shell.items, firstThoughtsStack),
             odCardScope, onBrandBrowserAssistConfirm,
           }))
-        : null;
+        : null);
   if (bodyOnly) return <>{body}</>;
   return <Foldable summary={head} variant="flat" elapsed={elapsed ?? undefined}
-    open={open} onToggle={onToggle} expandable={items.length > 0}
+    open={open} onToggle={onToggle} expandable={items.length > 0 || children != null}
     deferBody={deferCollapsedBodies} className={hasTodo ? styles.hasTodo : undefined}>{body}</Foldable>;
 }
 

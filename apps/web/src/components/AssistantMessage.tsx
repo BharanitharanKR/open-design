@@ -1,7 +1,7 @@
 import { Fragment, memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCharReveal } from "./chat/useCharReveal";
 import { ExecutionShell } from "./chat/ExecutionShell";
-import { TaskExecutionRecord, TaskStatus } from "./chat/TaskExecutionRecord";
+import { TaskExecutionRecord } from "./chat/TaskExecutionRecord";
 import { automaticTaskProse, taskDisplayWithDeliveryState, type TaskPresentation, type TaskRecordContext } from "../runtime/chat/task-presentation";
 import { effectiveTurnRunStatus } from "../runtime/chat/turn-status";
 import { buildTurnBlocks } from "../runtime/chat/build-turn-blocks";
@@ -560,9 +560,12 @@ function AssistantMessageImpl({
    * `buildTurnBlocks` 里,这里不做任何判断。
    */
   /** 壳头那颗秒表的「现在」+ S12 的静默起点,每秒同刻取一次(见 `useTickingNow`)。 */
-  const task = taskPresentation ?? (message.taskDisplay ? {
+  const presentedTask = taskPresentation ?? (message.taskDisplay ? {
     owner: true, display: taskDisplayWithDeliveryState(message.taskDisplay, [message]), messages: [message],
   } : undefined);
+  const task = presentedTask && presentedTask.display.runIds.length > 1 ? presentedTask : undefined;
+  const automaticPredecessor = !!task && message.runId !== task.display.currentRunId;
+  const taskFoldPreference = useRef<boolean | undefined>(undefined);
   const { nowMs, lastEventAtMs } = useTickingNow(streaming || !!task?.display.ticking, task?.display.currentRunId ?? message.runId);
   // A retried message keeps its creation date but carries the new run's start.
   const runStartedAt = message.startedAt ?? message.createdAt;
@@ -951,6 +954,7 @@ function AssistantMessageImpl({
       ? unfinishedTodos
       : (previousTodos ?? []).filter((todo) => todoStatusIsUnfinished(todo.status));
   const runSucceeded =
+    !automaticPredecessor &&
     !streaming &&
     !hasResultDeliveryFailure &&
     (
@@ -966,6 +970,7 @@ function AssistantMessageImpl({
    */
   const copyMarkdown = copyableTurnText(message.content, nextTurn.shells);
   const showFeedback =
+    !automaticPredecessor &&
     !!onFeedback &&
     isFeedbackEligible({
       streaming,
@@ -983,6 +988,7 @@ function AssistantMessageImpl({
    * state and this footer would duplicate it (`chat-panel-feedback.md` B50).
    */
   const showCompletionRow =
+    !automaticPredecessor &&
     !streaming &&
     (showFeedback ||
     !!message.startedAt ||
@@ -1145,7 +1151,7 @@ function AssistantMessageImpl({
    * 复制、时间这些**照旧**:它们说的是这段内容本身,不是某一轮的结果。
    */
   const hideRunStatus =
-    !!task || message.id === errorCardOwnerId
+    message.id === errorCardOwnerId
     || hasPendingQuestionForm
     || assistantMessageNeverHadARun(message)
     || failedTurnIsAnnouncedByTheShell;
@@ -1319,12 +1325,12 @@ function AssistantMessageImpl({
           <span className="role-name">{roleName}</span>
         </div>
       ) : null}
-      {task?.owner ? <TaskStatus display={task.display} nowMs={nowMs} /> : null}
       <div className="assistant-flow" data-testid="assistant-flow">
         {task?.owner ? <TaskExecutionRecord key={task.display.id} task={task} nowMs={nowMs}
+          foldPreference={taskFoldPreference}
+          concluded={message.runId === task.display.currentRunId && turnDoneMarkerLanded}
           recordContext={taskRecordContext ?? {mediaTasksByRunId:new Map(message.runId ? [[message.runId,mediaTasks]] : []),
             previousTodosByMessageId:new Map([[message.id,previousTodos]])}}
-          storageKey={`od-task-record:${projectId}:${conversationId}:${task.display.id}`}
           onOpenFile={onRequestOpenFile} fileScope={recordFileScope} onRetryImage={onRetryImage}
           runTerminal={!['running','preparing'].includes(task.display.state)} imageSrc={imageSrc}
           odCardScope={`${projectId}:${conversationId}:${task.display.id}`} onBrandBrowserAssistConfirm={onBrandBrowserAssistConfirm} /> : null}
@@ -1338,6 +1344,7 @@ function AssistantMessageImpl({
             <ExecutionShell
               key={entry.key}
               shell={entry.shell}
+              foldPreference={presentedTask && entry.shell.id === nextTurn.shells[0]?.id ? taskFoldPreference : undefined}
               onOpenFile={onRequestOpenFile}
               /* 执行记录里的文件名要判「这个路径是不是当前项目的」才决定做不做链接。
                  这三样正是正文 markdown 链接判归属用的同一套(见 chatFileLinkClickHandler),

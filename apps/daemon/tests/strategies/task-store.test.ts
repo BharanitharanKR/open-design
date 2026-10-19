@@ -257,7 +257,7 @@ describe('durable strategy task store', () => {
     });
   });
 
-  it('pauses for an answer, resumes the confirmed presentation task, and leaves ordinary follow-ups independent', () => {
+  it('keeps question answers and ordinary follow-ups as independent display turns', () => {
     let task = createTask(db, snapshot);
     recordStrategyTaskRunLifecycle(db, { runId: task.latestRunId, phase: 'start', at: 1_000, status: 'running' });
     recordStrategyTaskRunLifecycle(db, { runId: task.latestRunId, phase: 'end', at: 19_000, status: 'succeeded' });
@@ -272,13 +272,13 @@ describe('durable strategy task store', () => {
     const answer = createStrategyTaskExecution(db, {
       taskExecutionId: 'answer-task', projectId: task.projectId, conversationId: task.conversationId,
       snapshotId: snapshot.snapshotId, selectedAgentId: AGENT_ID, initialRunId: 'answer-run',
-      continuedFromTaskExecutionId: task.taskExecutionId, displayContinuationOfTaskExecutionId: task.taskExecutionId,
+      continuedFromTaskExecutionId: task.taskExecutionId,
       ...strategyTaskCreateIdentityFixture(), createdAt: 319_000,
     });
-    expect(projectStrategyTaskByRunId(db, answer.latestRunId)?.display).toMatchObject({ id: 'task-1', state: 'preparing', elapsedMs: 18_000 });
+    expect(projectStrategyTaskByRunId(db, answer.latestRunId)?.display).toMatchObject({ id: 'answer-task', state: 'preparing', elapsedMs: null });
     recordStrategyTaskRunLifecycle(db, { runId: answer.latestRunId, phase: 'start', at: 320_000, status: 'running' });
     vi.mocked(Date.now).mockReturnValue(329_000);
-    expect(projectStrategyTaskByRunId(db, answer.latestRunId)?.display).toMatchObject({ id: 'task-1', state: 'running', elapsedMs: 27_000 });
+    expect(projectStrategyTaskByRunId(db, answer.latestRunId)?.display).toMatchObject({ id: 'answer-task', state: 'running', elapsedMs: 9_000 });
     const ordinary = createStrategyTaskExecution(db, {
       taskExecutionId: 'new-task', projectId: task.projectId, conversationId: task.conversationId,
       snapshotId: snapshot.snapshotId, selectedAgentId: AGENT_ID, initialRunId: 'new-run',

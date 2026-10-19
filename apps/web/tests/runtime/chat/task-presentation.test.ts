@@ -6,10 +6,10 @@ import { buildTurnBlocks } from '../../../src/runtime/chat/build-turn-blocks';
 const projection: TaskDisplayProjection = { id: 'task', revision: 3, currentRunId: 'answer-run',
   runIds: ['question-run', 'answer-run'], state: 'running', elapsedMs: 27_000, observedAt: 500_000, ticking: true };
 
-it('keeps formal replies around the user answer while assigning one record owner', () => {
+it('keeps question answers in their own turn without new waiting or continuation rows', () => {
   const messages: ChatMessage[] = [
     { id: 'question', role: 'assistant', runId: 'question-run', runStatus: 'succeeded', strategyTaskExecutionId: 'question-task',
-      taskDisplay: projection, content: '<question-form id="q">Choose a direction.</question-form>',
+      taskDisplay: {...projection,id:'question-task',runIds:['question-run'],currentRunId:'question-run',state:'waiting'}, content: '<question-form id="q">Choose a direction.</question-form>',
       events: [{ kind: 'thinking', text: 'Plan' }, { kind: 'text', text: '<question-form id="q">Choose a direction.</question-form>' }] },
     { id: 'answer', role: 'user', content: 'Green' },
     { id: 'result', role: 'assistant', runId: 'answer-run', runStatus: 'running', strategyTaskExecutionId: 'answer-task',
@@ -17,10 +17,10 @@ it('keeps formal replies around the user answer while assigning one record owner
   ];
   const displayed = withTaskPresentation(messages);
   expect(displayed.map(m => m.id)).toEqual(['question','answer','result']);
-  expect(displayed.filter(m => m.taskPresentation?.owner).map(m => m.id)).toEqual(['question']);
+  expect(displayed.filter(m => m.taskPresentation?.owner).map(m => m.id)).toEqual(['question','result']);
   const parts = taskRecordParts(displayed[0]!.taskPresentation!.messages);
-  expect(parts.filter(p => 'shell' in p)).toHaveLength(2);
-  expect(parts.filter(p => 'marker' in p).map(p => 'marker' in p && p.marker)).toEqual(['waiting','continuation']);
+  expect(parts.filter(p => 'shell' in p)).toHaveLength(1);
+  expect(parts.some(p => 'marker' in p)).toBe(false);
   expect(parts.some(p => 'text' in p && p.text.includes('question-form'))).toBe(false);
 });
 

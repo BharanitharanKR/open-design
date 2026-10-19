@@ -489,7 +489,6 @@ type ProjectChatSendMeta = ChatSendMeta & {
   taskAnalytics?: ChatTaskExecutionAnalytics;
   /** Explicit daemon-issued OD Next continuation handle. */
   strategyTaskExecutionId?: string;
-  taskDisplayContinuation?: import('@open-design/contracts').ChatRequest['taskDisplayContinuation'];
 };
 
 export function mergeSavedPreviewComment(current: PreviewComment[], saved: PreviewComment): PreviewComment[] {
@@ -9973,16 +9972,6 @@ export function ProjectView({
           // existed, so keeping the optimistic placeholder would fabricate a
           // run and route the user to the wrong recovery action.
           if (config.mode === 'daemon' && !currentRunId) {
-            if (errorCode === 'RUN_CREATE_OUTCOME_UNKNOWN') {
-              // A missing create response is not proof of rejection. Keep the
-              // accepted-answer identity and last known task state, then read
-              // authoritative messages so normal reattachment can take over.
-              setProjectActionsToast({ message: t('chat.taskSubmitPending'), details: null, scope: 'chat-pane' });
-              setMessages(current => current.filter(message => message.id !== assistantId));
-              clearCurrentRunStreamingMarker(runConversationId, controller, cancelController);
-              await refreshConversationMessagesFromServer(runConversationId);
-              return;
-            }
             if (runMayFinalize) {
               setError(null);
               activeCompletionNotificationRunsRef.current.delete(assistantId);
@@ -10384,7 +10373,6 @@ export function ProjectView({
             : {}),
           titleGeneration: isFirstTurn ? { enabled: true } : undefined,
           locale,
-          ...(meta?.taskDisplayContinuation ? { taskDisplayContinuation: meta.taskDisplayContinuation } : {}),
           ...(meta?.strategyTaskExecutionId
             ? { taskExecutionId: meta.strategyTaskExecutionId }
             : {}),
@@ -10627,7 +10615,6 @@ export function ProjectView({
           }),
           titleGeneration: isFirstTurn ? { enabled: true } : undefined,
           locale,
-          ...(meta?.taskDisplayContinuation ? { taskDisplayContinuation: meta.taskDisplayContinuation } : {}),
           ...(meta?.strategyTaskExecutionId
             ? { taskExecutionId: meta.strategyTaskExecutionId }
             : {}),
@@ -11234,10 +11221,6 @@ export function ProjectView({
       if (currentConversationActionDisabled) return;
       void handleSend(RESUME_CONTINUE_PROMPT, [], [], {
         entryFrom: 'resume_continue',
-        ...(assistantMessage.strategyTaskExecutionId && assistantMessage.runId ? {
-          strategyTaskExecutionId: assistantMessage.strategyTaskExecutionId,
-          taskDisplayContinuation: { sourceRunId: assistantMessage.runId, kind: 'resume' },
-        } : {}),
         taskAnalytics: buildRecoveryTaskAnalytics(
           messages,
           assistantMessage,
@@ -11399,7 +11382,7 @@ export function ProjectView({
   const commentQueueOnSend = currentConversationBusy && !currentConversationQueueDisabled;
 
   const handleContinueRemainingTasks = useCallback(
-    async (assistantMessage: ChatMessage, todos: TodoItem[]) => {
+    async (_assistantMessage: ChatMessage, todos: TodoItem[]) => {
       if (currentConversationActionDisabled || todos.length === 0) return false;
       const remainingList = todos
         .map((todo, i) => {
@@ -11414,10 +11397,7 @@ export function ProjectView({
         `${remainingList}\n\n` +
         'Before making changes, inspect the current project files as needed. ' +
         'Update TodoWrite as you complete each remaining task.';
-      return handleSend(prompt, [], [], assistantMessage.strategyTaskExecutionId && assistantMessage.runId ? {
-        strategyTaskExecutionId: assistantMessage.strategyTaskExecutionId,
-        taskDisplayContinuation: { sourceRunId: assistantMessage.runId, kind: 'resume' },
-      } : undefined);
+      return handleSend(prompt, [], []);
     },
     [currentConversationActionDisabled, handleSend],
   );
@@ -13972,8 +13952,7 @@ export function ProjectView({
                     ? { taskAnalytics: questionTaskAnalytics }
                     : {}),
                   ...(strategyTaskExecutionId
-                    ? { strategyTaskExecutionId,
-                        ...(sourceAssistant?.runId ? { taskDisplayContinuation: { sourceRunId: sourceAssistant.runId, kind: 'question' as const } } : {}) }
+                    ? { strategyTaskExecutionId }
                     : {}),
                 });
               }}

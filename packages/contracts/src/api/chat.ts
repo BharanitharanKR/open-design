@@ -114,8 +114,6 @@ export interface ByokMediaDefaults {
 }
 
 export interface ChatRequest {
-  /** Explicit presentation continuation, validated against the originating host Run. */
-  taskDisplayContinuation?: { sourceRunId: string; kind: 'question' | 'resume' };
   agentId: string;
   message: string;
   /**

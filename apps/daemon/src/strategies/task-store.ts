@@ -127,7 +127,6 @@ export interface StrategyTaskExecutionRecord {
   revision: number;
   taskExecutionId: string;
   continuedFromTaskExecutionId?: string;
-  displayTaskId?: string;
   projectId: string;
   conversationId: string;
   snapshotId: string;
@@ -163,8 +162,6 @@ export interface CreateStrategyTaskExecutionInput {
   sessionMode?: ChatSessionMode;
   taskExecutionId: string;
   continuedFromTaskExecutionId?: string;
-  /** Only a host-validated answer or explicit recovery may inherit presentation. */
-  displayContinuationOfTaskExecutionId?: string;
   projectId: string;
   conversationId: string;
   snapshotId: string;
@@ -308,9 +305,7 @@ export function migrateStrategyTaskStore(db: SqliteDb): void {
   addColumnIfMissing(db, 'strategy_task_executions', 'intent_resolution_version INTEGER');
   addColumnIfMissing(db, 'strategy_task_executions', 'deliverable_valid INTEGER');
   addColumnIfMissing(db, 'strategy_task_executions', 'continued_from_task_execution_id TEXT');
-  addColumnIfMissing(db, 'strategy_task_executions', 'display_task_id TEXT');
   addColumnIfMissing(db, 'strategy_task_runs', 'display_timing_json TEXT');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_strategy_task_display ON strategy_task_executions(project_id, conversation_id, display_task_id)');
   addColumnIfMissing(db, 'strategy_task_runs', 'settlement_reason TEXT');
   addColumnIfMissing(db, 'strategy_task_runs', 'settlement_facts_json TEXT');
   addColumnIfMissing(db, 'strategy_task_runs', 'cold_start_final_text_json TEXT');
@@ -370,12 +365,6 @@ export function createStrategyTaskExecution(
         throw new InvalidStrategyTaskRecordError('Task handoff must stay in its project and conversation.');
       }
     }
-    const displaySource = input.displayContinuationOfTaskExecutionId
-      ? requireTask(db, input.displayContinuationOfTaskExecutionId) : null;
-    if (displaySource && (displaySource.projectId !== projectId || displaySource.conversationId !== conversationId)) {
-      throw new InvalidStrategyTaskRecordError('Display continuation must stay in its project and conversation.');
-    }
-
     const snapshot = getSnapshot(db, snapshotId);
     const binding = AppliedStrategyBindingV2Schema.safeParse(snapshot?.strategy);
     if (!snapshot || !binding.success || snapshot.pluginId !== OD_NEXT_STRATEGY_ID) {
@@ -458,8 +447,6 @@ export function createStrategyTaskExecution(
         db.prepare('UPDATE strategy_task_executions SET continued_from_task_execution_id=? WHERE task_execution_id=?')
           .run(input.continuedFromTaskExecutionId, taskExecutionId);
       }
-      db.prepare('UPDATE strategy_task_executions SET display_task_id=? WHERE task_execution_id=?')
-        .run(displaySource?.displayTaskId ?? displaySource?.taskExecutionId ?? taskExecutionId, taskExecutionId);
       insertFrozenSkillPackage(
         db,
         taskExecutionId,
@@ -1119,7 +1106,6 @@ function rowToTask(db: SqliteDb, row: DbRow): StrategyTaskExecutionRecord {
     ...(executionIntent ? { executionIntent } : {}),
     intentResolution,
     ...(typeof row['continued_from_task_execution_id'] === 'string' ? { continuedFromTaskExecutionId: row['continued_from_task_execution_id'] } : {}),
-    ...(typeof row['display_task_id'] === 'string' ? { displayTaskId: row['display_task_id'] } : {}),
     ...(row['deliverable_valid'] == null ? {} : { deliverableValid: row['deliverable_valid'] === 1 }),
     ...(blockedContext ? { blockedContext } : {}),
     ...(plan.contract ? { planContract: plan.contract } : {}),

@@ -64,12 +64,12 @@ export function recordStrategyTaskRunLifecycle(db: Database.Database, input: {
 
 /** One projection for status polling, SSE and historical message reads. */
 export function projectTaskDisplay(db: Database.Database, task: StrategyTaskExecutionRecord, now = Date.now()): TaskDisplayProjection {
-  const id = task.displayTaskId ?? task.taskExecutionId;
+  const id = task.taskExecutionId;
   const rows = db.prepare(`SELECT t.task_execution_id AS taskId, t.revision,
       t.outcome, r.run_id AS runId, r.task_run_index AS runIndex,
       r.display_timing_json AS timing, r.settlement_reason AS reason, r.settlement_facts_json AS facts
     FROM strategy_task_executions t JOIN strategy_task_runs r ON r.task_execution_id=t.task_execution_id
-    WHERE t.project_id=? AND t.conversation_id=? AND COALESCE(t.display_task_id,t.task_execution_id)=?
+    WHERE t.project_id=? AND t.conversation_id=? AND t.task_execution_id=?
     ORDER BY t.created_at, t.rowid, r.task_run_index`)
     .all(task.projectId, task.conversationId, id) as Row[];
   const latest = rows.at(-1)!;
