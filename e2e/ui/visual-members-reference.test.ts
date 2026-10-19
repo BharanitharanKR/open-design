@@ -390,3 +390,57 @@ test('[P1] C12 joined directory appears without account logout and switches by e
     await capture(page, 'C12');
   } finally { deliver?.(); }
 });
+
+test('[P1] H04 rejoined workspace uses a new membership identity without a restoration dialog', async ({ page }) => {
+  let deliver!: () => void;
+  const gate = new Promise<void>(resolve => { deliver = resolve; });
+  let delivered = false;
+  let phase: 'before' | 'removed' | 'rejoined' = 'before';
+  let directoryReads = 0;
+  let activeId = 'members-visual-workspace';
+  const writes: unknown[] = [];
+  try {
+    const menu = await setup(page, 'owner', false, 2, { beforeHome: async current => {
+      const old = { ...current, workspaceId: 'members-rejoined-design', workspaceMemberId: 'members-rejoined-old', workspaceName: 'Design space' };
+      const rejoined = { ...old, workspaceMemberId: 'members-rejoined-new' };
+      await page.route('**/api/workspace/directory', route => {
+        directoryReads += 1;
+        const items = phase === 'before' ? [current, old] : phase === 'removed' ? [current] : [current, rejoined];
+        return route.fulfill({ json: { items, activeWorkspaceId: activeId } });
+      });
+      await page.route('**/api/workspace/context', route => route.fulfill({ json: { context: route.request().headers()['x-od-workspace-member-id'] === rejoined.workspaceMemberId ? rejoined : current } }));
+      await page.route('**/api/workspace/active', route => {
+        writes.push(route.request().postDataJSON()); activeId = rejoined.workspaceId;
+        return route.fulfill({ json: { activeWorkspaceId: activeId, context: rejoined } });
+      });
+      await page.route('**/api/workspace/events**', async route => {
+        await gate;
+        if (delivered) return route.fulfill({ status: 204 });
+        delivered = true;
+        const event = { type: 'workspace-context-changed', memberRemoval: { workspaceId: old.workspaceId, workspaceMemberId: old.workspaceMemberId, reason: 'member-removed' }, at: new Date().toISOString() };
+        return route.fulfill({ contentType: 'text/event-stream', body: `event: ready\ndata: {}\n\nevent: workspace-context-changed\ndata: ${JSON.stringify(event)}\n\n` });
+      });
+    } });
+    await expect(menu.getByRole('menuitem', { name: 'Design space', exact: true })).toBeVisible();
+    await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
+    const before = directoryReads;
+    phase = 'removed'; deliver();
+    await expect.poll(() => directoryReads).toBeGreaterThan(before);
+    await page.getByTestId('workspace-switcher').click();
+    await expect(page.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    phase = 'rejoined';
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await ensureRailOpen(page);
+    await page.getByTestId('workspace-switcher').click();
+    await page.getByRole('menuitem', { name: 'Design space', exact: true }).click();
+    await expect(page.getByTestId('workspace-switcher')).toContainText('Design space');
+    await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? '{}').workspaceMemberId)).toBe('members-rejoined-new');
+    expect(writes).toEqual([{ workspaceId: 'members-rejoined-design', workspaceMemberId: 'members-rejoined-new' }]);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
+    await page.getByTestId('workspace-switcher').click();
+    await expect(page.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveAttribute('aria-current', 'true');
+    await capture(page, 'H04');
+  } finally { deliver?.(); }
+});
