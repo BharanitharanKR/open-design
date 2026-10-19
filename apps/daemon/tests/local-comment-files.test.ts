@@ -25,8 +25,8 @@ function setup() {
   ensureWorkspaceProject(db, { projectId: 'p', workspaceId: 'w', visibility: 'personal', createdByWorkspaceMemberId: 'creator', resourceHubResourceId: 'root' });
   return db;
 }
-function catalog() {
-  let stored: CommentFileState = { schemaVersion: 1, revision: 0, files: [] };
+function catalog(initial: CommentFileState = { schemaVersion: 1, revision: 0, files: [] }) {
+  let stored: CommentFileState = initial;
   const run = vi.fn(async (args: string[]) => {
     if (args[1] === 'upsert') {
       const mutation = JSON.parse(args[6] ?? '')._commentFiles as CommentFileMutation;
@@ -73,6 +73,62 @@ it('private selected receipt admission needs no alias or root upload; managed F1
   expect(cloud.state().files).toContainEqual({ ...first, sourceFileId: secondId, versionId: 'fresh-v2' });
   expect(cloud.run.mock.calls.every(([args]) => args[0] === 'team-projects')).toBe(true);
 });
+it('reuses an active cloud identity when the local mapping is missing and admits only the fresh upload receipt', async () => {
+  const db = setup();
+  const files = createLocalCommentFiles(db);
+  const local = ensureWorkspaceArtifactForPath(db, { projectId: 'p', path: 'a.html', kind: 'html' });
+  const remote: CommentFileState = { schemaVersion: 1, revision: 4, files: [{
+    sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+    resourceId: 'root', versionId: 'old-version', retired: false,
+  }] };
+  const cloud = catalog(remote);
+  const sourceFileId = files.identity('p', 'a.html', remote);
+  expect(sourceFileId).toBe(remote.files[0]!.sourceFileId);
+  expect(sourceFileId).not.toBe(local.id);
+  // Catalog identity does not prove that old remote bytes exist locally.
+  expect(getProject(db, 'p')?.metadata?._commentFiles).toBeUndefined();
+  await files.admit({ projectId: 'p', workspaceId: 'w', creatorMemberId: 'creator',
+    resourceId: 'selected', versionId: 'fresh-upload',
+    paths: [{ sourceFilePath: 'a.html', entryPath: 'index.html', sourceFileId }], run: cloud.run });
+  expect(cloud.state().files).toEqual([{ ...remote.files[0], entryPath: 'index.html', resourceId: 'selected', versionId: 'fresh-upload' }]);
+  expect(getProject(db, 'p')?.metadata?._commentFiles).toEqual(cloud.state());
+  expect(files.identity('p', 'a.html')).toBe(sourceFileId);
+  expect(getWorkspaceArtifact(db, local.id)).toMatchObject({ currentPath: 'a.html', deletedAt: null });
+  expect(getProject(db, 'p')?.metadata?.unrelated).toBe('keep');
+  const comment: CollabCloudComment = { id: 'old-comment', projectId: 'p', conversationId: 'remote', memberId: 'creator', seq: 1,
+    sourceFileId, sourceFilePath: 'a.html', filePath: 'a.html', elementId: 'hero', selector: '#hero', label: 'Hero',
+    text: '', htmlHint: '', note: 'existing comment', position: { x: 0, y: 0, width: 1, height: 1 },
+    authorKind: 'member', createdAt: 1, updatedAt: 2, status: 'open' };
+  expect(normalizeCurrentFileComment(cloud.state(), comment)?.sourceFileId).toBe(sourceFileId);
+});
+
+it('does not persist recovered identity when cloud admission fails', async () => {
+  const db = setup();
+  const files = createLocalCommentFiles(db);
+  await expect(files.admit({ projectId: 'p', workspaceId: 'w', creatorMemberId: 'creator',
+    resourceId: 'selected', versionId: 'fresh', paths: [{ sourceFilePath: 'a.html', entryPath: 'index.html',
+      sourceFileId: '11111111-1111-4111-8111-111111111111' }],
+    run: vi.fn(async () => { throw new Error('catalog unavailable'); }) })).rejects.toThrow('catalog unavailable');
+  expect(getProject(db, 'p')?.metadata?._commentFiles).toBeUndefined();
+});
+
+it('does not reuse retired cloud identities or override a locally known lifetime', () => {
+  const db = setup();
+  const files = createLocalCommentFiles(db);
+  const local = files.identity('p', 'a.html');
+  const remote: CommentFileState = { schemaVersion: 1, revision: 2, files: [{
+    sourceFileId: '11111111-1111-4111-8111-111111111111', sourceFilePath: 'a.html', entryPath: 'a.html',
+    resourceId: 'root', versionId: 'old', retired: true,
+  }] };
+  expect(files.identity('p', 'a.html', remote)).toBe(local);
+  expect(files.identity('p', 'different.html', remote)).not.toBe(remote.files[0]!.sourceFileId);
+  remote.files[0]!.retired = false;
+  updateProject(db, 'p', { metadata: { _commentFiles: { ...remote, files: [{ ...remote.files[0]!, sourceFileId: local }] } } });
+  expect(files.identity('p', 'a.html', remote)).toBe(local);
+  updateProject(db, 'p', { metadata: { _commentFiles: { ...remote, files: [{ ...remote.files[0]!, sourceFileId: local, retired: true }] } } });
+  expect(files.identity('p', 'a.html', remote)).not.toBe(remote.files[0]!.sourceFileId);
+});
+
 it('rename tracking includes only exact durable new-protocol UUID/path associations in this project', () => {
   const db = setup();
   const files = createLocalCommentFiles(db);
