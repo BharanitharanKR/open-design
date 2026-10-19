@@ -182,6 +182,7 @@ export function HoverTouchpointOverlay({
 	dispatchLayerAction,
 }: HoverTouchpointOverlayProps) {
 	const layerVisibleRef = useRef<WebTouchpointContent | null>(null);
+	const visibilityFailureRef = useRef<((error: Error, attempt?: TouchpointLoadAttempt) => void) | null>(null);
 	const layerCloseRef = useRef(onLayerClose);
 	layerCloseRef.current = onLayerClose;
 	const entryTimeRef = useRef(entryTime);
@@ -343,6 +344,20 @@ export function HoverTouchpointOverlay({
 			entryVerified?.dispose();
 			layerVerified?.dispose();
 		};
+		const failVisibility = (error: Error, attempt?: TouchpointLoadAttempt) => {
+			if (cancelled || !isAuthorized()) return;
+			cancelled = true;
+			attempt?.fail(error, "visibility");
+			entryAttempt?.cancel("page_left");
+			layerAttempt?.cancel("page_left");
+			dispose();
+			layerVisibleRef.current = null;
+			setReadyPair(null);
+			onFencedMount?.();
+			onDiagnostic?.("touchpoint_visibility_failed");
+			close();
+		};
+		visibilityFailureRef.current = failVisibility;
 		const abandon = () => {
 			if (cancelled) return true;
 			if (isAuthorized()) return false;
@@ -449,6 +464,7 @@ export function HoverTouchpointOverlay({
 		};
 		void mount();
 		return () => {
+			if (visibilityFailureRef.current === failVisibility) visibilityFailureRef.current = null;
 			cancelled = true;
 			layerVisibleRef.current = null;
 			entryAttempt?.cancel("page_left");
@@ -516,9 +532,10 @@ export function HoverTouchpointOverlay({
 			element,
 			isCurrent: isAuthorized,
 			onVisible: onEntryVisible,
+			onError: (error) => visibilityFailureRef.current?.(error, entryAttempt),
 			onSlow: onDiagnostic,
 		});
-	}, [isAuthorized, onDiagnostic, onEntryVisible, ready]);
+	}, [entryAttempt, isAuthorized, onDiagnostic, onEntryVisible, ready]);
 	useEffect(() => {
 		const element = layerRef.current;
 		if (!open || !ready || !element) return;
@@ -529,9 +546,10 @@ export function HoverTouchpointOverlay({
 				layerVisibleRef.current = layer;
 				onLayerVisible?.();
 			},
+			onError: (error) => visibilityFailureRef.current?.(error, layerAttempt),
 			onSlow: onDiagnostic,
 		});
-	}, [isAuthorized, layer, onDiagnostic, onLayerVisible, open, ready]);
+	}, [isAuthorized, layer, layerAttempt, onDiagnostic, onLayerVisible, open, ready]);
 	useEffect(() => {
 		if (!open || !ready) return;
 		let frame: number | undefined;

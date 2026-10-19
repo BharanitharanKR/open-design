@@ -951,6 +951,7 @@ export type TouchpointVisibilityWatch = Readonly<{
 	isCurrent: () => boolean;
 	onVisible: () => void;
 	onSlow?: (code: string) => void;
+	onError?: (error: Error) => void;
 	slowAfterMs?: number;
 }>;
 
@@ -970,6 +971,7 @@ export function watchTouchpointVisibility({
 	isCurrent,
 	onVisible,
 	onSlow,
+	onError,
 	slowAfterMs = VISIBILITY_WARNING_MS,
 }: TouchpointVisibilityWatch): () => void {
 	let recorded = false;
@@ -991,7 +993,16 @@ export function watchTouchpointVisibility({
 		frame = requestAnimationFrame(() => {
 			frame = undefined;
 			if (stopped || recorded) return;
-			if (!isCurrent() || !isTouchpointVisible(element)) return;
+			if (!isCurrent()) return;
+			try {
+				if (!isTouchpointVisible(element)) return;
+			} catch (error) {
+				stop();
+				onError?.(Object.assign(new Error("touchpoint_visibility_failed", { cause: error }), {
+					failure_stage: "visibility", error_code: "visibility_error",
+				}));
+				return;
+			}
 			recorded = true;
 			stop();
 			onVisible();
@@ -1062,8 +1073,8 @@ export function mountTouchpoint(
 			verified.dispose();
 		}
 	};
-	const fail = (code: string) => {
-		adapter.attempt?.fail(new Error(code), "mount");
+	const fail = (code: string, error: unknown = new Error(code), stage: "mount" | "visibility" = "mount") => {
+		adapter.attempt?.fail(error, stage);
 		emitWebTouchpointDiagnostic({ code });
 		adapter.onCloseControlChange?.(false);
 		adapter.onError?.(code);
@@ -1145,6 +1156,14 @@ export function mountTouchpoint(
 					isCurrent: current,
 					onVisible,
 					onSlow: (code) => emitWebTouchpointDiagnostic({ code }),
+					onError: (error) => {
+						if (!current()) return;
+						cancelled = true;
+						observer?.disconnect();
+						fail("touchpoint_visibility_failed", error, "visibility");
+						dispose();
+						if (element.parentNode === container) container.replaceChildren();
+					},
 				});
 			if (adapter.onCloseControlChange) {
 				const update = () => {

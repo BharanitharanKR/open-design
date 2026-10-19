@@ -746,6 +746,19 @@ describe("Production campaign live refresh", () => {
 		expect(localStorage.getItem(key)).toBe(String(Date.now()));
 	});
 
+	it("OBS-004 closes a production modal after a controlled visibility read failure", async () => {
+		available = true;
+		await open();
+		vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(() => { throw new Error("platform detail"); });
+		await tick(16);
+		const records = vi.mocked(touchpointLoadQueue("production").enqueue).mock.calls.map(([record]) => record);
+		expect(records.filter(record => record.kind === "terminal")).toEqual([expect.objectContaining({ result: "failed", failure_stage: "visibility", error_code: "visibility_error" })]);
+		expect(screen.queryByRole("dialog")).toBeNull();
+		expect(localStorage.getItem("touchpoint-auto-visible:v1:poll-user:campaign-1:opend.home.campaign-modal")).toBeNull();
+		await tick(100);
+		expect(vi.mocked(touchpointLoadQueue("production").enqueue).mock.calls.map(([record]) => record).filter(record => record.kind === "terminal")).toHaveLength(1);
+	});
+
 	it.each([29_000, 30_000, 31_000])(
 		"HST-011 independently suppresses automatic presentation at %ims after actual visibility",
 		async (elapsedMs) => {

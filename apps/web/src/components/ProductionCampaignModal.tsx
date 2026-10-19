@@ -496,7 +496,17 @@ export function ProductionCampaignModal({
 		let recorded = false;
 		const recordWhenVisible = () => {
 			if (!mounted || recorded || stopVisibility) return;
-			stopVisibility = watchTouchpointVisibility({ element, isCurrent: () => current() && lifecycle.deadline > Date.now(), onVisible: () => {
+			stopVisibility = watchTouchpointVisibility({ element, isCurrent: () => current() && lifecycle.deadline > Date.now(), onError: (error) => {
+				if (!current()) return;
+				cancelled = true;
+				attempt?.fail(error, "visibility");
+				reportFencedMount(mountGeneration);
+				clearOpenPresentation();
+				setPresentedMount(null);
+				emitWebTouchpointDiagnostic({ code: "touchpoint_visibility_failed" });
+				dispose();
+				container.replaceChildren();
+			}, onVisible: () => {
 				if (recorded) return;
 				recorded = true;
 				recordDisplayed(decision.sessionSubject, decision.activityId);

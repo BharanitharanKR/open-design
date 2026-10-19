@@ -1364,15 +1364,27 @@ export function TestCampaignModal({
 					}
 					if (!response.ok)
 						throw Object.assign(new TestRuntimeResponseError("touchpoint_test_load_failed", response.status), await touchpointResponseFailure(response));
+					// Headers have arrived: body I/O failures belong to transfer, while
+					// JSON syntax errors still belong to decode/validation.
+					const readBody = async <T,>(read: () => Promise<T>): Promise<T> => {
+						try {
+							return await read();
+						} catch (error) {
+							if (!current() || requestSignal.aborted || error instanceof SyntaxError) throw error;
+							throw Object.assign(error instanceof Error ? error : new Error("touchpoint_body_transfer_failed"), {
+								failure_stage: "transfer", error_code: "network_error", status: response.status,
+							});
+						}
+					};
 					const bodyStarted = performance.now();
 					let decision: TestDecision;
 					let localTransfer: number | null = null;
 					let localBytes: number | null = null;
 					let decodeDuration: number | null = null;
 					if (typeof response.text === "function") {
-						const text = await response.text(); localBytes = touchpointUtf8Bytes(text); localTransfer = Math.max(0, performance.now() - bodyStarted);
+						const text = await readBody(() => response.text()); localBytes = touchpointUtf8Bytes(text); localTransfer = Math.max(0, performance.now() - bodyStarted);
 						const decoding = performance.now(); decision = JSON.parse(text) as TestDecision; decodeDuration = Math.max(0, performance.now() - decoding);
-					} else decision = await response.json() as TestDecision;
+					} else decision = await readBody(() => response.json()) as TestDecision;
 					const rendererReceivedAt = Date.now();
 					if (!current() || requestSignal.aborted) return null;
 					// A response with no decision identity is a failed renewal, like

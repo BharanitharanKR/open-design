@@ -1787,6 +1787,52 @@ it("recovers a real same-content Test modal mount with a fresh null-decision att
   expect(transport.mock.calls.filter(([url]) => url.endsWith('/acceptances'))).toHaveLength(1);
 });
 
+it('OBS-004 records a body transfer failure with received status and one terminal', async () => {
+  const base = fetches();
+  const error = new TypeError('body stream interrupted at private URL');
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (!url.includes('/test-runtime?')) return base(url);
+    const response = Response.json(runtime());
+    vi.spyOn(response, 'text').mockRejectedValue(error);
+    return response;
+  }));
+  render(<TestCampaignHarness authenticated />);
+  await screen.findByTestId('touchpoint-test-selector');
+  fireEvent.change(screen.getByLabelText('Test activity'), { target: { value: 'deployment-1' } });
+  const facts = () => vi.mocked(touchpointLoadQueue('test').enqueue).mock.calls.map(([record]) => record);
+  await waitFor(() => expect(facts().some(record => record.result === 'failed')).toBe(true));
+  const terminals = facts().filter(record => record.kind === 'terminal');
+  expect(terminals).toHaveLength(1);
+  expect(terminals[0]).toMatchObject({ result: 'failed', failure_stage: 'transfer', error_code: 'network_error', http_status: 200 });
+  expect(error).toBeInstanceOf(TypeError);
+  expect(JSON.stringify(facts())).not.toContain('private URL');
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('OBS-004 preserves a late body AbortError after unmount without classifying cancellation as transfer failure', async () => {
+  const base = fetches();
+  const error = new DOMException('aborted', 'AbortError');
+  let rejectBody!: (error: unknown) => void;
+  const text = vi.fn(() => new Promise<string>((_resolve, reject) => { rejectBody = reject; }));
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (!url.includes('/test-runtime?')) return base(url);
+    const response = Response.json(runtime());
+    vi.spyOn(response, 'text').mockImplementation(text);
+    return response;
+  }));
+  const view = render(<TestCampaignHarness authenticated />);
+  await screen.findByTestId('touchpoint-test-selector');
+  fireEvent.change(screen.getByLabelText('Test activity'), { target: { value: 'deployment-1' } });
+  await waitFor(() => expect(text).toHaveBeenCalledOnce());
+  view.unmount();
+  await act(async () => { rejectBody(error); });
+  expect(error.name).toBe('AbortError');
+  expect(error).not.toHaveProperty('failure_stage');
+  const facts = vi.mocked(touchpointLoadQueue('test').enqueue).mock.calls.map(([record]) => record);
+  expect(facts.filter(record => record.kind === 'terminal')).toHaveLength(1);
+  expect(facts.some(record => record.result === 'failed')).toBe(false);
+});
+
 it.each(['http', 'json'] as const)('records the actual Test runtime %s failure at its source stage', async kind => {
   const base = fetches();
   vi.stubGlobal('fetch', vi.fn(async (url: string) => url.includes('/test-runtime?') ? kind === 'http'

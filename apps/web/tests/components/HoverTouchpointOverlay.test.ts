@@ -10,6 +10,8 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { TouchpointLoadOwner } from "../../src/components/touchpoint-load-observability";
+import type { TouchpointLoadRecord } from "@open-design/contracts/api/touchpointLoadResults";
 import type { WebTouchpointContent } from "../../src/components/touchpoint-component";
 
 const mounts = vi.fn(async (..._args: unknown[]) => undefined);
@@ -633,5 +635,41 @@ describe("CMS-HST-003 explicit keyboard close records", () => {
 		expect(layer.parentElement).toHaveAttribute("hidden");
 		expect(document.activeElement).toBe(entry);
 		expect(onLayerClose).not.toHaveBeenCalled();
+	});
+});
+
+describe("OBS-004 hover visibility failures", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+		vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+		vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({ length: 1 } as DOMRectList);
+	});
+	afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+	it.each(["entry", "layer"] as const)("disposes the pair after a controlled %s visibility failure", async (half) => {
+		const records: TouchpointLoadRecord[] = [];
+		const owner = new TouchpointLoadOwner("production", "en-US", record => records.push(record));
+		const entry = content("opend.home.hover-entry"), layer = content("opend.home.hover-layer");
+		const attempt = (value: WebTouchpointContent) => owner.decision(value.placementKey, owner.begin(value.placementKey), {
+			activityId: "activity", deploymentId: "deployment", touchpointDecisionId: value.placementKey, content: value,
+		});
+		const onDiagnostic = vi.fn(), onEntryVisible = vi.fn(), onLayerVisible = vi.fn();
+		const view = render(createElement(HoverTouchpointOverlay, { entry, layer, entryAttempt: attempt(entry), layerAttempt: attempt(layer), isAuthorized: () => true, onDiagnostic, onEntryVisible, onLayerVisible }));
+		await act(async () => {});
+		const [entryElement, layerElement] = Array.from(view.container.querySelectorAll<HTMLElement>("opend-touchpoint"));
+		Object.defineProperty(half === "entry" ? entryElement! : layerElement!, "getClientRects", { configurable: true, value: vi.fn(() => { throw new Error("platform detail"); }) });
+		if (half === "layer") fireEvent.pointerEnter(entryElement!);
+		await act(async () => { await vi.advanceTimersByTimeAsync(16); });
+		const failed = records.filter(record => record.result === "failed");
+		expect(failed).toEqual([expect.objectContaining({ placement_key: `opend.home.hover-${half}`, failure_stage: "visibility", error_code: "visibility_error" })]);
+		expect(onDiagnostic).toHaveBeenCalledWith("touchpoint_visibility_failed");
+		expect(disposes).toHaveBeenCalledTimes(2);
+		expect(entryElement).toHaveAttribute("hidden");
+		expect(layerElement).toHaveAttribute("hidden");
+		const terminalCount = records.filter(record => record.kind === "terminal").length;
+		document.dispatchEvent(new Event("visibilitychange"));
+		await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+		expect(records.filter(record => record.kind === "terminal")).toHaveLength(terminalCount);
+		expect(onLayerVisible).not.toHaveBeenCalled();
 	});
 });

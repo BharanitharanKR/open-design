@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
 	isTouchpointVisible,
+	watchTouchpointVisibility,
 	mountTouchpoint,
 	REQUEST_TIMEOUT_MS,
 	TEST_MAX_AUTHORIZATION_MS,
@@ -16,6 +17,8 @@ import {
 	type TouchpointLifecycleLoad,
 	type TouchpointLifecycleOptions,
 } from "../../src/components/touchpoint-lifecycle";
+import { TouchpointLoadOwner } from "../../src/components/touchpoint-load-observability";
+import type { TouchpointLoadRecord } from "@open-design/contracts/api/touchpointLoadResults";
 import * as host from "../../src/components/touchpoint-component";
 
 const content: host.WebTouchpointContent = {
@@ -152,6 +155,32 @@ describe.each(["test", "production"] as const)(
 			await vi.advanceTimersByTimeAsync(16);
 			expect(s.onVisible).toHaveBeenCalledTimes(1);
 		});
+		it("OBS-004 disposes a host whose visibility read throws and emits one controlled failure", async () => {
+			const s = setup();
+			const records: TouchpointLoadRecord[] = [];
+			const owner = new TouchpointLoadOwner(mode, "en-US", record => records.push(record));
+			const attempt = owner.decision(content.placementKey, owner.begin(content.placementKey), { activityId: "activity", deploymentId: "deployment", touchpointDecisionId: "decision", content });
+			const onError = vi.fn();
+			const release = mountTouchpoint(s.container, {
+				content, placementKey: content.placementKey, staticActions: [], mode, locale: "en-US",
+				isCurrent: () => true, dispatchAction: s.dispatchAction, onVisible: s.onVisible, attempt, onError,
+				onReady: () => { vi.mocked(HTMLElement.prototype.getClientRects).mockImplementation(() => { throw new Error("private platform detail"); }); },
+			});
+			releases.push(release);
+			await vi.advanceTimersByTimeAsync(16);
+			expect(records.filter(r => r.kind === "terminal")).toEqual([expect.objectContaining({ result: "failed", failure_stage: "visibility", error_code: "visibility_error" })]);
+			expect(onError).toHaveBeenCalledWith("touchpoint_visibility_failed");
+			expect(s.container.children).toHaveLength(0);
+			expect(s.dispose).toHaveBeenCalledOnce();
+			expect(s.resources.dispose).toHaveBeenCalledOnce();
+			document.dispatchEvent(new Event("visibilitychange"));
+			await vi.advanceTimersByTimeAsync(5_000);
+			release();
+			expect(s.onVisible).not.toHaveBeenCalled();
+			expect(records.filter(r => r.kind === "terminal")).toHaveLength(1);
+			expect(JSON.stringify(records)).not.toContain("private platform detail");
+		});
+
 		it("disposes late verification once and never mounts after cleanup", async () => {
 			const s = setup();
 			let resolve!: (value: typeof s.resources) => void;
@@ -1085,3 +1114,20 @@ it("requires a connected, unhidden host box and visible document for impression/
 	} as DOMRectList);
 	expect(isTouchpointVisible(node)).toBe(false);
 });
+
+ it("OBS-004 ignores geometry errors from stale or hidden visibility watches", async () => {
+   const element = document.createElement("div"); document.body.append(element);
+   const read = vi.spyOn(element, "getClientRects").mockImplementation(() => { throw new Error("unreadable"); });
+   const onError = vi.fn(), onVisible = vi.fn();
+   let current = false;
+   const stop = watchTouchpointVisibility({ element, isCurrent: () => current, onVisible, onError });
+   releases.push(stop);
+   await vi.advanceTimersByTimeAsync(16);
+   expect(read).not.toHaveBeenCalled();
+   current = true;
+   vi.mocked(Object.getOwnPropertyDescriptor(document, "hidden")!.get!).mockReturnValue(true);
+   document.dispatchEvent(new Event("visibilitychange"));
+   await vi.advanceTimersByTimeAsync(16);
+   expect(read).not.toHaveBeenCalled();
+   expect(onError).not.toHaveBeenCalled(); expect(onVisible).not.toHaveBeenCalled();
+ });
