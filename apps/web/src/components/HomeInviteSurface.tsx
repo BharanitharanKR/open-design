@@ -13,11 +13,11 @@ const OPEN_INVITE = 'od:workspace-invite-open';
 export function HomeInviteTrigger({ context }: { context: WorkspaceCollabContext | null }) {
   const { t } = useI18n();
   if (!context || !context.permissions.canInviteMembers || context.memberStatus !== 'active' || context.lifecycleState !== 'active') return null;
-  return <Button variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent(OPEN_INVITE, { detail: { workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId } }))}><InvitePersonIcon /> {t('homeInvite.invite')}</Button>;
+  return <Button variant="ghost" className={styles.trigger} onClick={() => window.dispatchEvent(new CustomEvent(OPEN_INVITE, { detail: { workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId } }))}><InvitePersonIcon /> {t('homeInvite.invite')}</Button>;
 }
 
 function InvitePersonIcon() {
-  return <svg aria-hidden width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="6" r="3" /><path d="M2 17v-2a6 6 0 0 1 10-4M16 10v6m-3-3h6" /></svg>;
+  return <svg aria-hidden width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3" /><path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M16 5.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 3.5 4.4" /></svg>;
 }
 
 interface Props {
