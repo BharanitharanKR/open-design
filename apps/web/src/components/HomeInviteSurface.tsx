@@ -66,7 +66,7 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
       if (!context || detail?.workspaceId !== context.workspaceId
         || detail?.workspaceMemberId !== context.workspaceMemberId
         || !Number.isInteger(detail?.count) || detail.count <= 0) return;
-      setSent(detail.count);
+      setSent(Number.isInteger(detail.totalCount) && detail.totalCount >= detail.count ? detail.totalCount : detail.count);
       if (storageKey) {
         setDismissal(storageKey);
         try { window.localStorage.setItem(storageKey, '1'); } catch { /* best effort */ }

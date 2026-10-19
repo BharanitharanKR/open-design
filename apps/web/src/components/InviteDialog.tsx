@@ -141,7 +141,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       if (succeeded.length) {
         setSentCount(previous => previous + succeeded.length);
         window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
-          count: succeeded.length, workspaceId: requestContext.workspaceId, workspaceMemberId: requestContext.workspaceMemberId,
+          count: succeeded.length, totalCount: sentCount + succeeded.length, workspaceId: requestContext.workspaceId, workspaceMemberId: requestContext.workspaceMemberId,
         } }));
       }
       if (!failed.length) { setSubmitting(false); onSubmit?.(succeeded); onClose(); return; }

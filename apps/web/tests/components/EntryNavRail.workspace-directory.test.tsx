@@ -151,7 +151,7 @@ describe('workspace switcher directory', () => {
     renderRail();
     fireEvent.click(screen.getByTestId('workspace-switcher'));
     await waitFor(() => expect(menu().getByText('50/50')).toBeTruthy());
-    expect(menu().getByRole('menuitem', { name: 'New team' })).toBeDisabled();
+    expect(menu().getByRole('menuitem', { name: 'New workspace' })).toBeDisabled();
     expect(menu().getByRole('note').textContent).toBe('Maximum of 50 workspaces reached');
     expect(menu().getByRole('menuitem', { name: 'Limit workspace 50' })).not.toBeDisabled();
     expect(menu().getByRole('menuitem', { name: /Invite/ })).not.toBeDisabled();
@@ -239,7 +239,7 @@ describe('workspace switcher directory', () => {
     const list = screen.getByTestId('workspace-switcher-list');
     const actions = screen.getByTestId('workspace-switcher-actions');
     const invite = menu().getByRole('menuitem', { name: /Invite/ });
-    const createTeam = menu().getByRole('menuitem', { name: /New team/ });
+    const createTeam = menu().getByRole('menuitem', { name: /New workspace/ });
 
     expect(list.contains(invite)).toBe(false);
     expect(list.contains(createTeam)).toBe(false);

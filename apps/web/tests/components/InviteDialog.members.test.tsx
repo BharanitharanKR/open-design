@@ -18,7 +18,7 @@ describe('member-line invitation states', () => {
       email('new@example.com'); fireEvent.click(sendButton());
       await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
       expect(event).toHaveBeenCalledTimes(1);
-      expect((event.mock.calls[0]![0] as CustomEvent).detail).toEqual({ count: 1, workspaceId: 'team-a', workspaceMemberId: 'owner-a' });
+      expect((event.mock.calls[0]![0] as CustomEvent).detail).toEqual({ count: 1, totalCount: 1, workspaceId: 'team-a', workspaceMemberId: 'owner-a' });
     } finally { window.removeEventListener('od:workspace-invites-sent', event); }
   });
   it('does not present purchased seat usage as an authoritative member count', () => {
@@ -43,6 +43,7 @@ describe('member-line invitation states', () => {
   it('removes only sent rows, retains failed roles and retries them once', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(response([{ email: 'sent@example.com', ok: true }, { email: 'retry@example.com', ok: false, error: 'active_pending_invite' }]))
       .mockResolvedValueOnce(response([{ email: 'corrected@example.com', ok: true }]));
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
     vi.stubGlobal('fetch', fetcher); const close = vi.fn(); const submit = vi.fn();
     render(<InviteDialog open workspaceContext={owner} onClose={close} onSubmit={submit} />);
     email('sent@example.com'); fireEvent.click(screen.getByRole('button', { name: /添加成员|add member/i })); email('retry@example.com', 1); fireEvent.click(sendButton());
@@ -50,6 +51,7 @@ describe('member-line invitation states', () => {
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('retry@example.com'); expect(close).not.toHaveBeenCalled();
     expect(submit).not.toHaveBeenCalled();
     email('corrected@example.com'); fireEvent.click(sendButton()); await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+    expect(dispatch.mock.calls.map(([event]) => event).filter(event => event.type === 'od:workspace-invites-sent').map(event => (event as CustomEvent).detail.totalCount)).toEqual([1, 2]);
     expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ invites: [{ email: 'corrected@example.com', role: 'member' }] });
   });
   it('disables every editable control while sending and retains all inputs on transport failure', async () => {

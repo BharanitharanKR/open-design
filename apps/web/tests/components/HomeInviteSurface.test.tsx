@@ -43,6 +43,13 @@ describe('home invitation entry', () => {
     act(() => vi.advanceTimersByTime(1));
     expect(screen.queryByRole('status')).toBeNull();
   });
+  it('reports the cumulative confirmed successes after retrying failed rows', () => {
+    render(view());
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    expect(screen.getByRole('status').textContent).toBe('已向 1 位同事发送邀请');
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 2, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    expect(screen.getByRole('status').textContent).toBe('已向 2 位同事发送邀请');
+  });
   it('does not show an invitation surface while signed out or revoked', () => {
     const result = render(<I18nProvider initial="zh-CN"><HomeInviteSurface accountId={null} context={null} active /></I18nProvider>);
     expect(screen.queryByRole('region')).toBeNull();
