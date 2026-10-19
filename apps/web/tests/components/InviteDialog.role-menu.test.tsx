@@ -45,6 +45,15 @@ function roleTrigger(): HTMLButtonElement {
 }
 
 describe('InviteDialog — role menu escapes the scroll clip', () => {
+  it('lists member before admin with the frozen permission descriptions', () => {
+    openDialog();
+    fireEvent.click(roleTrigger());
+    const options = screen.getAllByRole('option');
+    expect(options[0]).toHaveTextContent(/^Member/);
+    expect(options[0]).toHaveTextContent('Use workspace credits to create designs and invite colleagues as members.');
+    expect(options[1]).toHaveTextContent(/^Admin/);
+    expect(options[1]).toHaveTextContent('All member permissions, plus resend or revoke invitations and remove members.');
+  });
   it('renders the open role listbox outside the overflow-clipped rows container', () => {
     openDialog();
     fireEvent.click(roleTrigger());
