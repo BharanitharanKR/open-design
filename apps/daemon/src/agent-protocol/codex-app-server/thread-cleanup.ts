@@ -35,6 +35,16 @@ export type CodexThreadCleanupResult =
   | { status: 'failed'; message: string; remainingPids?: number[]; treeVerified?: boolean };
 
 const CLEANUP_BUDGET_MS = 1_500;
+/** Bound for the acknowledged child to close after its ownership proof settles. */
+const POST_ARCHIVE_CLOSE_BUDGET_MS = 1_000;
+
+/**
+ * POSIX `ps` is cheap. Windows pays a PowerShell cold start plus a full CIM
+ * enumeration, which routinely exceeds 500 ms on real desktops (#8122 QA).
+ */
+function snapshotTimeoutMs(): number {
+  return process.platform === 'win32' ? 3_000 : 500;
+}
 
 /**
  * Best-effort cleanup after the original writer has closed. This process never
@@ -59,8 +69,13 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
     }
     let result: CodexThreadCleanupResult | undefined;
     let buffer = '';
-    let awaiting: 'initialize' | 'ownership' | 'archive' | null = 'initialize';
+    let awaiting: 'initialize' | 'archive' | null = 'initialize';
     let knownProcesses: ProcessSnapshot[] = [];
+    // Windows only: the initial ownership proof runs alongside the archive RPC.
+    // It never rejects; a failure is recorded and reported with process cleanup.
+    let ownership: Promise<void> | null = null;
+    let ownershipError: string | null = null;
+    let archiveAcknowledged = false;
     let terminating = false;
     let settled = false;
     let closed = false;
@@ -73,13 +88,19 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
       resolve(result ?? { status: 'failed', message: 'codex thread cleanup exited before acknowledgement' });
     }
     const originalAlive = () => child.exitCode === null && child.signalCode === null;
-    const timer = setTimeout(() => {
+    const onTimeout = () => {
+      if (archiveAcknowledged && process.platform === 'win32') {
+        // The archive already succeeded; only the owned process tree is late.
+        void terminateWindowsTree(true);
+        return;
+      }
       result = { status: 'failed', message: 'codex thread cleanup timed out' };
       awaiting = null;
       if (process.platform === 'win32') {
         void terminateWindowsTree();
       } else void terminatePosixGroup();
-    }, CLEANUP_BUDGET_MS);
+    };
+    let timer = setTimeout(onTimeout, CLEANUP_BUDGET_MS);
 
     async function terminatePosixGroup(): Promise<void> {
       if (terminating) return;
@@ -106,7 +127,12 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
     }
 
     async function captureOwnedTree(): Promise<ProcessSnapshot[]> {
-      const snapshot = await captureProcessSnapshot({ timeoutMs: 500 });
+      // Once the root has exited without a proven generation, no later
+      // snapshot can establish ownership; do not pay for another CIM query.
+      if (!knownProcesses.length && !originalAlive()) {
+        throw new Error(ownershipError ?? 'codex cleanup process ownership is unverified');
+      }
+      const snapshot = await captureProcessSnapshot({ timeoutMs: snapshotTimeoutMs() });
       // The ChildProcess exit state fences the root identity across the async
       // query. A PID from a later snapshot alone is never ownership proof.
       if (knownProcesses.length === 0 && originalAlive()) {
@@ -135,6 +161,8 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
       let failure = '';
       let remainingPids: number[] = [];
       try {
+        // Reuse an in-flight initial proof instead of racing a second query.
+        if (ownership) await ownership;
         const owned = await captureOwnedTree();
         treeVerified = true;
         const stopped = await stopProcesses(owned.map(entry => entry.pid), { termGraceMs: 0, killGraceMs: 200 });
@@ -175,7 +203,21 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
       if (result) return;
       result = value;
       awaiting = null;
-      child.stdin?.end();
+      if (!ownership) {
+        child.stdin?.end();
+        return;
+      }
+      // Closing stdin lets app-server exit. Keep the owned root alive until its
+      // generation is captured, so the tree can still be stopped afterwards.
+      if (value.status === 'archived') {
+        archiveAcknowledged = true;
+        clearTimeout(timer);
+      }
+      void ownership.then(() => {
+        if (settled || terminating) return;
+        child.stdin?.end();
+        if (archiveAcknowledged) timer = setTimeout(onTimeout, POST_ARCHIVE_CLOSE_BUDGET_MS);
+      });
     }
     function write(frame: Record<string, unknown>): void {
       try {
@@ -213,7 +255,7 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
           if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
           frame = value as Record<string, unknown>;
         } catch { continue; }
-        if (!awaiting || awaiting === 'ownership' || frame.id !== (awaiting === 'initialize' ? 1 : 2)) continue;
+        if (!awaiting || frame.id !== (awaiting === 'initialize' ? 1 : 2)) continue;
         if (frame.error !== undefined) {
           finish({ status: 'failed', message: `codex thread cleanup ${awaiting}: ${JSON.stringify(frame.error)}` });
           continue;
@@ -228,18 +270,15 @@ export async function cleanupClosedCodexThread(opts: CodexThreadCleanupOptions):
             finish({ status: 'skipped', reason: 'unverified-writer-lock' });
             continue;
           }
-          const archive = () => {
-            if (!awaiting || terminating || settled) return;
-            write({ jsonrpc: '2.0', method: 'initialized', params: {} });
-            awaiting = 'archive';
-            write({ jsonrpc: '2.0', id: 2, method: 'thread/archive', params: { threadId: receipt.threadId } });
-          };
           if (process.platform === 'win32') {
-            awaiting = 'ownership';
-            void captureOwnedTree().then(archive, error => {
-              finish({ status: 'failed', message: String(error), treeVerified: false });
-            });
-          } else archive();
+            // Ownership only governs which processes may be stopped later. It
+            // must never gate the archive RPC to our own child: a slow or failed
+            // CIM snapshot would otherwise leave the thread in the default list.
+            ownership = captureOwnedTree().then(() => {}, (error) => { ownershipError = String(error); });
+          }
+          write({ jsonrpc: '2.0', method: 'initialized', params: {} });
+          awaiting = 'archive';
+          write({ jsonrpc: '2.0', id: 2, method: 'thread/archive', params: { threadId: receipt.threadId } });
         } else finish({ status: 'archived' });
       }
     });
