@@ -103,7 +103,7 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   const dialog = await setup(page, 'owner');
   await page.route('**/api/workspace/invite', route => route.fulfill({ json: { results: [
     { email: 'mika@example.com', ok: true, inviteId: 'visual-only-sent' },
-    { email: 'lee@example.com', ok: false, error: 'invite_duplicate' },
+    { email: 'lee@example.com', ok: false, error: 'active_pending_invite' },
   ] } }));
   await dialog.getByRole('button', { name: /添加成员/ }).click();
   await dialog.locator('input[type="email"]').nth(0).fill('mika@example.com');
@@ -111,6 +111,7 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   await dialog.getByRole('button', { name: /发送邀请|确认并邀请/ }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
+  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
   await capture(page, 'B26');
 });
 
@@ -139,6 +140,10 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
   await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? '{}').workspaceId)).toBe('members-visual-design-space');
   await expect(banner).toHaveCount(0);
   const persistentInvite = page.getByRole('button', { name: '邀请', exact: true });
+  await expect(persistentInvite).toBeVisible();
+  await page.getByTestId('entry-nav-drafts').click();
+  await expect(page).toHaveURL(/\/drafts$/);
+  await expect(page.getByTestId('recent-projects-strip')).toBeVisible();
   await expect(persistentInvite).toBeVisible();
   await capture(page, 'A05');
   await persistentInvite.click();
