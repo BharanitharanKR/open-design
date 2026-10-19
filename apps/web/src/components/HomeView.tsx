@@ -310,6 +310,7 @@ interface Props {
   }) => boolean | void | Promise<boolean | void>;
   onRecommendationDismiss?: () => void;
   executionSwitcher?: ReactNode;
+  inviteSurface?: ReactNode;
   artifactUpgradeSlot?: ReactNode;
   deepSeekV4FlashCampaignAudience?: DeepSeekV4FlashCampaignAudience;
   /** Real model switch for the campaign modal's paid 立即使用 CTA (D5).
@@ -519,6 +520,7 @@ export function HomeView({
   onRecommendationStart,
   onRecommendationDismiss,
   executionSwitcher,
+  inviteSurface,
   artifactUpgradeSlot,
   deepSeekV4FlashCampaignAudience = 'unknown',
   onDeepSeekV4FlashCampaignUseNow,
@@ -3146,6 +3148,7 @@ export function HomeView({
           installationId={deepSeekV4FlashCampaignInstallationId}
         />
       )}
+      {variant === 'dock' ? null : inviteSurface}
       <HomeHero
         variant={variant}
         collapseSignal={collapseSignal}

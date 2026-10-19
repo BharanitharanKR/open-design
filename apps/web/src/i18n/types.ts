@@ -5734,4 +5734,8 @@ export interface Dict {
   'labs.optOutSkip': string;
   'labs.optOutOtherPlaceholder': string;
   'labs.optOutSubmit': string;
+  'homeInvite.banner': string;
+  'homeInvite.invite': string;
+  'homeInvite.dismiss': string;
+  'homeInvite.sent': string;
 }

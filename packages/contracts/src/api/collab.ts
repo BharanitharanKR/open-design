@@ -639,7 +639,7 @@ export function buildWorkspacePermissions(input: {
   return {
     canManageMembers: writable && (isOwner || isAdmin),
     canManageBilling: readable && isOwner,
-    canInviteMembers: writable && (isOwner || isAdmin),
+    canInviteMembers: writable,
     canManageAutoRecharge: writable && isOwner,
     canShareProjects: writable,
     canWriteSyncedFiles: writable,

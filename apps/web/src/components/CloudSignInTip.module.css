@@ -1,0 +1,6 @@
+.card { display: grid; gap: 6px; width: calc(100% - 24px); margin: 0 auto; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: #fafafa; color: var(--text-muted); box-shadow: none; }
+.card:hover, .card:focus-visible { background: #fafafa; transform: none; }
+.card :global(.entry-local-mode-tip__title) { display: block; color: #272a30; font-size: 13px; font-weight: 600; line-height: 20px; }
+.card :global(.entry-local-mode-tip__pitch) p { margin: 0; color: #777; font-size: 12px; line-height: 18px; }
+.card :global(.entry-local-mode-tip__head) { display: flex; margin-top: 2px; }
+.card :global(.entry-local-mode-tip__login-badge) { width: 100%; height: 32px; min-height: 32px; padding: 0 12px; border-radius: 12px; background: #202020; color: #03ff07; font-size: 12px; font-weight: 500; line-height: 18px; }

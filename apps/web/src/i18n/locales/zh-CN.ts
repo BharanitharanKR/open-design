@@ -1,6 +1,11 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  "homeInvite.banner": "免费邀请同事，一起看设计、聊想法",
+  "homeInvite.invite": "邀请",
+  "homeInvite.dismiss": "关闭邀请横条",
+  "homeInvite.sent": "已向 {n} 位同事发送邀请",
+
   "collab.contentUpdate.available": "其他设备有更新",
   "collab.contentUpdate.updating": "正在同步…",
   "collab.contentUpdate.askAgain": "恢复更新提示",
@@ -912,8 +917,8 @@ export const zhCN: Dict = {
   'home.amrGateUnavailable': '暂时无法确认 OpenDesign Cloud 额度，请重新发送。',
   'home.bundledScenarioMissing': '内置场景“{scenarioId}”未安装。请重新安装 OpenDesign，以恢复默认插件。',
   "entry.cloudCalloutBody": "登录即可享受云端协作",
-  "entry.cloudCreditsTitle": "注册即领免费额度",
-  "entry.cloudCreditsBody": "新注册 OpenDesign 账号，即可领取免费额度，使用最先进的模型进行设计创作。",
+  "entry.cloudCreditsTitle": "免费邀请同事",
+  "entry.cloudCreditsBody": "额度共享，一起创作",
   "entry.cloudCreditsCta": "注册 / 登录",
   "entry.localAccountName": "本地模式",
   "entry.cloudCalloutDismissAria": "关闭 OpenDesign Cloud 版说明",

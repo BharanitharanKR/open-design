@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const ptBR: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "Nova versão na nuvem",
   "collab.contentUpdate.updating": "Atualizando…",
   "collab.contentUpdate.askAgain": "Restaurar avisos de atualização",

@@ -431,7 +431,6 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
       req,
       fetchWorkspaceDirectory,
       configuredEnv: requestEnv,
-      requireTeam: true,
     });
     if (!verified.ok) return sendWorkspaceVerificationFailure(res, verified);
     const context = verified.context;

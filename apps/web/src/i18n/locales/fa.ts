@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "نسخه جدید ابری موجود است",
   "collab.contentUpdate.updating": "در حال به‌روزرسانی…",
   "collab.contentUpdate.askAgain": "فعال‌کردن دوباره اعلان‌های به‌روزرسانی",

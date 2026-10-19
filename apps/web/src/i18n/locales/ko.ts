@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "클라우드에 새 버전이 있습니다",
   "collab.contentUpdate.updating": "업데이트 중…",
   "collab.contentUpdate.askAgain": "업데이트 알림 복원",

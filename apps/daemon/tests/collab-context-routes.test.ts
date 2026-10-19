@@ -1606,10 +1606,13 @@ describe('POST /api/workspace/invite', () => {
     expect(res.body.error).toBe('WORKSPACE_CONTEXT_REQUIRED');
   });
 
-  it('403s when the verified team member cannot invite teammates', async () => {
+  it.each(['personal', 'team'] as const)('allows an active member in a %s workspace to invite teammates', async (workspaceType) => {
     let called = false;
     const api = await startContextServer({
-      fetchWorkspaceDirectory: async () => directory('member'),
+      fetchWorkspaceDirectory: async () => {
+        const result = directory('member');
+        return { ...result, items: result.items.map(item => ({ ...item, workspaceType })) };
+      },
       createInvite: async () => {
         called = true;
         return { ok: true, inviteId: 'inv-x' };
@@ -1622,9 +1625,9 @@ describe('POST /api/workspace/invite', () => {
       body: { invites: [{ email: 'a@x.com', role: 'member' }] },
     });
 
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({ error: 'forbidden' });
-    expect(called).toBe(false);
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([{ email: 'a@x.com', ok: true, inviteId: 'inv-x' }]);
+    expect(called).toBe(true);
   });
 
   it('short-circuits to 401 no_session', async () => {

@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const uk: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "Нова версія в хмарі",
   "collab.contentUpdate.updating": "Оновлення…",
   "collab.contentUpdate.askAgain": "Відновити сповіщення про оновлення",

@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const en: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "Updates on another device",
   "collab.contentUpdate.updating": "Syncing…",
   "collab.contentUpdate.askAgain": "Restore update prompts",
@@ -909,8 +914,8 @@ export const en: Dict = {
   'home.amrGateUnavailable': 'Couldn\'t confirm your OpenDesign Cloud balance. Try sending again.',
   'home.bundledScenarioMissing': 'Bundled scenario "{scenarioId}" is not installed. Reinstall the daemon to restore the default plugin set.',
   "entry.cloudCalloutBody": "Sign in to use OpenDesign Cloud and collaborate in the cloud",
-  "entry.cloudCreditsTitle": "Get free credits",
-  "entry.cloudCreditsBody": "Sign up to design with top AI models for free",
+  "entry.cloudCreditsTitle": "Invite colleagues for free",
+  "entry.cloudCreditsBody": "Share credits and create together",
   "entry.cloudCreditsCta": "Sign up / Sign in",
   "entry.localAccountName": "Local mode",
   "entry.cloudCalloutDismissAria": "Dismiss OpenDesign Cloud note",

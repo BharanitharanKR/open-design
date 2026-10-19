@@ -1,6 +1,11 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
+  "homeInvite.invite": "Invite",
+  "homeInvite.dismiss": "Dismiss invitation banner",
+  "homeInvite.sent": "Invitations sent to {n} colleagues",
+
   "collab.contentUpdate.available": "Új felhőverzió",
   "collab.contentUpdate.updating": "Frissítés…",
   "collab.contentUpdate.askAgain": "Frissítési értesítések visszaállítása",

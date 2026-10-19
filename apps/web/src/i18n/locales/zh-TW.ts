@@ -1,6 +1,11 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  "homeInvite.banner": "免費邀請同事，一起看設計、聊想法",
+  "homeInvite.invite": "邀請",
+  "homeInvite.dismiss": "關閉邀請橫條",
+  "homeInvite.sent": "已向 {n} 位同事傳送邀請",
+
   "collab.contentUpdate.available": "雲端有新版本",
   "collab.contentUpdate.updating": "正在更新…",
   "collab.contentUpdate.askAgain": "恢復更新提示",
@@ -914,8 +919,8 @@ export const zhTW: Dict = {
   'home.amrGateUnavailable': '暫時無法確認 OpenDesign Cloud 額度，請重新傳送。',
   'home.bundledScenarioMissing': '內建場景「{scenarioId}」未安裝。請重新安裝 OpenDesign，以還原預設外掛。',
   "entry.cloudCalloutBody": "登入即可享受雲端協作",
-  "entry.cloudCreditsTitle": "註冊即領免費額度",
-  "entry.cloudCreditsBody": "新註冊 OpenDesign 帳號，即可領取免費額度，使用最先進的模型進行設計創作。",
+  "entry.cloudCreditsTitle": "免費邀請同事",
+  "entry.cloudCreditsBody": "額度共享，一起創作",
   "entry.cloudCreditsCta": "註冊 / 登入",
   "entry.localAccountName": "本機模式",
   "entry.cloudCalloutDismissAria": "關閉 OpenDesign Cloud 版說明",

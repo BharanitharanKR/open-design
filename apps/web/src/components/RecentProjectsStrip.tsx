@@ -1254,8 +1254,7 @@ export function RecentProjectsStrip({
             {/* The invite CTA belongs to the team collection: the team space
                 grid, and the 团队项目 tab of 全部项目 that replaced the rail's
                 team entry (OPEND-3108). */}
-            {(space === 'team' || (showCollectionTabs && collection === 'teamProjects')) &&
-            canAccessInviteFlow &&
+            {canAccessInviteFlow &&
             inviteTarget.kind !== 'unavailable' ? (
               <button
                 type="button"
@@ -2071,7 +2070,7 @@ export function RecentProjectsStrip({
         onClose={() => setInviteOpen(false)}
         workspaceContext={workspaceContext}
         canAssignRoles={
-          canAssignInviteRoles ?? workspaceContext?.permissions.canInviteMembers === true
+          workspaceContext?.role === 'owner'
         }
         availableSeats={workspaceInviteAvailableSeats(workspaceContext)}
         entryFrom="all_projects"
