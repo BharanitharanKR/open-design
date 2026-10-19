@@ -1,5 +1,7 @@
+import { currentWorkspaceRemoval } from '../collab/workspace-removal';
 import { CodingPlanUsage } from './CodingPlanUsage';
 import planCardStyles from './PersonalPlanCard.module.css';
+import styles from './EntryNavRail.module.css';
 // Team-edition entry navigation rail (Lovart/Manus-style labeled column).
 //
 // Structure — faithfully ported from the design demo
@@ -902,40 +904,18 @@ export type WorkspaceInviteTarget =
   | { kind: 'vela'; url: string }
   | { kind: 'unavailable' };
 
-/**
- * Whether this member should discover the invite flow.
- *
- * Direct invites and billing recovery are separate capabilities. A Personal
- * Free owner (or a full Team owner) can still enter Vela's upgrade/seat flow
- * without direct invite capability, but an admin never acquires billing power
- * from role alone. Unknown capacity remains usable for a member with explicit
- * invite permission; the invite API is still the authority if the plan is full.
- */
+/** Active members enter the local invitation flow regardless of plan or seats.
+ * The daemon re-verifies membership and remains the mutation authority. */
 export function canAccessWorkspaceInviteFlow(
   context: WorkspaceCollabContext | null | undefined,
 ): boolean {
-  if (
-    !context ||
-    context.memberStatus !== 'active' ||
-    context.lifecycleState !== 'active' ||
-    (context.role !== 'owner' && context.role !== 'admin')
-  ) {
-    return false;
-  }
-
-  const canInviteMembers = context.permissions?.canInviteMembers === true;
-  const canManageBilling = context.permissions?.canManageBilling === true;
-  const needsTeamUpgrade =
-    context.billingState === 'free' || context.billingState === 'inactive';
-  if (needsTeamUpgrade) {
-    return context.role === 'owner' && canManageBilling;
-  }
-  if (context.workspaceType === 'personal') return canInviteMembers;
-
-  const isSeatFull = workspaceSeatFull(context);
-  if (isSeatFull === undefined) return canInviteMembers;
-  if (!isSeatFull) return canInviteMembers;
-  return context.role === 'owner' && canManageBilling;
+  return Boolean(
+    context
+    && context.memberStatus === 'active'
+    && context.lifecycleState === 'active'
+    && context.permissions?.canInviteMembers === true
+    && ['owner', 'admin', 'member'].includes(context.role),
+  );
 }
 
 export function workspaceInviteAvailableSeats(
@@ -945,41 +925,13 @@ export function workspaceInviteAvailableSeats(
   return context?.seatSummary?.availableSeats;
 }
 
-function workspaceSeatFull(
-  context: WorkspaceCollabContext,
-): boolean | undefined {
-  const state = workspaceSeatCapacityState(context.seatSummary);
-  return state === 'unknown' ? undefined : state === 'full';
-}
-
-/**
- * Chooses the first safe invite surface. The local form requires direct invite
- * capability and no proof that the team is already full; unknown capacity is
- * resolved by the invite API when the form is submitted.
- * Personal, Free-plan, and proven full-seat owner states go to Vela, whose
- * dashboard owns the authoritative upgrade/seat/invite decision. Unknown seat
- * data stays on the local permission-gated flow and lets the invite API return
- * an authoritative capacity result.
- */
+/** Invitation is a member action; it never redirects to a purchase flow. */
 export function resolveWorkspaceInviteTarget(
   context: WorkspaceCollabContext | null | undefined,
 ): WorkspaceInviteTarget {
-  if (!context || !canAccessWorkspaceInviteFlow(context)) {
-    return { kind: 'unavailable' };
-  }
-  const needsTeamUpgrade =
-    context.billingState === 'free' || context.billingState === 'inactive';
-  if (
-    context.workspaceType === 'team' &&
-    !needsTeamUpgrade &&
-    workspaceSeatFull(context) !== true &&
-    context.permissions.canInviteMembers === true
-  ) {
-    return { kind: 'local' };
-  }
-  const settingsUrl = context?.workspaceSettingsUrl?.trim() || null;
-  if (!settingsUrl) return { kind: 'unavailable' };
-  return { kind: 'vela', url: teamConsoleUrl(settingsUrl, 'invite') };
+  return canAccessWorkspaceInviteFlow(context)
+    ? { kind: 'local' }
+    : { kind: 'unavailable' };
 }
 
 /**
@@ -1399,6 +1351,9 @@ export function EntryTopRightCluster({
     window.open(billingUpgradeUrl, '_blank', 'noopener,noreferrer');
     window.setTimeout(() => {
       notifyWorkspaceBillingRefresh();
+      // This delayed billing nudge is not an account boundary. A terminal
+      // removal may have arrived after the browser opened; preserve its gate.
+      if (!currentWorkspaceRemoval()) notifyWorkspaceContextRefresh();
     }, 3000);
   }
 
@@ -2134,8 +2089,6 @@ export function EntryNavRail({
   const isHome = view === 'home';
 
   const isTeam = Boolean(context) && context!.workspaceType === 'team';
-  const permissions = context?.permissions;
-  const canInviteMembers = Boolean(permissions?.canInviteMembers);
   const canAccessInviteFlow = canAccessWorkspaceInviteFlow(context);
   const workspaceSettingsUrl = context?.workspaceSettingsUrl?.trim() || null;
 
@@ -2168,9 +2121,6 @@ export function EntryNavRail({
   const [workspaceSwitchingId, setWorkspaceSwitchingId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const inviteTarget = resolveWorkspaceInviteTarget(context);
-  // The invite dialog's seat-gate upgrade entry uses the same public Pricing
-  // destination as the credits chip's twin decision in EntryTopRightCluster.
-  const upgradeUrl = workspaceUpgradeUrl(context, billing);
   const identityWorkspaceItems = workspaceDirectoryForIdentity(workspaceItems, context);
   const currentWorkspaceItem = context
     ? identityWorkspaceItems.find((item) => item.workspaceId === context.workspaceId) ?? null
@@ -2191,9 +2141,12 @@ export function EntryNavRail({
     context?.workspaceId ||
     '';
   const workspaceInitial = workspaceName.charAt(0).toUpperCase() || 'W';
+  const activeWorkspaceItems = identityWorkspaceItems.filter(
+    (item) => item.memberStatus !== 'removed' && item.lifecycleState !== 'deleted',
+  );
   const visibleWorkspaceItems =
-    identityWorkspaceItems.length > 0
-      ? identityWorkspaceItems
+    activeWorkspaceItems.length > 0
+      ? activeWorkspaceItems
       : context
         ? [{
             workspaceId: context.workspaceId,
@@ -2439,10 +2392,15 @@ export function EntryNavRail({
               <>
                 <div className="entry-nav-rail__menu-backdrop" onClick={() => setTeamOpen(false)} />
                 <div
-                  className="entry-nav-rail__team-menu"
+                  className={`entry-nav-rail__team-menu ${styles.workspaceMenu}`}
                   role="menu"
+                  aria-label={t('workspaceSwitcher.title')}
                   onKeyDown={handleWorkspaceMenuKeyDown}
                 >
+                  <div className={styles.workspaceMenuHead}>
+                    <span>{t('workspaceSwitcher.title')}</span>
+                    <span className={styles.workspaceCount}>{visibleWorkspaceItems.length}/50</span>
+                  </div>
                   <div
                     className="entry-nav-rail__workspace-list"
                     data-testid="workspace-switcher-list"
@@ -2521,7 +2479,14 @@ export function EntryNavRail({
                         directly), so this entry links OUT instead of doing local work.
                         With no console URL there is nowhere to send the user — render
                         nothing rather than a control that silently does nothing. */}
-                    {workspaceSettingsUrl ? (
+                    {workspaceSettingsUrl && visibleWorkspaceItems.length >= 50 ? (
+                      <>
+                        <button type="button" role="menuitem" className={`entry-nav-rail__menu-item ${styles.workspaceCreateLimited}`} disabled>
+                          <Icon name="plus" size={15} /> {t('workspaceSwitcher.createTeam')}
+                        </button>
+                        <p className={styles.workspaceLimitNote} role="note">{t('workspaceSwitcher.limitReached')}</p>
+                      </>
+                    ) : workspaceSettingsUrl ? (
                       <a
                         className="entry-nav-rail__menu-item"
                         role="menuitem"
@@ -2755,10 +2720,9 @@ export function EntryNavRail({
               — social links above an identity row whose trailing slot is the
               message-centre bell. The identity here is the local mode itself
               (there is no account to name), and opening it lands in Settings,
-              where the local CLI / BYOK configuration lives. It sits UNDER the
-              sign-in card so the identity row stays the rail's last line on
-              both branches, and the card keeps its own slot as the one
-              sign-in entry. */}
+              where the local CLI / BYOK configuration lives. The sign-in card
+              owns the final footer slot in local mode; these account and social
+              controls remain reachable above it. */}
           <div
             className="entry-nav-rail__account-dock entry-nav-rail__account-dock--local"
             data-testid="entry-nav-local-account-dock"
@@ -2841,16 +2805,8 @@ export function EntryNavRail({
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         workspaceContext={context}
-        canAssignRoles={canInviteMembers}
-        availableSeats={workspaceInviteAvailableSeats(context)}
+        canAssignRoles={context?.role === 'owner'}
         entryFrom="workspace_switcher"
-        onUpgrade={
-          upgradeUrl
-            ? () => {
-                window.open(upgradeUrl, '_blank', 'noopener,noreferrer');
-              }
-            : undefined
-        }
       />
       {/* Top-right chrome cluster: campaign badge (slot) + credits pill,
           mounted into the tabs chrome's no-drag actions host so Electron

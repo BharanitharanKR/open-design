@@ -127,6 +127,7 @@ import {
 } from '../runtime/amr-balance-gate';
 import { cachedHomeAmrFundingBlock, checkAmrFundingFeedback, invalidateAmrFundingFeedback } from '../runtime/amr-funding-feedback';
 import { HomeView, seedHomeComposerPrompt } from './HomeView';
+import { HomeInviteSurface, HomeInviteTrigger } from './HomeInviteSurface';
 import { entryStrategyRoutingFields } from './entry-strategy-routing';
 import { EntryBlankState } from './EntryBlankState';
 import { RecentProjectsStrip, type ProjectCollectionScope } from './RecentProjectsStrip';
@@ -1900,7 +1901,9 @@ export function EntryShell({
           }}
           onOpenSearch={() => setProjectSearchOpen(true)}
           open={railOpen}
-          topRightSlot={topRightCampaignAudience || (homeCampaignHostsVisible && amrLoggedIn === true) ? (
+          topRightSlot={<>
+            <HomeInviteTrigger context={railWorkspaceContext} />
+            {topRightCampaignAudience || (homeCampaignHostsVisible && amrLoggedIn === true) ? (
             <>
               {topRightCampaignAudience ? (
                 <WorkbenchCampaignBadge
@@ -1922,7 +1925,7 @@ export function EntryShell({
                 />
               ) : null}
             </>
-          ) : null}
+          ) : null}</>}
           context={railWorkspaceContext}
           billing={workspaceBilling}
           billingResponse={workspaceBillingResponse}
@@ -1987,6 +1990,7 @@ export function EntryShell({
               <HomeView
                 {...homeViewProps}
                 isActive={view === 'home'}
+                inviteSurface={<HomeInviteSurface accountId={amrLoggedIn === true ? amrAccountId : null} context={railWorkspaceContext} active={view === 'home'} />}
                 /* Home is the one composer in the shell and consumes the page
                    handoff. The community view used to dock a second HomeView
                    (`variant="dock"`) with a handoff of its own; that mount

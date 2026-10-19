@@ -4,6 +4,7 @@ import { Icon } from './Icon';
 import { useI18n } from '../i18n';
 import { useCloudSignIn } from './use-cloud-sign-in';
 import { AmrActivationHintText } from './AmrActivationHintText';
+import styles from './CloudSignInTip.module.css';
 
 const DISMISSED_KEY = 'od.entry.cloudSignInTip.dismissed';
 
@@ -126,9 +127,6 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
   const pitch = (
     <div className="entry-local-mode-tip__pitch">
       <strong className="entry-local-mode-tip__title">
-        <span className="entry-local-mode-tip__title-icon" aria-hidden>
-          <Icon name="sparkles" size={12} />
-        </span>
         {t('entry.cloudCreditsTitle')}
       </strong>
       <p>{t('entry.cloudCreditsBody')}</p>
@@ -139,7 +137,7 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
     <section
       role="button"
       tabIndex={signing ? -1 : 0}
-      className={`${sharePrompt ? className ?? '' : 'entry-local-mode-tip'}${signing ? ' is-signing' : ''}`}
+      className={`${sharePrompt ? className ?? '' : `entry-local-mode-tip ${styles.card}`}${signing ? ' is-signing' : ''}`}
       onClick={() => {
         if (!signing) void begin();
       }}
@@ -163,8 +161,8 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
           className={`entry-local-mode-tip__login-badge${signing ? ' is-pending' : ''}`}
           role={signing ? 'status' : undefined}
         >
-          <Icon name={signing ? 'spinner' : 'log-in'} size={14} />
-          <span>{signing ? t('settings.amrSigningIn') : actionLabel ?? t(sharePrompt ? 'settings.amrLogin' : 'entry.cloudCreditsCta')}</span>
+          {signing || sharePrompt ? <Icon name={signing ? 'spinner' : 'log-in'} size={14} /> : null}
+          <span>{signing ? t('settings.amrSigningIn') : actionLabel ?? t(sharePrompt ? 'settings.amrLogin' : 'settings.amrSignIn')}</span>
         </span>
       </div>
       {signing ? (

@@ -453,6 +453,8 @@ export interface WorkspaceContextResponse {
 
 /** A workspace visible to the signed-in Vela identity. Mirrors B's directory item. */
 export interface WorkspaceDirectoryItem {
+  /** Verified owner default supplied by the upstream account directory. */
+  isDefault?: boolean;
   workspaceId: string;
   workspaceName: string;
   workspaceIconKey?: string;
@@ -682,7 +684,7 @@ export function buildWorkspacePermissions(input: {
   return {
     canManageMembers: writable && (isOwner || isAdmin),
     canManageBilling: readable && isOwner,
-    canInviteMembers: writable && (isOwner || isAdmin),
+    canInviteMembers: writable,
     canManageAutoRecharge: writable && isOwner,
     canShareProjects: writable,
     canWriteSyncedFiles: writable,

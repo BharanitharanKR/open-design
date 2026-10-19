@@ -1,3 +1,4 @@
+import { clearWorkspaceRemoval, currentWorkspaceRemoval, recordWorkspaceRemoval } from '../../src/collab/workspace-removal';
 // @vitest-environment jsdom
 //
 // Acceptance #146 / #112 — the account menu's billing card.
@@ -94,6 +95,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  clearWorkspaceRemoval();
   globalThis.fetch = originalFetch;
   resetWorkspaceDirectoryCache();
   vi.restoreAllMocks();
@@ -209,6 +211,17 @@ describe('account menu billing card — workspace-aware upgrade routing', () => 
       expect(currentWorkspaceContextRequestToken()).toBe(requestToken);
     },
   );
+
+  it('does not let a previously scheduled upgrade refresh dismiss a member-removal notice', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const actor = context({ permissions: { canInviteMembers: true, canManageBilling: true, canViewWorkspaceSettings: true }, workspaceSettingsUrl: 'https://web.example.com/console/settings?workspaceId=ws-new' } as Partial<WorkspaceCollabContext>);
+    renderRail({ context: actor, billing: billing() });
+    fireEvent.click(billingCard().getByRole('button', { name: '升级' }));
+    act(() => { recordWorkspaceRemoval({ type: 'workspace-context-changed', memberRemoval: { workspaceId: actor.workspaceId, workspaceMemberId: actor.workspaceMemberId, reason: 'member-removed' } }, actor); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(currentWorkspaceRemoval()).toMatchObject({ workspaceId: actor.workspaceId, workspaceMemberId: actor.workspaceMemberId });
+  });
 
   it.each(['admin', 'member'] as const)(
     'hides the upgrade action for a %s without billing permission',

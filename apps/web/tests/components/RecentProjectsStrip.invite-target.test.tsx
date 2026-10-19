@@ -77,19 +77,15 @@ afterEach(() => {
 });
 
 describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
-  it('routes a full team directly to Vela seat expansion', () => {
+  it('opens the local invitation dialog even when historical seats are full', () => {
     workspaceState.context = teamContext(0);
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
     renderTeamProjects();
 
     fireEvent.click(screen.getByRole('button', { name: /Invite teammates|邀请同事/ }));
 
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    const [url] = openSpy.mock.calls[0]!;
-    expect(String(url)).toContain('/console/dashboard');
-    expect(String(url)).toContain('workspaceId=ws-team');
-    expect(String(url)).toContain('invite=auto');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
   it('keeps the local invite dialog for a team with available seats', () => {
@@ -123,7 +119,7 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
       target: { value: 'teammate@example.com' },
     });
     fireEvent.click(
-      within(dialog).getByRole('button', { name: /Confirm and invite|确认并邀请/i }),
+      within(dialog).getByRole('button', { name: /Send invitations|发送邀请|Confirm and invite|确认并邀请/i }),
     );
 
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
@@ -132,7 +128,7 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
     expect(openSpy).not.toHaveBeenCalled();
   });
 
-  it('hides the invite entry when neither local capacity nor a safe Vela URL exists', () => {
+  it('keeps local invitations available without a console URL', () => {
     workspaceState.context = {
       ...teamContext(0),
       workspaceSettingsUrl: null,
@@ -141,10 +137,10 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
 
     expect(
       screen.queryByRole('button', { name: /Invite teammates|邀请同事/ }),
-    ).toBeNull();
+    ).toBeTruthy();
   });
 
-  it('routes a full Team owner with billing capability through Vela', () => {
+  it('does not replace denied invitation permission with billing authority', () => {
     const context = teamContext(0);
     workspaceState.context = {
       ...context,
@@ -153,11 +149,8 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
     renderTeamProjects();
 
-    fireEvent.click(screen.getByRole('button', { name: /Invite teammates|邀请同事/ }));
-
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    expect(String(openSpy.mock.calls[0]![0])).toContain('invite=auto');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Invite teammates|邀请同事/ })).toBeNull();
+    expect(openSpy).not.toHaveBeenCalled();
   });
 
   it('does not expose billing recovery to a Team admin without direct invite capability', () => {
@@ -178,7 +171,7 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
     ).toBeNull();
   });
 
-  it('does not expose seat expansion to a full Team admin', () => {
+  it('lets a full Team admin invite members without buying seats', () => {
     const context = teamContext(0);
     workspaceState.context = {
       ...context,
@@ -189,10 +182,10 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
 
     expect(
       screen.queryByRole('button', { name: /Invite teammates|邀请同事/ }),
-    ).toBeNull();
+    ).toBeTruthy();
   });
 
-  it('does not expose the invite entry to a Team member', () => {
+  it('exposes the invite entry to an authorized Team member', () => {
     const context = teamContext(3);
     workspaceState.context = {
       ...context,
@@ -207,6 +200,6 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
 
     expect(
       screen.queryByRole('button', { name: /Invite teammates|邀请同事/ }),
-    ).toBeNull();
+    ).toBeTruthy();
   });
 });

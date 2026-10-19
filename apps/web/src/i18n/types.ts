@@ -79,6 +79,21 @@ export interface Dict {
   'invite.error.retry': string;
   'workspaceInvite.dialogAria': string;
   'workspaceInvite.title': string;
+  'workspaceInvite.onboardingTitle': string;
+  'workspaceInvite.onboardingBody1': string;
+  'workspaceInvite.onboardingBody2': string;
+  'workspaceInvite.onboardingEmailLabel': string;
+  'workspaceInvite.batchSent': string;
+  'workspaceInvite.skip': string;
+  'workspaceInvite.cancel': string;
+  'workspaceInvite.helpLabel': string;
+  'workspaceInvite.memberCount': string;
+  'workspaceInvite.errorInvalidEmail': string;
+  'workspaceInvite.errorDuplicateEmail': string;
+  'workspaceInvite.partialSummary': string;
+  'workspaceInvite.sentCount': string;
+  'workspaceInvite.adminDescription': string;
+  'workspaceInvite.memberDescription': string;
   'workspaceInvite.freePlanBody': string;
   'workspaceInvite.teamPlanBody': string;
   'workspaceInvite.seatsExhaustedBody': string;
@@ -1210,6 +1225,12 @@ export interface Dict {
   'entry.useEverywhereTitle': string;
   'entry.useEverywhereAria': string;
   'entry.workspaceTeamsLabel': string;
+  'workspaceRemoval.confirm': string;
+  'workspaceRemoval.title': string;
+  'workspaceRemoval.description': string;
+  'workspaceRemoval.retry': string;
+  'workspaceSwitcher.title': string;
+  'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.invite': string;
   'workspaceSwitcher.createTeam': string;
   'workspaceSwitcher.draftsTooltip': string;
@@ -5813,4 +5834,8 @@ export interface Dict {
   'labs.optOutSkip': string;
   'labs.optOutOtherPlaceholder': string;
   'labs.optOutSubmit': string;
+  'homeInvite.banner': string;
+  'homeInvite.invite': string;
+  'homeInvite.dismiss': string;
+  'homeInvite.sent': string;
 }

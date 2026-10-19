@@ -1606,10 +1606,13 @@ describe('POST /api/workspace/invite', () => {
     expect(res.body.error).toBe('WORKSPACE_CONTEXT_REQUIRED');
   });
 
-  it('403s when the verified team member cannot invite teammates', async () => {
+  it.each(['personal', 'team'] as const)('allows an active member in a %s workspace to invite teammates', async (workspaceType) => {
     let called = false;
     const api = await startContextServer({
-      fetchWorkspaceDirectory: async () => directory('member'),
+      fetchWorkspaceDirectory: async () => {
+        const result = directory('member');
+        return { ...result, items: result.items.map(item => ({ ...item, workspaceType })) };
+      },
       createInvite: async () => {
         called = true;
         return { ok: true, inviteId: 'inv-x' };
@@ -1622,8 +1625,28 @@ describe('POST /api/workspace/invite', () => {
       body: { invites: [{ email: 'a@x.com', role: 'member' }] },
     });
 
-    expect(res.status).toBe(403);
-    expect(res.body).toEqual({ error: 'forbidden' });
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([{ email: 'a@x.com', ok: true, inviteId: 'inv-x' }]);
+    expect(called).toBe(true);
+  });
+
+  it.each(['removed', 'locked', 'missing'] as const)('rejects %s invitation authority without creating an invitation', async (state) => {
+    let called = false;
+    const api = await startContextServer({
+      fetchWorkspaceDirectory: async () => {
+        const result = directory('member');
+        return { ...result, items: state === 'missing' ? [] : result.items.map(item => ({
+          ...item,
+          memberStatus: state === 'removed' ? 'removed' as const : 'active' as const,
+          lifecycleState: state === 'locked' ? 'locked' as const : 'active' as const,
+        })) };
+      },
+      createInvite: async () => { called = true; return { ok: true, inviteId: 'must-not-create' }; },
+    });
+    const response = await api.req('/api/workspace/invite', {
+      method: 'POST', headers, body: { invites: [{ email: 'new@example.test', role: 'member' }] },
+    });
+    expect(response.status).toBe(403);
     expect(called).toBe(false);
   });
 
@@ -1639,6 +1662,32 @@ describe('POST /api/workspace/invite', () => {
     });
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: 'no_session' });
+  });
+
+  it('preserves confirmed successes if the session disappears mid-batch and never sends remaining rows', async () => {
+    const createInvite = vi.fn()
+      .mockResolvedValueOnce({ ok: true, inviteId: 'inv-sent' })
+      .mockResolvedValueOnce({ ok: false, status: 401, error: 'no_session' });
+    const api = await startContextServer({
+      fetchWorkspaceDirectory: async () => directory('admin'),
+      createInvite,
+    });
+    const res = await api.req('/api/workspace/invite', {
+      method: 'POST', headers,
+      body: { invites: [
+        { email: 'sent@x.com', role: 'member' },
+        { email: 'lost@x.com', role: 'member' },
+        { email: 'unsent@x.com', role: 'member' },
+      ] },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ results: [
+      { email: 'sent@x.com', ok: true, inviteId: 'inv-sent' },
+      { email: 'lost@x.com', ok: false, error: 'no_session' },
+      { email: 'unsent@x.com', ok: false, error: 'no_session' },
+    ] });
+    expect(createInvite).toHaveBeenCalledTimes(2);
+    expect(createInvite.mock.calls.map(call => call[0].email)).toEqual(['sent@x.com', 'lost@x.com']);
   });
 
   it("degrades a failed B create (e.g. 404) to an ok:false result, HTTP 200", async () => {

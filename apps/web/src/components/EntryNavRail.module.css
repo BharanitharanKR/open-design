@@ -196,3 +196,45 @@
   background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
   color: var(--accent);
 }
+
+/* A06 final reference cascade: menu touches the trigger, with a count above a
+   bounded 180px scroll region and an inline creation limit below its actions. */
+.workspaceMenu:global(.entry-nav-rail__team-menu) {
+  top: calc(100% - 4px);
+}
+.workspaceMenuHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 9px 9px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.workspaceCount {
+  color: var(--text-faint, #888);
+  font-size: 11px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.workspaceMenu :global(.entry-nav-rail__workspace-list) {
+  max-height: 180px;
+  scrollbar-width: thin;
+  scrollbar-color: #c8c8c4 transparent;
+}
+.workspaceMenu :global(.entry-nav-rail__workspace-list)::-webkit-scrollbar { width: 4px; }
+.workspaceMenu :global(.entry-nav-rail__workspace-list)::-webkit-scrollbar-thumb { border-radius: 4px; background: #c8c8c4; }
+.workspaceCreateLimited:global(.entry-nav-rail__menu-item) {
+  color: var(--text-faint, #999);
+  cursor: not-allowed;
+}
+.workspaceLimitNote {
+  margin: 0;
+  padding: 2px 9px 7px 31px;
+  color: #d14343;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 18px;
+}

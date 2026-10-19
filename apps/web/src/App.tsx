@@ -1,3 +1,4 @@
+import { WorkspaceRemovalBoundary } from './components/WorkspaceRemovalBoundary';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
@@ -961,7 +962,7 @@ export function App() {
     <MotionConfig reducedMotion="user">
       <IframeKeepAliveProvider>
         <WorkspaceMemberDirectoryPreloader />
-        <AppInner />
+        <WorkspaceRemovalBoundary><AppInner /></WorkspaceRemovalBoundary>
       </IframeKeepAliveProvider>
     </MotionConfig>
   );

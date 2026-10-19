@@ -1,0 +1,73 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildWorkspacePermissions, type WorkspaceCollabContext } from '@open-design/contracts';
+import { I18nProvider } from '../../src/i18n';
+import { HomeInviteSurface, HomeInviteTrigger, WORKSPACE_INVITES_SENT } from '../../src/components/HomeInviteSurface';
+
+vi.mock('../../src/components/InviteDialog', () => ({ InviteDialog: () => null }));
+afterEach(() => { cleanup(); window.localStorage.clear(); vi.useRealTimers(); });
+const context = {
+  workspaceId: 'one', workspaceMemberId: 'member-one', workspaceType: 'team', role: 'member',
+  lifecycleState: 'active', memberStatus: 'active',
+  permissions: buildWorkspacePermissions({ role: 'member', lifecycleState: 'active' }),
+} as WorkspaceCollabContext;
+function view(accountId = 'account-one', workspace = context) {
+  return <I18nProvider initial="zh-CN"><HomeInviteTrigger context={workspace} /><HomeInviteSurface accountId={accountId} context={workspace} active /></I18nProvider>;
+}
+describe('home invitation entry', () => {
+  it('keeps dismissal across workspace switches and remounts, separately per account', () => {
+    const result = render(view());
+    fireEvent.click(screen.getByRole('button', { name: '关闭邀请横条' }));
+    expect(screen.queryByRole('region')).toBeNull();
+    result.rerender(view('account-one', { ...context, workspaceId: 'two', workspaceMemberId: 'member-two' }));
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(screen.getByRole('button', { name: '邀请' })).toBeTruthy();
+    result.unmount();
+    const next = render(view());
+    expect(screen.queryByRole('region')).toBeNull();
+    next.rerender(view('account-two'));
+    expect(screen.getByRole('region')).toBeTruthy();
+  });
+  it('ignores stale workspace success, and hides the banner after actual matching success', () => {
+    vi.useFakeTimers();
+    render(view());
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 2, workspaceId: 'other', workspaceMemberId: 'other' } })));
+    expect(screen.getByRole('region')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 2, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('已向 2 位同事发送邀请');
+    act(() => vi.advanceTimersByTime(3999));
+    expect(screen.getByRole('status')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+  it('gives each independent same-size successful batch a fresh four seconds', () => {
+    vi.useFakeTimers();
+    render(view());
+    const success = () => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } }));
+    act(success);
+    act(() => vi.advanceTimersByTime(3999));
+    act(success);
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('status').textContent).toBe('已向 1 位同事发送邀请');
+    act(() => vi.advanceTimersByTime(3998));
+    expect(screen.getByRole('status')).toBeTruthy();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+  it('reports the cumulative confirmed successes after retrying failed rows', () => {
+    render(view());
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    expect(screen.getByRole('status').textContent).toBe('已向 1 位同事发送邀请');
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 2, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    expect(screen.getByRole('status').textContent).toBe('已向 2 位同事发送邀请');
+  });
+  it('does not show an invitation surface while signed out or revoked', () => {
+    const result = render(<I18nProvider initial="zh-CN"><HomeInviteSurface accountId={null} context={null} active /></I18nProvider>);
+    expect(screen.queryByRole('region')).toBeNull();
+    result.rerender(view('account-one', { ...context, memberStatus: 'removed' }));
+    expect(screen.queryByRole('button', { name: '邀请' })).toBeNull();
+  });
+});
