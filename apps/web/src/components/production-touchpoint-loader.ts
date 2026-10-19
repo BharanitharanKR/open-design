@@ -120,16 +120,25 @@ export async function loadProductionTouchpointDecision(placementKey: string, loc
 		throw error;
 	}
 	try {
+		const readBody = async <T,>(read: () => Promise<T>): Promise<T> => {
+			try { return await read(); }
+			catch (error) {
+				if (signal.aborted || (error instanceof Error && error.name === "AbortError") || error instanceof SyntaxError) throw error;
+				throw Object.assign(error instanceof Error ? error : new Error("touchpoint_body_transfer_failed"), {
+					failure_stage: "transfer", error_code: "network_error", status: response.status,
+				});
+			}
+		};
 		const bodyStarted = performance.now();
 		let value: unknown;
 		let decodeMs: number | null = null;
 		let localBytes: number | null = null;
 		if (typeof response.text === "function") {
-			const text = await response.text();
+			const text = await readBody(() => response.text());
 			localBytes = touchpointUtf8Bytes(text);
 			const decodeStarted = performance.now();
 			value = JSON.parse(text); decodeMs = Math.max(0, performance.now() - decodeStarted);
-		} else value = await response.json();
+		} else value = await readBody(() => response.json());
 		if (signal.aborted) throw new DOMException("aborted", "AbortError");
 		const localMs = Math.max(0, performance.now() - bodyStarted - (decodeMs ?? 0));
 		if (value && typeof value === "object" && !Array.isArray(value) && "decision" in value && value.decision === null) { if (observed) observation?.empty(observed, "no_activity"); return { kind: "no-decision" }; }
@@ -139,9 +148,10 @@ export async function loadProductionTouchpointDecision(placementKey: string, loc
 		}
 		return { kind: "decision", value, receivedAt: Date.now(), offlineReplay: touchpointOfflineReplayOf(value) };
 	} catch (error) {
-		if (signal.aborted) throw error;
-		if (observed) observation?.failure(observed, error instanceof ProductionTouchpointLoadError ? error : new Error("decode_error"));
-		if (error instanceof ProductionTouchpointLoadError) throw error;
+		if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw error;
+		const transfer = !!error && typeof error === "object" && "failure_stage" in error && error.failure_stage === "transfer";
+		if (observed) observation?.failure(observed, transfer || error instanceof ProductionTouchpointLoadError ? error : new Error("decode_error"));
+		if (transfer || error instanceof ProductionTouchpointLoadError) throw error;
 		throw new ProductionTouchpointLoadError("malformed_json");
 	}
 }

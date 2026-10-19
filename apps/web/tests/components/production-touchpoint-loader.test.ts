@@ -110,3 +110,26 @@ it('consumes controlled server resource failures while rejecting arbitrary excep
   expect(records.at(-1)).toMatchObject({ failure_stage: 'resource_read', error_code: 'network_error', http_status: 503 });
   expect(JSON.stringify(records)).not.toContain('secret URL');
 });
+
+ it("OBS-004 proposal records body transport failure after headers without losing Error identity", async () => {
+   const records: TouchpointLoadRecord[] = [];
+   const owner = new TouchpointLoadOwner("production", "en-US", record => records.push(record));
+   const error = new TypeError("private stream URL");
+   const response = Response.json({ decision: null });
+   Object.defineProperty(response, "text", { value: async () => { throw error; } });
+   vi.stubGlobal("fetch", vi.fn(async () => response));
+   await expect(loadProductionTouchpointDecision("opend.home.campaign-modal", "en-US", new AbortController().signal, undefined, owner)).rejects.toBe(error);
+   expect(records.filter(r => r.kind === "terminal")).toEqual([expect.objectContaining({ result: "failed", failure_stage: "transfer", error_code: "network_error", http_status: 200 })]);
+   expect(JSON.stringify(records)).not.toContain("private stream URL");
+ });
+ it("OBS-004 proposal preserves a body AbortError and cancellation gate", async () => {
+   const records: TouchpointLoadRecord[] = [];
+   const owner = new TouchpointLoadOwner("production", "en-US", record => records.push(record));
+   const controller = new AbortController();
+   const error = new DOMException("aborted", "AbortError");
+   const response = Response.json({ decision: null });
+   Object.defineProperty(response, "text", { value: async () => { controller.abort(); throw error; } });
+   vi.stubGlobal("fetch", vi.fn(async () => response));
+   await expect(loadProductionTouchpointDecision("opend.home.campaign-modal", "en-US", controller.signal, undefined, owner)).rejects.toBe(error);
+   expect(records.some(r => r.result === "failed")).toBe(false);
+ });
