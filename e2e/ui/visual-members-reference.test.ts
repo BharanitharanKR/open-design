@@ -52,8 +52,10 @@ async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
   await page.evaluate(async () => { await document.fonts.ready; });
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
-  const metrics = await page.evaluate(() => Object.fromEntries(['banner', 'panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer'].map(name => { const el = name === 'banner' ? document.querySelector('[role=region][aria-label="邀请"]') : document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
+  const metrics = await page.evaluate(() => Object.fromEntries(['card', 'banner', 'panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer', 'submit'].map(name => { const el = name === 'card' ? document.querySelector('[data-testid=entry-cloud-signin-tip]') : name === 'banner' ? document.querySelector('[role=region][aria-label="邀请"]') : document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight,background:css.backgroundColor,color:css.color,opacity:css.opacity}]; })));
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
+  const options = await page.getByRole('option').evaluateAll(items => items.map(item => { const r = item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height,scrollHeight:item.scrollHeight,clientHeight:item.clientHeight }; }));
+  await writeFile(path.join(artifactRoot, `${state}-options.json`), JSON.stringify(options, null, 2));
   await page.screenshot({ path: path.join(artifactRoot, `${state}.png`), animations: 'disabled' });
 }
 for (const [state, role] of [['B02', 'owner'], ['B03', 'member'], ['B27', 'admin']] as const) {
@@ -128,6 +130,9 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
   await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
+  await capture(page, 'B26-hover');
+  await page.mouse.move(1300, 800);
   await capture(page, 'B26');
 });
 
