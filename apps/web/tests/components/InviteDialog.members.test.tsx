@@ -32,6 +32,10 @@ describe('member-line invitation states', () => {
   it('marks invalid and subsequent duplicate emails inline without sending or clearing input', () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    expect((sendButton() as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(sendButton());
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(fetcher).not.toHaveBeenCalled();
     email('invalid'); fireEvent.click(sendButton()); expect(screen.getByRole('alert')).toBeTruthy();
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('invalid');
     email('same@example.com'); fireEvent.click(screen.getByRole('button', { name: /添加成员|add member/i })); email('SAME@example.com', 1);
