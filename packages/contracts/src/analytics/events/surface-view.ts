@@ -303,8 +303,17 @@ export interface StudioOnboardingHintSurfaceViewProps {
   feature_id?: string;
 }
 
+export interface ShareGuideSurfaceViewProps {
+  page_name: 'artifact';
+  area: 'share_guide';
+  project_id: string;
+  project_kind: TrackingProjectKind | null;
+  artifact_id: string;
+}
+
 export type SurfaceViewProps =
   | CmsTouchpointSurfaceViewProps
+  | ShareGuideSurfaceViewProps
   | WorkspaceSurfaceViewProps
   | RunFailedToastSurfaceViewProps
   | RunRecoveryActionSurfaceViewProps
