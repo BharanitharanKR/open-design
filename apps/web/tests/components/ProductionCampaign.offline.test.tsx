@@ -45,7 +45,7 @@ const T0 = "2030-01-01T00:00:00.000Z";
 const at = (offsetMs: number) => new Date(Date.parse(T0) + offsetMs).toISOString();
 
 const content = (placementKey: string, capabilities: string[]) => ({
-	id: `version-${placementKey}`,
+	id: placementKey.startsWith("opend.home.hover-") ? "version-hover-pair" : `version-${placementKey}`,
 	placementKey,
 	locale: "en-US",
 	manifest: {
@@ -363,7 +363,7 @@ describe.each([
 		expect(document.querySelector("opend-touchpoint")).not.toBeNull();
 		const receipt = {
 			activityId: "activity-1", deploymentId: "deployment-1",
-			contentVersionId: `version-${placementKey}`, touchpointDecisionId: `decision-${placementKey}`,
+			contentVersionId: content(placementKey).id, touchpointDecisionId: `decision-${placementKey}`,
 		};
 		for (const key of Object.keys(receipt) as Array<keyof typeof receipt>) {
 			if (kind === "all" || key === kind) receipt[key] = "";
