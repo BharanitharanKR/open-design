@@ -435,7 +435,8 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
     if (!verified.ok) return sendWorkspaceVerificationFailure(res, verified);
     const context = verified.context;
     const workspaceId = context.workspaceId;
-    if (!context.permissions.canInviteMembers) {
+    if (!context.permissions.canInviteMembers ||
+        (context.role !== 'owner' && items.some(item => item.role === 'admin'))) {
       return res.status(403).json({ error: 'forbidden' });
     }
 

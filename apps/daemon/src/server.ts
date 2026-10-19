@@ -6,6 +6,7 @@ import { usesProductionMarker, composeResumedRequest } from './strategies/od-nex
 import { todoSnapshotHasUnfinishedWork } from '@open-design/contracts';
 import { createUserDesignSystem } from './design-systems/index.js';
 import { resolveWorkspaceScope } from './collab/workspace-scope.js';
+import { cancelRevokedWorkspaceRuns, createWorkspaceMembershipRevocationObserver } from './collab/cancel-revoked-workspace-runs.js';
 import { startEvidenceDelivery } from './services/evidence-delivery.js';
 import type {
   DesktopExportArtifactInput,
@@ -3849,6 +3850,16 @@ export async function startServer({
       configuredAmrEnv(),
     ),
   });
+  // The subscriber can connect while later asynchronous startup is still
+  // constructing the run service. Retain exact account-scoped revocations
+  // until that service exists instead of closing over its temporal dead zone.
+  const pendingRunRevocations: Array<{ workspaceId: string; identityKey: string; workspaceMemberId?: string }> = [];
+  let stopRevokedWorkspaceRuns = (workspaceId: string, workspaceMemberId?: string, identityKey = velaWorkspaceDirectoryIdentity(readVelaControlApiContext, configuredAmrEnv())) => {
+    pendingRunRevocations.push({ workspaceId, identityKey, ...(workspaceMemberId ? { workspaceMemberId } : {}) });
+  };
+  const workspaceMembershipRevocations = createWorkspaceMembershipRevocationObserver(
+    (workspaceId, memberId, identity) => stopRevokedWorkspaceRuns(workspaceId, memberId, identity),
+  );
   const workspaceDirectoryAuthority = createWorkspaceDirectoryAuthorityBroker({
     fetchDirectory: async () => {
       const result = await fetchVelaWorkspaceDirectory({
@@ -3873,8 +3884,11 @@ export async function startServer({
       mode: workspaceAuthorityCacheMode,
       ...input,
     }),
-    onAcceptedResult: (result, identity) =>
-      workspaceExactAuthorityCache.observe(identity, result.items),
+    onAcceptedResult: (result, identity) => {
+      workspaceExactAuthorityCache.observe(identity, result.items);
+      workspaceMembershipRevocations.observe(identity,
+        velaWorkspaceDirectoryIdentity(readVelaControlApiContext, configuredAmrEnv()), result);
+    },
   });
   const fetchWorkspaceDirectory = workspaceDirectoryAuthority.read;
   const fetchFreshMutationWorkspaceDirectory =
@@ -6619,6 +6633,9 @@ export async function startServer({
       ) {
         return;
       }
+      // Revocation frames do not identify the former member. Revalidate the
+      // complete directory below; only its old/new principal diff may stop a
+      // run, so a delayed old stream cannot cancel a newly rejoined member.
       const revocationReceivedAt = performance.now();
       const exactWorkspaceId = workspaceId ?? subscribedWorkspaceId;
       console.info(
@@ -6660,6 +6677,8 @@ export async function startServer({
       ) {
         return;
       }
+      // This dirty signal carries no member id. The fresh directory's exact
+      // principal diff owns cancellation, including delayed/replayed events.
       requestWorkspaceDirectoryRefresh(
         'event_dirty',
         event.at
@@ -8389,6 +8408,15 @@ export async function startServer({
     getAppVersion: currentAppVersion,
     readAnalyticsContext,
   };
+  stopRevokedWorkspaceRuns = (workspaceId: string, workspaceMemberId?: string) => {
+    void cancelRevokedWorkspaceRuns(design.runs, workspaceId, workspaceMemberId)
+      .catch(error => console.error('[od] failed to stop removed Workspace runs', error));
+  };
+  for (const revocation of pendingRunRevocations.splice(0)) {
+    if (revocation.identityKey === currentWorkspaceDirectoryIdentity()) {
+      stopRevokedWorkspaceRuns(revocation.workspaceId, revocation.workspaceMemberId);
+    }
+  }
   const taskObservationRollout = createTaskObservationRolloutService({
     db,
     dataDir: RUNTIME_DATA_DIR,

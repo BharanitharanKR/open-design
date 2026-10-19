@@ -31,6 +31,9 @@ export function workspaceInviteErrorMessageKey(code: string | undefined, onboard
       return 'workspaceInvite.seatsExhaustedBody';
   }
   switch (code) {
+    case 'delivery_pending': return 'workspaceInvite.deliveryPending';
+    case 'delivery_failed': return 'workspaceInvite.deliveryFailed';
+    case 'create_invalid_response': return 'workspaceInvite.invalidResponse';
     case 'no_session':
       return 'workspaceInvite.errorNoSession';
     case 'no_workspace':

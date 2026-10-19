@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -81,7 +81,6 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
     workspaceState.context = teamContext(0);
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
     renderTeamProjects();
-
     fireEvent.click(screen.getByRole('button', { name: /Invite teammates|邀请同事/ }));
 
     expect(openSpy).not.toHaveBeenCalled();
@@ -99,17 +98,18 @@ describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
     expect(openSpy).not.toHaveBeenCalled();
   });
 
-  it('lets the invite API resolve the directory-derived zero/zero seat sentinel', async () => {
-    const context = teamContext(3);
-    workspaceState.context = {
-      ...context,
-      seatSummary: { seatLimit: 0, usedSeats: 0, availableSeats: 0, isSeatFull: true },
-    } as WorkspaceCollabContext;
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
-    const fetchSpy = vi.fn(async () => (
-      new Response(JSON.stringify({ results: [{ ok: true }] }), { status: 200 })
-    ));
-    vi.stubGlobal('fetch', fetchSpy);
+  it.each([
+    [
+      'explicitly revoked invitation capability',
+      {
+        ...teamContext(3),
+        permissions: { ...teamContext(3).permissions, canInviteMembers: false },
+      },
+    ],
+    ['departed member', { ...teamContext(3), memberStatus: 'removed' }],
+    ['locked workspace', { ...teamContext(3), lifecycleState: 'locked' }],
+  ] as const)('hides the invitation entry for %s', (_label, context) => {
+    workspaceState.context = context as WorkspaceCollabContext;
     renderTeamProjects();
 
     fireEvent.click(screen.getByRole('button', { name: /Invite teammates|邀请同事/ }));

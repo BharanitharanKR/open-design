@@ -494,10 +494,9 @@ export interface WorkspaceActiveResponse {
   context: WorkspaceCollabContext;
 }
 
-// —— Derivation helpers — a verbatim mirror of B's vela
-// packages/shared/src/workspace-context.ts. Both the daemon's dev context stub
-// and the real B proxy derive permissions/seat summary through these, so C never
-// drifts from B's authorization rules. If B's helper changes, update here too.
+// —— Derivation helpers — local permission projection from verified B identity.
+// Invite entry is available to every active member; assigning admin remains
+// Owner-only and the upstream create endpoint retains final authorization.
 
 export function isWorkspaceLifecycleReadable(state: WorkspaceLifecycleState): boolean {
   return state !== 'deleted';

@@ -1,0 +1,8 @@
+.banner { display: flex; align-items: center; gap: 10px; align-self: center; max-width: calc(100% - 32px); min-height: 36px; padding: 0 12px; border-radius: 999px; background: #f3f4f6; color: #272a30; font-size: 14px; }
+.action, .close { border: 0; background: transparent; cursor: pointer; padding: 4px; font: inherit; }
+.action { color: #159447; white-space: nowrap; }
+.close { color: #737780; display: inline-flex; align-items: center; }
+.separator { height: 14px; width: 1px; background: #d1d5db; }
+.notice { position: fixed; z-index: 2450; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: 90vw; padding: 12px 20px; border-radius: 10px; background: #292929; color: #fff; box-shadow: 0 6px 24px #0002; font-size: 13px; }
+.notice .close { color: inherit; }
+@media (max-width: 520px) { .banner { border-radius: 18px; padding-block: 4px; gap: 6px; } }

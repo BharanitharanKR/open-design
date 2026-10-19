@@ -30,6 +30,7 @@ import { Icon } from './Icon';
 import type { IconName } from './Icon';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
+import { InviteSuccessNotice } from './InviteEntry';
 import { ProjectDeleteConfirmDialog } from './project-actions/ProjectDeleteConfirmDialog';
 import { useProjectDeleteFlow } from './project-actions/useProjectDeleteFlow';
 import { useBatchProjectShareCount } from './project-actions/useBatchProjectShareCount';
@@ -483,6 +484,7 @@ export function RecentProjectsStrip({
   >(null);
   const displayTriggerRef = useRef<HTMLButtonElement>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteSentCount, setInviteSentCount] = useState(0);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(() => new Set());
   // Confirmation gates for the bulk bar. Batch move reuses the single-card
@@ -2057,6 +2059,7 @@ export function RecentProjectsStrip({
       ) : null}
       <InviteDialog
         open={inviteOpen}
+        onSent={setInviteSentCount}
         onClose={() => setInviteOpen(false)}
         workspaceContext={workspaceContext}
         canAssignRoles={
@@ -2065,6 +2068,7 @@ export function RecentProjectsStrip({
         entryFrom="all_projects"
 
       />
+      <InviteSuccessNotice count={inviteSentCount} onClose={() => setInviteSentCount(0)} />
     </section>
   );
 }

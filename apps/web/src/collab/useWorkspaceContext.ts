@@ -1047,7 +1047,7 @@ const WORKSPACE_CONTEXT_POLL_MS = 30_000;
 // Poll-as-floor cadence while the workspace SSE is connected — a slow safety net
 // behind the pushed `workspace-context-changed` events.
 const WORKSPACE_CONTEXT_SSE_FLOOR_MS = 120_000;
-export const WORKSPACE_CONTEXT_REFRESH_EVENT = 'od:workspace-context-refresh';
+export { WORKSPACE_CONTEXT_REFRESH_EVENT } from './workspace-context-events';
 // Keep the deployed storage string for old/new bundle interoperability. The
 // semantic name is deliberately narrower: only unseeded sign-in/sign-out
 // writes it; a seeded ambient Workspace selection never does.
@@ -1142,6 +1142,7 @@ export function notifyWorkspaceContextRefresh(
     cachedWorkspaceContext = seed.context;
     cachedWorkspaceContextGeneration = workspaceContextRequestToken;
   } else {
+    clearWorkspaceRemoval();
     advanceWorkspaceAccountGeneration(stamp);
     workspaceContextIdentityChangePending = true;
     seededWorkspaceContext = null;

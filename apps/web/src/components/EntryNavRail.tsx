@@ -71,6 +71,7 @@ import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
 import { MarqueeLabel } from './MarqueeLabel';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
+import { InviteEntry, InviteSuccessNotice } from './InviteEntry';
 import {
   closeRailRecentRowMenu,
   openRailRecentRowMenu,
@@ -917,6 +918,7 @@ export function canAccessWorkspaceInviteFlow(
   );
 }
 
+/** Retained for callers inspecting legacy seat summaries; capacity never gates invites. */
 export function workspaceInviteAvailableSeats(
   context: WorkspaceCollabContext | null | undefined,
 ): number | undefined {
@@ -1390,6 +1392,7 @@ export function EntryTopRightCluster({
       {createPortal(
         <div className={clusterVisible ? 'entry-top-right-cluster' : undefined}>
           {leadingSlot}
+          <InviteEntry context={context} />
           {/* GitHub star chip: its own option in the cluster, right after the
               campaign badge (per product) — it used to live in the account
               menu's social row. */}
@@ -2117,6 +2120,7 @@ export function EntryNavRail({
   const [workspaceDirectoryLoading, setWorkspaceDirectoryLoading] = useState(false);
   const [workspaceSwitchingId, setWorkspaceSwitchingId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteSentCount, setInviteSentCount] = useState(0);
   const inviteTarget = resolveWorkspaceInviteTarget(context);
   const identityWorkspaceItems = workspaceDirectoryForIdentity(workspaceItems, context);
   const currentWorkspaceItem = context
@@ -2800,11 +2804,13 @@ export function EntryNavRail({
 
       <InviteDialog
         open={inviteOpen}
+        onSent={setInviteSentCount}
         onClose={() => setInviteOpen(false)}
         workspaceContext={context}
         canAssignRoles={context?.role === 'owner'}
         entryFrom="workspace_switcher"
       />
+      <InviteSuccessNotice count={inviteSentCount} onClose={() => setInviteSentCount(0)} />
       {/* Top-right chrome cluster: campaign badge (slot) + credits pill,
           mounted into the tabs chrome's no-drag actions host so Electron
           includes it in the first native hit map; the account module it owns
