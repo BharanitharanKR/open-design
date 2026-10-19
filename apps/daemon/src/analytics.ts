@@ -182,11 +182,12 @@ export interface PosthogConfig {
 
 export function readPosthogConfig(
   env: NodeJS.ProcessEnv = process.env,
+  packagedRuntime?: boolean,
 ): PosthogConfig | null {
   const key = env.POSTHOG_KEY?.trim();
   if (!key) return null;
   const host = (env.POSTHOG_HOST?.trim() || DEFAULT_HOST).replace(/\/+$/, '');
-  return { key, host, env: readTelemetryEnvironment(env) };
+  return { key, host, env: readTelemetryEnvironment(env, packagedRuntime) };
 }
 
 // Baseline wire response for GET /api/analytics/config — checks only the
@@ -194,9 +195,10 @@ export function readPosthogConfig(
 // the user's telemetry.metrics consent before sending it to the client.
 export function readPublicConfigResponse(
   env: NodeJS.ProcessEnv = process.env,
+  packagedRuntime?: boolean,
 ): AnalyticsConfigResponse {
-  const cfg = readPosthogConfig(env);
-  const telemetryEnv = cfg?.env ?? readTelemetryEnvironment(env);
+  const cfg = readPosthogConfig(env, packagedRuntime);
+  const telemetryEnv = cfg?.env ?? readTelemetryEnvironment(env, packagedRuntime);
   if (!cfg) return { enabled: false, env: telemetryEnv, key: null, host: null };
   return { enabled: true, env: cfg.env, key: cfg.key, host: cfg.host };
 }
@@ -308,10 +310,12 @@ const NOOP_SERVICE: AnalyticsService = {
 // opted out, the daemon will still drop the capture.
 export function createAnalyticsService(args: {
   env?: NodeJS.ProcessEnv;
+  packagedRuntime?: boolean;
   dataDir: string;
 }): AnalyticsService {
   const env = args.env ?? process.env;
-  const cfg = readPosthogConfig(env);
+  const packagedRuntime = args.packagedRuntime;
+  const cfg = readPosthogConfig(env, packagedRuntime);
   if (!cfg) return NOOP_SERVICE;
 
   // flushAt: 1 keeps the daemon-emit-then-respond pattern simple at the cost
@@ -346,8 +350,8 @@ export function createAnalyticsService(args: {
     sessionId: string | null, captureSource: string,
   ) => {
     const current = normalizeTelemetryAppVersion(appVersion)
-      ? resolveAppVersionInfo({ env, packageMetadata: { version: appVersion } })
-      : await readCurrentAppVersionInfo({ env });
+      ? resolveAppVersionInfo({ env, packagedRuntime, packageMetadata: { version: appVersion } })
+      : await readCurrentAppVersionInfo({ env, packagedRuntime });
     return buildClientTelemetryParams(properties, {
       eventId, deviceId, appSessionId: sessionId, appVersion: current.version,
       channel: current.channel, clientType, captureSource, env: cfg.env,

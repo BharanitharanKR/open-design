@@ -129,7 +129,10 @@ default; it is not one of the three Electron process categories above.
 Common fields/schema are owned by `packages/contracts/analytics`:
 `event_schema_version=4`, `metric_schema_version=1`, event/install/app-session
 identity, client/source, env/channel/app version, platform/product OS version,
-architecture, occurrence/report times and capability. Unsupported values stay
+architecture, occurrence/report times and capability. A Linux Node installation
+under `/opt` or `/usr/share` alone is not evidence of a packaged runtime;
+packaged resources or an injected app version establish that classification.
+Unsupported values stay
 null. Producers normalize draft names to this schema; undeclared properties are
 stripped. The packaged HTTPS serializer preserves this validated metric envelope
 instead of applying the legacy crash schema 2 / packaged_main envelope. Its

@@ -211,8 +211,8 @@ describe('CS01 capture channel and shared identity', () => {
       }));
       const { createAnalyticsService, readPublicConfigResponse } = await import('../src/analytics.js');
       const settings = { ...env, POSTHOG_KEY: 'phc_test' };
-      expect(readPublicConfigResponse(settings).env).toBe(expectedEnv);
-      const analytics = createAnalyticsService({ dataDir, env: settings });
+      expect(readPublicConfigResponse(settings, false).env).toBe(expectedEnv);
+      const analytics = createAnalyticsService({ dataDir, env: settings, packagedRuntime: false });
       const context = {
         deviceId: 'install-1', sessionId: 'session-1', clientType: 'desktop' as const,
         locale: 'en', requestId: null,
