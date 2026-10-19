@@ -170,7 +170,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       <header className={styles.heading}><h2>{t('workspaceInvite.title')}</h2>
         <span className={styles.help}><Button className={styles.info} aria-label={t('workspaceInvite.helpLabel')} aria-describedby={`${id}-help`}><Icon name="info" size={16} /></Button>
           <span className={styles.tooltip} id={`${id}-help`} role="tooltip">{t('workspaceInvite.teamPlanBody')}</span></span>
-        <Button className={styles.close} onClick={close} disabled={submitting} aria-label={t('workspaceInvite.cancel')}><Icon name="close" size={16} /></Button>
+        <Button className={styles.close} onClick={close} disabled={submitting} aria-label={t('workspaceInvite.cancel')}>✕</Button>
       </header>
       <p className={styles.context}>{workspaceContext?.workspaceName ?? workspaceContext?.teamName ?? ''}</p>
       <form onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
