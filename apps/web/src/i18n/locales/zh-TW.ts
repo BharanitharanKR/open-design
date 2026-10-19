@@ -63,6 +63,12 @@ export const zhTW: Dict = {
   'invite.error.generic': "發生錯誤，請重試。",
   'invite.error.retry': "重試",
 
+  "workspaceInvite.onboardingTitle": "免费邀请同事，一起做设计",
+  "workspaceInvite.onboardingBody1": "不按人头收费，额度大家共用。",
+  "workspaceInvite.onboardingBody2": "加入后能互相看项目、在设计稿上评论。",
+  "workspaceInvite.onboardingEmailLabel": "通过电子邮件邀请成员",
+  "workspaceInvite.batchSent": "已邀请 {count} 位同事",
+  "workspaceInvite.skip": "暂时跳过",
   "workspaceInvite.cancel": "取消",
   "workspaceInvite.helpLabel": "邀请成员说明",
   "workspaceInvite.memberCount": "已有 {count} 位成员",

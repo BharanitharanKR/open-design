@@ -79,6 +79,12 @@ export interface Dict {
   'invite.error.retry': string;
   'workspaceInvite.dialogAria': string;
   'workspaceInvite.title': string;
+  'workspaceInvite.onboardingTitle': string;
+  'workspaceInvite.onboardingBody1': string;
+  'workspaceInvite.onboardingBody2': string;
+  'workspaceInvite.onboardingEmailLabel': string;
+  'workspaceInvite.batchSent': string;
+  'workspaceInvite.skip': string;
   'workspaceInvite.cancel': string;
   'workspaceInvite.helpLabel': string;
   'workspaceInvite.memberCount': string;

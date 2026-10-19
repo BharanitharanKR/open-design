@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { type WorkspaceCollabContext, type WorkspaceInviteRole } from '@open-design/contracts';
 import { Button } from '@open-design/components';
 import { Icon } from './Icon';
+import { LanguageMenu } from './LanguageMenu';
 import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
@@ -14,6 +15,8 @@ import styles from './InviteDialog.module.css';
 export interface InviteRow { email: string; role: string }
 interface Row extends InviteRow { error?: string | undefined }
 interface Props {
+  variant?: 'dialog' | 'onboarding';
+  onFinish?: (sentCount: number) => void;
   open: boolean;
   onClose: () => void;
   workspaceContext: WorkspaceCollabContext | null;
@@ -30,7 +33,8 @@ const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.tr
 const canonicalRole = (role: string): WorkspaceInviteRole => role === 'admin' || role === '管理员' ? 'admin' : 'member';
 
 /** The local form retains authoritative per-row results and never retries sent recipients. */
-export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAssignRoles = true, entryFrom = 'workspace_switcher' }: Props) {
+export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAssignRoles = true, entryFrom = 'workspace_switcher', variant = 'dialog', onFinish }: Props) {
+  const onboarding = variant === 'onboarding';
   const { t } = useI18n();
   const analytics = useAnalytics();
   const page = entryFrom === 'all_projects' ? 'all_projects' : 'home';
@@ -41,6 +45,8 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentCount, setSentCount] = useState(0);
+  const [batchSuccess, setBatchSuccess] = useState<number | null>(null);
+  const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openRoleIndex, setOpenRoleIndex] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<CSSProperties>({});
   const triggers = useRef<Array<HTMLButtonElement | null>>([]);
@@ -53,12 +59,15 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
 
   useEffect(() => {
     requestVersion.current += 1;
+    if (finishTimer.current) clearTimeout(finishTimer.current);
+    finishTimer.current = null;
+    setBatchSuccess(null);
     controller.current?.abort();
     setRows([emptyRow()]); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
-    return () => { requestVersion.current += 1; controller.current?.abort(); previous?.focus(); };
+    return () => { if (finishTimer.current) clearTimeout(finishTimer.current); requestVersion.current += 1; controller.current?.abort(); previous?.focus(); };
   }, [open, identity]);
   useEffect(() => {
     if (open) trackWorkspaceSurfaceView(analytics.track, { page_name: page, area: 'workspace_invite_dialog', entry_from: entryFrom, ...dimensions });
@@ -102,7 +111,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
   function click(element: 'submit' | 'close' | 'add_recipient_row' | 'remove_recipient_row' | 'role_select') {
     trackWorkspaceInviteClick(analytics.track, { page_name: page, area: 'workspace_invite_dialog', element, entry_from: entryFrom, ...dimensions });
   }
-  function close() { if (!submitting) { click('close'); onClose(); } }
+  function close() { if (!onboarding && !submitting) { click('close'); onClose(); } }
   async function submit() {
     setValidated(true);
     if (submitting || rowErrors(rows, false).some(Boolean)) return;
@@ -140,22 +149,33 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       result(succeeded.length, failed.length, failed.length ? 'invite_rejected' : undefined);
       if (succeeded.length) {
         setSentCount(previous => previous + succeeded.length);
-        window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
+        if (!onboarding) window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
           count: succeeded.length, totalCount: sentCount + succeeded.length, workspaceId: requestContext.workspaceId, workspaceMemberId: requestContext.workspaceMemberId,
         } }));
       }
-      if (!failed.length) { setSubmitting(false); onSubmit?.(succeeded); onClose(); return; }
+      if (onboarding && succeeded.length) {
+        setBatchSuccess(failed.length ? succeeded.length : 0);
+        finishTimer.current = setTimeout(() => {
+          if (version !== requestVersion.current) return;
+          finishTimer.current = null; setBatchSuccess(null); setSubmitting(false);
+          if (!failed.length) onFinish?.(sentCount + succeeded.length);
+        }, failed.length ? 650 : 1000);
+      }
+      if (!failed.length) {
+        if (!onboarding) { setSubmitting(false); onSubmit?.(succeeded); onClose(); }
+        return;
+      }
       setRows(failed);
-      setError(succeeded.length ? t('workspaceInvite.partialSummary').replace('{sent}', String(succeeded.length)).replace('{failed}', String(failed.length)) : null);
+      setError(succeeded.length ? t('workspaceInvite.partialSummary').replace('{sent}', String(onboarding ? sentCount + succeeded.length : succeeded.length)).replace('{failed}', String(failed.length)) : onboarding ? t('workspaceInvite.submitFailed') : null);
     } catch (caught) {
       if (version !== requestVersion.current) return;
       if (caught instanceof TypeError) result(0, requested.length, 'network_error');
       setError(t('workspaceInvite.submitFailed'));
-    } finally { if (version === requestVersion.current) setSubmitting(false); }
+    } finally { if (version === requestVersion.current && !finishTimer.current) setSubmitting(false); }
   }
 
   const roleText = (role: string) => t(role === 'admin' ? 'invite.role.admin' : 'invite.role.member');
-  return <div className={styles.root} role="dialog" aria-modal="true" aria-label={t('workspaceInvite.dialogAria')} ref={dialog}
+  return <div className={`${styles.root} ${onboarding ? styles.onboarding : ''}`} role={onboarding ? 'region' : 'dialog'} aria-modal={onboarding ? undefined : true} aria-label={t('workspaceInvite.dialogAria')} ref={dialog}
     onKeyDown={event => {
       if (event.key === 'Escape') { event.stopPropagation(); if (openRoleIndex !== null) setOpenRoleIndex(null); else close(); }
       if (event.key === 'Tab') {
@@ -165,16 +185,18 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     }}>
-    <div className={styles.backdrop} onClick={close} />
+    {!onboarding ? <div className={styles.backdrop} onClick={close} /> : null}
     <section className={styles.panel} aria-busy={submitting}>
-      <header className={styles.heading}><h2>{t('workspaceInvite.title')}</h2>
+      <header className={styles.heading}><h2>{t(onboarding ? 'workspaceInvite.onboardingTitle' : 'workspaceInvite.title')}</h2>
+        {!onboarding ? <>
         <span className={styles.help}><Button className={styles.info} aria-label={t('workspaceInvite.helpLabel')} aria-describedby={`${id}-help`}><Icon name="info" size={16} /></Button>
           <span className={styles.tooltip} id={`${id}-help`} role="tooltip">{t('workspaceInvite.teamPlanBody')}</span></span>
         <Button className={styles.close} onClick={close} disabled={submitting} aria-label={t('workspaceInvite.cancel')}>✕</Button>
+        </> : null}
       </header>
-      <p className={styles.context}>{workspaceContext?.workspaceName ?? workspaceContext?.teamName ?? ''}</p>
+      {onboarding ? <p className={styles.context}>{t('workspaceInvite.onboardingBody1')}<br />{t('workspaceInvite.onboardingBody2')}</p> : <p className={styles.context}>{workspaceContext?.workspaceName ?? workspaceContext?.teamName ?? ''}</p>}
       <form onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
-        <div className={`${styles.labels} ${rows.length === 1 ? styles.single : ''}`}><span>{t('workspaceInvite.emailLabel')}</span><span>{t('workspaceInvite.roleLabel')}</span></div>
+        <div className={`${styles.labels} ${rows.length === 1 ? styles.single : ''}`}><span>{t(onboarding ? 'workspaceInvite.onboardingEmailLabel' : 'workspaceInvite.emailLabel')}</span><span>{t('workspaceInvite.roleLabel')}</span></div>
         <div className={styles.rows} data-invite-rows>
           {rows.map((row, index) => <div className={`${styles.row} ${rows.length === 1 ? styles.single : ''}`} key={index}>
             <input type="email" className={styles.input} value={row.email} placeholder={t('workspaceInvite.emailPlaceholder')} aria-label={t('workspaceInvite.emailLabel')}
@@ -193,10 +215,12 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
         <Button className={styles.add} disabled={submitting} onClick={() => { click('add_recipient_row'); setRows(previous => [...previous, emptyRow()]); }}><Icon name="plus" size={14} />{t('workspaceInvite.addMember')}</Button>
         {error ? <p className={styles.error} role="alert">{error}</p> : null}
         {sentCount > 0 && !error ? <p className={styles.error} role="status">{t('workspaceInvite.sentCount').replace('{count}', String(sentCount))}</p> : null}
-        <footer className={styles.footer}><Button className={styles.cancel} onClick={close} disabled={submitting}>{t('workspaceInvite.cancel')}</Button>
-          <Button type="submit" className={styles.submit} disabled={submitting || !rows.some(row => row.email.trim())}>{submitting ? t('workspaceInvite.sending') : t('workspaceInvite.confirm')}</Button></footer>
+        <footer className={styles.footer}>{!onboarding ? <Button className={styles.cancel} onClick={close} disabled={submitting}>{t('workspaceInvite.cancel')}</Button> : null}
+          <Button type="submit" className={styles.submit} disabled={submitting || !rows.some(row => row.email.trim())}>{batchSuccess !== null ? batchSuccess === 0 ? t('workspaceInvite.sent') : t('workspaceInvite.batchSent').replace('{count}', String(batchSuccess)) : submitting ? t('workspaceInvite.sending') : t('workspaceInvite.confirm')}</Button></footer>
       </form>
+      {onboarding ? <><Button className={styles.skip} disabled={submitting} onClick={() => onFinish?.(sentCount)}>{t('workspaceInvite.skip')}</Button><footer className={styles.onboardingFooter}><LanguageMenu placement="up" align="start" /><span>© {new Date().getFullYear()} OpenDesign · {t('settings.onboardingCloudRights')}</span></footer></> : null}
     </section>
+    {onboarding ? <div className={styles.art} aria-hidden="true"><img src="/onboarding/onboarding-cloud-art.webp" alt="" /></div> : null}
     {owner && openRoleIndex !== null ? createPortal(<div className={styles.menu} ref={menu} style={menuPos} role="listbox" id={`${id}-roles`}
       onKeyDown={event => {
         if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); event.stopPropagation(); setOpenRoleIndex(null); triggers.current[openRoleIndex]?.focus(); }
@@ -208,4 +232,9 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       </Button>)}
     </div>, document.body) : null}
   </div>;
+}
+
+/** Host chooses the first-registration trigger and publishes success only after exit. */
+export function OnboardingInviteView({ workspaceContext, onFinish }: { workspaceContext: WorkspaceCollabContext | null; onFinish: (sentCount: number) => void }) {
+  return <InviteDialog variant="onboarding" open onClose={() => {}} workspaceContext={workspaceContext} onFinish={onFinish} />;
 }

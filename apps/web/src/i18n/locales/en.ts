@@ -63,6 +63,12 @@ export const en: Dict = {
   'invite.error.generic': "Something went wrong. Please try again.",
   'invite.error.retry': "Try again",
 
+  "workspaceInvite.onboardingTitle": "Invite colleagues for free. Design together.",
+  "workspaceInvite.onboardingBody1": "No per-seat fees. Share your workspace credits.",
+  "workspaceInvite.onboardingBody2": "See each other’s projects and comment on designs.",
+  "workspaceInvite.onboardingEmailLabel": "Invite members by email",
+  "workspaceInvite.batchSent": "Invited {count} colleagues",
+  "workspaceInvite.skip": "Skip for now",
   "workspaceInvite.cancel": "Cancel",
   "workspaceInvite.helpLabel": "About inviting members",
   "workspaceInvite.memberCount": "{count} members",

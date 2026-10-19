@@ -1,0 +1,76 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { OnboardingInviteView } from '../../src/components/InviteDialog';
+import { workspaceContextFixture } from '../helpers/workspace-context';
+import { I18nProvider } from '../../src/i18n';
+vi.mock('../../src/components/LanguageMenu', () => ({ LanguageMenu: () => null }));
+const context = workspaceContextFixture({ workspaceId: 'team-a', workspaceMemberId: 'owner-a', role: 'owner' });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+function mount(onFinish = vi.fn()) { render(<I18nProvider initial="zh-CN"><OnboardingInviteView workspaceContext={context} onFinish={onFinish} /></I18nProvider>); return onFinish; }
+function email(value: string, index = 0) { fireEvent.change(screen.getAllByRole('textbox')[index]!, { target: { value } }); }
+const response = (results: unknown[]) => new Response(JSON.stringify({ results }), { status: 200 });
+async function send() { await act(async () => { fireEvent.click(screen.getByRole('button', { name: '发送邀请' })); }); }
+describe('registration invitation guidance', () => {
+  it('uses the original rider art, two-line explanation and skip without cancel or premature success event', () => {
+    const finish = mount();
+    expect(screen.getByText('免费邀请同事，一起做设计')).toBeTruthy();
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('/onboarding/onboarding-cloud-art.webp');
+    expect(screen.queryByRole('button', { name: '取消' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    expect(finish).toHaveBeenCalledWith(0);
+  });
+  it('shows confirmed success for one second before finishing, without emitting the ordinary-dialog event', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'a@example.com', ok: true }])));
+    const event = vi.fn(); window.addEventListener('od:workspace-invites-sent', event);
+    try {
+      const finish = mount(); email('a@example.com'); await send();
+      expect((screen.getByRole('button', { name: '已发送邀请' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(finish).not.toHaveBeenCalled(); expect(event).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(999)); expect(finish).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1)); expect(finish).toHaveBeenCalledWith(1);
+    } finally { window.removeEventListener('od:workspace-invites-sent', event); }
+  });
+  it('retains only failed rows, briefly shows batch success and returns the confirmed cumulative count on skip', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn(async () => response([
+      { email: 'sent@example.com', ok: true }, { email: 'retry@example.com', ok: false, error: 'active_pending_invite' },
+    ])));
+    const finish = mount(); email('sent@example.com'); fireEvent.click(screen.getByRole('button', { name: '添加成员' })); email('retry@example.com', 1); await send();
+    expect((screen.getByRole('button', { name: '已邀请 1 位同事' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('retry@example.com');
+    act(() => vi.advanceTimersByTime(650));
+    expect((screen.getByRole('button', { name: '发送邀请' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); expect(finish).toHaveBeenCalledWith(1);
+  });
+  it('counts only confirmed successes across partial batches and a final retry', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn().mockResolvedValueOnce(response([
+      { email: 'sent@example.com', ok: true }, { email: 'retry@example.com', ok: false, error: 'no_session' },
+    ])).mockResolvedValueOnce(response([{ email: 'retry@example.com', ok: true }]));
+    vi.stubGlobal('fetch', fetcher);
+    const finish = mount(); email('sent@example.com'); fireEvent.click(screen.getByRole('button', { name: '添加成员' })); email('retry@example.com', 1); await send();
+    act(() => vi.advanceTimersByTime(650)); await send();
+    expect(finish).not.toHaveBeenCalled();
+    expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ invites: [{ email: 'retry@example.com', role: 'member' }] });
+    act(() => vi.advanceTimersByTime(1000)); expect(finish).toHaveBeenCalledTimes(1); expect(finish).toHaveBeenCalledWith(2);
+  });
+  it('keeps all input and restores sending after complete failure without counting unsent rows', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'a@example.com', ok: false, error: 'create_unreachable' }])));
+    const finish = mount(); email('a@example.com'); await send();
+    expect(screen.getAllByRole('alert').some(node => node.textContent?.startsWith('邀请发送失败，请检查网络后重试'))).toBe(true);
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('a@example.com');
+    expect((screen.getByRole('button', { name: '发送邀请' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); expect(finish).toHaveBeenCalledWith(0);
+  });
+  it('cancels delayed completion when the workspace identity changes', async () => {
+    vi.useFakeTimers(); vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'a@example.com', ok: true }])));
+    const finish = vi.fn();
+    const view = render(<I18nProvider initial="zh-CN"><OnboardingInviteView workspaceContext={context} onFinish={finish} /></I18nProvider>);
+    email('a@example.com'); await send();
+    view.rerender(<I18nProvider initial="zh-CN"><OnboardingInviteView workspaceContext={{ ...context, workspaceId: 'other' }} onFinish={finish} /></I18nProvider>);
+    act(() => vi.advanceTimersByTime(1000)); expect(finish).not.toHaveBeenCalled();
+  });
+});
