@@ -952,6 +952,7 @@ export const ptBR: Dict = {
   'workspaceTabs.pluginDetails': 'Detalhes do plugin',
   'workspaceTabs.marketplace': 'Marketplace',
   'homeHero.title': 'Vamos criar {word}',
+  "homeHero.titleUnselected": "O que você gostaria de criar?",
   'homeHero.titleWords': 'protótipos,apresentações,documentos',
   'homeHero.subtitle': 'Um bom trabalho começa aqui',
   'homeHero.startWithTemplate': 'Começar com um modelo…',

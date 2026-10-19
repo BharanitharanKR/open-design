@@ -952,6 +952,7 @@ export const de: Dict = {
   'workspaceTabs.pluginDetails': 'Plugin-Details',
   'workspaceTabs.marketplace': 'Marketplace',
   'homeHero.title': 'Lass uns {word} erstellen',
+  "homeHero.titleUnselected": "Was möchtest du erstellen?",
   'homeHero.titleWords': 'Prototypen,Präsentationen,Dokumente',
   'homeHero.subtitle': 'Gute Arbeit beginnt hier',
   'homeHero.startWithTemplate': 'Mit einer Vorlage beginnen…',

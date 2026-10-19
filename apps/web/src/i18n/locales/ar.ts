@@ -952,6 +952,7 @@ export const ar: Dict = {
   'workspaceTabs.pluginDetails': 'تفاصيل الإضافة',
   'workspaceTabs.marketplace': 'المتجر',
   'homeHero.title': 'لننشئ {word}',
+  "homeHero.titleUnselected": "ماذا تريد أن تنشئ؟",
   'homeHero.titleWords': 'نماذج أولية,عروضًا تقديمية,مستندات',
   'homeHero.subtitle': 'العمل الجيد يبدأ من هنا',
   'homeHero.startWithTemplate': 'ابدأ بقالب…',
