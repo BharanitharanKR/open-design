@@ -4,7 +4,7 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { fetchVelaLoginStatus } from '../providers/daemon';
 import { useI18n } from '../i18n';
 import { currentWorkspaceAccountGeneration } from '../collab/workspace-identity';
-import { INVITATION_SENT_EVENT, INVITE_BANNER_DISMISSED_EVENT, inviteBannerStorageKey, persistInviteBannerDismissal, type InvitationSentDetail } from '../collab/invite-banner';
+import { INVITE_BANNER_DISMISSED_EVENT, inviteBannerStorageKey, persistInviteBannerDismissal } from '../collab/invite-banner';
 import { InviteDialog } from './InviteDialog';
 import { Icon } from './Icon';
 import styles from './InviteEntry.module.css';
@@ -72,23 +72,6 @@ export function InviteEntry({ context, banner = false, accountGeneration = 0 }: 
       window.removeEventListener('storage', update);
     };
   }, [banner, account]);
-
-  useEffect(() => {
-    if (!banner || !account || !context) return;
-    const generation = currentWorkspaceAccountGeneration();
-    const onSent = (event: Event) => {
-      const detail = (event as CustomEvent<InvitationSentDetail>).detail;
-      if (!detail || detail.workspaceId !== context.workspaceId
-        || detail.workspaceMemberId !== context.workspaceMemberId
-        || detail.accountGeneration !== generation
-        || generation !== currentWorkspaceAccountGeneration()) return;
-      detail.handled = true;
-      setDismissed(true);
-      persistInviteBannerDismissal(account);
-    };
-    window.addEventListener(INVITATION_SENT_EVENT, onSent);
-    return () => window.removeEventListener(INVITATION_SENT_EVENT, onSent);
-  }, [banner, account, context?.workspaceId, context?.workspaceMemberId, accountGeneration]);
 
   if (!canInvite) return null;
   const dismiss = () => {

@@ -7,7 +7,6 @@ import { LanguageMenu } from './LanguageMenu';
 import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
 import { currentWorkspaceAccountGeneration, workspaceProjectHeaders } from '../collab/workspace-identity';
-import { notifyWorkspaceInvitationSent } from '../collab/invite-banner';
 import { WORKSPACE_CONTEXT_REFRESH_EVENT } from '../collab/workspace-context-events';
 import { useAnalytics } from '../analytics/provider';
 import { trackWorkspaceInviteClick, trackWorkspaceInviteResult, trackWorkspaceSurfaceView } from '../analytics/events';

@@ -2,14 +2,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InviteEntry } from '../../src/components/InviteEntry';
-import { inviteBannerStorageKey, notifyWorkspaceInvitationSent } from '../../src/collab/invite-banner';
-import { advanceWorkspaceAccountGeneration, currentWorkspaceAccountGeneration, resetWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
+import { inviteBannerStorageKey } from '../../src/collab/invite-banner';
+import { advanceWorkspaceAccountGeneration, resetWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 import { workspaceContextFixture } from '../helpers/workspace-context';
 const readStatus = vi.hoisted(() => vi.fn());
 vi.mock('../../src/providers/daemon', () => ({ fetchVelaLoginStatus: readStatus }));
 const context = workspaceContextFixture({ workspaceId: 'team', workspaceMemberId: 'member-a', role: 'owner', permissions: { canInviteMembers: true, canManageBilling: true, canManageMembers: true, canManageAutoRecharge: true, canShareProjects: true, canWriteSyncedFiles: true, canViewWorkspaceSettings: true, canManageSharedResources: true } });
 const status = (id: string) => ({ loggedIn: true, user: { id } });
-afterEach(() => { cleanup(); localStorage.clear(); readStatus.mockReset(); resetWorkspaceAccountGeneration(); });
+afterEach(() => { cleanup(); localStorage.clear(); readStatus.mockReset(); resetWorkspaceAccountGeneration(); vi.unstubAllGlobals(); });
 describe('account-scoped invitation banner', () => {
   it('remembers dismissal across workspaces without hiding another account banner', async () => {
     readStatus.mockResolvedValue(status('account-a'));
@@ -23,29 +23,29 @@ describe('account-scoped invitation banner', () => {
     view.rerender(<InviteEntry context={{ ...context, workspaceMemberId: 'member-b' }} accountGeneration={1} banner />);
     expect(await screen.findByRole('button', { name: /dismiss invitation banner/i })).toBeVisible();
   });
-  it('consumes delivery from another entry without another login status read', async () => {
+  it('keeps the homepage banner after a regular invitation is sent', async () => {
     readStatus.mockResolvedValue(status('account-a'));
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ results: [{ email: 'colleague@example.com', ok: true }] }))));
     render(<InviteEntry context={context} banner />);
     await screen.findByRole('button', { name: /dismiss invitation banner/i });
-    await notifyWorkspaceInvitationSent(context, currentWorkspaceAccountGeneration());
-    await waitFor(() => expect(screen.queryByRole('button', { name: /dismiss invitation banner/i })).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: /^invite$/i }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'colleague@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send invitations/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('status')).toHaveTextContent('1');
+    expect(screen.getByRole('button', { name: /dismiss invitation banner/i })).toBeVisible();
+    expect(localStorage.getItem(inviteBannerStorageKey('account-a'))).toBeNull();
     expect(readStatus).toHaveBeenCalledOnce();
-    expect(localStorage.getItem(inviteBannerStorageKey('account-a'))).toBe('1');
   });
-  it('does not persist fallback identity after the account changes', async () => {
-    let resolve!: (value: ReturnType<typeof status>) => void;
-    readStatus.mockReturnValue(new Promise((done) => { resolve = done; }));
-    const task = notifyWorkspaceInvitationSent(context, currentWorkspaceAccountGeneration());
-    advanceWorkspaceAccountGeneration('next-account');
-    resolve(status('account-b')); await task;
-    expect(localStorage.getItem(inviteBannerStorageKey('account-b'))).toBeNull();
-  });
-  it('reads status only on delivered invitations when no banner is mounted', async () => {
+  it('does not read account status or persist banner dismissal after a regular permanent-entry invitation', async () => {
     readStatus.mockResolvedValue(status('account-a'));
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ results: [{ email: 'colleague@example.com', ok: true }] }))));
     render(<InviteEntry context={context} />);
+    fireEvent.click(screen.getByRole('button', { name: /^invite$/i }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'colleague@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send invitations/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(readStatus).not.toHaveBeenCalled();
-    await notifyWorkspaceInvitationSent(context, currentWorkspaceAccountGeneration());
-    expect(readStatus).toHaveBeenCalledOnce();
-    expect(localStorage.getItem(inviteBannerStorageKey('account-a'))).toBe('1');
+    expect(localStorage.getItem(inviteBannerStorageKey('account-a'))).toBeNull();
   });
 });
