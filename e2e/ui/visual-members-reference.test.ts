@@ -132,7 +132,7 @@ test('[P1] A01 local identity shows cloud sign-in entry', async ({ page }) => {
 
 test('[P1] A03 and A05 dismissal persists across reload while header invite remains', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 1100, y: 700 } });
+  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
   await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await expect(banner).toBeVisible();
@@ -159,7 +159,7 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
 
 test('[P1] banner dismissal is scoped to account identity', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 1100, y: 700 } });
+  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
   await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await banner.getByRole('button', { name: '关闭邀请横条' }).click();
