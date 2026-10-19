@@ -952,6 +952,7 @@ export const fa: Dict = {
   'workspaceTabs.pluginDetails': 'جزئیات افزونه',
   'workspaceTabs.marketplace': 'بازارچه',
   'homeHero.title': 'بیایید {word} بسازیم',
+  "homeHero.titleUnselected": "چه چیزی می‌خواهید بسازید؟",
   'homeHero.titleWords': 'نمونه‌های اولیه,اسلایدها,اسناد',
   'homeHero.subtitle': 'کار خوب از اینجا آغاز می‌شود',
   'homeHero.startWithTemplate': 'با یک قالب شروع کنید…',

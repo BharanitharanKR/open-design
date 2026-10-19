@@ -952,6 +952,7 @@ export const th: Dict = {
   'workspaceTabs.pluginDetails': 'รายละเอียดปลั๊กอิน',
   'workspaceTabs.marketplace': 'Marketplace',
   'homeHero.title': 'มาสร้าง{word}กัน',
+  "homeHero.titleUnselected": "คุณอยากสร้างอะไร?",
   'homeHero.titleWords': 'ต้นแบบ,สไลด์,เอกสาร',
   'homeHero.subtitle': 'ผลงานที่ดีเริ่มต้นที่นี่',
   'homeHero.startWithTemplate': 'เริ่มต้นด้วยเทมเพลต…',

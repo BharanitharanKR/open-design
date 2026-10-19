@@ -952,6 +952,7 @@ export const ko: Dict = {
   'workspaceTabs.pluginDetails': '플러그인 세부 정보',
   'workspaceTabs.marketplace': '마켓플레이스',
   'homeHero.title': '함께 {word} 만들기',
+  "homeHero.titleUnselected": "무엇을 만들고 싶으신가요?",
   'homeHero.titleWords': '프로토타입,슬라이드,문서',
   'homeHero.subtitle': '좋은 작업은 여기서 시작됩니다',
   'homeHero.startWithTemplate': '템플릿으로 시작하기…',

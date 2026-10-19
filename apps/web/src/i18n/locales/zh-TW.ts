@@ -957,6 +957,7 @@ export const zhTW: Dict = {
   "workspaceTabs.pluginDetails": "外掛詳細資料",
   "workspaceTabs.marketplace": "市集",
   "homeHero.title": "我們來設計點{word}",
+  "homeHero.titleUnselected": "你想創作什麼？",
   "homeHero.titleWords": "原型,簡報,文件",
   "homeHero.subtitle": "好的作品，從這裡開始",
   "homeHero.startWithTemplate": "從範本開始…",

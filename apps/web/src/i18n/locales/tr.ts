@@ -952,6 +952,7 @@ export const tr: Dict = {
   'workspaceTabs.pluginDetails': 'Plugin ayrıntıları',
   'workspaceTabs.marketplace': 'Pazar Yeri',
   'homeHero.title': 'Hadi {word} oluşturalım',
+  "homeHero.titleUnselected": "Ne oluşturmak istersiniz?",
   'homeHero.titleWords': 'prototipler,sunumlar,belgeler',
   'homeHero.subtitle': 'İyi işler burada başlar',
   'homeHero.startWithTemplate': 'Bir şablonla başla…',

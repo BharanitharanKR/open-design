@@ -952,6 +952,7 @@ export const ja: Dict = {
   'workspaceTabs.pluginDetails': 'プラグインの詳細',
   'workspaceTabs.marketplace': 'マーケットプレイス',
   'homeHero.title': '{word}をつくろう',
+  "homeHero.titleUnselected": "何を作りたいですか？",
   'homeHero.titleWords': 'プロトタイプ,スライド,ドキュメント',
   'homeHero.subtitle': '良い作品は、ここから始まる',
   'homeHero.startWithTemplate': 'テンプレートから始める…',

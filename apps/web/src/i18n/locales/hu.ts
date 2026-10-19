@@ -952,6 +952,7 @@ export const hu: Dict = {
   'workspaceTabs.pluginDetails': 'Plugin részletei',
   'workspaceTabs.marketplace': 'Marketplace',
   'homeHero.title': 'Készítsünk {word}',
+  "homeHero.titleUnselected": "Mit szeretnél létrehozni?",
   'homeHero.titleWords': 'prototípusokat,prezentációkat,dokumentumokat',
   'homeHero.subtitle': 'A jó munka itt kezdődik',
   'homeHero.startWithTemplate': 'Kezdés sablonnal…',

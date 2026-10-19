@@ -952,6 +952,7 @@ export const id: Dict = {
   'workspaceTabs.pluginDetails': 'Detail plugin',
   'workspaceTabs.marketplace': 'Marketplace',
   'homeHero.title': 'Mari membuat {word}',
+  "homeHero.titleUnselected": "Apa yang ingin Anda buat?",
   'homeHero.titleWords': 'prototipe,presentasi,dokumen',
   'homeHero.subtitle': 'Karya yang baik dimulai di sini',
   'homeHero.startWithTemplate': 'Mulai dengan templat…',

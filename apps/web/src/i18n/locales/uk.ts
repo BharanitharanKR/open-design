@@ -952,6 +952,7 @@ export const uk: Dict = {
   'workspaceTabs.pluginDetails': 'Деталі плагіна',
   'workspaceTabs.marketplace': 'Маркетплейс',
   'homeHero.title': 'Створімо {word}',
+  "homeHero.titleUnselected": "Що ви хочете створити?",
   'homeHero.titleWords': 'прототипи,презентації,документи',
   'homeHero.subtitle': 'Гарна робота починається тут',
   'homeHero.startWithTemplate': 'Почати з шаблону…',
