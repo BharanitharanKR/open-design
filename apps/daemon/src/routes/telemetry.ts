@@ -19,7 +19,7 @@ import {
   readPublicConfigResponse,
 } from '../analytics.js';
 import type { AnalyticsContext } from '../analytics.js';
-import type { readAppConfig, writeAppConfig } from '../app-config.js';
+import { readMetricsConsent, type readAppConfig, type writeAppConfig } from '../app-config.js';
 import { readCurrentAppVersionInfo, UNKNOWN_APP_VERSION, type AppVersionInfo } from '../app-version.js';
 import { readTelemetryEnvironment } from '../telemetry-environment.js';
 import { reportRunFeedbackFromDaemon } from '../langfuse-bridge.js';
@@ -155,7 +155,8 @@ export function registerTelemetryRoutes(app: Express, deps: RegisterTelemetryRou
     }
     try {
       const appCfg = await deps.readAppConfig(dataDir);
-      const consentGranted = appCfg.telemetry?.metrics === true;
+      const consentGranted = appCfg.telemetry?.metrics === true
+        && (await readMetricsConsent(dataDir)).metrics;
       const installationId =
         typeof appCfg.installationId === 'string' && appCfg.installationId
           ? appCfg.installationId
@@ -275,6 +276,7 @@ export function registerTelemetryRoutes(app: Express, deps: RegisterTelemetryRou
     const incidentId = ['desktop_unclean_exit', 'desktop_renderer_crash', 'desktop_child_process_crash', 'packaged_runtime_failed'].includes(eventName)
       ? deps.onHostFault?.(eventName, properties) : null;
     if (eventName === 'client_process_memory_sample') {
+      if (!(await readMetricsConsent(dataDir)).metrics) { res.json({ ok: true }); return; }
       const config = await deps.readAppConfig(dataDir);
       if (config.telemetry?.metrics !== true) { res.json({ ok: true }); return; }
     }

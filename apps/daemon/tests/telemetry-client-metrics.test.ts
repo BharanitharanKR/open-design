@@ -1,4 +1,8 @@
 import express from 'express';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { readAppConfig } from '../src/app-config.js';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +10,7 @@ const captureSafety = vi.hoisted(() => vi.fn(async (_args: Record<string, unknow
 const version = vi.hoisted(() => vi.fn());
 vi.mock('../src/analytics.js', () => ({
   createAnalyticsService: () => ({ captureSafety }),
-  readAnalyticsContext: vi.fn(), readPublicConfigResponse: vi.fn(),
+  readAnalyticsContext: vi.fn(), readPublicConfigResponse: vi.fn(() => ({ enabled: true, env: 'test', key: 'phc_test', host: 'https://example.invalid' })),
 }));
 vi.mock('../src/app-version.js', async (original) => ({
   ...await original<typeof import('../src/app-version.js')>(), readCurrentAppVersionInfo: version,
@@ -28,11 +32,11 @@ const metric = {
 };
 afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
-async function withRoutes(run: (url: string) => Promise<void>, onHostFault?: () => null) {
+async function withRoutes(run: (url: string) => Promise<void>, onHostFault?: () => null, dataDir?: string) {
   const app = express();
   const telemetry = registerTelemetryRoutes(app, {
     ...(onHostFault ? { onHostFault } : {}),
-    dataDir: '/unused', readAppConfig: vi.fn(async () => ({ telemetry: { metrics: true } })) as never, writeAppConfig: vi.fn() as never,
+    dataDir: dataDir ?? '/unused', readAppConfig: dataDir ? readAppConfig : vi.fn(async () => ({ telemetry: { metrics: true } })) as never, writeAppConfig: vi.fn() as never,
   });
   const server = app.listen(0, '127.0.0.1');
   try {
@@ -106,3 +110,27 @@ it('drops memory events after opt-out, including callers bypassing the desktop s
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });
+
+
+it.each(['{"telemetry":{"metrics":false}', 'null', '[]', 'false'])(
+  'fails closed at desktop config and memory ingestion after saved opt-out becomes %s', async (damaged) => {
+    const dataDir = await mkdtemp(path.join(tmpdir(), 'od-consent-route-'));
+    const configPath = path.join(dataDir, 'app-config.json');
+    try {
+      await writeFile(configPath, JSON.stringify({ telemetry: { metrics: false } }));
+      await withRoutes(async (url) => {
+        expect((await (await fetch(`${url}/api/analytics/config`)).json() as { enabled: boolean }).enabled).toBe(false);
+        await writeFile(configPath, damaged);
+        // The ordinary app-config reader retains its existing fallback behavior.
+        expect((await readAppConfig(dataDir)).telemetry?.metrics).toBe(true);
+        expect((await (await fetch(`${url}/api/analytics/config`)).json() as { enabled: boolean }).enabled).toBe(false);
+        const response = await fetch(`${url}/api/observability/event`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ event: 'client_process_memory_sample', properties: metric }),
+        });
+        expect(response.status).toBe(200);
+        expect(captureSafety).not.toHaveBeenCalled();
+      }, undefined, dataDir);
+    } finally { await rm(dataDir, { recursive: true, force: true }); }
+  },
+);

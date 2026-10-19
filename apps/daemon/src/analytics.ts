@@ -39,7 +39,7 @@ import {
   isClientMetricEventName,
   parseClientMetricEvent,
 } from '@open-design/contracts/analytics';
-import { readAppConfig } from './app-config.js';
+import { readAppConfig, readMetricsConsent } from './app-config.js';
 import { readTelemetryEnvironment } from './telemetry-environment.js';
 import { normalizeTelemetryAppVersion, readCurrentAppVersionInfo, resolveAppVersionInfo } from './app-version.js';
 
@@ -476,8 +476,7 @@ export function createAnalyticsService(args: {
       const resolvedInsertId = insertId ?? randomInsertId();
       try {
         if (eventName === 'client_process_memory_sample') {
-          const config = await readAppConfig(args.dataDir);
-          if (config.telemetry?.metrics !== true) return;
+          if (!(await readMetricsConsent(args.dataDir)).metrics) return;
         }
         const resolvedDistinctId =
           distinctId && distinctId.length > 0

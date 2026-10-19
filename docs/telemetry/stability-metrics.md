@@ -130,6 +130,12 @@ The reproducible local probe and output are retained in the task validation logs
 The cherry-picked daemon-health memory extension remains opt-in and unarmed by
 default; it is not one of the three Electron process categories above.
 
+Memory consent reads distinguish a missing first-install config (the existing
+metrics default applies) from a corrupt, non-object, malformed-consent or
+unreadable saved config (disabled). The desktop config endpoint, memory ingestion
+route and analytics service all fail closed on unavailable consent. General
+app-config hydration retains its existing fallback defaults.
+
 ## Envelope and verification
 
 Common fields/schema are owned by `packages/contracts/analytics`:
