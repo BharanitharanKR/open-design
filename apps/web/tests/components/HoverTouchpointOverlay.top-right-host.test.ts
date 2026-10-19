@@ -150,9 +150,9 @@ it('offers a keyboard entry, restores focus on Escape, and supports the hover ga
     { width: 800, height: 800 },
     { left: 0, right: 320, top: 0, bottom: 480, width: 320, height: 480 },
   );
-  expect(position.left).toBe(8);
-  expect(position.maxWidth).toBe(304);
-  expect(position.maxHeight).toBeLessThanOrEqual(464);
+  expect(position.left).toBe(16);
+  expect(position.maxWidth).toBe(288);
+  expect(position.maxHeight).toBeLessThanOrEqual(448);
 });
 
 const entryShellSource = readFileSync(

@@ -23,7 +23,7 @@ import { useI18n } from "../i18n";
 
 const ENTRY_PLACEMENT = "opend.home.hover-entry";
 const LAYER_PLACEMENT = "opend.home.hover-layer";
-const VIEWPORT_MARGIN = 8;
+const VIEWPORT_MARGIN = 16;
 const GAP = 8;
 const EMPTY_ACTION_IDS: ReadonlySet<string> = new Set();
 

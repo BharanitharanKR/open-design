@@ -150,8 +150,8 @@ describe("HoverTouchpointOverlay measured clipping", () => {
 	it("leaves fitting material shadows unclipped", async () => {
 		const { layer } = await setup();
 		expect(layer.style.overflow).toBe("visible");
-		expect(layer.style.maxWidth).toBe("384px");
-		expect(layer.style.maxHeight).toBe("240px");
+		expect(layer.style.maxWidth).toBe("368px");
+		expect(layer.style.maxHeight).toBe("232px");
 	});
 
 	it.each([[600, 60], [120, 600]])("scrolls content constrained in either axis (%i × %i) and recovers after content shrink", async (width, height) => {
@@ -179,8 +179,8 @@ describe("HoverTouchpointOverlay measured clipping", () => {
 		fireEvent.resize(window);
 		flushLayout();
 		expect(layer.style.overflow).toBe("visible");
-		expect(layer.style.maxWidth).toBe("984px");
-		expect(layer.style.maxHeight).toBe("940px");
+		expect(layer.style.maxWidth).toBe("968px");
+		expect(layer.style.maxHeight).toBe("932px");
 	});
 
 	it("checks overflow after width constraints reflow the material, then recovers when the viewport grows", async () => {
@@ -190,7 +190,7 @@ describe("HoverTouchpointOverlay measured clipping", () => {
 		});
 		act(() => resize());
 		flushLayout();
-		expect(layer.clientHeight).toBe(284);
+		expect(layer.clientHeight).toBe(268);
 		expect(layer.style.overflow).toBe("auto");
 		vi.spyOn(window, "innerWidth", "get").mockReturnValue(1000);
 		fireEvent.resize(window);
@@ -211,8 +211,8 @@ describe("HoverTouchpointOverlay measured clipping", () => {
 		});
 		act(() => resize());
 		flushLayout();
-		expect(layer.style.top).toBe("8px");
-		expect(layer.style.maxHeight).toBe("234px");
+		expect(layer.style.top).toBe("16px");
+		expect(layer.style.maxHeight).toBe("226px");
 		expect(layer.style.overflow).toBe("auto");
 	});
 });
@@ -333,13 +333,32 @@ describe("HoverTouchpointOverlay interaction boundary", () => {
 	it("respects the size manuscript 16px boundary and 8px entry gap for compact cards", () => {
 		const viewport={left:0,top:0,right:800,bottom:600,width:800,height:600};
 		const card={width:280,height:400};
-		const below=placeHoverOverlay({left:730,top:16,right:754,bottom:40,width:24,height:24},card,viewport,16);
+		const below=placeHoverOverlay({left:730,top:16,right:754,bottom:40,width:24,height:24},card,viewport);
 		expect(below.left).toBe(504); expect(below.top).toBe(48);
 		expect(below.left+280).toBe(784); expect(below.maxWidth).toBe(768);
-		const above=placeHoverOverlay({left:730,top:550,right:754,bottom:574,width:24,height:24},card,viewport,16);
+		const above=placeHoverOverlay({left:730,top:550,right:754,bottom:574,width:24,height:24},card,viewport);
 		expect(above.placement).toBe("above"); expect(above.top+400).toBe(542);
-		const narrow=placeHoverOverlay({left:40,top:20,right:64,bottom:44,width:24,height:24},card,{left:0,top:0,right:200,bottom:180,width:200,height:180},16);
+		const narrow=placeHoverOverlay({left:40,top:20,right:64,bottom:44,width:24,height:24},card,{left:0,top:0,right:200,bottom:180,width:200,height:180});
 		expect(narrow.left).toBe(16);expect(narrow.maxWidth).toBe(168);
+	});
+
+	it.each([0, 296])("keeps 16px safe edges when shifted near x=%i at either vertical edge", (left) => {
+		const viewport = { left: 0, top: 0, right: 320, bottom: 240, width: 320, height: 240 };
+		for (const top of [0, 216]) {
+			const anchor = { left, top, right: left + 24, bottom: top + 24, width: 24, height: 24 };
+			for (const height of [100, 300]) {
+				const result = placeHoverOverlay(anchor, { width: 180, height }, viewport);
+				expect(result.placement).toBe(top === 0 ? "below" : "above");
+				expect(result.left).toBe(left === 0 ? 16 : 124);
+				expect(result.top).toBeGreaterThanOrEqual(16);
+				expect(result.top + Math.min(height, result.maxHeight)).toBeLessThanOrEqual(224);
+				expect(result.maxWidth).toBe(288);
+				expect(result.maxHeight).toBe(top === 0 && height === 300 ? 208 : 192);
+				if (height === 100) {
+					expect(top === 0 ? result.top - anchor.bottom : anchor.top - result.top - height).toBe(8);
+				}
+			}
+		}
 	});
 
 	it("keeps the layer inside content when the entry is in an excluded native titlebar", () => {
@@ -356,7 +375,7 @@ describe("HoverTouchpointOverlay interaction boundary", () => {
 			{ width: 120, height: 60 },
 			{ left: 0, top: 0, right: 100, bottom: 110, width: 100, height: 110 },
 		);
-		expect(position).toMatchObject({ placement: "above", left: 8, maxWidth: 84 });
+		expect(position).toMatchObject({ placement: "above", left: 16, maxWidth: 68 });
 		const { container } = render(createElement(HoverTouchpointOverlay, {
 			entry: content("opend.home.hover-entry"),
 			layer: content("opend.home.hover-layer"),
