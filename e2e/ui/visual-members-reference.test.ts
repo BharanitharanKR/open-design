@@ -2,21 +2,21 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { expect, test } from '@/playwright/suite';
-import { configureVisualPage, gotoVisualHome, mockSignedInVelaAccount } from '@/playwright/visual';
+import { configureVisualPage, gotoVisualHome, mockSignedInVelaAccount, waitForVisualStable } from '@/playwright/visual';
 import { ensureRailOpen } from '@/playwright/rail';
 
 // Rendering/interaction witnesses only: real app browser and isolated tools-dev,
 // controlled Workspace/AMR responses. No claim of real invitations or revocation.
 test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 });
 const artifactRoot = process.env.OD_MEMBERS_VISUAL_ARTIFACT_DIR ?? path.resolve('.tmp/members-visual-qa');
-async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true) {
+async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true, workspaceCount = 2) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page);
   await mockSignedInVelaAccount(page, { email: 'designer@example.com' });
   const context = {
     workspaceId: 'members-visual-workspace', workspaceName: 'Xiaoyi’s Workspace', workspaceType: 'team',
     workspaceMemberId: `members-visual-${role}`, role, memberStatus: 'active', lifecycleState: 'active',
-    billingState: 'active', planId: 'team-pro',
+    billingState: 'active', planId: 'team-pro', workspaceSettingsUrl: 'https://console.example.test/settings?workspaceId=members-visual-workspace',
     seatSummary: { seatLimit: 3, usedSeats: 3, availableSeats: 0, isSeatFull: true },
     permissions: { canInviteMembers: true, canManageMembers: role === 'owner', canManageBilling: role === 'owner', canManageAutoRecharge: false, canShareProjects: true, canWriteSyncedFiles: true, canViewWorkspaceSettings: role === 'owner', canManageSharedResources: role === 'owner' },
   };
@@ -25,7 +25,7 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
     localStorage.setItem('open-design:locale-source', 'manual');
     sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId: current.workspaceId, workspaceMemberId: current.workspaceMemberId }));
   }, context);
-  await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: [context, {...context,workspaceId:'members-visual-design-space',workspaceMemberId:'members-visual-design-member',workspaceName:'Design space'}], activeWorkspaceId: context.workspaceId } }));
+  await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: Array.from({ length: workspaceCount }, (_, i) => i === 0 ? context : { ...context, workspaceId: i === 1 ? 'members-visual-design-space' : `members-visual-space-${i}`, workspaceMemberId: i === 1 ? 'members-visual-design-member' : `members-visual-member-${i}`, workspaceName: i === 1 ? 'Design space' : `Workspace ${i + 1}` }), activeWorkspaceId: context.workspaceId } }));
   await page.route('**/api/workspace/context', route => {
     const selected = route.request().headers()['x-od-workspace-id'];
     return route.fulfill({ json: { context: selected === 'members-visual-design-space' ? { ...context, workspaceId: selected, workspaceMemberId: 'members-visual-design-member', workspaceName: 'Design space' } : context } });
@@ -50,7 +50,7 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
 }
 async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
-  await page.evaluate(async () => { await document.fonts.ready; });
+  await waitForVisualStable(page);
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
   const metrics = await page.evaluate(() => Object.fromEntries(['card', 'banner', 'panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer', 'submit'].map(name => { const el = name === 'card' ? document.querySelector('[data-testid=entry-cloud-signin-tip]') : name === 'banner' ? document.querySelector('[role=region][aria-label="邀请"]') : document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight,background:css.backgroundColor,color:css.color,opacity:css.opacity}]; })));
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
@@ -79,6 +79,8 @@ test('[P1] A06 workspace switcher shows the two reference identities', async ({ 
   const menu = await setup(page, 'owner', false);
   await expect(menu).toContainText('Xiaoyi’s Workspace');
   await expect(menu).toContainText('Design space');
+  await expect(menu.getByTestId('entry-nav-create-team')).toBeVisible();
+  await expect(menu.getByTestId('entry-nav-create-team')).toHaveAttribute('target', '_blank');
   await capture(page, 'A06');
 });
 test('[P1] B21 invalid email stays editable and unsent', async ({ page }) => {
@@ -131,8 +133,10 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
   await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toHaveCSS('background-color', 'rgb(32, 32, 32)');
   await capture(page, 'B26-hover');
   await page.mouse.move(1300, 800);
+  await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toHaveCSS('background-color', 'rgb(32, 32, 32)');
   await capture(page, 'B26');
 });
 
@@ -187,4 +191,14 @@ test('[P1] banner dismissal is scoped to account identity', async ({ page }) => 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(banner).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('od.invitation-banner.dismissed:u2'))).toBeNull();
+});
+
+test('[P1] A06 fifty workspace limit preserves scroll and disables create', async ({ page }) => {
+  const menu = await setup(page, 'owner', false, 50);
+  await expect(menu).toContainText('50/50');
+  await expect(menu.getByRole('menuitem', { name: '新建工作空间' })).toBeDisabled();
+  await expect(menu.getByText('已达 50 个上限')).toBeVisible();
+  const list = page.getByTestId('workspace-switcher-list');
+  await expect.poll(() => list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await capture(page, 'A06-limit');
 });
