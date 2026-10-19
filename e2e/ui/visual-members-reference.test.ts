@@ -9,12 +9,12 @@ import { ensureRailOpen } from '@/playwright/rail';
 // controlled Workspace/AMR responses. No claim of real invitations or revocation.
 test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 });
 const artifactRoot = process.env.OD_MEMBERS_VISUAL_ARTIFACT_DIR ?? path.resolve('.tmp/members-visual-qa');
-async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true, workspaceCount = 2) {
+async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true, workspaceCount = 2, options: { workspaceName?: string; beforeHome?: (context: Record<string, unknown>) => Promise<void> } = {}) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page);
   await mockSignedInVelaAccount(page, { email: 'designer@example.com' });
   const context = {
-    workspaceId: 'members-visual-workspace', workspaceName: 'Xiaoyi’s Workspace', workspaceType: 'team',
+    workspaceId: 'members-visual-workspace', workspaceName: options.workspaceName ?? 'Xiaoyi’s Workspace', workspaceType: 'team',
     workspaceMemberId: `members-visual-${role}`, role, memberStatus: 'active', lifecycleState: 'active',
     billingState: 'active', planId: 'team-pro', workspaceSettingsUrl: 'https://console.example.test/settings?workspaceId=members-visual-workspace',
     seatSummary: { seatLimit: 3, usedSeats: 3, availableSeats: 0, isSeatFull: true },
@@ -39,6 +39,7 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
     const projects = [1, 2, 3].map(n => { const project = { id: `visual-reference-project-${n}`, name: `Mock project ${n}`, skillId: null, designSystemId: null, createdAt: 1700000000000, updatedAt: 1700000000000, metadata: {} }; return { ...project, project, workspaceId, visibility: 'personal', resourceState: 'active', createdByWorkspaceMemberId: memberId, updatedByWorkspaceMemberId: memberId, resourceHubResourceId: null, cloudTombstonedAt: null, syncState: 'local_only', currentUserAccess: { canOpen: true, canRename: true, canDelete: true, canDuplicate: true, canMoveToTeam: true, canMoveToPersonal: false, canExport: true, canSendTo: true, canRestoreVersion: true } }; });
     return route.fulfill({ json: { projects } });
   });
+  await options.beforeHome?.(context);
   await gotoVisualHome(page);
   await ensureRailOpen(page);
   await page.getByTestId('workspace-switcher').click();
@@ -202,3 +203,69 @@ test('[P1] A06 fifty workspace limit preserves scroll and disables create', asyn
   await expect.poll(() => list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
   await capture(page, 'A06-limit');
 });
+
+// HTTP-edge SSE witness, not a real AMR removal or provider task-stop proof.
+for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
+  const exact = removal === 'exact';
+  test(`[P1] ${exact ? 'H01 H12 exact removal requires verified default recovery' : removal === 'other-workspace' ? 'H02 background workspace removal keeps current content' : 'different member removal preserves exact current authority'}`, async ({ page }) => {
+    let deliver!: () => void;
+    const gate = new Promise<void>(resolve => { deliver = resolve; });
+    let delivered = false;
+    let removed = false;
+    let switched = false;
+    let activeAttempts = 0;
+    let contextReads = 0;
+    const writes: unknown[] = [];
+    try {
+      await setup(page, 'owner', false, 2, { workspaceName: 'Design space', beforeHome: async current => {
+        const fallback = { ...current, workspaceId: 'members-default', workspaceMemberId: 'members-default-owner', workspaceName: 'Xiaoyi’s Workspace', isDefault: true };
+        await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: removed && exact ? [fallback] : removed && removal === 'other-workspace' ? [{ ...current, isDefault: false }] : [{ ...current, isDefault: false }, fallback], activeWorkspaceId: switched ? fallback.workspaceId : current.workspaceId } }));
+        await page.route('**/api/workspace/context', route => {
+          contextReads += 1;
+          return route.fulfill({ json: { context: route.request().headers()['x-od-workspace-id'] === fallback.workspaceId ? fallback : current } });
+        });
+        await page.route('**/api/workspace/active', route => {
+          const body = route.request().postDataJSON(); writes.push(body); activeAttempts += 1;
+          if (activeAttempts === 1) return route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } });
+          switched = true;
+          return route.fulfill({ json: { activeWorkspaceId: fallback.workspaceId, context: fallback } });
+        });
+        await page.route('**/api/workspace/events**', async route => {
+          await gate;
+          if (delivered) return route.fulfill({ status: 204 });
+          delivered = true;
+          const scope = { workspaceId: current.workspaceId, workspaceMemberId: current.workspaceMemberId };
+          const payload = { type: 'workspace-context-changed', memberRemoval: { ...scope, workspaceId: removal === 'other-workspace' ? fallback.workspaceId : scope.workspaceId, workspaceMemberId: exact ? scope.workspaceMemberId : removal === 'other-workspace' ? fallback.workspaceMemberId : 'another-member', reason: 'member-removed' }, at: new Date().toISOString() };
+          return route.fulfill({ contentType: 'text/event-stream', body: `event: ready\ndata: ${JSON.stringify(scope)}\n\nevent: workspace-context-changed\ndata: ${JSON.stringify(payload)}\n\n` });
+        });
+      } });
+      await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
+      await expect(page.getByTestId('home-hero')).toBeVisible();
+      const before = contextReads;
+      removed = true; deliver();
+      if (!exact) {
+        await expect.poll(() => contextReads).toBeGreaterThan(before);
+        await expect(page.getByRole('alertdialog')).toHaveCount(0);
+        await expect(page.getByTestId('workspace-switcher')).toContainText('Design space');
+        await expect(page.getByTestId('home-hero')).toBeVisible();
+        expect(writes).toEqual([]);
+        if (removal === 'other-workspace') await capture(page, 'H02');
+        return;
+      }
+      const dialog = page.getByRole('alertdialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading')).toContainText('Design space');
+      await expect(page.getByTestId('home-hero')).toHaveCount(0);
+      await capture(page, 'H01');
+      await dialog.getByRole('button').click();
+      await expect(dialog.getByRole('alert')).toBeVisible();
+      await expect(page.getByTestId('home-hero')).toHaveCount(0);
+      await dialog.getByRole('button').click();
+      await expect(dialog).toHaveCount(0);
+      await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
+      await expect(page.getByTestId('home-hero')).toBeVisible();
+      expect(writes).toEqual(Array.from({ length: 2 }, () => ({ workspaceId: 'members-default', workspaceMemberId: 'members-default-owner' })));
+      await capture(page, 'H12');
+    } finally { deliver?.(); }
+  });
+}
