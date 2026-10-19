@@ -3727,6 +3727,7 @@ export const zhTW: Dict = {
   "assistant.role": "助手",
   "assistant.workingLabel": "執行中",
   "assistant.doneLabel": "已完成",
+  "assistant.deliveryUnknownLabel": "本輪已結束，交付待確認",
   "assistant.awaitingReplyLabel": "等待回覆",
   "assistant.canceledLabel": "任務已停止",
   "assistant.canceledDetail": "本次執行已依你的操作停止。",

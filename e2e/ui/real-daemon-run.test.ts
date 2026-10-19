@@ -132,6 +132,39 @@ test('[P0] real daemon run streams, persists, and previews an artifact', async (
   await expectProjectFileToContain(page, projectId, GENERATED_FILE, GENERATED_HEADING);
 });
 
+for (const scenario of ['missing-handoff', 'auxiliary-frame']) {
+  test(`[P1] OD Next ${scenario} stays incomplete across stream and history reload`, async ({ page }, testInfo) => {
+    await prepareLocalOdNextCanary(page, `Delivery ${scenario}`);
+    const requests: Request[] = [];
+    page.on('request', request => { if (isCreateRunRequest(request)) requests.push(request); });
+    await sendPrompt(page, `Create an OD Next ${scenario} fixture`);
+    const recovery = page.getByTestId('assistant-continue-remaining');
+    await expect(recovery).toBeVisible();
+    await expect(page.getByTestId('assistant-footer').last()).toHaveAttribute('data-unfinished', 'true');
+    expect(requests).toHaveLength(1);
+    const { projectId } = await currentProjectContext(page);
+    const expectProjectIncomplete = async () => {
+      const response = await page.request.get('/api/projects');
+      expect(response.ok()).toBeTruthy();
+      const body = await response.json();
+      expect(body.projects.find((project: { id: string }) => project.id === projectId)?.status?.value).toBe('incomplete');
+    };
+    await expectProjectIncomplete();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForLoadingToClear(page);
+    await expect(recovery).toBeVisible();
+    await expect(page.getByTestId('assistant-footer').last()).toHaveAttribute('data-unfinished', 'true');
+    await expectProjectIncomplete();
+    await page.screenshot({ path: testInfo.outputPath(`${scenario}.png`), fullPage: true });
+    const created = page.waitForRequest(isCreateRunRequest);
+    await recovery.click();
+    const resumed = await created;
+    expect(resumed.postDataJSON().message).toContain('only the work that the user already authorized');
+    await expect(recovery.last()).toBeVisible();
+    expect(requests).toHaveLength(2);
+  });
+}
+
 test('[P1] execution plan connector stops before completed status markers', async ({ page }) => {
   await createProject(page, 'Execution plan connector geometry', 'claude');
   await expectWorkspaceReady(page);

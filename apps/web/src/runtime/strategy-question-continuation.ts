@@ -69,10 +69,13 @@ export function strategySettledMessageFields(
   strategyTask: StrategyTaskProjectionV2 | undefined,
 ):
   | { strategyTaskBlocked: true; strategyTaskBlockedText: string | null }
-  | { strategyTaskDelivered: true }
+  | { strategyTaskDelivered: boolean; strategyDeliveryState?: import('@open-design/contracts').StrategyDeliveryState }
   | null {
   const blocked = strategyBlockedMessageFields(strategyTask);
   if (blocked) return blocked;
+  if (strategyTask?.terminal && strategyTask.settlementFacts?.deliveryState) {
+    return { strategyTaskDelivered: strategyTaskProvesDelivery(strategyTask), strategyDeliveryState: strategyTask.settlementFacts.deliveryState };
+  }
   if (strategyTaskProvesDelivery(strategyTask)) {
     return { strategyTaskDelivered: true };
   }

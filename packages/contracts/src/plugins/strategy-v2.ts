@@ -337,6 +337,11 @@ export const StrategySettlementReasonV2Schema = z.enum(['question', 'continued',
 export type StrategySettlementReasonV2 = z.infer<typeof StrategySettlementReasonV2Schema>;
 
 /** Unknown historical facts stay absent rather than being inferred from an outcome. */
+export const StrategyOutputKindSchema = z.enum(['html', 'image', 'video', 'audio', 'document', 'presentation', 'pdf', 'text']);
+export const StrategyOutputGoalSchema = z.array(StrategyOutputKindSchema).max(8);
+export type StrategyOutputGoal = z.infer<typeof StrategyOutputGoalSchema>;
+export const StrategyDeliveryStateSchema = z.enum(['answer', 'waiting', 'pending', 'delivered', 'incomplete', 'unknown']);
+export type StrategyDeliveryState = z.infer<typeof StrategyDeliveryStateSchema>;
 export const StrategySettlementFactsV2Schema = z.object({
   physicalStatus: z.enum(['succeeded', 'failed', 'canceled']).optional(),
   deliverableValid: z.boolean().optional(),
@@ -346,6 +351,10 @@ export const StrategySettlementFactsV2Schema = z.object({
   productionReady: z.boolean().optional(),
   emptyReply: z.boolean().optional(),
   executionIntent: StrategyExecutionIntentV2Schema.optional(),
+  outputGoal: StrategyOutputGoalSchema.optional(),
+  deliveryState: StrategyDeliveryStateSchema.optional(),
+  productionSignal: z.enum(['accepted', 'missing', 'rejected', 'non_terminal']).optional(),
+  hostDeliveryFailure: z.boolean().optional(),
 }).strict();
 export type StrategySettlementFactsV2 = z.infer<typeof StrategySettlementFactsV2Schema>;
 

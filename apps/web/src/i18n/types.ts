@@ -4459,6 +4459,7 @@ export interface Dict {
   'assistant.role': string;
   'assistant.workingLabel': string;
   'assistant.doneLabel': string;
+  'assistant.deliveryUnknownLabel': string;
   /** Run title while the last turn's question form is still unanswered (OPEND-2744). */
   'assistant.awaitingReplyLabel': string;
   'assistant.canceledLabel': string;

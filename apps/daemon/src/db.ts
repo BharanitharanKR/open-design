@@ -1723,9 +1723,23 @@ function listLatestProjectRunStatusesUnobserved(db: SqliteDb) {
     .all() as DbRow[];
   const latestByProject = new Map<string, DbRow>();
   const completenessEvents = completenessEventsStatement(db);
+  // Read only the latest task's compact verdict, never its prompt or event log.
+  // Message run IDs can be imported, so require the task's exact owner scope.
+  const deliveryState = db.prepare(`
+    SELECT CASE WHEN json_valid(latest.settlement_facts_json)
+             THEN json_extract(latest.settlement_facts_json, '$.deliveryState') END AS value
+      FROM messages m
+      JOIN conversations c ON c.id = m.conversation_id
+      JOIN strategy_task_runs r ON r.run_id = m.run_id
+      JOIN strategy_task_executions t ON t.task_execution_id = r.task_execution_id
+        AND t.project_id = c.project_id AND t.conversation_id = c.id
+      JOIN strategy_task_runs latest ON latest.run_id = t.latest_run_id
+        AND latest.task_execution_id = t.task_execution_id
+     WHERE m.id = ?
+  `);
   for (const row of rows) {
     latestByProject.set(row.projectId, {
-      value: projectDisplayStatusForRunRow(completenessEvents, row.status, String(row.messageId)),
+      value: projectDisplayStatusForRunRow(completenessEvents, deliveryState, row.status, String(row.messageId)),
       updatedAt: Number(row.updatedAt),
       runId: row.runId ?? undefined,
     });
@@ -1734,18 +1748,21 @@ function listLatestProjectRunStatusesUnobserved(db: SqliteDb) {
 }
 
 // A terminal `succeeded` run whose PERSISTED events show unfinished declared
-// work (a non-`completed` TodoWrite task) projects as `incomplete`, never
+// work (a non-`completed` TodoWrite task) or an undelivered task goal projects as `incomplete`, never
 // `succeeded`, so the project pill can't read "Completed" for a run whose work
 // is not actually done (#1247 / #1060). Derived from the same events the chat
 // footer reads, so the two surfaces cannot disagree, and it survives reload
 // because the events were persisted per-event as the run streamed.
 function projectDisplayStatusForRunRow(
   completenessEvents: Database.Statement,
+  deliveryState: Database.Statement,
   status: unknown,
   messageId: string,
 ) {
   const normalized = normalizeProjectRunStatus(status);
   if (normalized !== 'succeeded') return normalized;
+  const delivery = deliveryState.get(messageId) as { value: unknown } | undefined;
+  if (delivery?.value === 'incomplete' || delivery?.value === 'unknown') return 'incomplete';
   const events = completenessEventsOfMessage(completenessEvents, messageId);
   return eventsEndedWithUnfinishedWork(events) ? 'incomplete' : normalized;
 }

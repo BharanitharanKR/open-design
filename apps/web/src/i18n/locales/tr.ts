@@ -3525,6 +3525,7 @@ export const tr: Dict = {
   'assistant.role': 'Asistan',
   'assistant.workingLabel': 'Çalışıyor',
   'assistant.doneLabel': 'Bitti',
+  'assistant.deliveryUnknownLabel': 'Tur sona erdi; teslim doğrulanmadı',
   'assistant.awaitingReplyLabel': 'Yanıt bekleniyor',
   'assistant.canceledLabel': 'Görev durduruldu',
   'assistant.canceledDetail': 'Bu çalıştırma sizin işleminizle durduruldu.',

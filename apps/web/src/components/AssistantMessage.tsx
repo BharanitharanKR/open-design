@@ -930,6 +930,10 @@ function AssistantMessageImpl({
         content: currentRunContent,
         runStatus: message.runStatus,
       });
+  const deliveryUnknown = !streaming && message.strategyDeliveryState === 'unknown';
+  const hostUnfinished = !streaming && message.runStatus === 'succeeded'
+    && (message.endedWithUnfinishedWork === true || message.strategyDeliveryState === 'incomplete');
+  const hasUnfinishedWork = hostUnfinished || unfinishedTodos.length > 0;
   const hasTodoSnapshot = events.some(
     (event) => event.kind === "tool_use" && isTodoWriteToolName(event.name),
   );
@@ -951,7 +955,7 @@ function AssistantMessageImpl({
       : (previousTodos ?? []).filter((todo) => todoStatusIsUnfinished(todo.status));
   const runSucceeded =
     !streaming &&
-    !hasResultDeliveryFailure &&
+    !hasResultDeliveryFailure && !hostUnfinished && !deliveryUnknown &&
     (
       message.runStatus === "succeeded" ||
       (!message.runStatus && !!message.endedAt) ||
@@ -970,7 +974,7 @@ function AssistantMessageImpl({
       streaming,
       message,
       hasEmptyResponse,
-      hasUnfinishedTodos: unfinishedTodos.length > 0,
+      hasUnfinishedTodos: hasUnfinishedWork,
     });
   /*
    * OPEND-2542 supersedes the 2026-08-26 "last turn only" decision. Every
@@ -990,7 +994,7 @@ function AssistantMessageImpl({
     unfinishedTodos.length > 0 ||
     // 只剩「还欠着上一轮的活」这一条理由时,这一行也得出 —— 出口挂在它上面
     continuableTodos.length > 0 ||
-    hasEmptyResponse ||
+    hasEmptyResponse || hostUnfinished || deliveryUnknown ||
     !!copyMarkdown ||
     canFork);
   const canShowOpenDesignSubmission = !!onShareToOpenDesign && showFeedback && runSucceeded;
@@ -1095,7 +1099,7 @@ function AssistantMessageImpl({
   // have no answer control and retain recovery. Streaming turns already contribute
   // no continuableTodos, including when their Todo snapshot was inherited.
   const continueRemaining =
-    ownsContinuableTurn && !hasPendingCompleteQuestionForm && onContinueRemainingTasks && continuableTodos.length > 0
+    ownsContinuableTurn && !hasPendingCompleteQuestionForm && onContinueRemainingTasks && (continuableTodos.length > 0 || hostUnfinished || deliveryUnknown)
       ? () => onContinueRemainingTasks(continuableTodos)
       : undefined;
   /**
@@ -1433,8 +1437,9 @@ function AssistantMessageImpl({
                 hasDesignSystemContext={hasDesignSystemContext}
                 footerProps={{
                   streaming,
-                  hasUnfinishedTodos: unfinishedTodos.length > 0,
+                  hasUnfinishedTodos: hasUnfinishedWork,
                   unfinishedTodoCount: unfinishedTodos.length,
+                  deliveryUnknown,
                   hasEmptyResponse,
                   canceled: message.runStatus === "canceled",
                   preparing,
@@ -1453,8 +1458,9 @@ function AssistantMessageImpl({
             ) : (
               <AssistantFooter
                 streaming={streaming}
-                hasUnfinishedTodos={unfinishedTodos.length > 0}
+                hasUnfinishedTodos={hasUnfinishedWork}
                 unfinishedTodoCount={unfinishedTodos.length}
+                deliveryUnknown={deliveryUnknown}
                 hasEmptyResponse={hasEmptyResponse}
                 canceled={message.runStatus === "canceled"}
                 preparing={preparing}
@@ -2117,6 +2123,7 @@ function appendRoleModel(label: string, model: string | null): string {
 }
 
 interface AssistantFooterProps {
+  deliveryUnknown?: boolean;
   streaming: boolean;
   hasUnfinishedTodos: boolean;
   /**
@@ -2154,6 +2161,7 @@ interface AssistantFooterProps {
  *  `AssistantMessageImpl` 与下面的 `AssistantFeedback`。 */
 export function AssistantFooter({
   streaming,
+  deliveryUnknown = false,
   hasUnfinishedTodos,
   unfinishedTodoCount = 0,
   hasEmptyResponse,
@@ -2175,6 +2183,7 @@ export function AssistantFooter({
     !forceVisible &&
     !streaming &&
     !hasUnfinishedTodos &&
+    !deliveryUnknown &&
     !hasEmptyResponse &&
     !canceled &&
     !copyMarkdown &&
@@ -2186,7 +2195,7 @@ export function AssistantFooter({
     <div
       className="assistant-footer"
       data-testid="assistant-footer"
-      data-unfinished={hasUnfinishedTodos ? "true" : "false"}
+      data-unfinished={hasUnfinishedTodos || deliveryUnknown ? "true" : "false"}
       data-streaming={streaming ? "true" : "false"}
       // 中断的那一轮不能戴完成勾:它并没有跑完(稿子 15-6「绿点转灰」)
       data-canceled={canceled ? "true" : "false"}
@@ -2204,7 +2213,7 @@ export function AssistantFooter({
                 里面的 path 被 `.tick > * { display:none }` 关掉了),没跑完那几档用的是 `<i>`。
                 标记本身的样子全在 `.dot` 的 CSS 里,这里只决定用哪个标签 —— 标签不一样,
                 逐元素比样式时后面整列都要错位。 */}
-            {!streaming && !canceled && !hasUnfinishedTodos ? (
+            {!streaming && !canceled && !hasUnfinishedTodos && !deliveryUnknown ? (
               <svg className="dot" viewBox="0 0 24 24" aria-hidden />
             ) : (
               <i className="dot" data-active={streaming ? "true" : "false"} />
@@ -2219,6 +2228,8 @@ export function AssistantFooter({
               ? t("assistant.emptyResponseLabel")
               : canceled
               ? t("assistant.canceledLabel")
+              : deliveryUnknown
+              ? t("assistant.deliveryUnknownLabel")
               : hasUnfinishedTodos
               ? t("assistant.unfinishedLabel")
               : t("assistant.doneLabel")}

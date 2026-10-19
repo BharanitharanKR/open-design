@@ -310,6 +310,44 @@ describe('OD Next planning coordinator', () => {
   });
 
   it.each([
+    ['missing marker', 'Plan ready.\n<od-output-goal key="5e819e50c013db87" kinds="video" />', 'incomplete'],
+    ['plan answer', 'The plan.\n<od-output-goal key="5e819e50c013db87" kinds="none" />', 'answer'],
+    ['unknown legacy', 'Plan ready.', 'unknown'],
+  ])('separates %s from delivery without creating work', (_label, text, expected) => {
+    const {task,service,physical}=markerHarness();
+    const parsed=markerReply(text);
+    const result=prepareAutomaticStrategyContinuation({db,service,task,parsed,createMeta:()=>({}),completionEvidence:{physicalStatus:'succeeded',deliverableValid:false}});
+    expect(result.start).toBe(false);
+    expect(physical.size).toBe(0);
+    expect(projectStrategyTask(getStrategyTaskExecution(db,task.taskExecutionId)!)).toMatchObject({settlementFacts:{deliveryState:expected}});
+  });
+
+  it.each([{ truncated: true }, { hostDeliveryFailure: true }])('never starts production after an incomplete physical turn: %j', failure => {
+    const { task, service, physical } = markerHarness();
+    const result = prepareAutomaticStrategyContinuation({ db, service, task,
+      parsed: markerReply(`Plan a video.\n<od-output-goal key="5e819e50c013db87" kinds="video" />\n${productionMarker}`),
+      createMeta: () => ({}), completionEvidence: { physicalStatus: 'succeeded', deliverableValid: true, ...failure } });
+    expect(result.start).toBe(false);
+    expect(physical.size).toBe(0);
+    expect(projectStrategyTask(result.result.task).settlementFacts?.deliveryState).toBe('incomplete');
+  });
+
+  it('keeps the accepted video goal when production attempts to downgrade to an answer', () => {
+    const { task, service, physical } = markerHarness();
+    const continued = prepareAutomaticStrategyContinuation({ db, service, task,
+      parsed: markerReply(`Plan a video.\n<od-output-goal key="5e819e50c013db87" kinds="video" />\n${productionMarker}`),
+      createMeta: () => ({}), completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false } });
+    expect(continued.start).toBe(true);
+    const final = prepareAutomaticStrategyContinuation({ db, service,
+      task: getStrategyTaskExecution(db, task.taskExecutionId)!,
+      parsed: markerReply('Only first-frame.png exists.\n<od-output-goal key="5e819e50c013db87" kinds="none" />'),
+      createMeta: () => ({}), completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false } });
+    expect(final.start).toBe(false);
+    expect(physical.size).toBe(1);
+    expect(projectStrategyTask(final.result.task).settlementFacts).toMatchObject({ outputGoal: ['video'], deliveryState: 'incomplete' });
+  });
+
+  it.each([
     ['ordinary answer', 'Hello'],
     ['missing marker', 'Plan is ready.'],
     ['wrong key', 'Plan is ready.\n<od-production-ready key="0000" />'],

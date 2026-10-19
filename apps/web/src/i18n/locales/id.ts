@@ -3525,6 +3525,7 @@ export const id: Dict = {
   'assistant.role': 'Asisten',
   'assistant.workingLabel': 'Sedang bekerja',
   'assistant.doneLabel': 'Selesai',
+  'assistant.deliveryUnknownLabel': 'Giliran selesai; hasil belum dikonfirmasi',
   'assistant.awaitingReplyLabel': 'Menunggu balasan',
   'assistant.canceledLabel': 'Tugas dihentikan',
   'assistant.canceledDetail': 'Proses ini telah dihentikan sesuai tindakan Anda.',

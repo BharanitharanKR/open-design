@@ -3525,6 +3525,7 @@ export const th: Dict = {
   'assistant.role': 'หน่วยผู้ช่วยเหลือส่วนตัว',
   'assistant.workingLabel': 'ดำเนินระบบรับทำงานอยู่',
   'assistant.doneLabel': 'บรรลุสู่ระดับพร้อมแล้ว',
+  'assistant.deliveryUnknownLabel': 'จบรอบแล้ว แต่ยังไม่ยืนยันการส่งมอบ',
   'assistant.awaitingReplyLabel': 'รอการตอบกลับ',
   'assistant.canceledLabel': 'หยุดงานแล้ว',
   'assistant.canceledDetail': 'การทำงานครั้งนี้หยุดลงตามการดำเนินการของคุณ',

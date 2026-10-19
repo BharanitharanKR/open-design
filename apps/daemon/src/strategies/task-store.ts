@@ -506,6 +506,7 @@ export interface StrategyTaskTurnProjection {
    *  learn the verdict, and surfaces keyed off the agent's TodoWrite snapshot
    *  (the "continue remaining tasks" offer) would resurrect on every reload. */
   delivered: boolean;
+  deliveryState?: import("@open-design/contracts").StrategyDeliveryState;
   /** Persisted task verdict, independent of the physical Run's status. */
   blocked: boolean;
   blockedText: string | null;
@@ -546,6 +547,7 @@ export function strategyTaskTurnsForRunIds(
                r.task_run_index AS taskRunIndex,
                t.outcome AS outcome,
                t.deliverable_valid AS deliverableValid,
+               (SELECT settlement_facts_json FROM strategy_task_runs WHERE run_id = t.latest_run_id) AS deliveryFacts,
                t.blocked_visible_text AS blockedVisibleText
           FROM strategy_task_runs r
           -- LEFT so a mapping whose task row is gone still yields its turn
@@ -563,10 +565,16 @@ export function strategyTaskTurnsForRunIds(
           || typeof row['taskExecutionId'] !== 'string'
           || typeof row['taskRunIndex'] !== 'number'
         ) continue;
+        let deliveryState: import('@open-design/contracts').StrategyDeliveryState | undefined;
+        try {
+          const facts = StrategySettlementFactsV2Schema.safeParse(JSON.parse(String(row['deliveryFacts'] ?? 'null')));
+          if (facts.success) deliveryState = facts.data.deliveryState;
+        } catch { /* Historical rows keep unknown fields absent. */ }
         turns.set(row['runId'], {
           taskExecutionId: row['taskExecutionId'],
           taskRunIndex: row['taskRunIndex'],
-          delivered: row['outcome'] === 'completed' && row['deliverableValid'] === 1,
+          delivered: row['outcome'] === 'completed' && row['deliverableValid'] === 1 && (!deliveryState || deliveryState === 'delivered'),
+          ...(deliveryState ? { deliveryState } : {}),
           blocked: row['outcome'] === 'blocked',
           blockedText: row['outcome'] === 'blocked'
             && typeof row['blockedVisibleText'] === 'string'

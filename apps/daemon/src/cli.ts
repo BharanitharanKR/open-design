@@ -1774,10 +1774,15 @@ async function runMedia(args) {
   const idx = args.indexOf(sub);
   const subArgs = [...args.slice(0, idx), ...args.slice(idx + 1)];
   if (sub === 'models') {
-    const flags = parseFlags(subArgs, { string: ['daemon-url'], boolean: ['json', 'help', 'h'] });
+    const flags = parseFlags(subArgs, { string: ['daemon-url', 'project', 'workspace', 'workspace-member'], boolean: ['json', 'cloud', 'help', 'h'] });
     if (flags.help || flags.h) { printMediaHelp(); return; }
     const daemonUrl = await cliDaemonUrl(flags);
-    const response = await fetch(`${daemonUrl.replace(/\/$/, '')}/api/media/models`);
+    const token = process.env.OD_TOOL_TOKEN;
+    const query = new URLSearchParams();
+    if (flags.cloud) { query.set('cloud', 'true'); query.set('projectId', flags.project || process.env.OD_PROJECT_ID || ''); }
+    const response = await fetch(`${daemonUrl.replace(/\/$/, '')}/api/media/models?${query}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : workspaceHeadersFromExplicitFlags(flags) ?? {},
+    });
     if (!response.ok) throw new Error(`Media catalog request failed (${response.status})`);
     console.log(JSON.stringify(await response.json()));
     return;
@@ -2280,7 +2285,7 @@ async function cliDaemonBaseUrl(flags) {
 }
 
 function printMediaHelp() {
-  console.log(`Usage: od media models --json
+  console.log(`Usage: od media models [--cloud --project <id>] --json
        od media scaffold --composition-dir .hyperframes-cache/<id> [opts]
        od media generate --surface <image|video|audio> --model <id> [opts]
        "$OD_NODE_BIN" "$OD_BIN" media generate --surface <image|video|audio> --model <id> [opts]

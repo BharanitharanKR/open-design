@@ -531,7 +531,7 @@ export interface DaemonStreamOptions {
   // (non-workspace) usage, matching those other call sites.
   workspaceContext?: WorkspaceCollabContext | null;
   initialLastEventId?: string | null;
-  onRunStatus?: (status: ChatRunStatus) => void;
+  onRunStatus?: (status: ChatRunStatus, host?: { endedWithUnfinishedWork: boolean }) => void;
   /** Authoritative project-relative artifacts created or modified by the run. */
   onArtifactPaths?: (paths: string[]) => void;
   onRunEventId?: (eventId: string) => void;
@@ -571,7 +571,7 @@ export interface DaemonReattachOptions {
   cancelSignal?: AbortSignal;
   handlers: DaemonStreamHandlers;
   initialLastEventId?: string | null;
-  onRunStatus?: (status: ChatRunStatus) => void;
+  onRunStatus?: (status: ChatRunStatus, host?: { endedWithUnfinishedWork: boolean }) => void;
   onArtifactPaths?: (paths: string[]) => void;
   onRunEventId?: (eventId: string) => void;
   /**
@@ -1015,8 +1015,9 @@ export async function streamViaDaemon({
   taskExecutionId,
   onStrategyTaskSettled,
 }: DaemonStreamOptions): Promise<void> {
-  const emitRunStatus = (status: ChatRunStatus) => {
-    onRunStatus?.(status);
+  const emitRunStatus: NonNullable<DaemonStreamOptions['onRunStatus']> = (status, host) => {
+    if (host) onRunStatus?.(status, host);
+    else onRunStatus?.(status);
     notifyRunsChanged();
   };
   // Local CLIs are single-turn print-mode programs, so we collapse the whole
@@ -1164,8 +1165,9 @@ export async function reattachDaemonRun(options: DaemonReattachOptions): Promise
   openChatRunCorrelation(options.runId, options.agentId);
   await consumeDaemonRun({
     ...options,
-    onRunStatus: (status) => {
-      options.onRunStatus?.(status);
+    onRunStatus: (status, host) => {
+      if (host) options.onRunStatus?.(status, host);
+      else options.onRunStatus?.(status);
       notifyRunsChanged();
     },
   });
@@ -1792,6 +1794,7 @@ async function consumeDaemonPhysicalRun({
   let exitCode: number | null = null;
   let exitSignal: string | null = null;
   let endStatus: ChatRunStatus | null = null;
+  let hostUnfinishedWork: boolean | undefined;
   let endStrategyTask: StrategyTaskProjectionV2 | undefined;
   let pendingStructuredError: Error | null = null;
   // Tracks whether the server explicitly declared `status: 'succeeded'` in
@@ -2178,6 +2181,7 @@ async function consumeDaemonPhysicalRun({
             // `'succeeded'` fallback below does not count and must keep
             // hitting the exit-code/signal safety net later.
             serverDeclaredSuccess = event.data.status === 'succeeded';
+            hostUnfinishedWork = typeof event.data.endedWithUnfinishedWork === 'boolean' ? event.data.endedWithUnfinishedWork : undefined;
             endStatus = isChatRunStatus(event.data.status) ? event.data.status : 'succeeded';
           }
         }
@@ -2187,6 +2191,7 @@ async function consumeDaemonPhysicalRun({
         const status = await fetchChatRunStatus(runId, workspaceContext).catch(() => null);
         if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
           endStatus = status.status;
+          hostUnfinishedWork = typeof status.endedWithUnfinishedWork === 'boolean' ? status.endedWithUnfinishedWork : undefined;
           exitCode = status.exitCode ?? null;
           exitSignal = status.signal ?? null;
           serverDeclaredSuccess = status.status === 'succeeded';
@@ -2233,6 +2238,7 @@ async function consumeDaemonPhysicalRun({
       const status = await fetchChatRunStatus(runId, workspaceContext);
       if (status && isChatRunStatus(status.status) && status.status !== 'queued' && status.status !== 'running') {
         endStatus = status.status;
+        hostUnfinishedWork = typeof status.endedWithUnfinishedWork === 'boolean' ? status.endedWithUnfinishedWork : undefined;
         exitCode = status.exitCode ?? null;
         exitSignal = status.signal ?? null;
         // Fallback REST path: `status.status` is explicitly declared by the
@@ -2344,7 +2350,8 @@ async function consumeDaemonPhysicalRun({
       }
     }
 
-    onRunStatus?.(endStatus);
+    if (hostUnfinishedWork === undefined) onRunStatus?.(endStatus);
+    else onRunStatus?.(endStatus, { endedWithUnfinishedWork: hostUnfinishedWork });
 
     if (endStatus === 'canceled') {
       handlers.onDone(acc);

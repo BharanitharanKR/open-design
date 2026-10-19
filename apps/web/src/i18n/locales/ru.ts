@@ -3525,6 +3525,7 @@ export const ru: Dict = {
   'assistant.role': 'Ассистент',
   'assistant.workingLabel': 'Работает',
   'assistant.doneLabel': 'Готово',
+  'assistant.deliveryUnknownLabel': 'Ход завершён; результат не подтверждён',
   'assistant.awaitingReplyLabel': 'Ожидает ответа',
   'assistant.canceledLabel': 'Задача остановлена',
   'assistant.canceledDetail': 'Этот запуск остановлен по вашему действию.',

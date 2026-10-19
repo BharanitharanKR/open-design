@@ -41,6 +41,24 @@ An ended turn is not proof of delivered files: never claim unwritten work is com
 export function renderOdNextProductionReadyInstructions(key: string): string {
   if (!/^[a-f0-9]+$/.test(key)) return '';
   return `Plan-to-production continuation:
+For cloud video generation, verify current account/workspace availability with
+\`"$OD_NODE_BIN" "$OD_BIN" media models --cloud --json\` before choosing a default.
+A static model ID is not proof of availability. Empty catalogue means unavailable;
+a failed lookup means unknown. Preserve explicit model/provider choices and report
+an unavailable choice without switching billing channels. Configured BYOK and
+local Motion are independent of this cloud catalogue.
+Before answering or planning, declare this request's output goal with one hidden
+control line: <od-output-goal key="${key}" kinds="html" />
+Use only the required final file kinds: html, image, video, audio, document,
+presentation, pdf, text (comma-separated for independent requested outputs). Use
+kinds="none" for a conversational answer, plan-only answer, or question without
+requested files. A requested saved Markdown plan is text, not permission to execute
+it. Plain text/Markdown is text; DOCX is document; an HTML slide deck/document is html. A requested playable movie is video;
+its reference images, first frame, audio and composition source are dependencies,
+not substitutes or additional goals. Follow the current Query over old project
+type, template or loaded Skills. This goal never authorizes production. Emit it
+once outside quotes and code, before the final production-ready line, and do not
+weaken it when generation fails. The host validates actual files separately.
 A plan requested as the answer (travel/study/work plan, or only listing a plan)
 is complete in itself: no added artifact and no marker, even without "do not execute".
 Saving a requested plan file does not authorize executing it. Scenario defaults

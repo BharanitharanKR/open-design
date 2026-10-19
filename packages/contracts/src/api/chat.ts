@@ -1372,6 +1372,9 @@ export function isChatArtifactStaticCoverReady(
 }
 
 export interface ChatMessage {
+  /** Authoritative host completion facts, including after history reload. */
+  endedWithUnfinishedWork?: boolean;
+  strategyDeliveryState?: import('../plugins/strategy-v2.js').StrategyDeliveryState;
   id: string;
   role: ChatRole;
   content: string;

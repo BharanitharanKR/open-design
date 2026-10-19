@@ -3525,6 +3525,7 @@ export const ptBR: Dict = {
   'assistant.role': 'Assistente',
   'assistant.workingLabel': 'Trabalhando',
   'assistant.doneLabel': 'Concluído',
+  'assistant.deliveryUnknownLabel': 'Turno encerrado; entrega não confirmada',
   'assistant.awaitingReplyLabel': 'Aguardando resposta',
   'assistant.canceledLabel': 'Tarefa interrompida',
   'assistant.canceledDetail': 'Esta execução foi interrompida conforme sua ação.',

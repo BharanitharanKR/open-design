@@ -3525,6 +3525,7 @@ export const uk: Dict = {
   'assistant.role': 'Асистент',
   'assistant.workingLabel': 'Роботи',
   'assistant.doneLabel': 'Готово',
+  'assistant.deliveryUnknownLabel': 'Хід завершено; результат не підтверджено',
   'assistant.awaitingReplyLabel': 'Очікує відповіді',
   'assistant.canceledLabel': 'Завдання зупинено',
   'assistant.canceledDetail': 'Цей запуск зупинено за вашою дією.',

@@ -39,6 +39,12 @@ afterEach(async () => {
 });
 
 describe('run deliverable validation', () => {
+  it('accepts a requested Markdown plan without requiring execution or a DOCX export', async () => {
+    const fixture = await projectFixture({ 'plan.md': '# Plan\nDescribe the proposed work.' });
+    expect(await validateRunDeliverable({ ...fixture, outputGoal: ['text'], runStatus: 'succeeded',
+      artifactCount: 1, touchedPaths: ['plan.md'], projectMetadata: { kind: 'prototype' } }))
+      .toMatchObject({ valid: true, entryFile: 'plan.md', artifactKind: 'text' });
+  });
   it('recognizes a current independent image without changing the existing prototype entry', async () => {
     const fixture = await projectFixture({ 'index.html': '<main>Existing page</main>', 'assets/dog.png': 'image' });
     const input = { ...fixture, runStatus: 'succeeded' as const, artifactCount: 1,
@@ -338,6 +344,8 @@ describe('prototype delivery boundaries', () => {
     };
     await expect(validateRunDeliverable({ ...input, projectMetadata: { kind: 'prototype' } }))
       .resolves.toMatchObject({ valid: true, entryFile: 'landing.html', linkedPage: 'index.html' });
+    await expect(validateRunDeliverable({ ...input, outputGoal: ['html'], projectMetadata: { kind: 'prototype' } }))
+      .resolves.toMatchObject({ valid: true, entryFile: 'landing.html', linkedPage: 'index.html' });
     await expect(validateRunDeliverable({ ...input, projectMetadata: { kind: 'prototype', entryFile: 'index.html' } }))
       .resolves.toEqual({ valid: true, validation: 'valid', entryFile: 'index.html', artifactKind: 'html' });
   });
@@ -492,5 +500,19 @@ describe('motion output facts without a planning-contract gate', () => {
   it('keeps file evidence separate from missing video export', async () => {
     const fixture = await projectFixture({ 'index.html': '<main>Partial editable source</main>' });
     expect((await validateRunDeliverable({ ...fixture, projectMetadata: { kind: 'video', intent: 'motion-design', videoModel: 'hyperframes-html' }, runStatus: 'succeeded', artifactCount: 1 })).valid).toBe(true);
+  });
+});
+
+describe('request output goals', () => {
+  it('rejects a first frame even for an untyped project with independent-output fallback', async () => {
+    const fixture=await projectFixture({'first.png':'image'});
+    expect(await validateRunDeliverable({...fixture,runStatus:'succeeded',artifactCount:1,projectMetadata:{kind:'other'},touchedPaths:['first.png'],allowIndependentOutput:true,outputGoal:['video']})).toMatchObject({valid:false,validation:'type_mismatch'});
+  });
+  it('keeps all requested kinds and permits Query to override the old project kind', async () => {
+    const fixture=await projectFixture({'poster.png':'image','clip.mp4':'video'});
+    const input={...fixture,runStatus:'succeeded' as const,artifactCount:2,projectMetadata:{kind:'prototype'},touchedPaths:['poster.png','clip.mp4'],allowIndependentOutput:true};
+    expect(await validateRunDeliverable({...input,outputGoal:['video']})).toMatchObject({valid:true,artifactKind:'video'});
+    expect(await validateRunDeliverable({...input,outputGoal:['html','video']})).toMatchObject({valid:false,validation:'type_mismatch'});
+    expect(await validateRunDeliverable({...input,touchedPaths:['poster.png'],outputGoal:['video']})).toMatchObject({valid:false});
   });
 });

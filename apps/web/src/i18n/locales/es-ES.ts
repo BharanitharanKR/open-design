@@ -3525,6 +3525,7 @@ export const esES: Dict = {
   'assistant.role': 'Asistente',
   'assistant.workingLabel': 'Trabajando',
   'assistant.doneLabel': 'Listo',
+  'assistant.deliveryUnknownLabel': 'Turno terminado; entrega sin confirmar',
   'assistant.awaitingReplyLabel': 'Esperando respuesta',
   'assistant.canceledLabel': 'Tarea detenida',
   'assistant.canceledDetail': 'Esta ejecución se ha detenido según tu acción.',

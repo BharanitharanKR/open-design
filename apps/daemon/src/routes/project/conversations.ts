@@ -405,9 +405,14 @@ export function registerProjectConversationRoutes(app: Express, ctx: RegisterPro
       messages: messages.map((message) => {
         const runId = typeof message['runId'] === 'string' ? message['runId'] : null;
         const turn = runId ? turns.get(runId) : undefined;
-        if (!turn) return message;
+        const run = runId ? design.runs.get(runId) : null;
+        const hostState = run?.projectId === req.params.id && run?.conversationId === req.params.cid
+          ? { endedWithUnfinishedWork: run.endedWithUnfinishedWork === true } : {};
+        if (!turn) return { ...message, ...hostState };
         return {
           ...message,
+          ...hostState,
+          strategyDeliveryState: turn.deliveryState,
           strategyTaskExecutionId: turn.taskExecutionId,
           strategyTaskRunIndex: turn.taskRunIndex,
           strategyTaskDelivered: turn.delivered,

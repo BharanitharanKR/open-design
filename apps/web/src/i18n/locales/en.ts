@@ -3539,6 +3539,7 @@ export const en: Dict = {
   'assistant.role': 'Assistant',
   'assistant.workingLabel': 'Working',
   'assistant.doneLabel': 'Done',
+  'assistant.deliveryUnknownLabel': 'Turn ended; delivery unconfirmed',
   'assistant.awaitingReplyLabel': 'Awaiting your reply',
   'assistant.canceledLabel': 'Task stopped',
   'assistant.canceledDetail': 'This run was stopped at your request.',

@@ -3525,6 +3525,7 @@ export const ja: Dict = {
   'assistant.role': 'アシスタント',
   'assistant.workingLabel': '作業中',
   'assistant.doneLabel': '完了',
+  'assistant.deliveryUnknownLabel': '応答終了・成果物の引き渡しは未確認',
   'assistant.awaitingReplyLabel': '返信待ち',
   'assistant.canceledLabel': 'タスクを停止しました',
   'assistant.canceledDetail': '今回の実行はあなたの操作により停止しました。',

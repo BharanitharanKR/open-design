@@ -1,8 +1,11 @@
 import { ProductionMarkerStream } from './production-marker.js';
+import type { StrategyOutputGoal } from '@open-design/contracts';
 
 export interface OdNextReply {
   visibleText: string;
   productionReady: boolean;
+  outputGoal?: StrategyOutputGoal;
+  productionSignal?: 'accepted' | 'missing' | 'rejected' | 'non_terminal';
 }
 
 /** Display-only compatibility for historical machine blocks. No parsing or validation. */
@@ -83,7 +86,10 @@ export function createOdNextRunProtocol(_mapping: unknown, productionKey: string
     finish(): { parsed: OdNextReply; visibleTail: string } {
       const visibleTail = marker.push(filter.push('', true), true, bufferedTrusted);
       visibleText += visibleTail;
-      return { parsed: { visibleText, productionReady: marker.ready && Boolean(visibleText.trim()) }, visibleTail };
+      return { parsed: { visibleText, productionReady: marker.ready && Boolean(visibleText.trim()),
+        productionSignal: marker.signal,
+        ...(marker.outputGoal ? { outputGoal: marker.outputGoal } : {}),
+      }, visibleTail };
     },
   };
 }

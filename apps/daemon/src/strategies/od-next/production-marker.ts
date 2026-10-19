@@ -1,3 +1,5 @@
+import { StrategyOutputGoalSchema, type StrategyOutputGoal } from '@open-design/contracts';
+
 /** A terminal assistant control signal. Canonical output remains a self-closing line. */
 export class ProductionMarkerStream {
   private pending = '';
@@ -7,6 +9,9 @@ export class ProductionMarkerStream {
   private matches = 0;
   private lastWasMarker = false;
   private lineTrusted = true;
+  private goal: StrategyOutputGoal | undefined;
+  private goalConflict = false;
+  private rejected = false;
 
   constructor(private readonly key: string) {}
 
@@ -26,7 +31,7 @@ export class ProductionMarkerStream {
       this.pending = '';
     } else if (this.pending.length > 4096) {
       // Bound buffering even for a malformed, unterminated control line.
-      const reserved = /^ {0,3}<?od-production-ready\b/i.test(this.pending);
+      const reserved = /^ {0,3}<?od-(?:production-ready|output-goal)\b/i.test(this.pending);
       // A long code-fence opener still protects its subsequent lines.
       this.fence ??= /^ {0,3}(`{3,}|~{3,})/.exec(this.pending)?.[1] ?? null;
       this.discardingLine ||= reserved;
@@ -40,6 +45,11 @@ export class ProductionMarkerStream {
 
   get ready(): boolean {
     return this.matches >= 1 && this.lastWasMarker;
+  }
+
+  get outputGoal(): StrategyOutputGoal | undefined { return this.goalConflict ? undefined : this.goal; }
+  get signal(): 'accepted' | 'missing' | 'rejected' | 'non_terminal' {
+    return this.ready ? 'accepted' : this.matches ? 'non_terminal' : this.rejected ? 'rejected' : 'missing';
   }
 
   private line(line: string): string {
@@ -59,6 +69,17 @@ export class ProductionMarkerStream {
     }
     if (trimmed) this.lastWasMarker = false;
     if (!inFence && !fence && !/^(?: {4}|\t| {0,3}>)/.test(line)) {
+      const goal = /^ {0,3}<od-output-goal key="([a-f0-9]+)" kinds="([a-z,]+)"\s*\/>\s*$/.exec(line);
+      if (goal) {
+        const parsed = StrategyOutputGoalSchema.safeParse(goal[2] === 'none' ? [] : goal[2]!.split(','));
+        if (this.lineTrusted && goal[1] === this.key && parsed.success) {
+          const next = [...new Set(parsed.data)].sort() as StrategyOutputGoal;
+          if (this.goal && JSON.stringify(this.goal) !== JSON.stringify(next)) this.goalConflict = true;
+          this.goal = next;
+        }
+        return '';
+      }
+      if (/^ {0,3}<od-output-goal\b/.test(line)) return '';
       // Accept observed formatting drift only: a tag glued to the last sentence,
       // a missing slash/closing quote before `>`, or a bare standalone control line.
       // A tag still needs `>`; never turn an unterminated streamed prefix into a signal.
@@ -71,9 +92,10 @@ export class ProductionMarkerStream {
         this.matches++;
         this.lastWasMarker = true;
       }
+      else if (match) this.rejected = true;
       if (match) return prefix.trim() ? prefix + (/\r?\n$/.exec(line)?.[0] ?? '') : '';
       // Preserve display-only cleanup of malformed control lines. They do not authorize production.
-      if (/^ {0,3}<?od-production-ready\b/i.test(line)) return '';
+      if (/^ {0,3}<?od-production-ready\b/i.test(line)) { this.rejected = true; return ''; }
     }
     return line;
   }
