@@ -43,7 +43,7 @@ async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
   await page.evaluate(async () => { await document.fonts.ready; });
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
-  const metrics = await page.evaluate(() => Object.fromEntries(['panel', 'context', 'labels', 'row', 'close'].map(name => { const el = document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
+  const metrics = await page.evaluate(() => Object.fromEntries(['panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer'].map(name => { const el = document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   await page.screenshot({ path: path.join(artifactRoot, `${state}.png`), animations: 'disabled' });
 }
@@ -132,7 +132,7 @@ test('[P1] A01 local identity shows cloud sign-in entry', async ({ page }) => {
 
 test('[P1] A03 and A05 dismissal persists across reload while header invite remains', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.getByTestId('workspace-switcher').click();
+  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 1100, y: 700 } });
   await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await expect(banner).toBeVisible();
@@ -159,7 +159,7 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
 
 test('[P1] banner dismissal is scoped to account identity', async ({ page }) => {
   await setup(page, 'owner', false);
-  await page.getByTestId('workspace-switcher').click();
+  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 1100, y: 700 } });
   await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await banner.getByRole('button', { name: '关闭邀请横条' }).click();
