@@ -721,6 +721,63 @@ describe("Production campaign live refresh", () => {
 		},
 	);
 
+	it.each([
+		["poll-user", "campaign-1", "opend.home.campaign-modal", true],
+		["other-user", "campaign-1", "opend.home.campaign-modal", false],
+		["poll-user", "other-campaign", "opend.home.campaign-modal", false],
+		["poll-user", "campaign-1", "opend.home.hover-layer", false],
+	] as const)("HST-011 scopes successful-visible memory to %s/%s/%s", async (subject, activity, placement, blocked) => {
+		available = true;
+		localStorage.setItem(`touchpoint-auto-visible:v1:${subject}:${activity}:${placement}`, String(Date.now()));
+		await open();
+		expect(Boolean(screen.queryByRole("dialog"))).toBe(!blocked);
+	});
+
+	it("HST-011 records no frequency timestamp before actual visibility", async () => {
+		available = true;
+		const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({ length: 0 } as DOMRectList);
+		await open();
+		await tick(32);
+		const key = "touchpoint-auto-visible:v1:poll-user:campaign-1:opend.home.campaign-modal";
+		expect(localStorage.getItem(key)).toBeNull();
+		rects.mockReturnValue({ length: 1 } as DOMRectList);
+		document.dispatchEvent(new Event("visibilitychange"));
+		await tick(16);
+		expect(localStorage.getItem(key)).toBe(String(Date.now()));
+	});
+
+	it.each([29_000, 30_000, 31_000])(
+		"HST-011 independently suppresses automatic presentation at %ims after actual visibility",
+		async (elapsedMs) => {
+			available = true;
+			const first = await open();
+			await tick(16);
+			const firstOpenKey = "touchpoint-displayed:v1:poll-user:campaign-1";
+			expect(localStorage.getItem(firstOpenKey)).toBe("1");
+			const visibleAt = Date.now();
+			fireEvent.keyDown(document, { key: "Escape" });
+			expect(screen.queryByRole("dialog")).toBeNull();
+			first.unmount();
+			await tick(elapsedMs);
+			// Original case precondition isolates only the independent first-open gate.
+			// Preserve every other record, including any automatic frequency timestamp.
+			localStorage.removeItem(firstOpenKey);
+			const exposure = vi.mocked(TouchpointLoadAttempt.prototype.exposure);
+			const exposuresBefore = exposure.mock.calls.length;
+			await open();
+			await tick(0);
+			expect(Date.now() - visibleAt).toBe(elapsedMs);
+			if (elapsedMs < 30_000) {
+				expect(screen.queryByRole("dialog")).toBeNull();
+				expect(exposure).toHaveBeenCalledTimes(exposuresBefore);
+			} else {
+				expect(screen.queryByRole("dialog")).not.toBeNull();
+				await tick(16);
+				expect(exposure).toHaveBeenCalledTimes(exposuresBefore + 1);
+			}
+		},
+	);
+
 	it("discovers a newly published campaign at the poll boundary without a focus event", async () => {
 		await open();
 		expect(fetchMock).toHaveBeenCalledTimes(1);

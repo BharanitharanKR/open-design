@@ -77,7 +77,27 @@ type Decision = {
 const displayedKey = (subject: string, activity: string) =>
 	`touchpoint-displayed:v1:${encodeURIComponent(subject)}:${encodeURIComponent(activity)}`;
 
-/** Local impressions gate automatic presentation only, independently of publication. */
+/** Successful visibility gates automatic presentation independently of first-open memory. */
+const automaticFrequencyKey = (subject: string, activity: string, placement: string) =>
+	`touchpoint-auto-visible:v1:${encodeURIComponent(subject)}:${encodeURIComponent(activity)}:${encodeURIComponent(placement)}`;
+function automaticFrequencyBlocked(subject: string, activity: string, placement: string): boolean {
+	try {
+		const raw = localStorage.getItem(automaticFrequencyKey(subject, activity, placement));
+		if (raw === null) return false;
+		const visibleAt = Number(raw);
+		return Number.isFinite(visibleAt) && Date.now() - visibleAt < 30_000;
+	} catch {
+		return false;
+	}
+}
+function recordAutomaticVisible(subject: string, activity: string, placement: string): void {
+	try {
+		localStorage.setItem(automaticFrequencyKey(subject, activity, placement), String(Date.now()));
+	} catch {
+		// Preserve the existing local storage fail-open boundary.
+	}
+}
+
 function wasDisplayed(subject: string, activity: string): boolean {
 	try {
 		return localStorage.getItem(displayedKey(subject, activity)) === "1";
@@ -387,7 +407,7 @@ export function ProductionCampaignModal({
 			// presentation, which keeps its mount; with nothing on screen a retain
 			// would republish the very lease the page fence just withdrew, so the
 			// suppressed offer has to clear instead.
-			if (!continuesOpenPresentation && wasDisplayed(sessionSubject, next.activityId))
+			if (!continuesOpenPresentation && (wasDisplayed(sessionSubject, next.activityId) || automaticFrequencyBlocked(sessionSubject, next.activityId, PLACEMENT)))
 				return openPresentation.current ? { kind: "retain" } : { kind: "clear" };
 			return { kind: "decision", value: { ...touchpointLeaseValue(next), sessionSubject }, replaceValue: observation.get(PLACEMENT) !== priorAttempt, key: touchpointContentIdentity(next), validForMs: deadline - serverTime, offlineValidForMs: touchpointScheduleWindowMs(next), offlineRecovery: productionTouchpointRecovery(loaded.offlineReplay) ?? undefined, timeContexts: new Map([[PLACEMENT, touchpointTimeContext(next, loaded.receivedAt)]]) };
 		},
@@ -480,6 +500,7 @@ export function ProductionCampaignModal({
 				if (recorded) return;
 				recorded = true;
 				recordDisplayed(decision.sessionSubject, decision.activityId);
+				recordAutomaticVisible(decision.sessionSubject, decision.activityId, PLACEMENT);
 				const eventId = attempt?.exposure(decision, detail => emitWebTouchpointDiagnostic({ code: "touchpoint_exposure_telemetry_failed", detail }));
 				captureCmsVisible(actionOptionsRef.current.track!, attempt, eventId);
 			} });
