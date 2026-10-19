@@ -1,5 +1,7 @@
 import { newerTaskDisplay } from '../runtime/chat/task-presentation';
 import { readRetriedErrorSurface, retriedErrorSurfaceKey, writeRetriedErrorSurface } from '../runtime/chat/retried-error-surface';
+import type { ObservedPublicShareLink, ObservedShareUpdateRequest } from './share/observed-public-share-link';
+import type { ShareLoginReturn } from './share/share-login-return';
 import {
   startTransition,
   useCallback,
@@ -58,11 +60,9 @@ import {
   fetchLiveArtifacts,
   fetchProjectFiles,
   fetchProjectFileText,
-  fetchSkill,
   invalidateProjectFilesCache,
   patchPreviewCommentSortKey,
   patchPreviewCommentStatus,
-  projectRawUrl,
   uploadProjectFiles,
   upsertPreviewComment,
   writeProjectTextFile,
@@ -93,7 +93,6 @@ import {
   type ByokChatProtocol,
   type ChatTaskExecutionAnalytics,
   type ProjectWorkspaceScope,
-  type ResearchOptions,
 } from '@open-design/contracts';
 import {
   anonymizeArtifactId,
@@ -115,11 +114,14 @@ import type {
   TrackingRunRecoveryActionType,
 } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
+import { savedCommentIds } from '@open-design/contracts/analytics';
+import { observeAnalytics } from '../analytics/observe';
 import {
   trackByokPreflightBlocked,
   trackComposerBarClick,
   trackConversationForkClick,
   trackConversationForkResult,
+  trackProjectCommentSendResult,
   trackDesignSystemApplyResult,
   trackDesignSystemEnrichClick,
   trackPageView,
@@ -180,6 +182,7 @@ import {
   isAmrBalanceGateScope,
   type AmrBalanceGateScope,
 } from '../runtime/amr-balance-gate';
+import { checkAmrFundingFeedback } from '../runtime/amr-funding-feedback';
 import {
   amrBalanceBlockedDialog,
   amrBalanceDialogUpgradeIntent,
@@ -309,7 +312,7 @@ import {
   currentUserDirectoryEntry,
   useTeamMembers,
 } from '../collab/useTeamMembers';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
+import { currentWorkspaceAccountGeneration, workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import {
   useWorkspaceBillingResponse,
   useWorkspaceContext,
@@ -331,6 +334,11 @@ import {
   type ProjectResourceAuthority,
 } from '../collab/collab-context';
 import { persistCommentAnchors } from '../collab/comment-anchor-client';
+import {
+  createSingleflightRunner,
+  reconcileAttachedComments,
+  reconcilePreviewComments,
+} from '../comments/comment-list-refresh';
 import type { AnchorWriteBack } from '../comments';
 import { PluginDetailsModal } from './PluginDetailsModal';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
@@ -351,6 +359,7 @@ import {
   selectAutoOpenTurnArtifact,
   selectAutoOpenTurnArtifacts,
 } from './auto-open-file';
+import { nextShareRequestNonce } from './share-request-nonce';
 import { buildRepoImportPrompt, designSystemNeedsRepoConnect } from './design-system-github-evidence';
 import { isDesignSystemProject, resolveProjectDesignSystemId } from './design-system-project';
 import { collectReferencedJsxNames } from '../runtime/jsx-module-refs';
@@ -407,7 +416,6 @@ import { createBoundedConcurrency } from '../lib/bounded-concurrency';
 import { buildContinueInCliToast } from '../lib/build-continue-in-cli-toast';
 import { buildClipboardPrompt } from '../lib/build-clipboard-prompt';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
-import { effectiveMaxTokens } from '../state/maxTokens';
 import {
   dismissHomeAttachmentUpload,
   homeAttachmentUploadsFor,
@@ -872,6 +880,12 @@ interface Props {
   initialMaterializationPending?: boolean;
   /** Workspace/member authorization lifetime for async title reads. */
   projectAuthorizationKey?: string;
+  onObservedPublicShareLink?: (share: ObservedPublicShareLink | null) => void;
+  observedPublicShareLink?: ObservedPublicShareLink | null;
+  loginUpdateRequest?: ObservedShareUpdateRequest | null;
+  onLoginUpdateRequestHandled?: (nonce: number) => void;
+  shareLoginReturn?: ShareLoginReturn | null;
+  onShareLoginReturnChange?: (request: ShareLoginReturn | null) => void;
   amrAuthRetryContinuation?: AmrAuthRetryContinuation | null;
   onArmAmrAuthRetryContinuation?: (
     continuation: Omit<AmrAuthRetryContinuation, 'accountIdAtArm' | 'createdAtMs'>,
@@ -1021,7 +1035,7 @@ let liveArtifactEventSequence = 0;
 // The brand-extraction project's design-system (brand kit) preview tab. Mirrors
 // the daemon `BRAND_KIT_FILE` (apps/daemon/src/brands/kit-render.ts); kept as a
 // local literal to respect the web↔daemon boundary.
-const BRAND_KIT_FILE = 'brand.html';
+const _BRAND_KIT_FILE = 'brand.html';
 const BRAND_EMPTY_TRANSCRIPT_RETRY_DELAYS_MS = [120, 500, 1_200, 2_000] as const;
 const BYOK_OPENCODE_UNAVAILABLE_MESSAGE =
   'BYOK API runs require OpenCode. Install OpenCode, then rescan local agents in Settings before retrying.';
@@ -2143,6 +2157,12 @@ export function ProjectView({
   resolveAuthoritativeProjectName,
   routeFileName,
   routeConversationId = null,
+  onObservedPublicShareLink,
+  observedPublicShareLink,
+  loginUpdateRequest,
+  onLoginUpdateRequestHandled,
+  shareLoginReturn,
+  onShareLoginReturnChange,
   config,
   agents,
   skills,
@@ -2913,8 +2933,8 @@ export function ProjectView({
   const autoOpenedBrandDesignSystemRef = useRef<string | null>(null);
   const brandEmptyTranscriptRetriesRef = useRef<Map<string, number>>(new Map());
   const [chatSeed, setChatSeed] = useState<{ id: string; value: string } | null>(null);
-  // Hard block from the pre-run balance gate (empty wallet or signed out);
-  // non-null renders the AmrBalanceDialog. `conversationId` remembers whose
+  // Sign-in blocks and live gateway funding rejections share these dialogs.
+  // `conversationId` remembers whose
   // queue to resume when the dialog resolves (sign-in done / recharge landed).
   const [amrBalanceGateBlock, setAmrBalanceGateBlock] = useState<
     {
@@ -2936,8 +2956,13 @@ export function ProjectView({
        * 工作区,按钮突然指向另一个工作区的账单页。
        */
       upgradeIntent: 'pricing' | 'auto_recharge';
-      snapshot: AmrWalletSnapshot;
+      snapshot: AmrWalletSnapshot | null;
       conversationId: string;
+      /** Live gateway rejections do not wait for a wallet display read. */
+      failureAuthorityKey?: string;
+      fundingRunKey?: string;
+      fundingSource?: 'preflight' | 'gateway';
+      workspaceContext?: WorkspaceCollabContext | null;
     } | null
   >(null);
   /**
@@ -3558,6 +3583,69 @@ export function ProjectView({
   }, [project.id]);
   const projectRunAuthorityKeyRef = useRef(projectRunAuthorityKey);
   projectRunAuthorityKeyRef.current = projectRunAuthorityKey;
+  const shownFundingFailuresRef = useRef(new Set<string>());
+  const fundingDialogContext = {
+    isAmr: config.mode === 'daemon' && config.agentId === 'amr',
+    branch: amrBalanceBranch,
+    scope: amrBalanceCardScope,
+    workspaceContext: projectRunBillingAuthorityContext,
+    modelId: effectiveAgentModelId(agents.find((agent) => agent.id === 'amr'), config.agentModels?.amr),
+  };
+  const fundingDialogContextRef = useRef(fundingDialogContext);
+  fundingDialogContextRef.current = fundingDialogContext;
+  // AMR funding feedback owns one dialog in its original conversation/account.
+  // Display-wallet reads and historical replays cannot open or reopen it.
+  const showAmrFundingFailure = useCallback((input: {
+    code: string | undefined;
+    runKey: string;
+    conversationId: string;
+    authorityKey: string;
+    accountGeneration: number;
+    source?: 'preflight' | 'gateway';
+    modelId?: string | null;
+  }) => {
+    if (
+      input.code !== AMR_INSUFFICIENT_BALANCE_CODE
+      || input.conversationId !== messagesConversationIdRef.current
+      || input.authorityKey !== projectRunAuthorityKeyRef.current
+      || input.accountGeneration !== currentWorkspaceAccountGeneration()
+      || !fundingDialogContextRef.current.isAmr
+      || (input.source === 'preflight' && input.modelId !== fundingDialogContextRef.current.modelId)
+    ) return;
+    const source = input.source ?? 'gateway';
+    // Only an actual gateway failure pauses pending sends. The independent
+    // read never cancels a run or changes task status.
+    if (source === 'gateway') amrGatePausedQueueConversationsRef.current.add(input.conversationId);
+    const key = `${input.accountGeneration}:${input.conversationId}:${input.runKey}`;
+    if (shownFundingFailuresRef.current.has(key)) {
+      if (source === 'gateway') setAmrBalanceGateBlock((previous) =>
+        previous?.fundingRunKey === input.runKey ? { ...previous, fundingSource: source } : previous);
+      return;
+    }
+    shownFundingFailuresRef.current.add(key);
+    const { branch, scope, workspaceContext, modelId } = fundingDialogContextRef.current;
+    setAmrBalanceGateBlock({
+      reason: 'insufficient',
+      dialog: amrBalanceBlockedDialog(branch),
+      upgradeIntent: amrBalanceDialogUpgradeIntent(branch),
+      snapshot: null,
+      modelId,
+      fundingScope: scope,
+      workspaceContext,
+      conversationId: input.conversationId,
+      failureAuthorityKey: input.authorityKey,
+      fundingRunKey: input.runKey,
+      fundingSource: source,
+    });
+  }, []);
+  useEffect(() => {
+    if (amrBalanceGateBlock?.failureAuthorityKey === undefined) return;
+    if (amrBalanceGateBlock.conversationId !== activeConversationId
+      || amrBalanceGateBlock.failureAuthorityKey !== projectRunAuthorityKey
+      || config.mode !== 'daemon' || config.agentId !== 'amr') {
+      setAmrBalanceGateBlock(null);
+    }
+  }, [activeConversationId, projectRunAuthorityKey, amrBalanceGateBlock, config.mode, config.agentId]);
   const conversationsLoadedProjectIdRef = useRef<string | null>(null);
   // Live mirror of the full project prop, for async handlers whose useCallback
   // deps only track `project.id` (e.g. the project-events handler below):
@@ -4103,7 +4191,7 @@ export function ProjectView({
           requestWorkspaceContext,
         ).then((comments) => {
           if (cancelled || previewCommentsGenerationRef.current !== commentsGeneration) return;
-          setPreviewComments(comments);
+          setPreviewComments((current) => reconcilePreviewComments(current, comments));
         }).catch(() => {
           if (cancelled || previewCommentsGenerationRef.current !== commentsGeneration) return;
           if (!reloadingCurrentConversation) setPreviewComments([]);
@@ -4503,7 +4591,7 @@ export function ProjectView({
   }, []);
 
   const refreshProjectFiles = useCallback(async (
-    options?: { fresh?: boolean },
+    options?: { fresh?: boolean; afterChange?: boolean },
     onAcceptedGeneration?: (generation: number) => void,
   ): Promise<ProjectFile[]> => {
     const requestSeq = ++projectFilesRequestSeqRef.current;
@@ -4514,6 +4602,7 @@ export function ProjectView({
         workspaceContext: projectRunWorkspaceContextRef.current,
         requireAuthoritative: true,
         ...(options?.fresh ? { fresh: true } : {}),
+        ...(options?.afterChange ? { afterChange: true } : {}),
       });
     } catch {
       // A transport/HTTP failure is not an authoritative empty directory.
@@ -6216,22 +6305,38 @@ export function ProjectView({
     ],
   );
 
-  const refreshPreviewComments = useCallback(async () => {
+  // One comment-list read at a time for this view. The generation guard only
+  // discards a stale answer; it does not stop N triggers (SSE bursts, poll,
+  // visibility, stream reconnect) from each starting a full read. The runner
+  // does: a trigger during a read buys exactly one trailing read, run with the
+  // latest trigger's closure. A different conversation starts its own read.
+  // Note: the daemon announces a pull round before this read's `/pull`
+  // response returns, so a read that itself merged rows always earns one
+  // trailing read. That read is cheap and keeps other tabs' signals honest;
+  // do not suppress it.
+  const [runPreviewCommentsRead] = useState(createSingleflightRunner);
+  const readPreviewCommentsOnce = useCallback(async () => {
     if (!activeConversationId) return;
     const commentsGeneration = ++previewCommentsGenerationRef.current;
     const next = await fetchPreviewComments(
       project.id,
       activeConversationId,
       projectRunWorkspaceContext,
+      true,
     );
     if (previewCommentsGenerationRef.current !== commentsGeneration) return;
-    setPreviewComments(next);
-    setAttachedComments((current) =>
-      current
-        .map((attached) => next.find((comment) => comment.id === attached.id))
-        .filter((comment): comment is PreviewComment => Boolean(comment)),
-    );
+    // Unchanged comments keep their objects and an unchanged list keeps its
+    // array, so a refresh that found nothing new does not re-render.
+    setPreviewComments((current) => reconcilePreviewComments(current, next));
+    setAttachedComments((current) => reconcileAttachedComments(current, next));
   }, [project.id, activeConversationId, projectRunWorkspaceContext]);
+  const refreshPreviewComments = useCallback(
+    () => runPreviewCommentsRead(
+      `${project.id}\u0000${activeConversationId ?? ''}`,
+      readPreviewCommentsOnce,
+    ),
+    [runPreviewCommentsRead, project.id, activeConversationId, readPreviewCommentsOnce],
+  );
 
   // Expose the latest refresher to the SSE handler (defined earlier) so a
   // pushed `comment-changed` can re-fetch immediately.
@@ -6509,6 +6614,64 @@ export function ProjectView({
     ],
   );
 
+  /**
+   * Invariant: handing a comment to the agent never deletes it. Only an
+   * explicit user delete emits a comment tombstone; the hand-off lifecycle is
+   * carried by `status` alone. A run that failed or was canceled did not act
+   * on the comments it was handed, so they return to 'open' and the list
+   * shows them again.
+   */
+  const releaseCommentsAfterUnsuccessfulRun = useCallback(
+    (comments: ReadonlyArray<Pick<PreviewComment, 'id' | 'conversationId'>>) => {
+      if (comments.length === 0) return;
+      const releasedIds = new Set(comments.map((comment) => comment.id));
+      commitPreviewComments((current) =>
+        current.map((comment) =>
+          releasedIds.has(comment.id) ? { ...comment, status: 'open' } : comment,
+        ),
+      );
+      void Promise.all(
+        comments.map((comment) =>
+          patchPreviewCommentStatus(
+            project.id,
+            comment.conversationId,
+            comment.id,
+            'open',
+            projectRunWorkspaceContext,
+          ),
+        ),
+      ).catch(() => {});
+    },
+    [project.id, commitPreviewComments, projectRunWorkspaceContext],
+  );
+
+  /**
+   * Invariant: a comment is 'applying' only while a run that carries it
+   * exists or is still going to be created. A queued send reserves its
+   * comments before any run exists, so every way that send can end without a
+   * run (held by a pre-run gate, stopped or failed before the run was
+   * created, taken out of the queue) gives them back to 'open'. A held send
+   * that starts later reserves them again when its run begins.
+   */
+  const releaseCommentsOfSendWithoutRun = useCallback(
+    (send: Pick<QueuedChatSend, 'conversationId' | 'commentAttachments'>) => {
+      const reservedCommentIds = new Set(
+        previewCommentsRef.current
+          .filter((comment) => comment.status === 'applying')
+          .map((comment) => comment.id),
+      );
+      releaseCommentsAfterUnsuccessfulRun(
+        send.commentAttachments
+          .filter(
+            (attachment) =>
+              attachment.source !== 'board-batch' && reservedCommentIds.has(attachment.id),
+          )
+          .map((attachment) => ({ id: attachment.id, conversationId: send.conversationId })),
+      );
+    },
+    [releaseCommentsAfterUnsuccessfulRun],
+  );
+
   // Maximum number of times we will retry fetching a null status for a
   // spuriouslyFailedPending run before treating the absence as authoritative
   // completion.  Transient null-status retries are bounded; after
@@ -6541,6 +6704,7 @@ export function ProjectView({
     if (config.mode !== 'daemon' || !daemonLive || !activeConversationId || streaming) return;
     let cancelled = false;
     const reattachConversationId = activeConversationId;
+    const reattachAccountGeneration = currentWorkspaceAccountGeneration();
 
     const attachRecoverableRuns = async () => {
       const missingRunIdMessages = messages.filter((m) => {
@@ -6948,7 +7112,7 @@ export function ProjectView({
 
             // A terminal run's artifact paths must resolve against a post-run
             // read, not a shared file-list result cached before its last write.
-            let nextFiles = await refreshProjectFiles({ fresh: true });
+            let nextFiles = await refreshProjectFiles({ fresh: true, afterChange: true });
             const beforeFileNames = new Set(
               message.preTurnFileNames ?? nextFiles.map((f) => f.name),
             );
@@ -7481,7 +7645,7 @@ export function ProjectView({
                 const preTurn = message.preTurnFileNames;
                 // Match live completion: the terminal artifact list can be
                 // newer than the GET coalescer's last successful file read.
-                let nextFiles = await refreshProjectFiles({ fresh: true });
+                let nextFiles = await refreshProjectFiles({ fresh: true, afterChange: true });
                 let artifactPersistenceSucceeded = false;
                 let artifactPersistenceError: string | undefined;
                 // Use the turn-start snapshot when available so reload
@@ -7624,6 +7788,13 @@ export function ProjectView({
               const runMayFinalize =
                 !supersededRunsRef.current.has(controller);
               keepManualFileWritesForRecovery = genericDisconnect && runMayFinalize;
+              if (runMayFinalize && isActiveRunStatus(status.status) && (message.agentId ?? status.agentId) === 'amr') {
+                showAmrFundingFailure({
+                  code: errorCode, runKey: message.id, conversationId: reattachConversationId,
+                  authorityKey: projectRunAuthorityKey,
+                  accountGeneration: reattachAccountGeneration,
+                });
+              }
               if (keepManualFileWritesForRecovery) manualFileWriteRegistration.release(true);
               textBuffer.flush();
               textBuffer.cancel();
@@ -8085,6 +8256,7 @@ export function ProjectView({
     scheduleProjectTimeout,
     scheduleConversationMessageRefresh,
     recoveryTick,
+    showAmrFundingFailure,
   ]);
 
   useEffect(() => {
@@ -8372,7 +8544,16 @@ export function ProjectView({
     commitQueuedChatSends(next);
   }, [commitQueuedChatSends]);
 
+  // The user taking a send out of the queue, as opposed to the drain removing
+  // one whose run has started.
+  const discardQueuedChatSend = useCallback((id: string) => {
+    const item = queuedChatSendsRef.current.find((candidate) => candidate.id === id);
+    removeQueuedChatSend(id);
+    if (item) releaseCommentsOfSendWithoutRun(item);
+  }, [releaseCommentsOfSendWithoutRun, removeQueuedChatSend]);
+
   const updateQueuedChatSend = useCallback((id: string, update: QueuedChatSendUpdate) => {
+    const edited = queuedChatSendsRef.current.find((item) => item.id === id);
     const next = queuedChatSendsRef.current.map((item) => {
       if (item.id !== id) return item;
       const meta = stripQueueOnlyFromMeta({ ...(item.meta ?? {}), ...(update.meta ?? {}) });
@@ -8387,7 +8568,16 @@ export function ProjectView({
       return updated;
     });
     commitQueuedChatSends(next);
-  }, [commitQueuedChatSends]);
+    if (edited) {
+      const keptCommentIds = new Set(update.commentAttachments.map((attachment) => attachment.id));
+      releaseCommentsOfSendWithoutRun({
+        conversationId: edited.conversationId,
+        commentAttachments: edited.commentAttachments.filter(
+          (attachment) => !keptCommentIds.has(attachment.id),
+        ),
+      });
+    }
+  }, [commitQueuedChatSends, releaseCommentsOfSendWithoutRun]);
 
   const prioritizeQueuedChatSend = useCallback((id: string) => {
     const item = queuedChatSendsRef.current.find((candidate) => candidate.id === id);
@@ -8425,6 +8615,9 @@ export function ProjectView({
     attachments: ChatAttachment[];
     commentAttachments: ChatCommentAttachment[];
     conversationId: string;
+    /** A pre-run gate is holding this send, so no run is coming on its own
+     *  and its comments are not reserved. */
+    heldBeforeRun?: boolean;
     meta?: ProjectChatSendMeta;
     prompt: string;
   }) => {
@@ -8452,7 +8645,7 @@ export function ProjectView({
       setAttachedComments((current) =>
         current.filter((comment) => !reservedCommentIds.has(comment.id)),
       );
-      if (reservedCommentIds.size > 0) {
+      if (reservedCommentIds.size > 0 && !input.heldBeforeRun) {
         commitPreviewComments((current) =>
           current.map((comment) =>
             reservedCommentIds.has(comment.id)
@@ -8487,6 +8680,7 @@ export function ProjectView({
       if (!activeConversationId) return false;
       if (messagesConversationIdRef.current !== activeConversationId) return false;
       const clientRequestId = meta?.clientRequestId ?? randomUUID();
+      const sendAccountGeneration = currentWorkspaceAccountGeneration();
       meta = {
         ...(meta ?? {}),
         clientRequestId,
@@ -8601,8 +8795,9 @@ export function ProjectView({
           meta: { ...(meta ?? {}), sessionMode: runSessionMode, taskAnalytics },
         });
         // `true` means the send has been durably accepted by this view's
-        // queue. Callers that own persisted annotations may only remove them
-        // after this acknowledgement; preflight rejection remains `false`.
+        // queue. Callers that hold a saved comment in their composer may only
+        // let go of it after this acknowledgement; preflight rejection
+        // remains `false`. The comment itself is never deleted by a send.
         return true;
       }
       if (currentConversationBusy) {
@@ -8692,6 +8887,9 @@ export function ProjectView({
         commentAttachments: commentAttachments.length > 0 ? commentAttachments : undefined,
       };
       const runCommentAttachments = userMsg.commentAttachments ?? [];
+      const runSavedComments = runCommentAttachments
+        .filter((attachment) => attachment.source !== 'board-batch')
+        .map((attachment) => ({ id: attachment.id, conversationId: runConversationId }));
       const runAttachments = mergeChatAttachments(
         userMsg.attachments ?? [],
         ...runCommentAttachments.map((attachment) =>
@@ -8789,6 +8987,28 @@ export function ProjectView({
         return nextVisibleMessages;
       });
       markStreamingConversation(runConversationId);
+      let fundingHintRelevant = true;
+      const retireFundingHint = () => {
+        if (!fundingHintRelevant) return;
+        fundingHintRelevant = false;
+        setAmrBalanceGateBlock((previous) => previous?.fundingSource === 'preflight'
+          && previous.fundingRunKey === assistantId ? null : previous);
+      };
+      if (config.mode === 'daemon' && assistantAgentId === 'amr') {
+        const modelId = effectiveAgentModelId(selectedAgent, selectedAgentChoice);
+        // Start alongside send preparation, before any agent spawn or run POST.
+        // A stalled/unsupported preflight has no effect on sending.
+        void checkAmrFundingFeedback(amrBalanceCardScope, modelId).then((result) => {
+          if (result !== 'insufficient' || !fundingHintRelevant ||
+            streamingConversationIdRef.current !== runConversationId ||
+            memoryTurnAssistantRef.current?.assistantId !== assistantId) return;
+          showAmrFundingFailure({
+            code: AMR_INSUFFICIENT_BALANCE_CODE, runKey: assistantId,
+            conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+            accountGeneration: sendAccountGeneration, source: 'preflight', modelId,
+          });
+        });
+      }
       /**
        * 把刚画出去的那一轮收回 —— 只有预检拒绝时才走这里。
        *
@@ -8797,6 +9017,7 @@ export function ProjectView({
        * 进行中标记仍要清 —— 它是按会话 id 认领的,清的就是这一条。
        */
       const retractPaintedTurn = () => {
+        retireFundingHint();
         const restore = paintedFrom.messages;
         paintedFrom.messages = null;
         clearStreamingMarker(runConversationId);
@@ -8804,11 +9025,9 @@ export function ProjectView({
         if (messagesConversationIdRef.current !== runConversationId) return;
         setMessages(restore);
       };
-      // OpenDesign Cloud pre-run balance gate: a definitively insufficient
-      // wallet blocks the run BEFORE any message is persisted or a daemon run
-      // spawned, surfacing the subscription dialog instead of a mid-run
-      // AMR_INSUFFICIENT_BALANCE failure. Sends the home submit already gated
-      // (amrGatePrechecked) pass straight through — the user answered there.
+      // The send check confirms sign-in only; funding is decided by Link as
+      // the run starts. Home sends that already checked the same identity skip
+      // the duplicate sign-in read here.
       if (amrGateApplies) {
         const gateConversationId = runConversationId;
         amrGateInFlightConversationsRef.current.add(gateConversationId);
@@ -8864,7 +9083,7 @@ export function ProjectView({
           //
           // ⚠️ An EXHAUSTED wallet is not one of those states — see
           // `rejectBlockedSend` below (OPEND-2719).
-          const queueGateSend = (): boolean => {
+          const queueGateSend = (heldBeforeRun = false): boolean => {
             // 判定拒绝 = 这一轮不会有 run。先把已经画出去的那一轮收回,再决定
             // 它去哪儿 —— 三条拒绝路(会话切走 / 拦截 / 读不到)都经过这里,
             // 所以收回只写一处。放行那两档(soft / allow)碰不到它。
@@ -8875,6 +9094,7 @@ export function ProjectView({
                 prompt,
                 attachments: effectiveAttachments,
                 commentAttachments,
+                heldBeforeRun,
                 meta: { ...(meta ?? {}), sessionMode: runSessionMode, taskAnalytics },
               });
               return true;
@@ -8882,7 +9102,7 @@ export function ProjectView({
             return false;
           };
           const parkBlockedSend = (): boolean => {
-            const queued = queueGateSend();
+            const queued = queueGateSend(true);
             amrGatePausedQueueConversationsRef.current.add(gateConversationId);
             return queued;
           };
@@ -9553,10 +9773,13 @@ export function ProjectView({
       );
       const cancelController = new AbortController();
       let authoritativeArtifactPaths: string[] | undefined;
+      // onDone is delivered for a canceled run too; onRunStatus says which.
+      let runReportedCanceled = false;
       abortRef.current = controller;
       cancelRef.current = cancelController;
       const handlers = {
         onDelta: (delta: string) => {
+          if (delta.trim()) retireFundingHint();
           // See reattach-path comment above for rationale.  PR #4651 round 9.
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
@@ -9567,6 +9790,7 @@ export function ProjectView({
           textBuffer.appendContent(delta);
         },
         onAgentEvent: (ev: AgentEvent) => {
+          if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use') retireFundingHint();
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
             genericDisconnectRetriesRef.current.delete(currentRunId);
@@ -9628,6 +9852,7 @@ export function ProjectView({
           });
         },
         onDone: (fullText = '') => {
+          retireFundingHint();
           liveFocusClosed = true;
           // The daemon delivers onDone even for a canceled run, so a run
           // superseded by a "send now" interrupt can still land here and must
@@ -9682,9 +9907,7 @@ export function ProjectView({
               true,
               { telemetryFinalized: true },
             );
-            if (runCommentAttachments.length > 0) {
-              void patchAttachedStatuses(runCommentAttachments, 'failed');
-            }
+            releaseCommentsAfterUnsuccessfulRun(runSavedComments);
             const ownsCurrentRun = clearCurrentRunStreamingMarker(
               runConversationId,
               controller,
@@ -9731,7 +9954,9 @@ export function ProjectView({
               && latestRunMessage?.id === assistantId;
           };
           if (finalizingRunId) finalizingLocalRunIdsRef.current.add(finalizingRunId);
-          if (runCommentAttachments.length > 0) {
+          if (runReportedCanceled) {
+            releaseCommentsAfterUnsuccessfulRun(runSavedComments);
+          } else if (runCommentAttachments.length > 0) {
             void patchAttachedStatuses(runCommentAttachments, 'needs_review');
           }
           const ownsCurrentRun = clearCurrentRunStreamingMarker(
@@ -9750,7 +9975,7 @@ export function ProjectView({
               // otherwise win the race with the file-change invalidation and
               // make this turn persist an empty producedFiles list. Completion
               // attribution needs a fresh post-run snapshot.
-              let nextFiles = await refreshProjectFiles({ fresh: true });
+              let nextFiles = await refreshProjectFiles({ fresh: true, afterChange: true });
               let artifactPersistenceSucceeded = false;
               let artifactPersistenceError: string | undefined;
               const finalText = streamedText || fullText;
@@ -9918,9 +10143,7 @@ export function ProjectView({
               });
               if (deliveryOutcome === 'no_result' || deliveryOutcome === 'delivery_failed') {
                 setError(artifactPersistenceError ?? DESIGN_RESULT_MISSING_DETAIL);
-                if (runCommentAttachments.length > 0) {
-                  void patchAttachedStatuses(runCommentAttachments, 'failed');
-                }
+                releaseCommentsAfterUnsuccessfulRun(runSavedComments);
               }
               await auditDesignSystemWorkspaceAfterRun(assistantId);
             } finally {
@@ -9941,6 +10164,8 @@ export function ProjectView({
           // this stale pre-probe timestamp.
           let endedAt = Date.now();
           const errorCode = (err as Error & { code?: string }).code;
+          if (errorCode !== AMR_INSUFFICIENT_BALANCE_CODE) retireFundingHint();
+          else fundingHintRelevant = false;
           const resumable = (err as Error & { resumable?: boolean }).resumable === true;
           let finalRunStatusAfterError: ChatMessage['runStatus'] = 'failed';
           let refreshConversationAfterError = false;
@@ -9961,6 +10186,13 @@ export function ProjectView({
           // tagged superseded. See the onDone above for the ownership rationale.
           const runMayFinalize =
             !supersededRunsRef.current.has(controller);
+          if (runMayFinalize && config.mode === 'daemon' && assistantAgentId === 'amr') {
+            showAmrFundingFailure({
+              code: errorCode, runKey: assistantId,
+              conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+              accountGeneration: sendAccountGeneration,
+            });
+          }
           if (currentRunId && runMayFinalize && isGenericDaemonDisconnect(err)) {
             manualFileWriteRegistration.release(true);
           }
@@ -9974,6 +10206,14 @@ export function ProjectView({
           if (config.mode === 'daemon' && !currentRunId) {
             if (runMayFinalize) {
               setError(null);
+              if (errorCode === 'CONVERSATION_NOT_FOUND') {
+                setProjectActionsToast({
+                  message: t('chat.sendTargetMissing'),
+                  details: null,
+                  tone: 'error',
+                  scope: 'chat-pane',
+                });
+              }
               activeCompletionNotificationRunsRef.current.delete(assistantId);
               setConversations((current) =>
                 current.map((conversation) => {
@@ -10003,9 +10243,7 @@ export function ProjectView({
                 if (failedUser) persistMessage(failedUser);
                 return next;
               });
-              if (runCommentAttachments.length > 0) {
-                void patchAttachedStatuses(runCommentAttachments, 'failed');
-              }
+              releaseCommentsAfterUnsuccessfulRun(runSavedComments);
             }
             clearTraceTouchedFilePaths();
             clearCurrentRunStreamingMarker(
@@ -10039,9 +10277,7 @@ export function ProjectView({
                 : prev.runStatus,
               resumable,
             }));
-            if (runCommentAttachments.length > 0) {
-              void patchAttachedStatuses(runCommentAttachments, 'failed');
-            }
+            releaseCommentsAfterUnsuccessfulRun(runSavedComments);
           }
           // Mark the run as completed in the reattach registry so that
           // attachRecoverableRuns does not race it after streaming ends.
@@ -10198,7 +10434,7 @@ export function ProjectView({
             ...(authoritativeArtifactPaths ?? []),
           ];
           void (async () => {
-            const nextFiles = await refreshProjectFiles({ fresh: true });
+            const nextFiles = await refreshProjectFiles({ fresh: true, afterChange: true });
             if (authoritativeArtifactPaths === undefined) return;
             const ownedFiles = attributableRunFiles(
               nextFiles, manualFileWrites, authoritativeTouchedPaths, project.id, projectDetail.resolvedDir,
@@ -10349,6 +10585,8 @@ export function ProjectView({
           sessionMode: runSessionMode,
           appliedPluginSnapshotId:
             meta?.appliedPluginSnapshotId ?? meta?.appliedPluginSnapshot?.snapshotId ?? null,
+          pluginId: meta?.appliedPluginSnapshot?.pluginId,
+          pluginInputs: meta?.appliedPluginSnapshot?.inputs,
           research: meta?.research,
           mediaExecution: mediaExecutionPolicyForProjectMetadata(project.metadata),
           model: daemonByokOpenCode ? config.model : choice?.model ?? null,
@@ -10458,6 +10696,7 @@ export function ProjectView({
             // no assistant run to finalize or persist; onError moves the failure
             // to the user row instead.
             if (!currentRunId && runStatus === 'failed') return;
+            runReportedCanceled = runStatus === 'canceled';
             const endedAt = isTerminalRunStatus(runStatus) ? Date.now() : undefined;
             const runMayFinalize =
               !supersededRunsRef.current.has(controller);
@@ -10597,6 +10836,8 @@ export function ProjectView({
           sessionMode: runSessionMode,
           appliedPluginSnapshotId:
             meta?.appliedPluginSnapshotId ?? meta?.appliedPluginSnapshot?.snapshotId ?? null,
+          pluginId: meta?.appliedPluginSnapshot?.pluginId,
+          pluginInputs: meta?.appliedPluginSnapshot?.inputs,
           research: meta?.research,
           mediaExecution: mediaExecutionPolicyForProjectMetadata(project.metadata),
           model: config.model,
@@ -10697,6 +10938,7 @@ export function ProjectView({
             }));
           },
           onRunStatus: (runStatus) => {
+            runReportedCanceled = runStatus === 'canceled';
             const endedAt = isTerminalRunStatus(runStatus) ? Date.now() : undefined;
             const runMayFinalize = !supersededRunsRef.current.has(controller);
             // 见 CLI / AMR 路径同名回调:落终态就把重连那一行让出去。
@@ -10764,6 +11006,7 @@ export function ProjectView({
       persistMessageById,
       auditDesignSystemWorkspaceAfterRun,
       patchAttachedStatuses,
+      releaseCommentsAfterUnsuccessfulRun,
       updateMessageById,
       markStreamingConversation,
       observeMemoryRun,
@@ -10789,6 +11032,8 @@ export function ProjectView({
       projectRunHasBillableAmrPrincipal,
       projectMutationReadOnly,
       projectWorkspaceScopeState.scope,
+      showAmrFundingFailure,
+      amrBalanceCardScope,
     ],
   );
 
@@ -10933,6 +11178,22 @@ export function ProjectView({
       controller.abort();
     }
     reattachControllersRef.current.clear();
+    // Stopping aborts the stream, so the stopped turn never reports a terminal
+    // status of its own. Release ONLY the in-flight run's comments: queued
+    // sends (including one being prioritized by "send now") also hold their
+    // attachments in 'applying', and those must stay reserved — the run that
+    // drains them re-applies them. The in-flight run's comments are exactly
+    // the 'applying' ones not owned by any queued send.
+    const queuedCommentIds = new Set(
+      queuedChatSendsRef.current.flatMap((send) =>
+        send.commentAttachments.map((attachment) => attachment.id),
+      ),
+    );
+    releaseCommentsAfterUnsuccessfulRun(
+      previewCommentsRef.current.filter(
+        (comment) => comment.status === 'applying' && !queuedCommentIds.has(comment.id),
+      ),
+    );
     setStreaming(false);
     streamingConversationIdRef.current = null;
     setStreamingConversationId(null);
@@ -10949,6 +11210,7 @@ export function ProjectView({
     onProjectsRefresh,
     persistMessage,
     projectDetail.refresh,
+    releaseCommentsAfterUnsuccessfulRun,
     requestOpenFile,
     refreshWorkspaceItems,
   ]);
@@ -10962,6 +11224,24 @@ export function ProjectView({
     if (!target) return;
     setSlideNavRequest({ name: target.filePath, slideIndex: target.slideIndex, nonce: Date.now() });
   }, []);
+
+  // Starts a queued send. One that ends without a run stays in the queue, but
+  // no longer holds its comments.
+  const startQueuedChatSend = useCallback(async (item: QueuedChatSend): Promise<boolean> => {
+    let started = false;
+    try {
+      started = await handleSend(
+        item.prompt,
+        item.attachments,
+        item.commentAttachments,
+        { ...(item.meta ?? {}), queueDrain: true },
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    if (!started) releaseCommentsOfSendWithoutRun(item);
+    return started;
+  }, [handleSend, releaseCommentsOfSendWithoutRun]);
 
   const sendQueuedChatSendNow = useCallback((id: string) => {
     const item = queuedChatSendsRef.current.find((candidate) => candidate.id === id);
@@ -10983,56 +11263,17 @@ export function ProjectView({
       for (const controller of reattachControllersRef.current.values()) {
         supersededRunsRef.current.add(controller);
       }
-      // The interrupted turn moved its preview-comment attachments to
-      // 'applying' when it started; since we now suppress its terminal
-      // callbacks, reset them to 'open' so they don't stay stuck mid-apply.
-      // Reset ONLY the in-flight run's comments: queued sends (including the
-      // one being prioritized) also hold their attachments in 'applying', and
-      // those must stay reserved — the replacement run re-applies them. The
-      // in-flight run's comments are exactly the 'applying' ones not owned by
-      // any queued send.
-      const queuedCommentIds = new Set(
-        queuedChatSendsRef.current.flatMap((send) =>
-          send.commentAttachments.map((attachment) => attachment.id),
-        ),
-      );
-      const stuckApplying = previewCommentsRef.current.filter(
-        (comment) => comment.status === 'applying' && !queuedCommentIds.has(comment.id),
-      );
-      if (stuckApplying.length > 0) {
-        const resetIds = new Set(stuckApplying.map((comment) => comment.id));
-        commitPreviewComments((current) =>
-          current.map((comment) =>
-            resetIds.has(comment.id) ? { ...comment, status: 'open' } : comment,
-          ),
-        );
-        void Promise.all(
-          stuckApplying.map((comment) =>
-            patchPreviewCommentStatus(
-              project.id,
-              comment.conversationId,
-              comment.id,
-              'open',
-              projectRunWorkspaceContext,
-            ),
-          ),
-        ).catch(() => {});
-      }
+      // handleStop releases the interrupted turn's comments back to 'open'.
       prioritizeQueuedChatSend(id);
       handleStop();
       return;
     }
     void (async () => {
       armSlideNavForQueuedSend(item);
-      const started = await handleSend(
-        item.prompt,
-        item.attachments,
-        item.commentAttachments,
-        { ...(item.meta ?? {}), queueDrain: true },
-      );
+      const started = await startQueuedChatSend(item);
       if (started) removeQueuedChatSend(id);
     })();
-  }, [armSlideNavForQueuedSend, commitPreviewComments, currentConversationBusy, handleSend, handleStop, prioritizeQueuedChatSend, project.id, removeQueuedChatSend, projectRunWorkspaceContext]);
+  }, [armSlideNavForQueuedSend, currentConversationBusy, handleStop, prioritizeQueuedChatSend, removeQueuedChatSend, startQueuedChatSend]);
 
   /*
    * B11 「引导对话」 —— 队列行领头那颗按钮走的就是上面的
@@ -11087,12 +11328,7 @@ export function ProjectView({
     startingQueuedChatSendIdRef.current = next.id;
     armSlideNavForQueuedSend(next);
     void (async () => {
-      const started = await handleSend(
-        next.prompt,
-        next.attachments,
-        next.commentAttachments,
-        { ...(next.meta ?? {}), queueDrain: true },
-      );
+      const started = await startQueuedChatSend(next);
       if (!started) {
         if (startingQueuedChatSendIdRef.current === next.id) {
           startingQueuedChatSendIdRef.current = null;
@@ -11114,7 +11350,7 @@ export function ProjectView({
     currentConversationBusy,
     queuedAutoStartTick,
     queuedChatSends,
-    handleSend,
+    startQueuedChatSend,
     removeQueuedChatSend,
     scheduleProjectTimeout,
   ]);
@@ -11324,11 +11560,27 @@ export function ProjectView({
       commentAttachments: ChatCommentAttachment[],
       images: File[] = [],
     ): Promise<CommentSendResult> => {
+      const finish = (result: CommentSendResult): CommentSendResult => {
+        observeAnalytics(() => {
+          const submittedIds = savedCommentIds(commentAttachments) ?? [];
+          const returnedIds = new Set(result.commentIds);
+          trackProjectCommentSendResult(analytics.track, {
+            page_name: 'artifact',
+            area: 'comment_popover',
+            project_id: project.id,
+            project_kind: projectKindFromMetadataToTracking(project.metadata),
+            result: result.status,
+            submitted_comment_ids: submittedIds,
+            comment_ids: submittedIds.filter((id) => returnedIds.has(id)),
+          });
+        });
+        return result;
+      };
       if (currentConversationQueueDisabled) {
-        return { status: 'rejected', commentIds: [] };
+        return finish({ status: 'rejected', commentIds: [] });
       }
       if (commentAttachments.length === 0 && images.length === 0) {
-        return { status: 'rejected', commentIds: [] };
+        return finish({ status: 'rejected', commentIds: [] });
       }
       setWorkspaceFocused(false);
       setCommentInspectorActive(false);
@@ -11344,7 +11596,7 @@ export function ProjectView({
           projectRunWorkspaceContext,
         );
         if (result.uploaded.length !== images.length) {
-          return { status: 'rejected', commentIds: [] };
+          return finish({ status: 'rejected', commentIds: [] });
         }
         uploaded = result.uploaded;
       }
@@ -11352,10 +11604,10 @@ export function ProjectView({
         const queued = uploaded.length > 0
           ? await handleSend('', uploaded, [], { queueOnly: true, entryFrom: 'comment' })
           : false;
-        return {
+        return finish({
           status: queued ? 'queued' : 'rejected',
           commentIds: [],
-        };
+        });
       }
       const queuedCommentIds: string[] = [];
       for (let i = 0; i < commentAttachments.length; i++) {
@@ -11371,13 +11623,13 @@ export function ProjectView({
           { queueOnly: true, entryFrom: 'comment' },
         );
         if (!queued) {
-          return { status: 'rejected', commentIds: queuedCommentIds };
+          return finish({ status: 'rejected', commentIds: queuedCommentIds });
         }
         queuedCommentIds.push(commentAttachment.id);
       }
-      return { status: 'queued', commentIds: queuedCommentIds };
+      return finish({ status: 'queued', commentIds: queuedCommentIds });
     },
-    [handleSend, project.id, currentConversationQueueDisabled, projectRunWorkspaceContext],
+    [handleSend, project.id, project.metadata, analytics.track, currentConversationQueueDisabled, projectRunWorkspaceContext],
   );
   const commentQueueOnSend = currentConversationBusy && !currentConversationQueueDisabled;
 
@@ -12218,7 +12470,7 @@ export function ProjectView({
               ? retryPending.failedAssistantId : null,
             supersededErrorAssistantIds,
             onStop: handleStop,
-            onRemoveQueuedSend: removeQueuedChatSend,
+            onRemoveQueuedSend: discardQueuedChatSend,
             onUpdateQueuedSend: updateQueuedChatSend,
             onReorderQueuedSends: reorderCurrentConversationQueuedChatSends,
             // B11 「引导对话」: one button, always offered. The handler already
@@ -12246,7 +12498,7 @@ export function ProjectView({
       handleComposerSend,
       handleStop,
       messages,
-      removeQueuedChatSend,
+      discardQueuedChatSend,
       reorderCurrentConversationQueuedChatSends,
       sendQueuedChatSendNow,
       updateQueuedChatSend,
@@ -12517,7 +12769,11 @@ export function ProjectView({
   const handleArtifactShare = useCallback(
     (fileName: string, anchorId?: string) => {
       requestOpenFile(fileName);
-      setShareRequest({ name: fileName, nonce: Date.now(), ...(anchorId ? { anchorId } : {}) });
+      setShareRequest((previous) => ({
+        name: fileName,
+        nonce: nextShareRequestNonce(previous?.nonce, Date.now()),
+        ...(anchorId ? { anchorId } : {}),
+      }));
     },
     [requestOpenFile],
   );
@@ -13304,7 +13560,7 @@ export function ProjectView({
   // Continue in CLI / Finalize design package handlers + keyboard
   // shortcut wiring. Close to the JSX so the data flow is easy to
   // trace from the toolbar back to its sources.
-  const handleFinalize = useCallback(() => {
+  const _handleFinalize = useCallback(() => {
     const request = buildFinalizeRequest(config);
     if (!request) {
       setProjectActionsToast(buildFinalizeCredentialsMissingToast(config));
@@ -13315,7 +13571,7 @@ export function ProjectView({
     });
   }, [finalize, config, designMdState]);
 
-  const handleCancelFinalize = useCallback(() => {
+  const _handleCancelFinalize = useCallback(() => {
     finalize.cancel();
   }, [finalize]);
 
@@ -13876,7 +14132,7 @@ export function ProjectView({
               // 后台重挂可能发生在别的会话上,那一行不该串进这一屏。
               reconnect={reconnectViewForConversation(reconnectView, activeConversationId)}
               onManualReconnect={handleManualReconnect}
-              onRemoveQueuedSend={removeQueuedChatSend}
+              onRemoveQueuedSend={discardQueuedChatSend}
               onUpdateQueuedSend={updateQueuedChatSend}
               onReorderQueuedSends={reorderCurrentConversationQueuedChatSends}
               onSendQueuedNow={sendQueuedChatSendNow}
@@ -14153,6 +14409,12 @@ export function ProjectView({
           filesGeneration={committedFilesGeneration}
           onRefreshFiles={refreshFileWorkspace}
           onManualFileWritten={recordManualFileWrite}
+          onObservedPublicShareLink={onObservedPublicShareLink}
+          observedPublicShareLink={observedPublicShareLink}
+          loginUpdateRequest={loginUpdateRequest}
+          onLoginUpdateRequestHandled={onLoginUpdateRequestHandled}
+          shareLoginReturn={shareLoginReturn}
+          onShareLoginReturnChange={onShareLoginReturnChange}
           isDeck={isDeck}
           streaming={currentConversationActionDisabled}
           // The building preview needs a real run, not the disabled-actions
@@ -14162,6 +14424,7 @@ export function ProjectView({
           runInFlight={currentConversationStreaming || currentConversationHasActiveRun}
           commentQueueOnSend={commentQueueOnSend}
           commentSendDisabled={currentConversationQueueDisabled}
+          routeFileName={routeFileName}
           openRequest={openRequest}
           browserOpenRequest={browserOpenRequest}
           pinnedBrowserTabId={projectIsProgrammaticBrandExtraction ? BRAND_BROWSER_TAB_ID : null}
@@ -14294,28 +14557,24 @@ export function ProjectView({
           reason={amrBalanceGateBlock.reason}
           modelId={amrBalanceGateBlock.modelId}
           fundingScope={amrBalanceGateBlock.fundingScope}
-          balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
-          profile={amrBalanceGateBlock.snapshot.profile}
+          balanceUsd={amrBalanceGateBlock.snapshot?.balanceUsd ?? null}
+          profile={amrBalanceGateBlock.snapshot?.profile ?? null}
           entrySource="chat_balance_gate_upgrade"
           upgradeIntent={amrBalanceGateBlock.upgradeIntent}
           // 弹窗和卡上那颗必须从**同一份**上下文算落点。默认那条(环境里选中
           // 的工作区)对首页是对的,对项目页不是:这一笔钱是项目那个工作区出的,
           // 环境里未必就是它。两处不同源正是产品文档说的「卡和弹窗跳去不同的
           // 地方是缺陷而不是特性」。
-          workspaceContext={projectRunBillingAuthorityContext}
+          workspaceContext={amrBalanceGateBlock.workspaceContext === undefined
+            ? projectRunBillingAuthorityContext : amrBalanceGateBlock.workspaceContext}
           metricsConsent={config.telemetry?.metrics === true}
           installationId={config.installationId}
           onClose={() => setAmrBalanceGateBlock(null)}
           onResolved={() => {
-            // Sign-in completed or the recharge landed: lift the balance
-            // pause and kick the drain so anything parked starts on its own
-            // (it still re-gates, so a half-measure recharge surfaces the
-            // soft reminder rather than silently failing mid-run).
-            //
-            // ⚠️ Since OPEND-2719 the exhausted-wallet block no longer parks
-            // its own send — that draft went back to the composer. What this
-            // still drains is whatever the OTHER blocked states (signed out,
-            // unreadable billing) parked earlier in this conversation.
+            // Resume pending sends after sign-in or funding recovery. A run
+            // that already failed remains in history for an explicit retry;
+            // this only releases other sends waiting in the queue. Link still
+            // makes the final funding decision for each new run.
             const conversationId = amrBalanceGateBlock.conversationId;
             setAmrBalanceGateBlock(null);
             amrGatePausedQueueConversationsRef.current.delete(conversationId);
@@ -14602,7 +14861,7 @@ function normalizeProjectFileName(value: string): string {
   return value.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
 }
 
-function assistantAgentDisplayName(
+function _assistantAgentDisplayName(
   agentId: string | null,
   fallbackName?: string,
 ): string | undefined {
