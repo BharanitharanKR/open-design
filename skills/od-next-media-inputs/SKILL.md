@@ -68,8 +68,9 @@ the Core imagery-by-type rule; it is the only source of those rules.
   usable image is found.
 - Download at display size (long edge 1600 px or less) and keep each JPEG or
   WebP under about 400 KB.
-- Record each photo's page URL, author when shown, and license returned by the source in a comment or sidecar next to the
-  asset.
+- Preserve each photo's page URL, author when shown, and license returned by
+  the source in a sidecar next to the asset. Apply the Core Image attribution
+  rule to decide whether any of that metadata belongs in the visible artifact.
 - When the time budget runs out, keep the files that succeeded. Use a
   disclosed placeholder for any remaining slot.
 

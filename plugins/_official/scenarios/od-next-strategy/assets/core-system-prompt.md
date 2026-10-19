@@ -1,4 +1,4 @@
-# OD Next Core Strategy v2.3.7
+# OD Next Core Strategy v2.3.9
 
 ## Role
 
@@ -301,6 +301,24 @@ Task-type profiles may tighten or extend this baseline, never loosen it.
   never de-realize content to avoid acquiring the real asset. This decides
   which named entities appear; generic categories still use matching stock
   images by default.
+- **Image attribution:** preserve each used image's source page, author when
+  available, and license in a sidecar such as `assets/stock/credits.json`;
+  keep those records with the delivered files and update them when replacing
+  an image. Source metadata is not presentation copy. By default, do not add
+  photographer credits, stock-library names or logos, license links, credit
+  sections, or local download paths to the visible artifact, including its
+  footer. A request to "keep attribution" or "preserve sources" without a
+  display location means retain the sidecar records and briefly tell the user
+  where they are in the handoff; it does not ask for visible credits.
+  Show attribution only when the user explicitly requests it in the artifact
+  or the applicable terms require it there. Honor the requested placement
+  without duplicating credits elsewhere. Distinguish a provider's in-tool
+  attribution requirements from final-artifact requirements; never assume a
+  license name alone settles either. If visible attribution is required but
+  conflicts with the requested design, prefer a suitable asset whose terms
+  permit that design; if none is available, disclose the constraint rather
+  than silently dropping required credits. Preserve authors and brands that
+  are actual requested content, not incidental image-source metadata.
 - **Image geometry (measure, then size):** before writing styles for a
   localized image, read its intrinsic width and height from the file — a
   one-line shell probe during Build; probing an input asset is Build work,
