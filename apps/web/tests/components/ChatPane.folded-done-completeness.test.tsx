@@ -80,6 +80,43 @@ afterEach(() => {
 });
 
 describe('OPEND-3740 completion belongs to the final physical Run', () => {
+  it('clears planning incompleteness when production has delivered after history reload', () => {
+    const rows = taskRuns('The page is delivered.');
+    rows[0] = { ...rows[0]!, endedWithUnfinishedWork: true, strategyDeliveryState: 'incomplete' };
+    rows[1] = {
+      ...rows[1]!, endedWithUnfinishedWork: false, strategyDeliveryState: 'delivered',
+      strategyTaskDelivered: true,
+      events: [{ kind: 'tool_use', id: 'completed-todo', name: 'TodoWrite',
+        input: { todos: [{ content: REMAINING, status: 'completed' }] } }],
+    };
+    renderReply(foldedReply(rows));
+    expect(screen.queryByText('Task not finished yet')).toBeNull();
+    expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
+    expect(screen.getByTestId('assistant-footer')).toHaveAttribute('data-unfinished', 'false');
+  });
+
+  it.each(['incomplete', 'unknown'] as const)('preserves production %s instead of a predecessor delivery verdict', strategyDeliveryState => {
+    const rows = taskRuns('Only an auxiliary file was produced.');
+    rows[0] = { ...rows[0]!, strategyTaskDelivered: true, strategyDeliveryState: 'delivered' };
+    rows[1] = { ...rows[1]!, strategyTaskDelivered: false, strategyDeliveryState, endedWithUnfinishedWork: true };
+    const message = foldedReply(rows);
+    expect(message.strategyTaskDelivered).toBe(false);
+    expect(message.strategyDeliveryState).toBe(strategyDeliveryState);
+    renderReply(message);
+    expect(screen.getByTestId('assistant-continue-remaining')).toBeInTheDocument();
+  });
+
+  it('does not invent a legacy production verdict from planning metadata', () => {
+    const rows = taskRuns(`<od-done key="${PRODUCTION_KEY}"/>The page is delivered.`);
+    rows[0] = { ...rows[0]!, endedWithUnfinishedWork: true, strategyDeliveryState: 'incomplete', strategyTaskDelivered: false };
+    const message = foldedReply(rows);
+    expect(message.strategyDeliveryState).toBeUndefined();
+    expect(message.endedWithUnfinishedWork).toBeUndefined();
+    expect(message.strategyTaskDelivered).toBeUndefined();
+    renderReply(message);
+    expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
+  });
+
   it('keeps a production completion after folding planning and production', () => {
     const rows = taskRuns(`<od-done key="${PRODUCTION_KEY}"/>The page is delivered.`);
     // The same successful production must not acquire remaining work on reload.
