@@ -33,6 +33,7 @@ interface NavigationAttempt {
   startedAt: number;
   startedAtIso: string;
   firstVisible: boolean;
+  routeCommitted: boolean;
   source: string;
   projectId: string;
   conversationId?: string;
@@ -68,7 +69,7 @@ export function createNavigationTiming(deps: {
     });
   };
   const finish = (id: string, status: 'ready' | 'cancelled' | 'failed', reason?: NavigationResult['reason']) => {
-    if (!active || active.id !== id) return;
+    if (!active || active.id !== id || (status === 'ready' && !active.routeCommitted)) return;
     const attempt = active;
     active = null;
     arrived = false;
@@ -78,11 +79,18 @@ export function createNavigationTiming(deps: {
   const cancel = (reason: NavigationCancellation) => {
     if (active) finish(active.id, 'cancelled', reason);
   };
+  const commit = (id: string) => {
+    if (!active || active.id !== id || active.routeCommitted) return;
+    active = { ...active, routeCommitted: true };
+    arrived = true;
+    notify();
+  };
   return {
+    commit,
     begin(source: NavigationLocation, target: { projectId: string; conversationId?: string }): string {
       cancel('superseded');
       const attempt: NavigationAttempt = {
-        id: deps.id(), startedAt: deps.now(), startedAtIso: new Date().toISOString(), firstVisible: false, source: routeKey(source),
+        id: deps.id(), startedAt: deps.now(), startedAtIso: new Date().toISOString(), firstVisible: false, routeCommitted: false, source: routeKey(source),
         projectId: target.projectId, conversationId: target.conversationId,
         navigationType: target.conversationId ? 'conversation_switch' : 'project_entry',
         sourceType: source.kind === 'home' ? `home_${source.view ?? 'home'}` : source.kind,
@@ -97,11 +105,11 @@ export function createNavigationTiming(deps: {
       if (!active) return;
       const matchesTarget = route.kind === 'project' && route.projectId === active.projectId
         && (!active.conversationId || route.conversationId === active.conversationId);
-      if (matchesTarget) arrived = true;
+      if (matchesTarget) commit(active.id);
       else if (arrived || routeKey(route) !== active.source) cancel('route_changed');
     },
     firstVisible(id: string) {
-      if (!active || active.id !== id || active.firstVisible) return;
+      if (!active || active.id !== id || !active.routeCommitted || active.firstVisible) return;
       active.firstVisible = true;
       emit(active, 'first_visible');
     },
@@ -160,7 +168,7 @@ export function useProjectNavigationReady(input: {
       navigationTiming.finish(attempt.id, 'failed', failure);
       return;
     }
-    if (!ready && !visible) return;
+    if (!attempt.routeCommitted || (!ready && !visible)) return;
     let frame: number | null = null;
     const check = () => {
       if (document.visibilityState === 'hidden' || frame !== null) return;

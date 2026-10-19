@@ -84,6 +84,10 @@ Initial direct routes, create/import/duplicate and external deep links do not
 invent a click intent; their launch can still have desktop readiness signals.
 Read-only or otherwise disabled actions do not satisfy actionable Ready.
 
+Conversation-switch surfaces become eligible for first-visible and Ready only
+after that navigation commits. A pending guard cannot declare either point;
+a rejected guard cancels the correlated navigation attempt.
+
 ## Memory
 
 The Electron sampler starts after `app.whenReady()`. Its first collection is

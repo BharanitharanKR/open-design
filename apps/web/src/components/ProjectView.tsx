@@ -12022,31 +12022,27 @@ export function ProjectView({
 
   const handleSelectConversation = useCallback((id: string, measureNavigation = true) => {
     if (id === activeConversationId && failedMessagesConversationId !== id) return;
-    if (measureNavigation) {
-      navigationTiming.begin(
-        { kind: 'project', projectId: project.id, conversationId: activeConversationId },
-        { projectId: project.id, conversationId: id },
-      );
-    }
-    setMessages([]);
-    commitPreviewComments([]);
-    setAttachedComments([]);
-    setArtifact(null);
-    setStreaming(false);
-    streamingConversationIdRef.current = null;
-    setStreamingConversationId(null);
-    setMessagesConversationId(null);
-    setFailedMessagesConversationId(null);
-    setConversationLoadFailure(null);
-    messagesConversationIdRef.current = null;
-    messagesAuthorityKeyRef.current = null;
-    setActiveConversationId(id);
-    // Push the new conversation id into the URL synchronously so the
-    // route-sync effect at L512 sees a matching `routeConversationId`
-    // before it can find the previous conversation in the list and
-    // revert `activeConversationId` to it. Without this, the same
-    // effect that fights handleNewConversation also fights chat
-    // switching, ping-ponging until React's nested-update guard fires.
+    const navigationId = measureNavigation ? navigationTiming.begin(
+      { kind: 'project', projectId: project.id, conversationId: activeConversationId },
+      { projectId: project.id, conversationId: id },
+    ) : null;
+    const commitConversation = () => {
+      if (navigationId) navigationTiming.commit(navigationId);
+      setMessages([]);
+      commitPreviewComments([]);
+      setAttachedComments([]);
+      setArtifact(null);
+      setStreaming(false);
+      streamingConversationIdRef.current = null;
+      setStreamingConversationId(null);
+      setMessagesConversationId(null);
+      setFailedMessagesConversationId(null);
+      setConversationLoadFailure(null);
+      messagesConversationIdRef.current = null;
+      messagesAuthorityKeyRef.current = null;
+      setActiveConversationId(id);
+      setMessageLoadRetryNonce((nonce) => nonce + 1);
+    };
     navigate(
       {
         kind: 'project',
@@ -12054,9 +12050,16 @@ export function ProjectView({
         conversationId: id,
         fileName: openTabsState.active ?? null,
       },
-      { replace: true },
+      {
+        replace: true,
+        onCommit: commitConversation,
+        onCancel: (reason) => {
+          if (navigationId) navigationTiming.finish(navigationId, 'cancelled', reason);
+          // Programmatic transcript retry can intentionally target the same URL.
+          if (!measureNavigation && reason === 'same_route') commitConversation();
+        },
+      },
     );
-    setMessageLoadRetryNonce((nonce) => nonce + 1);
   }, [activeConversationId, commitPreviewComments, failedMessagesConversationId, project.id, openTabsState.active]);
 
   const refreshConversationsForProgrammaticBrandRetry = useCallback(

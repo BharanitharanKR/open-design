@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { navigationTiming } from '../../src/observability/navigation-timing';
 import { reportSafetyEvent } from '../../src/analytics/error-tracking';
 import { ProjectView } from '../../src/components/ProjectView';
-import { navigate } from '../../src/router';
+import { navigate, registerNavigationGuard, useRoute } from '../../src/router';
 import type {
   AgentInfo,
   AppConfig,
@@ -35,10 +35,6 @@ vi.mock('../../src/i18n', () => ({
 }));
 
 vi.mock('../../src/analytics/error-tracking', () => ({ reportSafetyEvent: vi.fn() }));
-
-vi.mock('../../src/router', () => ({
-  navigate: vi.fn(),
-}));
 
 vi.mock('../../src/providers/anthropic', () => ({
   streamMessage: vi.fn(),
@@ -156,7 +152,6 @@ const mockedLoadTabs = vi.mocked(loadTabs);
 const mockedCacheTabsLocally = vi.mocked(cacheTabsLocally);
 const mockedFetchPreviewComments = vi.mocked(fetchPreviewComments);
 const mockedFetchProjectFiles = vi.mocked(fetchProjectFiles);
-const mockedNavigate = vi.mocked(navigate);
 
 const config: AppConfig = {
   mode: 'api',
@@ -192,14 +187,16 @@ function renderProjectView(props?: {
   routeConversationId?: string | null;
   materializationPending?: boolean;
 }) {
-  return render(
-    <ProjectView
+  function RoutedProjectView() {
+    const route = useRoute();
+    useLayoutEffect(() => navigationTiming.observeRoute(route), [route]);
+    return <ProjectView
       project={props?.project ?? project}
       initialMaterializationPending={props?.materializationPending}
       initialProjectDetail={{ project: props?.project ?? project, resolvedDir: null }}
       initialWorkspaceScope={{ kind: 'unbound', projectId: (props?.project ?? project).id, workspaceId: null, context: null }}
       routeFileName={props?.routeFileName ?? null}
-      routeConversationId={props?.routeConversationId ?? null}
+      routeConversationId={props?.routeConversationId ?? (route.kind === 'project' ? route.conversationId : null)}
       config={config}
       agents={[] as AgentInfo[]}
       skills={[] as SkillSummary[]}
@@ -216,8 +213,9 @@ function renderProjectView(props?: {
       onTouchProject={vi.fn()}
       onProjectChange={vi.fn()}
       onProjectsRefresh={vi.fn()}
-    />,
-  );
+    />;
+  }
+  return render(<RoutedProjectView />);
 }
 
 
@@ -237,6 +235,7 @@ function results() {
 beforeEach(() => {
   navigationTiming.cancel('page_exit');
   vi.clearAllMocks();
+  navigate({ kind: 'project', projectId: project.id, conversationId: conversation.id, fileName: null }, { replace: true });
   mockedListConversations.mockResolvedValue([conversation]);
   mockedCreateConversation.mockResolvedValue(conversation);
   mockedListMessages.mockResolvedValue([]);
@@ -252,6 +251,31 @@ afterEach(() => {
 });
 
 describe('ProjectView business Ready wiring', () => {
+  it.each(['rejected', 'pending'] as const)('does not report success while the real router guard is %s', async (mode) => {
+    mockedListConversations.mockResolvedValue([conversation, { ...conversation, id: 'conv-2' }]);
+    renderProjectView();
+    await screen.findByTestId('chat-pane');
+    await waitFor(() => expect(mockedListMessages).toHaveBeenCalled());
+    const gate = deferred<boolean>();
+    const guard = vi.fn(() => gate.promise);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Switch conversation' }));
+      await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())); });
+      expect(results().map(e => e?.status)).toEqual(['started']);
+      expect(window.location.pathname).toContain('conv-1');
+      await act(async () => { gate.resolve(mode === 'pending'); });
+      if (mode === 'rejected') {
+        await waitFor(() => expect(results().map(e => e?.status)).toEqual(['started', 'cancelled']));
+        expect(results().at(-1)?.reason).toBe('guard_rejected');
+        expect(window.location.pathname).toContain('conv-1');
+      } else {
+        await waitFor(() => expect(results().map(e => e?.status)).toEqual(['started', 'first_visible', 'ready']));
+        expect(window.location.pathname).toContain('conv-2');
+      }
+    } finally { unregister(); }
+  });
+
   it('waits for the current transcript, then reports actionable Ready exactly once', async () => {
     const messages = deferred<Awaited<ReturnType<typeof listMessages>>>();
     mockedListMessages.mockReturnValue(messages.promise);

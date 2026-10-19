@@ -64,6 +64,7 @@ describe('navigation lifecycle from intent, not mount', () => {
     const second = timing.begin(home, { projectId: 'a' });
     timing.finish(first, 'ready');
     at(80);
+    timing.commit(second);
     timing.finish(second, 'ready');
     expect(first).not.toBe(second);
     expect(events.map((e) => e.status)).toEqual(['started', 'cancelled', 'started', 'ready']);
@@ -88,6 +89,7 @@ describe('navigation lifecycle from intent, not mount', () => {
     timing.observeRoute(home);
     const next = timing.begin(home, { projectId: 'a' });
     timing.finish(old, 'failed', 'messages_unavailable');
+    timing.commit(next);
     timing.finish(next, 'ready');
     expect(events.filter((e) => e.status === 'ready').map((e) => e.navigation_id)).toEqual([next]);
     expect(events.filter((e) => e.status === 'cancelled')).toHaveLength(1);
@@ -152,6 +154,7 @@ describe('committed project readiness', () => {
 
   it('ignores an old project or conversation surface and emits once after readiness', () => {
     navigationTiming.begin(home, { projectId: 'a', conversationId: 'c2' });
+    navigationTiming.observeRoute({ kind: 'project', projectId: 'a', conversationId: 'c2' });
     const { rerender } = renderHook(({ conversationId }) => useProjectNavigationReady({
       projectId: 'a', conversationId, ready: true, failure: null,
     }), { initialProps: { conversationId: 'c1' } });
@@ -168,6 +171,7 @@ describe('committed project readiness', () => {
     let visibility = 'hidden';
     vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility as DocumentVisibilityState);
     navigationTiming.begin(home, { projectId: 'a' });
+    navigationTiming.observeRoute(project('a'));
     renderHook(() => useProjectNavigationReady({
       projectId: 'a', conversationId: 'c1', ready: true, failure: null,
     }));
@@ -182,6 +186,7 @@ describe('committed project readiness', () => {
 
   it('survives StrictMode setup/cleanup replay without cancellation or duplicate Ready', () => {
     navigationTiming.begin(home, { projectId: 'a' });
+    navigationTiming.observeRoute(project('a'));
     renderHook(() => useProjectNavigationReady({
       projectId: 'a', conversationId: 'c1', ready: true, failure: null,
     }), { wrapper: ({ children }: { children: ReactNode }) => createElement(StrictMode, null, children) });
@@ -191,6 +196,7 @@ describe('committed project readiness', () => {
 
   it('reports a load failure without waiting for a paint or reporting success', () => {
     navigationTiming.begin(home, { projectId: 'a' });
+    navigationTiming.observeRoute(project('a'));
     renderHook(() => useProjectNavigationReady({
       projectId: 'a', conversationId: 'c1', ready: false, failure: 'messages_unavailable',
     }));
@@ -203,6 +209,7 @@ it('records first visible separately from interactive Ready and admits the canon
   const { parseClientMetricEvent, buildClientTelemetryParams } = await import('@open-design/contracts/analytics');
   navigationTiming.begin(home, { projectId: 'a' });
   const id = navigationTiming.getSnapshot()!.id;
+  navigationTiming.observeRoute(project('a'));
   navigationTiming.firstVisible(id); navigationTiming.firstVisible(id);
   expect(navigationTiming.isCurrent(id)).toBe(true);
   navigationTiming.finish(id, 'ready');
