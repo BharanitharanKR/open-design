@@ -535,3 +535,84 @@ describe("explicit SDK X callback fencing", () => {
 		expect(onLayerClose).toHaveBeenCalledTimes(1);
 	});
 });
+
+
+describe("CMS-HST-003 explicit keyboard close records", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+		vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue({ length: 1 } as DOMRectList);
+		vi.stubGlobal("ResizeObserver", class {
+			observe() {}
+			disconnect() {}
+		});
+	});
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it.each(["Escape", "SDK X"])("records %s once without dispatching content actions and restores focus", async (trigger) => {
+		const onLayerClose = vi.fn();
+		const onLayerVisible = vi.fn();
+		const dispatchEntryAction = vi.fn();
+		const dispatchLayerAction = vi.fn();
+		const view = render(createElement(HoverTouchpointOverlay, {
+			entry: content("opend.home.hover-entry"),
+			layer: content("opend.home.hover-layer"),
+			isAuthorized: () => true,
+			onLayerClose, onLayerVisible, dispatchEntryAction, dispatchLayerAction,
+		}));
+		await act(async () => {});
+		const [entry, layer] = Array.from(view.container.querySelectorAll("opend-touchpoint")) as [HTMLElement, HTMLElement];
+		act(() => { entry.focus(); fireEvent.click(entry); });
+		await act(async () => { await vi.advanceTimersByTimeAsync(32); });
+		expect(onLayerVisible).toHaveBeenCalledOnce();
+		const button = document.createElement("button");
+		layer.appendChild(button);
+		act(() => button.focus());
+		const close = () => {
+			if (trigger === "Escape") fireEvent.keyDown(window, { key: "Escape" });
+			else (mounts.mock.calls[1]![5] as { requestClose: (reason: string) => void }).requestClose("close");
+		};
+		act(close);
+		expect(layer.parentElement).toHaveAttribute("hidden");
+		expect(document.activeElement).toBe(entry);
+		expect(onLayerClose).toHaveBeenCalledOnce();
+		act(close);
+		expect(onLayerClose).toHaveBeenCalledOnce();
+		expect(dispatchEntryAction).not.toHaveBeenCalled();
+		expect(dispatchLayerAction).not.toHaveBeenCalled();
+	});
+
+	it.each(["revoked", "hidden", "unseen", "replaced"])("does not record Escape for %s content", async (state) => {
+		let authorized = true;
+		const onLayerClose = vi.fn();
+		const onLayerVisible = vi.fn();
+		const props = {
+			entry: content("opend.home.hover-entry"),
+			layer: content("opend.home.hover-layer"),
+			isAuthorized: () => authorized,
+			onLayerClose, onLayerVisible,
+		};
+		const view = render(createElement(HoverTouchpointOverlay, props));
+		await act(async () => {});
+		const [entry, layer] = Array.from(view.container.querySelectorAll("opend-touchpoint")) as [HTMLElement, HTMLElement];
+		act(() => { entry.focus(); fireEvent.click(entry); });
+		if (state !== "unseen") {
+			await act(async () => { await vi.advanceTimersByTimeAsync(32); });
+			expect(onLayerVisible).toHaveBeenCalledOnce();
+		}
+		if (state === "revoked") authorized = false;
+		if (state === "hidden") layer.hidden = true;
+		if (state === "replaced") {
+			verify.mockImplementation(() => new Promise(() => {}));
+			view.rerender(createElement(HoverTouchpointOverlay, { ...props, layer: { ...props.layer, id: "replacement" } }));
+		}
+		fireEvent.keyDown(window, { key: "Escape" });
+		expect(layer.parentElement).toHaveAttribute("hidden");
+		expect(document.activeElement).toBe(entry);
+		expect(onLayerClose).not.toHaveBeenCalled();
+	});
+});

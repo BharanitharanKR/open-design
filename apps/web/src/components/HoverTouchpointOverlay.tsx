@@ -589,12 +589,20 @@ export function HoverTouchpointOverlay({
 		const keydown = (event: KeyboardEvent) => {
 			if (event.key === "Escape" && open) {
 				event.stopPropagation();
+				if (
+					isAuthorized() &&
+					layerVisibleRef.current === layer &&
+					layerRef.current &&
+					isTouchpointVisible(layerRef.current)
+				) {
+					layerCloseRef.current?.();
+				}
 				close(true);
 			}
 		};
 		window.addEventListener("keydown", keydown);
 		return () => window.removeEventListener("keydown", keydown);
-	}, [open, close]);
+	}, [open, close, isAuthorized, layer]);
 
 	const relatedTargetIsInUnion = (relatedTarget: EventTarget | null) =>
 		relatedTarget instanceof Node && rootRef.current?.contains(relatedTarget);

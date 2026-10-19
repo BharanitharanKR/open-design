@@ -1226,9 +1226,14 @@ it("keeps both real hosts hidden until layer mount, then records each visible ha
   expect(document.activeElement).toBe(entry);
   fireEvent.pointerEnter(entry!);
   await act(async () => { await vi.advanceTimersByTimeAsync(32); });
-  expect(exposureBodies()).toHaveLength(2);
+  expect(exposureBodies()).toHaveLength(3);
+  expect(exposureBodies().filter(body => body.kind === 'exposure')).toHaveLength(2);
+  const closes = exposureBodies().filter(body => body.kind === 'click');
+  expect(closes).toEqual([expect.objectContaining({ placementKey: 'opend.home.hover-layer', element: 'close' })]);
   expect(cmsTrack.mock.calls.filter(([event]) => event === "surface_view")).toHaveLength(2);
-  expect(cmsTrack.mock.calls.filter(([event]) => event === "ui_click")).toHaveLength(0);
+  expect(cmsTrack.mock.calls.filter(([event]) => event === "ui_click")).toEqual([
+    ['ui_click', expect.objectContaining({ element: 'close' }), { insertId: closes[0].eventId }],
+  ]);
   withdrawn = true;
   await act(async () => { await vi.advanceTimersByTimeAsync(TOUCHPOINT_POLL_MS); });
   expect(screen.queryByTestId('cms-hover-overlay-root')).toBeNull();
@@ -1313,7 +1318,11 @@ it("recovers the real T3 pair after failed mount with fresh starts, independent 
   for (const body of exposures()) expect(visible.find(record => record.placement_key === body.placementKey)?.event_id).toBe(body.eventId);
   fireEvent.keyDown(window, { key: 'Escape' }); fireEvent.pointerEnter(entry);
   await act(async () => { await vi.advanceTimersByTimeAsync(30032); });
-  expect(exposures()).toHaveLength(2);
+  expect(exposures()).toHaveLength(3);
+  expect(exposures().filter(body => body.kind === 'exposure')).toHaveLength(2);
+  expect(exposures().filter(body => body.kind === 'click')).toEqual([
+    expect.objectContaining({ placementKey: 'opend.home.hover-layer', element: 'close' }),
+  ]);
   expect(facts().filter(record => record.kind === 'start')).toHaveLength(4);
 });
 
@@ -1336,7 +1345,7 @@ it('keeps one first empty attempt per real placement across initial host polls, 
 });
 
 
-it.each([false, true])("shares production hover X C with a bounded raw receipt (analytics throws=%s)", async throws => {
+it.each([false, true])("shares production hover X and Escape C with a bounded raw receipt (analytics throws=%s)", async throws => {
   useRealOverlay.current = true;
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockImplementation(function(this:HTMLElement) {return {length:this.hidden || this.closest('[hidden]') ? 0 : 1} as DOMRectList;});
@@ -1363,12 +1372,19 @@ it.each([false, true])("shares production hover X C with a bounded raw receipt (
   expect(clicks()[0]).toEqual({touchpointDecisionId:'decision-opend.home.hover-layer',activityId:'activity-1',placementKey:'opend.home.hover-layer',eventId:captured[0]![2].insertId,kind:'click',element:'close'});
   await act(async()=>{close('close');}); expect(clicks()).toHaveLength(1);
   await open(); await act(async()=>{close();}); expect(clicks()).toHaveLength(1);
-  await open(); fireEvent.keyDown(window,{key:'Escape'}); expect(clicks()).toHaveLength(1);
-  await open(); await act(async()=>{close('secondary_close');}); expect(clicks()).toHaveLength(1);
-  await open(); await act(async()=>{close('close');}); expect(clicks()).toHaveLength(2);
-  expect(clicks()[1].eventId).not.toBe(clicks()[0].eventId);
+  await open(); await act(async()=>{fireEvent.keyDown(window,{key:'Escape'});}); expect(clicks()).toHaveLength(2);
+  expect(document.activeElement).toBe(entry);
+  await open(); await act(async()=>{close('secondary_close');}); expect(clicks()).toHaveLength(2);
+  await open(); await act(async()=>{close('close');}); expect(clicks()).toHaveLength(3);
+  const allCaptured=cmsTrack.mock.calls.filter(([event])=>event==='ui_click');
+  expect(allCaptured).toHaveLength(3);
+  expect(clicks().every(body=>body.element==='close')).toBe(true);
+  expect(allCaptured.every(([,props])=>props.element==='close')).toBe(true);
+  expect(clicks().map(body=>body.eventId)).toEqual(allCaptured.map(([, ,options])=>options.insertId));
+  expect(new Set(clicks().map(body=>body.eventId)).size).toBe(3);
+  expect(bodies()).toHaveLength(5);
   expect(bodies().filter(b=>b.kind==='exposure')).toHaveLength(2);
-  view.unmount(); await act(async()=>{close('close');}); expect(clicks()).toHaveLength(2);
+  view.unmount(); await act(async()=>{close('close');}); expect(clicks()).toHaveLength(3);
   cmsTrack.mockReset();
 });
 
