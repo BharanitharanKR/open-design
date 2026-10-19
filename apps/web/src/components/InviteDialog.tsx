@@ -172,7 +172,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
           <span className={styles.tooltip} id={`${id}-help`} role="tooltip">{t('workspaceInvite.teamPlanBody')}</span></span>
         <Button className={styles.close} onClick={close} disabled={submitting} aria-label={t('workspaceInvite.cancel')}><Icon name="close" size={16} /></Button>
       </header>
-      <p className={styles.context}>{workspaceContext?.workspaceName ?? workspaceContext?.teamName ?? ''}{' · '}{t('workspaceInvite.memberCount').replace('{count}', String(workspaceContext?.seatSummary.usedSeats ?? 0))}</p>
+      <p className={styles.context}>{workspaceContext?.workspaceName ?? workspaceContext?.teamName ?? ''}</p>
       <form onSubmit={event => { event.preventDefault(); void submit(); }} noValidate>
         <div className={`${styles.labels} ${rows.length === 1 ? styles.single : ''}`}><span>{t('workspaceInvite.emailLabel')}</span><span>{t('workspaceInvite.roleLabel')}</span></div>
         <div className={styles.rows} data-invite-rows>

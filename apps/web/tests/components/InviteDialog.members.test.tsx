@@ -21,6 +21,10 @@ describe('member-line invitation states', () => {
       expect((event.mock.calls[0]![0] as CustomEvent).detail).toEqual({ count: 1, workspaceId: 'team-a', workspaceMemberId: 'owner-a' });
     } finally { window.removeEventListener('od:workspace-invites-sent', event); }
   });
+  it('does not present purchased seat usage as an authoritative member count', () => {
+    const { container } = render(<InviteDialog open workspaceContext={{ ...owner, seatSummary: { ...owner.seatSummary, usedSeats: 77 } }} onClose={() => {}} />);
+    expect(container.querySelector('p')?.textContent).toBe('Design team');
+  });
   it.each(['admin', 'member'] as const)('does not allow %s to assign administrators even if the host requests a role menu', (role) => {
     render(<InviteDialog open workspaceContext={{ ...owner, role }} canAssignRoles onClose={() => {}} />);
     expect(screen.queryByRole('button', { name: /分配角色|assign role|^角色$|^role$/i })).toBeNull();
