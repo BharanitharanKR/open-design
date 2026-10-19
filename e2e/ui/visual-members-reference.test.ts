@@ -7,6 +7,7 @@ import { ensureRailOpen } from '@/playwright/rail';
 
 // Rendering/interaction witnesses only: real app browser and isolated tools-dev,
 // controlled Workspace/AMR responses. No claim of real invitations or revocation.
+test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 });
 const artifactRoot = process.env.OD_MEMBERS_VISUAL_ARTIFACT_DIR ?? path.resolve('.tmp/members-visual-qa');
 async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true) {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -43,7 +44,7 @@ async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
   await page.evaluate(async () => { await document.fonts.ready; });
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
-  const metrics = await page.evaluate(() => Object.fromEntries(['panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer'].map(name => { const el = document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
+  const metrics = await page.evaluate(() => Object.fromEntries(['banner', 'panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer'].map(name => { const el = name === 'banner' ? document.querySelector('[role=region][aria-label="邀请"]') : document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight}]; })));
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   await page.screenshot({ path: path.join(artifactRoot, `${state}.png`), animations: 'disabled' });
 }
@@ -123,7 +124,8 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
 
 test('[P1] A01 local identity shows cloud sign-in entry', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await configureVisualPage(page);
+  await configureVisualPage(page, { velaLoggedIn: false });
+  await page.addInitScript(() => { localStorage.setItem('open-design:locale', 'zh-CN'); localStorage.setItem('open-design:locale-source', 'manual'); });
   await gotoVisualHome(page);
   await ensureRailOpen(page);
   await expect(page.getByTestId('entry-cloud-signin-tip')).toBeVisible();
@@ -139,14 +141,14 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
   await capture(page, 'A03');
   await banner.getByRole('button', { name: '关闭邀请横条' }).click();
   await expect(banner).toHaveCount(0);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('workspace-switcher')).toBeVisible();
   await expect(banner).toHaveCount(0);
   await page.addInitScript(() => sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId: 'members-visual-design-space', workspaceMemberId: 'members-visual-design-member' })));
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? '{}').workspaceId)).toBe('members-visual-design-space');
   await expect(banner).toHaveCount(0);
-  const persistentInvite = page.getByRole('button', { name: '邀请', exact: true });
+  const persistentInvite = page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: '邀请', exact: true });
   await expect(persistentInvite).toBeVisible();
   await page.getByTestId('entry-nav-drafts').click();
   await expect(page).toHaveURL(/\/drafts$/);
@@ -168,7 +170,7 @@ test('[P1] banner dismissal is scoped to account identity', async ({ page }) => 
     loggedIn: true, loginInFlight: false, profile: 'test',
     user: { id: 'u2', email: 'second@example.com' }, account: { plan: 'plus', balanceUsd: '247.51' },
   } }));
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(banner).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('od.invitation-banner.dismissed:u2'))).toBeNull();
 });
