@@ -90,7 +90,7 @@ describe('CloudSignInTip', () => {
 
     renderTip();
     const card = await screen.findByTestId('entry-cloud-signin-tip');
-    expect(screen.getByText('Sign up / Sign in')).toBeTruthy();
+    expect(screen.getByText('Sign in')).toBeTruthy();
     vi.useFakeTimers();
     fireEvent.click(card);
     await act(async () => {
@@ -98,7 +98,7 @@ describe('CloudSignInTip', () => {
     });
 
     expect(screen.getByText('Signing in…')).toBeTruthy();
-    expect(screen.queryByText('Sign up / Sign in')).toBeNull();
+    expect(screen.queryByText('Sign in')).toBeNull();
     expect(screen.queryByText("Sign-in page didn't open?")).toBeNull();
     expect(screen.getAllByRole('button', { name: /cancel/i })).toHaveLength(1);
 

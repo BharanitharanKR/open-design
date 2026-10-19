@@ -15,13 +15,14 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 | VIS-A01 | 本地登录卡片简化，无装饰图标 | A01 最终 CSS | 16px 圆角卡片、32px 登录按钮与简短文案，保留真实登录流程 |
 | VIS-A03 | 登录首页邀请横条与常驻邀请入口 | A03/A05 | 36px 中性灰横条（最终渲染8px圆角）、绿色邀请、账号维度记忆关闭、全角色入口 |
 | VIS-INV | 控制台同款邀请和角色菜单 | B02–B08/B10–B12/B20–B27 | 560px，无插画；Owner选角色，其他固定成员；行内错误；发送中禁用；部分成功仅留失败行 |
+| VIS-REG-FORM | 首次注册邀请页、跳过与累计成功 | 用户2026-10-19回复“本轮一起接入首次注册后的邀请引导”；B01/B09/B13/B18/B19 | 参考骑马插画，无取消，成功延迟1秒退出；skip0保横条，累计成功>0隐藏横条并toast |
 | VIS-SPACE | 空间列表与浏览器交接 | A06/A07/C12/H02/H04 | 数量、180px滚动列表、50上限行内提示，接受后目录刷新保持账号 |
 
 ### Decisions needed / source gaps
 | ID | Gap | Affected work |
 |---|---|---|
-| VIS-H01 | 当前事件未区分被移出与其他权限变化；未给权威默认空间 ID | H01/H12 精确被移出弹窗/默认跳转，禁止从目录缺失或403猜测 |
-| VIS-REG | B01注册邀请未发现现有客户端注册完成接点；不新增无接入的页面 | B01/B09/B13/B18/B19自动引导链路需核对当前host |
+| VIS-H01（已解决） | 已透传AMR权威isDefault及匹配workspace/member的member-removed终止事件 | H01/H12遮蔽、唯一默认空间恢复、503保留遮罩及重试均通过；不从目录缺失或403猜测 |
+| VIS-REG | 用户已明确“本轮一起接入首次注册后的邀请引导”；现有onboardingCompleted只能识别客户端首次Cloud引导，不识别刚注册账号 | B01/B09/B13/B18/B19表单独立实现；只待用户选择自动触发接点，禁止以时间阈值猜注册或默认扩成所有首次登录 |
 
 ### State inventory
 | ID | 场景 | 参考显示 |
@@ -61,8 +62,31 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 | H12 | 移出后回到默认工作空间 | 返回默认工作空间；旧空间内容不再可访问，旧任务不会继续执行。 |
 
 ### Traceability
-待串行集成后填入最终文件、测试、浏览器截图与限制。受控浏览器数据只用于验收，不引入产品 mock fallback。
+最终记录见下方。受控浏览器数据只用于验收，不引入产品 mock fallback。
 
 参考冲突记录：A03 metadata 声称完整胶囊、20px单人加号、#F3F4F6/#159447，但最终源码与真实渲染为8px圆角、无前置图标、rgba(0,0,0,.03)/rgb(2,113,6)。本轮采用实际渲染和最终级联；不把注释执行为覆盖指令。
 
 主路定向证据：Node24.19/pnpm10.33.2；HomeInviteSurface/CloudSignInTip 2文件9例通过；daemon collab-context-routes/invite-session-authority 2文件66例通过。个人/团队成员均经实时目录和明确principal核实邀请；撤销/失败保持既有fail-closed。首次安装沙箱缓存登记/tsx监听限制已获工具授权恢复，未改依赖版本。
+
+
+### 串行集成与视觉复核
+- 首页/常驻入口：`2f30e4905d`；空间列表：`ff7289b8c0`；邀请弹窗：`da55eefc20`；无权威成员总数字段，`097f4add95`主动省略旧已用席位数（不伪造成员人数）。
+- 部分成功后重试：`e0ded4e6d6`事件同时携带本批成功数和累计实际成功数，最终toast累计展示；独立普通邀请仍分别计数。
+- 测量驱动的局部修正：`619eaa6d24`、`eee3689e12`、`30af4ffbe2`隔离全局600字重继承、复制参考关闭字形、消除inline基线间隙并显式保留参考标题后14px间隔；`fbe50b6348`复用参考常驻入口28px胶囊和15px图标。
+- A03桌面横条仅平移60px，从真实稳态y68对齐y128，不修改已有hero/侧栏全局布局。窄屏不强加该位移。
+- 10文件64个Web定向测试通过（含真实batch partial/retry累计、全部失败保留、账号关闭记忆、权限与项目入口）。目录旧New team断言已随新建工作空间文案改正；失败探索记录保留，不声称首轮全绿。
+- daemon路线：collab-context-routes 64例（新增removed/locked/missing拒绝），invite-session-authority 5例，vela-workspace-context 53例均通过；不把受控UI截图当真实外部邮箱发送证据。
+- 根guard及root typecheck完成；类型检查最初受tsx IPC沙箱限制，获正常执行授权后通过。后续变动只针对成员UI，最终交付前做受影响复验。
+- 33态参考截图已采；浏览器基于规范tools-dev隔离worker，1440×900/zh-CN，对真实React组件使用受控AMR返回。最后截图以最终source版本为准，旧fixture失败不计验收通过。
+
+
+### 最终阶段验收（注册触发选择仍待确认）
+- 实现文件：HomeInviteSurface、InviteDialog、EntryNavRail、WorkspaceRemovalBoundary、workspace-removal 及对应 daemon workspace/collab 契约。首次邀请 OnboardingInviteView 已共用真实邀请表单/API，自动接点未接，不能称整轮完成。
+- 用户已授权加入首次注册引导；尚待选择“首次Cloud客户端引导完成前”或“严格新注册账号并补传注册信号”。现有 onboardingCompleted 不是新注册证明，未擅自扩大触发人群。
+- 最终浏览器 19+2+1 = 22例全部通过，无失败/跳过；同一生产源码快照，覆盖21/33参考状态。受控AMR/SSE验证邀请、角色、错误、部分重试、创建浏览器交接、接受后目录同步、移除恢复及重新加入的新成员身份。剩12个首次邀请状态等待host接入后验收。
+- 配对视觉报告：`/private/tmp/od-members-visual-evidence/report.html`，阶段64/100；参考/实图在 reference 与 final-unified。此分数将未完成注册状态计0，并非宣称全量验收通过。
+- 实测邀请框560×284、padding24、radius16，首页横条325×36与参考一致。保留原有账号/社交入口；缺少权威成员数时只显示真实空间名。B25 metadata写toast，但最终参考渲染为行内alert，本实现采用最终渲染。
+- Web定向14文件104个唯一测试通过：初轮旧登录CTA断言失败，更新预期后相关6例通过。daemon定向4文件157个唯一测试通过：初轮未改账务用例出现一次非JSON Not authorized响应，同源码该文件复跑65/65；保留原始失败日志，不宣称初轮全绿、不修改范围外账务。
+- 最终根级 pnpm guard、pnpm typecheck 均exit0。QA新增浏览器用例的e2e typecheck通过。无依赖/锁文件改动。
+- 真实外部邮件、云端创建/接受、旧Key拒绝和云端任务停止未由受控UI证明；本轮不把浏览器受控结果等同这些后端事实。移除来源与恢复以既有AMR权威契约为准。
+- 未修改共享账务/额度/并发逻辑，未合并main、发布、创建PR或发送外部通知。
