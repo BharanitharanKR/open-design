@@ -363,7 +363,7 @@ describe.each([
 		expect(document.querySelector("opend-touchpoint")).not.toBeNull();
 		const receipt = {
 			activityId: "activity-1", deploymentId: "deployment-1",
-			contentVersionId: content(placementKey).id, touchpointDecisionId: `decision-${placementKey}`,
+			contentVersionId: live(placementKey).content.id, touchpointDecisionId: `decision-${placementKey}`,
 		};
 		for (const key of Object.keys(receipt) as Array<keyof typeof receipt>) {
 			if (kind === "all" || key === kind) receipt[key] = "";

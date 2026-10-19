@@ -319,14 +319,8 @@ describe("ProductionCampaignHover", () => {
 		rects.mockRestore();
 	});
 
-	// The hover key was the one that needed arguing rather than deleting. It
-	// carried the ENTRY's content id and both decision ids — the layer's content
-	// id was never in it, so the layer's identity rode on its credential. Once
-	// the credentials leave the key, a layer whose content is swapped underneath
-	// has to be caught by the layer's own content id, or the pair keeps showing
-	// content the server has replaced. (The claim that the two content ids are
-	// always equal is a server-side property this side cannot check — and these
-	// fixtures, which give each placement its own version, assume they are not.)
+	// Both placements share a content version; a coherent version change must
+	// rebuild the pair even when the deployment and decision ids stay the same.
 	it("remounts both placements when the shared content version changes", async () => {
 		useRealOverlay.current = true;
 		vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
