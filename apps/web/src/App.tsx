@@ -5898,7 +5898,7 @@ function AppInner() {
     <>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
-        inert={workspaceRemoval ? true : undefined}
+        ref={(node) => { node?.toggleAttribute('inert', Boolean(workspaceRemoval)); }}
         style={workspaceRemoval ? { visibility: 'hidden' } : undefined}
         data-client-type={clientType}
         data-host-platform={hostPlatform}
