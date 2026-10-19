@@ -3526,7 +3526,6 @@ export const fa: Dict = {
   'assistant.role': 'دستیار',
   'assistant.workingLabel': 'در حال کار',
   'assistant.doneLabel': 'انجام شد',
-  'assistant.deliveryUnknownLabel': 'نوبت پایان یافت؛ تحویل تأیید نشده',
   'assistant.awaitingReplyLabel': 'در انتظار پاسخ',
   'assistant.canceledLabel': 'کار متوقف شد',
   'assistant.canceledDetail': 'این اجرا طبق اقدام شما متوقف شد.',

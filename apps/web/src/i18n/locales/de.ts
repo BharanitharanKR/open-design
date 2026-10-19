@@ -3526,7 +3526,6 @@ export const de: Dict = {
   'assistant.role': 'Assistent',
   'assistant.workingLabel': 'Arbeitet',
   'assistant.doneLabel': 'Fertig',
-  'assistant.deliveryUnknownLabel': 'Runde beendet; Lieferung unbestätigt',
   'assistant.awaitingReplyLabel': 'Wartet auf Antwort',
   'assistant.canceledLabel': 'Aufgabe gestoppt',
   'assistant.canceledDetail': 'Dieser Lauf wurde auf deine Anweisung hin gestoppt.',

@@ -3718,7 +3718,6 @@ export const zhCN: Dict = {
   "assistant.role": "助手",
   "assistant.workingLabel": "执行中",
   "assistant.doneLabel": "已完成",
-  "assistant.deliveryUnknownLabel": "本轮已结束，交付待确认",
   "assistant.awaitingReplyLabel": "等待回复",
   "assistant.canceledLabel": "任务已停止",
   "assistant.canceledDetail": "本次运行已按你的操作停止。",

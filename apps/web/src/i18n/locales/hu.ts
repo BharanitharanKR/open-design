@@ -3526,7 +3526,6 @@ export const hu: Dict = {
   'assistant.role': 'Asszisztens',
   'assistant.workingLabel': 'Dolgozik',
   'assistant.doneLabel': 'Kész',
-  'assistant.deliveryUnknownLabel': 'A kör véget ért; az átadás nincs megerősítve',
   'assistant.awaitingReplyLabel': 'Válaszra vár',
   'assistant.canceledLabel': 'A feladat leállt',
   'assistant.canceledDetail': 'Ez a futtatás a te műveleted alapján leállt.',

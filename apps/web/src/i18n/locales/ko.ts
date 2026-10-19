@@ -3526,7 +3526,6 @@ export const ko: Dict = {
   'assistant.role': '어시스턴트 (Assistant)',
   'assistant.workingLabel': '작업 중',
   'assistant.doneLabel': '완료됨',
-  'assistant.deliveryUnknownLabel': '응답 종료, 결과물 전달 미확인',
   'assistant.awaitingReplyLabel': '답변 대기 중',
   'assistant.canceledLabel': '작업이 중지됨',
   'assistant.canceledDetail': '사용자의 요청에 따라 이번 실행을 중지했습니다.',

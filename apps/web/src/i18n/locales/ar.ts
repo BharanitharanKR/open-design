@@ -3526,7 +3526,6 @@ export const ar: Dict = {
   'assistant.role': 'المساعد',
   'assistant.workingLabel': 'جاري العمل',
   'assistant.doneLabel': 'تم',
-  'assistant.deliveryUnknownLabel': 'انتهت الجولة؛ لم يتم تأكيد التسليم',
   'assistant.awaitingReplyLabel': 'في انتظار ردك',
   'assistant.canceledLabel': 'تم إيقاف المهمة',
   'assistant.canceledDetail': 'تم إيقاف هذا التشغيل بناءً على إجرائك.',

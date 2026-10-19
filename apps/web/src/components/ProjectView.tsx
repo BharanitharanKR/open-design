@@ -11500,10 +11500,7 @@ export function ProjectView({
 
   const handleContinueRemainingTasks = useCallback(
     async (_assistantMessage: ChatMessage, todos: TodoItem[]) => {
-      if (currentConversationActionDisabled) return false;
-      if (todos.length === 0) {
-        return handleSend('Review the previous request and current files. Continue only the work that the user already authorized and that remains undelivered. Reuse the existing actionable plan and do not repeat completed side effects. If the request was only for an answer or plan, answer it without creating additional artifacts. If required authorization or information is missing, ask before proceeding.', [], []);
-      }
+      if (currentConversationActionDisabled || todos.length === 0) return false;
       const remainingList = todos
         .map((todo, i) => {
           const label =
