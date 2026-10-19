@@ -71,6 +71,7 @@ test('[P1] B20 owner multiple rows and role description', async ({ page }) => {
   await dialog.locator('[aria-haspopup="listbox"]').first().click();
   await expect(page.getByRole('listbox')).toBeVisible();
   await capture(page, 'B20');
+  await expect.poll(() => page.getByRole('option').evaluateAll(items => items.map(item => item.scrollHeight <= item.clientHeight))).toEqual([true, true]);
 });
 test('[P1] A06 workspace switcher shows the two reference identities', async ({ page }) => {
   const menu = await setup(page, 'owner', false);
