@@ -3,10 +3,10 @@
 .root { position:fixed;inset:0;z-index:1000;display:grid;place-items:center;font-family:inherit;color:var(--invite-ink);font-size:13px;font-weight:400; }
 .backdrop { position:absolute;inset:0;background:rgb(0 0 0 / 38%); }
 .panel { position:relative;box-sizing:border-box;width:560px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 48px);overflow:auto;padding:24px;border-radius:16px;background:var(--invite-surface);box-shadow:0 24px 72px rgb(0 0 0 / 12%); }
-.heading { position:relative;display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:6px;padding-right:32px; }
+.heading { position:relative;display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:0;padding-right:32px; }
 .heading h2 { margin:0;font-size:16px;font-weight:600;line-height:24px; }
 .close { position:absolute!important;right:-4px;top:-4px;width:28px;min-width:28px;height:28px;min-height:28px;padding:0;border:0;border-radius:8px;background:none;box-shadow:none;font-size:20px;font-weight:400;line-height:20px; }
-.context { margin:8px 0 20px;font-size:12px;line-height:20px;color:var(--invite-muted); }
+.context { margin:14px 0 20px;font-size:12px;line-height:20px;color:var(--invite-muted); }
 .labels,.row { display:grid;grid-template-columns:minmax(0,1fr) 112px 24px;column-gap:12px;align-items:center; }
 .single { grid-template-columns:minmax(0,1fr) 112px; }
 .labels { margin-bottom:8px;font-size:12px;line-height:20px;color:var(--invite-secondary); }
