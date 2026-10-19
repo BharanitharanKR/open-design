@@ -31,6 +31,14 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
     return route.fulfill({ json: { context: selected === 'members-visual-design-space' ? { ...context, workspaceId: selected, workspaceMemberId: 'members-visual-design-member', workspaceName: 'Design space' } : context } });
   });
   await page.route('**/api/workspace/projects/team', route => route.fulfill({ json: { projects: [] } }));
+  await page.route('**/api/workspaces/*/projects**', route => {
+    const url = new URL(route.request().url());
+    if (route.request().method() !== 'GET' || !url.pathname.endsWith('/projects')) return route.fallback();
+    const workspaceId = url.pathname.split('/')[3]!;
+    const memberId = workspaceId === 'members-visual-design-space' ? 'members-visual-design-member' : context.workspaceMemberId;
+    const projects = [1, 2, 3].map(n => { const project = { id: `visual-reference-project-${n}`, name: `Mock project ${n}`, skillId: null, designSystemId: null, createdAt: 1700000000000, updatedAt: 1700000000000, metadata: {} }; return { ...project, project, workspaceId, visibility: 'personal', resourceState: 'active', createdByWorkspaceMemberId: memberId, updatedByWorkspaceMemberId: memberId, resourceHubResourceId: null, cloudTombstonedAt: null, syncState: 'local_only', currentUserAccess: { canOpen: true, canRename: true, canDelete: true, canDuplicate: true, canMoveToTeam: true, canMoveToPersonal: false, canExport: true, canSendTo: true, canRestoreVersion: true } }; });
+    return route.fulfill({ json: { projects } });
+  });
   await gotoVisualHome(page);
   await ensureRailOpen(page);
   await page.getByTestId('workspace-switcher').click();
