@@ -728,6 +728,14 @@ for (const role of ['owner', 'admin', 'member'] as const) {
     await panel.evaluate(async (el) => {
       await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished));
     });
+    if (role === 'owner') {
+      const options = page.getByRole('listbox').getByRole('option');
+      await expect.poll(async () => {
+        const description = await options.first().locator('small').boundingBox();
+        const nextOption = await options.nth(1).boundingBox();
+        return description && nextOption ? description.y + description.height - nextOption.y : Number.POSITIVE_INFINITY;
+      }).toBeLessThanOrEqual(0);
+    }
     await testInfo.attach(`invitation-${role}-layout`, {
       body: JSON.stringify(await panel.evaluate((el) => ({
         rect: el.getBoundingClientRect().toJSON(),
