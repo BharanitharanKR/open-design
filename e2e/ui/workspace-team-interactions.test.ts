@@ -112,6 +112,7 @@ type WorkspaceMocks = {
   }>;
   activeWorkspaceId: () => string;
   setCurrent: (workspace: WorkspaceFixture) => void;
+  setAccount: (accountId: string, workspace: WorkspaceFixture) => void;
   setBalance: (balanceUsd: string) => void;
   setDirectoryUnavailable: (unavailable: boolean) => void;
 };
@@ -471,7 +472,7 @@ test('[P0] account replacement never paints the previous account workspace or pr
   });
   let accountBProjectsRequested = false;
 
-  await page.route('**/api/integrations/vela/status', async (route) => {
+  await page.route('**/api/integrations/vela/status*', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,
@@ -638,6 +639,63 @@ test('[P1] two windows for one account keep Personal and Team billing scopes iso
   );
 });
 
+test('[P0] permanent home invite and banner send locally without dismissing the banner', async ({ page }) => {
+  const mocks = await wireWorkspaceMocks(page, TEAM_FULL, [TEAM_FULL, PERSONAL]);
+  await page.addInitScript(({ workspaceId, workspaceMemberId }) => {
+    if (!sessionStorage.getItem('od.workspaceSelection.v1')) {
+      sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId, workspaceMemberId }));
+    }
+  }, { workspaceId: TEAM_OWNER.workspaceId, workspaceMemberId: TEAM_OWNER.workspaceMemberId });
+  await gotoHome(page);
+  const bannerText = page.getByText('Invite teammates for free and create together with shared credits', { exact: true });
+  await expect(bannerText).toBeVisible();
+  const permanentInvite = page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: 'Invite', exact: true });
+  await permanentInvite.click();
+  const dialog = page.getByRole('dialog', { name: 'Invite members' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await bannerText.locator('..').getByRole('button', { name: 'Invite', exact: true }).click();
+  await dialog.getByRole('textbox').first().fill('colleague@example.com');
+  await dialog.getByRole('button', { name: 'Send invitations' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect.poll(() => mocks.inviteBodies).toEqual([{ invites: [{ email: 'colleague@example.com', role: 'member' }] }]);
+  await expect(page.getByRole('status').filter({ hasText: /1/ })).toBeVisible();
+  await expect(bannerText).toBeVisible();
+  await page.getByTestId('workspace-switcher').click();
+  await page.getByRole('menu').getByRole('menuitem', { name: PERSONAL.workspaceName }).click();
+  await expect(page.getByTestId('workspace-switcher')).toContainText(PERSONAL.workspaceName);
+  await expect(bannerText).toBeVisible();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(permanentInvite).toBeVisible();
+  await expect(bannerText).toBeVisible();
+});
+
+test('[P0] invite banner dismissal survives workspace switches and reload but stays account-specific', async ({ page }) => {
+  const mocks = await wireWorkspaceMocks(page, TEAM_OWNER, [TEAM_OWNER, PERSONAL]);
+  await page.addInitScript(({ workspaceId, workspaceMemberId }) => {
+    if (!sessionStorage.getItem('od.workspaceSelection.v1')) {
+      sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId, workspaceMemberId }));
+    }
+  }, { workspaceId: TEAM_OWNER.workspaceId, workspaceMemberId: TEAM_OWNER.workspaceMemberId });
+  await gotoHome(page);
+  const dismiss = page.getByRole('button', { name: 'Dismiss invitation banner' });
+  await expect(dismiss).toBeVisible();
+  await dismiss.click();
+  await expect(dismiss).toHaveCount(0);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await ensureRailOpen(page);
+  await expect(dismiss).toHaveCount(0);
+  await page.getByTestId('workspace-switcher').click();
+  await page.getByRole('menu').getByRole('menuitem', { name: PERSONAL.workspaceName }).click();
+  await expect(page.getByTestId('workspace-switcher')).toContainText(PERSONAL.workspaceName);
+  await expect(dismiss).toHaveCount(0);
+  mocks.setAccount('ui-independent-account-b', { ...PERSONAL, workspaceMemberId: 'ui-independent-member-b' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(dismiss).toBeVisible();
+  await expect(page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: 'Invite', exact: true })).toBeVisible();
+});
+
 for (const role of ['owner', 'admin', 'member'] as const) {
   test(`[P1] active ${role} opens local invite with role-appropriate controls`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -675,6 +733,12 @@ for (const role of ['owner', 'admin', 'member'] as const) {
         rect: el.getBoundingClientRect().toJSON(),
         padding: getComputedStyle(el).padding,
         backdrop: getComputedStyle(document.querySelector('.entry-invite__backdrop')!).backgroundColor,
+        emailRect: el.querySelector('.entry-invite__input')!.getBoundingClientRect().toJSON(),
+        roleRect: el.querySelector('.entry-invite__role')!.getBoundingClientRect().toJSON(),
+        roleBackground: getComputedStyle(el.querySelector('.entry-invite__role')!).backgroundColor,
+        roleBorder: getComputedStyle(el.querySelector('.entry-invite__role')!).borderColor,
+        addBorder: getComputedStyle(el.querySelector('.entry-invite__add-row')!).borderStyle,
+        closeBorder: getComputedStyle(el.querySelector('.entry-invite__close')!).borderStyle,
       }))),
       contentType: 'application/json',
     });
@@ -1821,19 +1885,20 @@ async function wireWorkspaceMocks(
   directory: WorkspaceFixture[],
 ): Promise<WorkspaceMocks> {
   let current = initial;
+  let accountId = 'ui-workspace-user';
   let balanceUsd = '0.00';
   let directoryUnavailable = false;
   const activeBodies: WorkspaceMocks['activeBodies'] = [];
   const inviteBodies: WorkspaceMocks['inviteBodies'] = [];
 
-  await page.route('**/api/integrations/vela/status', async (route) => {
+  await page.route('**/api/integrations/vela/status*', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,
         loginInFlight: false,
         profile: 'test',
         user: {
-          id: 'ui-workspace-user',
+          id: accountId,
           email: 'workspace-ui@example.com',
           name: 'Workspace UI',
           plan: current.planId ?? 'free',
@@ -1940,6 +2005,11 @@ async function wireWorkspaceMocks(
     activeBodies,
     inviteBodies,
     activeWorkspaceId: () => current.workspaceId,
+    setAccount: (nextAccountId, nextWorkspace) => {
+      accountId = nextAccountId;
+      current = nextWorkspace;
+      directory.splice(0, directory.length, nextWorkspace);
+    },
     setCurrent: (workspaceFixture) => {
       current = workspaceFixture;
       const directoryIndex = directory.findIndex(
@@ -2003,7 +2073,7 @@ async function wireMultiWindowWorkspaceAuthority(
 ): Promise<void> {
   const directory = [PERSONAL, TEAM_OWNER];
 
-  await page.route('**/api/integrations/vela/status', async (route) => {
+  await page.route('**/api/integrations/vela/status*', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,
