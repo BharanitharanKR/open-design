@@ -79,6 +79,15 @@ export interface Dict {
   'invite.error.retry': string;
   'workspaceInvite.dialogAria': string;
   'workspaceInvite.title': string;
+  'workspaceInvite.cancel': string;
+  'workspaceInvite.helpLabel': string;
+  'workspaceInvite.memberCount': string;
+  'workspaceInvite.errorInvalidEmail': string;
+  'workspaceInvite.errorDuplicateEmail': string;
+  'workspaceInvite.partialSummary': string;
+  'workspaceInvite.sentCount': string;
+  'workspaceInvite.adminDescription': string;
+  'workspaceInvite.memberDescription': string;
   'workspaceInvite.freePlanBody': string;
   'workspaceInvite.teamPlanBody': string;
   'workspaceInvite.seatsExhaustedBody': string;
