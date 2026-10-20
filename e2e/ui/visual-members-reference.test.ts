@@ -227,6 +227,11 @@ test('[P1] A06 fifty workspace limit preserves scroll and disables create', asyn
   const list = page.getByTestId('workspace-switcher-list');
   await expect.poll(() => list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
   await capture(page, 'A06-limit');
+  const belowLimit = await setup(page, 'owner', false, 49);
+  await expect(belowLimit).toContainText('49/50');
+  await expect(belowLimit.getByRole('menuitem', { name: '新建工作空间' })).toBeEnabled();
+  await expect(belowLimit.getByText('已达 50 个上限')).toHaveCount(0);
+  await capture(page, 'A06-below-limit');
 });
 
 // HTTP-edge SSE witness, not a real AMR removal or provider task-stop proof.
