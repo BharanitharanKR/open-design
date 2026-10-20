@@ -94,7 +94,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
               const reset = window?.resetsAt ? new Date(window.resetsAt) : null;
               const resetLabel = reset && Number.isFinite(reset.getTime())
                 ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(reset)
-                : unavailable;
+                : null;
               return <div className={quota.block} key={duration}>
                 <div className={quota.row}>
                   <span className={quota.allowance} title={view.modelRestriction ?? unavailable}>{t('billing.codingPlanDesignPlan')} <small className={quota.period}>
@@ -106,7 +106,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
                   aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
                   <span className={quota.fill} style={{ width: `${percent}%` }} />
                 </div> : null}
-                <div className={styles.details}>{t('workspaceQuota.resetAt', { time: resetLabel })}</div>
+                {resetLabel ? <div className={styles.details}>{t('workspaceQuota.resetAt', { time: resetLabel })}</div> : null}
               </div>;
             })}
           </section>

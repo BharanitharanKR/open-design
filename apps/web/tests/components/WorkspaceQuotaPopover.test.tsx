@@ -10,11 +10,11 @@ import { I18nProvider } from '../../src/i18n';
 import { workspaceContextFixture } from '../helpers/workspace-context';
 
 const context = workspaceContextFixture({ workspaceId: 'workspace-a', workspaceMemberId: 'member-a', role: 'owner' });
-function view(tier: WorkspaceQuotaTier, balanceUsd = '24', remainingPercent = 75): WorkspaceQuotaView {
+function view(tier: WorkspaceQuotaTier, balanceUsd = '24', remainingPercent = 75, resetsAt: string | null = '2026-10-22T06:00:00Z'): WorkspaceQuotaView {
   return {
     tier, planKnown: true, loading: false, balanceUsd, planStatus: null,
     windows: tier === 'free' ? [] : (tier === 'go' ? [18_000, 604_800] : [604_800]).map(durationSeconds => ({
-      durationSeconds, remainingPercent, resetsAt: '2026-10-22T06:00:00Z',
+      durationSeconds, remainingPercent, resetsAt,
     })),
     breakdown: null, modelRestriction: null,
   };
@@ -24,6 +24,44 @@ function panel(value: WorkspaceQuotaView, role: 'owner' | 'admin' | 'member' = '
 }
 beforeEach(() => { vi.spyOn(window, 'open').mockReturnValue(null); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+
+describe.each(['zh-CN', 'en'] as const)('K6 C-01 reset rows (U001/UI-002) — %s', locale => {
+  function renderQuota(value: WorkspaceQuotaView) {
+    render(<I18nProvider initial={locale}><WorkspaceQuotaPopover context={context} view={value} profile="local" /></I18nProvider>);
+    return within(screen.getByRole('region', { name: 'Design Plan' }));
+  }
+  function expectQuotaWithoutReset(value: WorkspaceQuotaView, percent: number, count: number) {
+    const plan = renderQuota(value);
+    expect(plan.getAllByText(locale === 'en' ? `${percent}% left` : `剩余 ${percent}%`)).toHaveLength(count);
+    const bars = plan.getAllByRole('progressbar');
+    expect(bars).toHaveLength(count);
+    for (const bar of bars) expect(bar.getAttribute('aria-valuenow')).toBe(String(percent));
+    expect(plan.queryByText(/重置|Resets/)).toBeNull();
+    expect(plan.queryByText(/明细暂不可用|Details unavailable/)).toBeNull();
+  }
+
+  it.each(['go', 'plus', 'pro', 'max'] as const)('%s keeps quota and progress with resetsAt=null and no reset placeholder', tier => {
+    expectQuotaWithoutReset(view(tier, '24', 75, null), 75, tier === 'go' ? 2 : 1);
+  });
+  it('keeps explicit zero quota and progress with resetsAt=null', () => {
+    expectQuotaWithoutReset(view('go', '0', 0, null), 0, 2);
+  });
+  it('omits reset rows for an invalid date string', () => {
+    expectQuotaWithoutReset(view('go', '24', 75, 'invalid-date'), 75, 2);
+  });
+  it('omits reset rows when resetsAt is missing at runtime', () => {
+    const value = view('go');
+    for (const window of value.windows ?? []) Reflect.deleteProperty(window, 'resetsAt');
+    expectQuotaWithoutReset(value, 75, 2);
+  });
+  it('preserves valid reset rows and the existing locale date format', () => {
+    const plan = renderQuota(view('go'));
+    const time = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      .format(new Date('2026-10-22T06:00:00Z'));
+    expect(plan.getAllByText(locale === 'en' ? `Resets at ${time}` : `${time} 重置`)).toHaveLength(2);
+    expect(plan.getAllByRole('progressbar')).toHaveLength(2);
+  });
+});
 
 const cases: Array<[string, WorkspaceQuotaTier, string, number]> = [
   ['E01', 'free', '0.50', 75], ['E03', 'go', '24', 75], ['E04', 'pro', '24', 75],
