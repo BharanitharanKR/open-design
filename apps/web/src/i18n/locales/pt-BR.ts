@@ -1,6 +1,13 @@
 import type { Dict } from '../types';
 
 export const ptBR: Dict = {
+  "workspaceQuota.unavailable": "Detalhes indisponíveis",
+  "workspaceQuota.unsubscribed": "Sem assinatura",
+  "workspaceQuota.contactOwner": "Contatar Owner",
+  "workspaceQuota.payAsYouGo": "Saldo por uso",
+  "workspaceQuota.resetAt": "Redefine em {time}",
+  "workspaceQuota.viewBalance": "Ver saldo",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

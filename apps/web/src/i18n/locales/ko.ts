@@ -1,6 +1,13 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  "workspaceQuota.unavailable": "세부 정보를 사용할 수 없습니다",
+  "workspaceQuota.unsubscribed": "구독 안 함",
+  "workspaceQuota.contactOwner": "Owner에게 문의",
+  "workspaceQuota.payAsYouGo": "종량제 잔액",
+  "workspaceQuota.resetAt": "{time}에 초기화",
+  "workspaceQuota.viewBalance": "잔액 보기",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

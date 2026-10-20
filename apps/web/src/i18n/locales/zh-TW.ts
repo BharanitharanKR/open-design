@@ -1,6 +1,13 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  "workspaceQuota.unavailable": "明細暫不可用",
+  "workspaceQuota.unsubscribed": "未訂閱",
+  "workspaceQuota.contactOwner": "聯絡 Owner",
+  "workspaceQuota.payAsYouGo": "按量額度",
+  "workspaceQuota.resetAt": "{time} 重設",
+  "workspaceQuota.viewBalance": "查看餘額",
+
   "homeInvite.banner": "免費邀請同事，一起看設計、聊想法",
   "homeInvite.invite": "邀請",
   "homeInvite.dismiss": "關閉邀請橫條",

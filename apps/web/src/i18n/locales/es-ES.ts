@@ -1,6 +1,13 @@
 import type { Dict } from '../types';
 
 export const esES: Dict = {
+  "workspaceQuota.unavailable": "Detalles no disponibles",
+  "workspaceQuota.unsubscribed": "Sin suscripción",
+  "workspaceQuota.contactOwner": "Contactar con Owner",
+  "workspaceQuota.payAsYouGo": "Saldo por uso",
+  "workspaceQuota.resetAt": "Se restablece el {time}",
+  "workspaceQuota.viewBalance": "Ver saldo",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

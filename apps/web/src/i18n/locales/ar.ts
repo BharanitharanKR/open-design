@@ -1,6 +1,13 @@
 import type { Dict } from '../types';
 
 export const ar: Dict = {
+  "workspaceQuota.unavailable": "التفاصيل غير متاحة",
+  "workspaceQuota.unsubscribed": "غير مشترك",
+  "workspaceQuota.contactOwner": "تواصل مع Owner",
+  "workspaceQuota.payAsYouGo": "رصيد الدفع حسب الاستخدام",
+  "workspaceQuota.resetAt": "إعادة التعيين في {time}",
+  "workspaceQuota.viewBalance": "عرض الرصيد",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

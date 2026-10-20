@@ -1,6 +1,13 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  "workspaceQuota.unavailable": "A részletek nem érhetők el",
+  "workspaceQuota.unsubscribed": "Nincs előfizetés",
+  "workspaceQuota.contactOwner": "Kapcsolat az Ownerrel",
+  "workspaceQuota.payAsYouGo": "Használatalapú egyenleg",
+  "workspaceQuota.resetAt": "Visszaállítás: {time}",
+  "workspaceQuota.viewBalance": "Egyenleg megtekintése",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",
