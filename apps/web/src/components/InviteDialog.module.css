@@ -65,7 +65,11 @@
 .onboarding .submit:disabled { opacity:1;background:#f2f2f2;color:#b6b6b6; }
 .onboarding .skip { position:relative;top:-8px;width:max-content;height:36px;min-height:36px;margin:24px 0 0;padding:4px 8px;border:0;background:none;box-shadow:none;color:#888;font-size:13px;font-weight:600; }
 .onboarding .lineError,.onboarding .error { color:#d43c32; }
-.onboarding .lineError { margin:0; }
+.onboarding .row { margin-bottom:12px; }
+.onboarding .row:last-child { margin-bottom:0; }
+.onboarding .lineError { margin:8px 0 0;line-height:18px; }
+.onboarding .error { margin:8px 0 12px;line-height:17.5px; }
+.onboarding .summary { margin:2px 0 0;font-size:13px;line-height:1.4;color:#666; }
 .art { min-width:0;min-height:0;padding:8px 8px 8px 0;overflow:hidden; }
 .art img { display:block;width:100%;height:100%;border-radius:8px;object-fit:cover;object-position:center; }
 .onboardingFooter { position:absolute;left:32px;bottom:24px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:#999;font-size:11px;line-height:16px; }

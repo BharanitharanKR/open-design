@@ -15,10 +15,19 @@ describe('registration invitation guidance', () => {
   it('uses the original rider art, two-line explanation and skip without cancel or premature success event', () => {
     const finish = mount();
     expect(screen.getByText('免费邀请同事，一起做设计')).toBeTruthy();
-    expect(document.querySelector('img')?.getAttribute('src')).toBe('/onboarding/onboarding-cloud-art.webp');
+    expect(document.querySelector('img')?.getAttribute('src')).toBe('/onboarding/registration-invite-art.png');
     expect(screen.queryByRole('button', { name: '取消' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
     expect(finish).toHaveBeenCalledWith(0);
+  });
+  it('keeps an existing-member conflict local without a misleading batch failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'member@example.com', ok: false, error: 'already_member' }])));
+    const finish = mount(); email('member@example.com'); await send();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getByRole('alert').textContent).toBe('此邮箱已是工作空间成员，无需邀请');
+    expect(screen.queryByText('邀请发送失败，请检查网络后重试')).toBeNull();
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('member@example.com');
+    expect(finish).not.toHaveBeenCalled();
   });
   it('shows confirmed success for one second before finishing, without emitting the ordinary-dialog event', async () => {
     vi.useFakeTimers();
@@ -39,6 +48,7 @@ describe('registration invitation guidance', () => {
     ])));
     const finish = mount(); email('sent@example.com'); fireEvent.click(screen.getByRole('button', { name: '添加成员' })); email('retry@example.com', 1); await send();
     expect((screen.getByRole('button', { name: '已邀请 1 位同事' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('status').textContent).toBe('已邀请 1 位同事；请处理未成功的邮箱。');
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('retry@example.com');
     act(() => vi.advanceTimersByTime(650));

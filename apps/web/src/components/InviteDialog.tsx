@@ -45,6 +45,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentCount, setSentCount] = useState(0);
+  const [partialCount, setPartialCount] = useState<number | null>(null);
   const [batchSuccess, setBatchSuccess] = useState<number | null>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openRoleIndex, setOpenRoleIndex] = useState<number | null>(null);
@@ -61,7 +62,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     requestVersion.current += 1;
     if (finishTimer.current) clearTimeout(finishTimer.current);
     finishTimer.current = null;
-    setBatchSuccess(null);
+    setBatchSuccess(null); setPartialCount(null);
     controller.current?.abort();
     setRows([emptyRow()]); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
     if (!open) return;
@@ -129,7 +130,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     }, { requestId });
     trackWorkspaceInviteClick(analytics.track, { page_name: page, area: 'workspace_invite_dialog', element: 'submit',
       entry_from: entryFrom, invite_count_bucket: countBucket(requested.length), ...dimensions }, { requestId });
-    setSubmitting(true); setError(null); setOpenRoleIndex(null);
+    setSubmitting(true); setError(null); setPartialCount(null); setOpenRoleIndex(null);
     const abort = new AbortController(); controller.current = abort;
     try {
       const response = await fetch('/api/workspace/invite', { method: 'POST', signal: abort.signal,
@@ -140,11 +141,16 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       if (version !== requestVersion.current) return;
       const results = body.results;
       const succeeded: InviteRow[] = []; const failed: Row[] = [];
+      let onlyRowConflicts = true;
       requested.forEach((row, index) => {
         const match = results?.find(item => item.email?.trim().toLowerCase() === row.email.toLowerCase())
           ?? (results?.length === requested.length && results[index]?.email === undefined ? results[index] : undefined);
         if (match?.ok === true) succeeded.push(row);
-        else failed.push({ ...row, error: t(workspaceInviteErrorMessageKey(match?.error)) });
+        else {
+          const key = workspaceInviteErrorMessageKey(match?.error, onboarding);
+          if (key !== 'workspaceInvite.onboardingErrorAlreadyMember' && key !== 'workspaceInvite.onboardingErrorPendingInvite') onlyRowConflicts = false;
+          failed.push({ ...row, error: t(key) });
+        }
       });
       result(succeeded.length, failed.length, failed.length ? 'invite_rejected' : undefined);
       if (succeeded.length) {
@@ -166,7 +172,8 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
         return;
       }
       setRows(failed);
-      setError(succeeded.length ? t('workspaceInvite.partialSummary').replace('{sent}', String(onboarding ? sentCount + succeeded.length : succeeded.length)).replace('{failed}', String(failed.length)) : onboarding ? t('workspaceInvite.submitFailed') : null);
+      if (onboarding && succeeded.length) setPartialCount(sentCount + succeeded.length);
+      setError(onboarding ? succeeded.length || onlyRowConflicts ? null : t('workspaceInvite.submitFailed') : succeeded.length ? t('workspaceInvite.partialSummary').replace('{sent}', String(succeeded.length)).replace('{failed}', String(failed.length)) : null);
     } catch (caught) {
       if (version !== requestVersion.current) return;
       if (caught instanceof TypeError) result(0, requested.length, 'network_error');
@@ -213,10 +220,12 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
           </div>)}
         </div>
         <Button className={styles.add} disabled={submitting} onClick={() => { click('add_recipient_row'); setRows(previous => [...previous, emptyRow()]); }}><Icon name="plus" size={14} />{t('workspaceInvite.addMember')}</Button>
-        {error ? <p className={styles.error} role="alert">{error}</p> : null}
-        {sentCount > 0 && !error ? <p className={styles.error} role="status">{t('workspaceInvite.sentCount').replace('{count}', String(sentCount))}</p> : null}
+        {!onboarding && error ? <p className={styles.error} role="alert">{error}</p> : null}
+        {onboarding && partialCount !== null ? <p className={styles.summary} role="status">{t('workspaceInvite.onboardingPartialSummary').replace('{count}', String(partialCount))}</p> : null}
+        {!onboarding && sentCount > 0 && !error ? <p className={styles.error} role="status">{t('workspaceInvite.sentCount').replace('{count}', String(sentCount))}</p> : null}
         <footer className={styles.footer}>{!onboarding ? <Button className={styles.cancel} onClick={close} disabled={submitting}>{t('workspaceInvite.cancel')}</Button> : null}
           <Button type="submit" className={styles.submit} disabled={submitting}>{batchSuccess !== null ? batchSuccess === 0 ? t('workspaceInvite.sent') : t('workspaceInvite.batchSent').replace('{count}', String(batchSuccess)) : submitting ? t('workspaceInvite.sending') : t('workspaceInvite.confirm')}</Button></footer>
+        {onboarding && error ? <p className={styles.error} role="alert">{error}</p> : null}
       </form>
       {onboarding ? <><Button className={styles.skip} disabled={submitting} onClick={() => onFinish?.(sentCount)}>{t('workspaceInvite.skip')}</Button><footer className={styles.onboardingFooter}><LanguageMenu placement="up" align="start" /><span>© {new Date().getFullYear()} OpenDesign · {t('settings.onboardingCloudRights')}</span></footer></> : null}
     </section>
