@@ -98,6 +98,7 @@ export interface Dict {
   'workspaceInvite.invalidEmail': string;
   'workspaceInvite.duplicateEmail': string;
   'workspaceInvite.partialSuccess': string;
+  'workspaceInvite.partialSummary': string;
   'workspaceInvite.dialogAria': string;
   'workspaceInvite.title': string;
   'workspaceInvite.onboardingTitle': string;

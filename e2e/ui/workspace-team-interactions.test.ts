@@ -738,11 +738,15 @@ for (const role of ['owner', 'admin', 'member'] as const) {
     }
     // Frozen HTML reference palette, measured in Chromium (light theme).
     await expect(panel).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await expect.poll(async () => (await panel.boundingBox())?.height).toBeCloseTo(284, 0);
+    await expect(dialog.locator('.entry-invite__title')).toHaveCSS('font-weight', '600');
+    await expect(dialog.getByRole('textbox').first()).toHaveAttribute('placeholder', 'name@company.com');
     if (role === 'owner') {
       const menu = page.getByRole('listbox');
       await expect(menu).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect.poll(async () => (await menu.boundingBox())?.width).toBeCloseTo(300, 0);
       await expect(menu.getByRole('option').first()).toHaveCSS('background-color', 'rgb(240, 240, 240)');
-      await expect(menu.getByRole('option').first().locator('svg')).toHaveCSS('color', 'rgb(102, 102, 102)');
+      await expect(menu.getByRole('option').first().getByTestId('invite-role-check')).toHaveCSS('color', 'rgb(102, 102, 102)');
     }
     await testInfo.attach(`invitation-${role}-layout`, {
       body: JSON.stringify(await panel.evaluate((el) => ({
@@ -787,7 +791,7 @@ test('[P1] partial invitation retains failed rows and retries only those address
   await page.getByTestId('workspace-switcher').click();
   await page.getByRole('menu').getByRole('menuitem', { name: '邀请同事' }).click();
   const dialog = page.getByRole('dialog', { name: '邀请成员' });
-  const emails = dialog.getByPlaceholder('输入电子邮件地址……');
+  const emails = dialog.getByPlaceholder('name@company.com');
   await emails.first().fill('sent@example.com');
   await dialog.getByRole('button', { name: '添加成员' }).click();
   await emails.nth(1).fill('retry@example.com');
@@ -830,7 +834,7 @@ test('[P0] team owner completes a multi-row invite with explicit roles', async (
 
   const dialog = page.getByRole('dialog', { name: 'Invite members' });
   await expect(dialog).toBeVisible();
-  const emailInputs = dialog.getByPlaceholder('Enter email address…');
+  const emailInputs = dialog.getByPlaceholder('name@company.com');
   await emailInputs.first().fill('admin@example.com');
 
   await dialog.getByRole('button', { name: 'Assign role' }).first().click();
@@ -875,7 +879,7 @@ test('[P1] completed invitation does not close a reopened dialog', async ({ page
   await page.getByRole('menu').getByRole('menuitem', { name: 'Invite colleague' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Invite members' });
-  const emailInput = dialog.getByPlaceholder('Enter email address…').first();
+  const emailInput = dialog.getByPlaceholder('name@company.com').first();
   await emailInput.fill('first@example.com');
   await dialog.getByRole('button', { name: 'Send invitations' }).click();
 
