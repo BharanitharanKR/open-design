@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // VIEW-001/002/003/010-CLIENT/012/017/021; JSON E/A11 state content is authority.
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceQuotaPopover } from '../../src/components/WorkspaceQuotaPopover';
 import { workspaceQuotaView, type WorkspaceQuotaTier, type WorkspaceQuotaView } from '../../src/collab/workspace-quota-view';
@@ -68,29 +68,33 @@ it.each(['free', 'go', 'plus', 'pro', 'max'] as const)('E12 %s retains header wi
 
 it('E03 missing breakdown/modelRestriction/windows stays unavailable, never fake $0 (VIEW-012)', () => {
   render(panel({ ...view('go'), windows: null, balanceUsd: null }));
-  expect(screen.getAllByText('明细暂不可用').length).toBeGreaterThan(0);
+  expect(within(screen.getByRole('region', { name: '按量额度' })).getByText('明细暂不可用')).toBeTruthy();
+  expect(within(screen.getByRole('region', { name: 'Design Plan' })).getAllByText('明细暂不可用')).toHaveLength(2);
+  expect(screen.getAllByTitle('明细暂不可用')).toHaveLength(2);
   expect(screen.getByText('5 小时')).toBeTruthy();
   expect(screen.getByText('7 天')).toBeTruthy();
   expect(screen.queryByText('$0.00')).toBeNull();
   expect(screen.queryByRole('progressbar')).toBeNull();
 });
 it('E09 displays server merged total without adding gift/recharge or expiring them (VIEW-021)', () => {
-  render(panel({ ...view('free', '40.30'), breakdown: null }));
+  render(panel({ ...view('free', '40.30'), breakdown: 'gift + recharge', modelRestriction: 'supported models' }));
+  // MAIN-REVIEW F-1 / E states: model info is hover-only, with no breakdown or refresh row.
+  expect(screen.getByTitle('supported models').textContent).toBe('Design Plan');
+  expect(screen.queryByText(/supported models|gift \+ recharge|模型说明/)).toBeNull();
+  expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
   expect(screen.getByText('$40.30')).toBeTruthy();
   expect(screen.queryByText('$0.50')).toBeNull();
 });
-it('E03 C-04 open, workspace/member change, reopen and manual refresh signal the existing reader', () => {
+it('E03 C-04 open, workspace/member change and reopen signal the existing reader', () => {
   const refresh = vi.fn();
   window.addEventListener(WORKSPACE_BILLING_REFRESH_EVENT, refresh);
   const mounted = render(panel(view('pro')));
   expect(refresh).toHaveBeenCalledTimes(1);
-  fireEvent.click(screen.getByRole('button', { name: '刷新' }));
-  expect(refresh).toHaveBeenCalledTimes(2);
   mounted.rerender(<I18nProvider initial="zh-CN"><WorkspaceQuotaPopover view={view('pro')} context={{ ...context, workspaceId: 'workspace-b', workspaceMemberId: 'member-b' }} /></I18nProvider>);
-  expect(refresh).toHaveBeenCalledTimes(3);
+  expect(refresh).toHaveBeenCalledTimes(2);
   mounted.unmount();
   render(panel(view('pro')));
-  expect(refresh).toHaveBeenCalledTimes(4);
+  expect(refresh).toHaveBeenCalledTimes(3);
   window.removeEventListener(WORKSPACE_BILLING_REFRESH_EVENT, refresh);
 });
 it('E09 no workspace id hides links/actions and never fabricates a destination', () => {
@@ -150,4 +154,19 @@ it('E12 keeps a scoped host Go header and two skeletons while a directory-only r
   render(panel(state));
   expect(screen.getByRole('img', { name: 'go' })).toBeTruthy();
   expect(screen.getAllByTestId('workspace-quota-window-skeleton')).toHaveLength(2);
+});
+
+it('E04 owner action preserves locked-workspace recovery priority and falls back to the scoped wrapper (MAIN-REVIEW F-2)', () => {
+  const recoveryUrl = 'https://billing.example.test/recover';
+  const locked = { ...context, lifecycleState: 'locked' as const,
+    billingRecovery: { canEnterBillingRecovery: true, recoveryUrl: `  ${recoveryUrl}  ` } };
+  const mounted = render(<I18nProvider initial="zh-CN"><WorkspaceQuotaPopover context={locked} view={view('pro')} profile="local" /></I18nProvider>);
+  fireEvent.click(screen.getByRole('button', { name: '升级' }));
+  expect(window.open).toHaveBeenLastCalledWith(recoveryUrl, '_blank', 'noopener,noreferrer');
+  fireEvent.click(screen.getByRole('button', { name: '查看余额' }));
+  expect(window.open).toHaveBeenLastCalledWith(quotaPopoverConsoleUrl('local', context.workspaceId), '_blank', 'noopener,noreferrer');
+  mounted.rerender(<I18nProvider initial="zh-CN"><WorkspaceQuotaPopover context={{ ...locked,
+    billingRecovery: { canEnterBillingRecovery: true, recoveryUrl: '  ' } }} view={view('pro')} profile="local" /></I18nProvider>);
+  fireEvent.click(screen.getByRole('button', { name: '升级' }));
+  expect(window.open).toHaveBeenLastCalledWith(quotaPopoverConsoleUrl('local', context.workspaceId, 'plans'), '_blank', 'noopener,noreferrer');
 });

@@ -6,9 +6,7 @@ export const hu: Dict = {
   "workspaceQuota.contactOwner": "Kapcsolat az Ownerrel",
   "workspaceQuota.payAsYouGo": "Használatalapú egyenleg",
   "workspaceQuota.resetAt": "Visszaállítás: {time}",
-  "workspaceQuota.models": "Modellhozzáférés",
   "workspaceQuota.viewBalance": "Egyenleg megtekintése",
-  "workspaceQuota.refresh": "Frissítés",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

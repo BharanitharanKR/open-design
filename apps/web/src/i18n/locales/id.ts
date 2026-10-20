@@ -6,9 +6,7 @@ export const id: Dict = {
   "workspaceQuota.contactOwner": "Hubungi Owner",
   "workspaceQuota.payAsYouGo": "Saldo sesuai pemakaian",
   "workspaceQuota.resetAt": "Direset pada {time}",
-  "workspaceQuota.models": "Akses model",
   "workspaceQuota.viewBalance": "Lihat saldo",
-  "workspaceQuota.refresh": "Muat ulang",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

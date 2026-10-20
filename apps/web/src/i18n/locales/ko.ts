@@ -6,9 +6,7 @@ export const ko: Dict = {
   "workspaceQuota.contactOwner": "Owner에게 문의",
   "workspaceQuota.payAsYouGo": "종량제 잔액",
   "workspaceQuota.resetAt": "{time}에 초기화",
-  "workspaceQuota.models": "모델 이용 안내",
   "workspaceQuota.viewBalance": "잔액 보기",
-  "workspaceQuota.refresh": "새로 고침",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

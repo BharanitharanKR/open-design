@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // C-04 / DD:1316, division:65, VIEW-001/012: real shared hook, no second read chain.
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { WorkspaceBillingResponse, WorkspaceCollabContext } from '@open-design/contracts';
 import { WorkspaceQuotaPopover } from '../../src/components/WorkspaceQuotaPopover';
@@ -77,7 +77,7 @@ it('E03 -> E09 switch discards the delayed previous workspace read (VIEW-001/012
   expect(screen.queryByText('$100.00')).toBeNull();
   expect(screen.queryByRole('button', { name: '升级' })).toBeNull();
 });
-it('E04 re-reads on open/reopen, foreground/payment signal, visibility and manual refresh (C-04)', async () => {
+it('E04 re-reads on open/reopen, foreground/payment signal and visibility (C-04)', async () => {
   let amount = '24';
   read = async () => Response.json(response(a, amount));
   let mounted!: ReturnType<typeof render>;
@@ -87,15 +87,12 @@ it('E04 re-reads on open/reopen, foreground/payment signal, visibility and manua
   // The existing shared reader coalesces forced refresh bursts for 250ms.
   // These are distinct user actions; advance its virtual clock past that boundary.
   await act(async () => { await vi.advanceTimersByTimeAsync(251); });
-  amount = '25';
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '刷新' })); });
-  expect(screen.getByText('$25.00')).toBeTruthy();
-  expect(calls()).toBeGreaterThan(initial);
   await act(async () => { mounted.rerender(<Harness context={a} open={false} />); });
   await act(async () => { await vi.advanceTimersByTimeAsync(251); });
   amount = '26';
   await act(async () => { mounted.rerender(<Harness context={a} />); });
   expect(screen.getByText('$26.00')).toBeTruthy();
+  expect(calls()).toBeGreaterThan(initial);
   amount = '27';
   await act(async () => { await vi.advanceTimersByTimeAsync(2_000); window.dispatchEvent(new Event('focus')); });
   expect(screen.getByText('$27.00')).toBeTruthy();
@@ -118,7 +115,7 @@ it('E12 failure keeps skeleton until data arrives; later failed refresh retains 
   await act(async () => { await vi.advanceTimersByTimeAsync(251); });
   const beforeFailure = calls();
   read = async () => new Response(null, { status: 503 });
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '刷新' })); });
+  await act(async () => { notifyWorkspaceBillingRefresh(); });
   expect(screen.getByText('$24.00')).toBeTruthy();
   expect(screen.queryByText('$0.00')).toBeNull();
   expect(calls()).toBeGreaterThan(beforeFailure);

@@ -6,9 +6,7 @@ export const uk: Dict = {
   "workspaceQuota.contactOwner": "Зв’язатися з Owner",
   "workspaceQuota.payAsYouGo": "Баланс за використанням",
   "workspaceQuota.resetAt": "Скидання: {time}",
-  "workspaceQuota.models": "Доступ до моделей",
   "workspaceQuota.viewBalance": "Переглянути баланс",
-  "workspaceQuota.refresh": "Оновити",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

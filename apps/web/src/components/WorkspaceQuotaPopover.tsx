@@ -33,7 +33,9 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
 
   const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId);
   const max = view.tier === 'max';
-  const actionUrl = quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
+  // MAIN-REVIEW F-2: preserve base EntryNavRail's locked/past-due recovery priority.
+  const actionUrl = context?.billingRecovery?.recoveryUrl?.trim()
+    || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
   const owner = context?.role === 'owner';
   // Preserve the existing contracts billing policy: locked workspaces remain readable.
   const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
@@ -84,7 +86,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
           <section aria-label={t('billing.codingPlanDesignPlan')}>
             {/* E01/E09/A11: the Design Plan region is present even on Free. */}
             {view.tier === 'free' ? <div className={quota.row}>
-              <span>{t('billing.codingPlanDesignPlan')}</span><span>{t('workspaceQuota.unsubscribed')}</span>
+              <span title={view.modelRestriction ?? unavailable}>{t('billing.codingPlanDesignPlan')}</span><span>{t('workspaceQuota.unsubscribed')}</span>
             </div> : durations.map(duration => {
               const window = view.windows?.find(item => item.durationSeconds === duration);
               const percent = window?.remainingPercent;
@@ -95,7 +97,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
                 : unavailable;
               return <div className={quota.block} key={duration}>
                 <div className={quota.row}>
-                  <span className={quota.allowance}>{t('billing.codingPlanDesignPlan')} <small className={quota.period}>
+                  <span className={quota.allowance} title={view.modelRestriction ?? unavailable}>{t('billing.codingPlanDesignPlan')} <small className={quota.period}>
                     {t(duration === 18_000 ? 'billing.codingPlanPeriodHours' : 'billing.codingPlanPeriodDays', { count: duration === 18_000 ? 5 : 7 })}
                   </small></span>
                   <span>{known ? t('billing.codingPlanRemainingPercent', { percent }) : unavailable}</span>
@@ -107,21 +109,13 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
                 <div className={styles.details}>{t('workspaceQuota.resetAt', { time: resetLabel })}</div>
               </div>;
             })}
-            <span className={styles.details} title={view.modelRestriction ?? unavailable} tabIndex={0}>
-              {t('workspaceQuota.models')}: {view.modelRestriction ?? unavailable}
-            </span>
           </section>
           <section className={quota.walletWithQuota} aria-label={t('workspaceQuota.payAsYouGo')}>
             {consoleUrl && readable ? <button type="button" className={`${styles.balance} ${quota.wallet}`}
               data-testid="entry-nav-credits-row" aria-label={t('workspaceQuota.viewBalance')}
               onClick={() => navigate(consoleUrl, 'credits')}>{walletContent}</button>
               : <div className={quota.wallet}>{walletContent}</div>}
-            {/* CS-06 / DD:1314: no bucket arithmetic or account-scoped breakdown. */}
-            <span className={styles.details} title={view.breakdown ?? unavailable}>{view.breakdown ?? unavailable}</span>
           </section>
-          {consoleUrl && readable ? <Button className={styles.refresh} onClick={notifyWorkspaceBillingRefresh}>
-            {t('workspaceQuota.refresh')}
-          </Button> : null}
         </>
       )}
     </div>

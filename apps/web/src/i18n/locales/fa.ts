@@ -6,9 +6,7 @@ export const fa: Dict = {
   "workspaceQuota.contactOwner": "تماس با Owner",
   "workspaceQuota.payAsYouGo": "اعتبار بر اساس مصرف",
   "workspaceQuota.resetAt": "بازنشانی در {time}",
-  "workspaceQuota.models": "دسترسی به مدل‌ها",
   "workspaceQuota.viewBalance": "مشاهده موجودی",
-  "workspaceQuota.refresh": "تازه‌سازی",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

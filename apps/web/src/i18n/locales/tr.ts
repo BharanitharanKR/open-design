@@ -6,9 +6,7 @@ export const tr: Dict = {
   "workspaceQuota.contactOwner": "Owner ile iletişime geçin",
   "workspaceQuota.payAsYouGo": "Kullanım başına bakiye",
   "workspaceQuota.resetAt": "Sıfırlanma: {time}",
-  "workspaceQuota.models": "Model erişimi",
   "workspaceQuota.viewBalance": "Bakiyeyi görüntüle",
-  "workspaceQuota.refresh": "Yenile",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",

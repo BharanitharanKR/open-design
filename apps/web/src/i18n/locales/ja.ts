@@ -6,9 +6,7 @@ export const ja: Dict = {
   "workspaceQuota.contactOwner": "Owner に連絡",
   "workspaceQuota.payAsYouGo": "従量制残高",
   "workspaceQuota.resetAt": "{time} にリセット",
-  "workspaceQuota.models": "モデルの利用条件",
   "workspaceQuota.viewBalance": "残高を確認",
-  "workspaceQuota.refresh": "更新",
 
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
