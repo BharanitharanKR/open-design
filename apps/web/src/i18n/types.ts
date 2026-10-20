@@ -87,6 +87,7 @@ export interface Dict {
   'workspaceInvite.memberDescription': string;
   'workspaceRemoval.title': string;
   'workspaceRemoval.confirm': string;
+  'workspaceRemoval.description': string;
   'workspaceRemoval.recoveryError': string;
   'workspaceInvite.helpLabel': string;
   'workspaceInvite.helpBody': string;

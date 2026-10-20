@@ -14,6 +14,7 @@ export function WorkspaceRemovalDialog({ notice, onRecovered }: {
   const t = useT();
   const titleId = useId();
   const dialogId = useId();
+  const descriptionId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -83,11 +84,14 @@ export function WorkspaceRemovalDialog({ notice, onRecovered }: {
     }
   };
   return (
-    <Dialog id={dialogId} role="alertdialog" ariaLabelledBy={titleId} closeOnBackdrop={false} closeOnEscape={false}
+    <Dialog id={dialogId} role="alertdialog" ariaLabelledBy={titleId} ariaDescribedBy={descriptionId} closeOnBackdrop={false} closeOnEscape={false}
       className={styles.panel} backdropClassName={styles.backdrop} data-testid="workspace-removal-dialog">
       <h2 id={titleId}>{t('workspaceRemoval.title', { workspace: notice.context.workspaceName || notice.context.workspaceId })}</h2>
-      {failed ? <p role="alert">{t('workspaceRemoval.recoveryError')}</p> : null}
-      <Button ref={buttonRef} disabled={pending} onClick={() => void confirm()}>{t('workspaceRemoval.confirm')}</Button>
+      <p id={descriptionId}>{t('workspaceRemoval.description')}</p>
+      {failed ? <p className={styles.error} role="alert">{t('workspaceRemoval.recoveryError')}</p> : null}
+      <div className={styles.actions}>
+        <Button className={styles.confirm} ref={buttonRef} disabled={pending} aria-busy={pending} onClick={() => void confirm()}>{t('workspaceRemoval.confirm')}</Button>
+      </div>
     </Dialog>
   );
 }

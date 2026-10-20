@@ -1200,7 +1200,7 @@ describe('App project list across a workspace switch', () => {
     expect(shell).toHaveAttribute('inert');
     expect(shell).not.toBeVisible();
     expect(scenario.activate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /返回默认工作空间|return to default workspace/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^(确认|confirm)$/i }));
     await waitFor(() => expect(screen.getByTestId('entry-project-personal-project')).toBeVisible());
     expect(screen.queryByTestId('workspace-removal-dialog')).toBeNull();
     expect(screen.queryByTestId('entry-project-project-in-a')).toBeNull();
@@ -1237,7 +1237,7 @@ describe('App project list across a workspace switch', () => {
     scenario.state.directory = [scenario.personal];
     await scenario.invalidate();
     await waitFor(() => expect(screen.getByTestId('workspace-removal-dialog')).toBeVisible());
-    fireEvent.click(screen.getByRole('button', { name: /返回默认工作空间|return to default workspace/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^(确认|confirm)$/i }));
     scenario.state.directory = [workspaceContext('ws-b')];
     await act(async () => { notifyWorkspaceContextRefresh(); });
     await waitFor(() => expect(screen.getByTestId('entry-project-project-in-b')).toBeVisible());
