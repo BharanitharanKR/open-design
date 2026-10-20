@@ -1,4 +1,4 @@
-/* C-01: inherit current OD PersonalPlanCard / CodingPlanUsage tokens and layout. */
+/* Inherit current OD PersonalPlanCard / CodingPlanUsage tokens and layout. */
 .contact {
   color: #bdbdbd;
   text-align: end;
@@ -19,11 +19,4 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
-}
-.refresh {
-  margin-top: 12px;
-  color: #bdbdbd;
-  font: inherit;
-  background: transparent;
-  border: 0;
 }

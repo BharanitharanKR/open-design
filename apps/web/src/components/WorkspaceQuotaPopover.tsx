@@ -25,7 +25,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
   const { t, locale } = useI18n();
   const workspaceId = context?.workspaceId;
   const memberId = context?.workspaceMemberId;
-  // CS-08 / DD:1316: entering/reopening and switching reuse the shared read,
+  // Entering/reopening and switching reuse the shared read,
   // which already rejects late results and refreshes on focus/payment signals.
   useEffect(() => {
     if (workspaceId && memberId) notifyWorkspaceBillingRefresh();
@@ -33,17 +33,17 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
 
   const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId);
   const max = view.tier === 'max';
-  // MAIN-REVIEW F-2: preserve base EntryNavRail's locked/past-due recovery priority.
+  // Preserve base EntryNavRail's locked/past-due recovery priority.
   const actionUrl = context?.billingRecovery?.recoveryUrl?.trim()
     || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
   const owner = context?.role === 'owner';
   // Preserve the existing contracts billing policy: locked workspaces remain readable.
   const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
-  // VIEW-012: only the existing team FAMILY mark survives from the host.
+  // Only the existing team FAMILY mark survives from the host.
   // Personal badges must name the same scoped tier as the quota and action.
   const shownBadge = badgeTier === 'team' ? 'team' : view.tier;
   const unavailable = t('workspaceQuota.unavailable');
-  // E03/E07/E15: Go has 5h + 7d; E04/E13/E14: other paid tiers only 7d.
+  // Go has 5h + 7d; other paid tiers only 7d.
   const durations = view.tier === 'free' ? [] : view.tier === 'go' ? [18_000, 604_800] : [604_800];
   function navigate(url: string, action: 'upgrade' | 'credits') {
     onNavigate?.(action);
@@ -63,7 +63,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
           {shownBadge === 'team' ? planLabel : null}
           {shownBadge ? <PlanWordmark tier={shownBadge} height={shownBadge === 'team' ? 11 : 20} /> : unavailable}
         </span>
-        {/* E reviewVariants / division:65: role, not wallet balance, chooses the action. */}
+        {/* Role, not wallet balance, chooses the action. */}
         {readable && owner && view.planKnown && actionUrl ? (
           <Button className="entry-nav-rail__menu-credits-upgrade" onClick={() => navigate(actionUrl, max ? 'credits' : 'upgrade')}>
             {t(max ? 'entry.creditsManage' : 'entry.creditsUpgrade')}
@@ -71,7 +71,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
         ) : readable && !owner ? <span className={styles.contact}>{t('workspaceQuota.contactOwner')}</span> : null}
       </div>
       {view.loading ? (
-        // E12 / VIEW-017: header stays; no spinner, hint, error or retry text.
+        // Header stays; no spinner, hint, error or retry text.
         <div aria-busy="true" data-testid="workspace-quota-skeleton">
           {durations.map(duration => <div className={quota.block} key={duration} data-testid="workspace-quota-window-skeleton" aria-hidden="true">
             <div className={quota.row}><span className={quota.bone} /><span className={`${quota.bone} ${quota.boneEnd}`} /></div>
@@ -84,7 +84,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
       ) : (
         <>
           <section aria-label={t('billing.codingPlanDesignPlan')}>
-            {/* E01/E09/A11: the Design Plan region is present even on Free. */}
+            {/* The Design Plan region is present even on Free. */}
             {view.tier === 'free' ? <div className={quota.row}>
               <span title={view.modelRestriction ?? unavailable}>{t('billing.codingPlanDesignPlan')}</span><span>{t('workspaceQuota.unsubscribed')}</span>
             </div> : durations.map(duration => {

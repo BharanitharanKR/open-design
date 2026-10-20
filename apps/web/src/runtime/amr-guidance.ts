@@ -84,9 +84,8 @@ export const AMR_CONSOLE_AUTO_RECHARGE_INTENT = 'auto-recharge';
  * (充值) dialog on arrival". Product ruling 2026-09-23: the billing card's
  * wallet row lands on the recharge dialog, not on the auto-recharge policy.
  *
- * DD:1312 (CS-04): AMR's seats console accepts this intent. Free workspaces
- * open plan selection; non-owners see the console's restricted surface
- * (AMR 630233699, routes/seats-console.tsx:165-189).
+ * AMR's seats console accepts this intent. Free workspaces
+ * open plan selection; non-owners see the console's restricted surface.
  */
 export const AMR_CONSOLE_RECHARGE_INTENT = 'recharge';
 
@@ -170,7 +169,7 @@ export function amrWorkspaceUrl(
   } catch {
     return null;
   }
-  // CS-04 (DD:1312), inventory C-03: workspace first, attribution, then intent.
+  // Workspace first, attribution, then intent.
   const params = new URLSearchParams({ workspaceId: normalizedWorkspaceId, source: 'open_design' });
   for (const [key, value] of url.searchParams) {
     if (key !== 'workspaceId' && key !== 'source') params.append(key, value);

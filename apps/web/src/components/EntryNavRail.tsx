@@ -1,6 +1,5 @@
 import { WorkspaceQuotaPopover } from './WorkspaceQuotaPopover';
 import { workspaceQuotaView } from '../collab/workspace-quota-view';
-import { CodingPlanUsage } from './CodingPlanUsage';
 import planCardStyles from './PersonalPlanCard.module.css';
 import styles from './EntryNavRail.module.css';
 // Team-edition entry navigation rail (Lovart/Manus-style labeled column).
@@ -105,7 +104,6 @@ import {
 import { canUpgradeFromPlanTier, isMaxPlanTier, resolvePlanLabelTier } from '../collab/team-plan';
 import {
   AMR_CONSOLE_AUTO_RECHARGE_INTENT,
-  AMR_CONSOLE_RECHARGE_INTENT,
   amrAutoRechargeUrlForProfile,
   amrConsoleUrlForWorkspace,
   amrPlansUrlForProfile,
@@ -822,26 +820,6 @@ function formatWalletBalance(raw: string | null | undefined): string | null {
 }
 
 /**
- * The already-resolved console URL, asked to open its auto-recharge settings
- * on arrival.
- *
- * Deliberately NOT `teamConsoleUrl(base, 'auto-recharge')`: that builds a path
- * from the workspace-SETTINGS URL, while the caller here holds a URL that is
- * already the dashboard, so routing through it would append a second
- * `/dashboard` segment. Only the intent has to be added.
- */
-function consoleBillingIntentUrl(base: string | null, intent: string): string | null {
-  if (!base) return null;
-  try {
-    const url = new URL(base);
-    url.searchParams.set('billing', intent);
-    return url.toString();
-  } catch {
-    return base;
-  }
-}
-
-/**
  * Shared destination for every generic 「升级」/「升级套餐」 affordance. Pricing
  * owns comparison; selecting a concrete card there is what hands checkout to
  * Cloud.
@@ -1307,9 +1285,6 @@ export function EntryTopRightCluster({
   // 管理 (Max) lands on the plain dashboard — product ruling 2026-09-23
   // (「点击管理, 就跳转到 vela dashboard 就行」), not on the auto-recharge dialog.
   const billingManageUrl = accountBillingUrl;
-  // The wallet row asks the console for its manual top-up dialog; see
-  // AMR_CONSOLE_RECHARGE_INTENT for the B-side handler.
-  const walletRechargeUrl = consoleBillingIntentUrl(accountBillingUrl, AMR_CONSOLE_RECHARGE_INTENT);
   // Product decision: plan comparison lives on public Pricing and payment
   // lives in Cloud. The client refreshes billing + context when focus returns
   // so a completed web upgrade syncs plan, credits, seats and gates.
@@ -1352,15 +1327,6 @@ export function EntryTopRightCluster({
   // above — a subscriber at $0.00 keeps the plan wordmark and drops the
   // number, so the card stays reachable without a permanent zero next to it.
   const showCreditsPill = Boolean(context || billing || balanceLabel);
-
-  function openBillingUpgrade() {
-    if (!billingUpgradeUrl) return;
-    window.open(billingUpgradeUrl, '_blank', 'noopener,noreferrer');
-    window.setTimeout(() => {
-      notifyWorkspaceBillingRefresh();
-      // Billing refresh must not reset workspace identity or a removal notice.
-    }, 3000);
-  }
 
   function trackAccountAction(element: AccountMenuClickProps['element']) {
     trackAccountMenuClick(analytics.track, {
@@ -1447,7 +1413,7 @@ export function EntryTopRightCluster({
                   aria-controls={creditsPanelOpen ? creditsPanelId : undefined}
                   aria-label={isFreePlan ? t('entry.creditsUpgrade') : t('entry.credits')}
                   onClick={() => {
-                    // C-01 E-state triggers: clicking, hovering or focusing opens the quota panel.
+                    // Clicking, hovering or focusing opens the quota panel.
                     trackAccountAction('credits');
                     openCreditsPanel();
                   }}
