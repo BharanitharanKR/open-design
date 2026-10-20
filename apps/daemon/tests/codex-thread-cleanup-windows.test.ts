@@ -174,12 +174,16 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
           child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
             stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true }); save(); };
         if (process.env.CHILD_MODE !== 'late-unknown-child') createChild(); else save();
+        // The normal helper waits for the host to finish ownership proof before EOF.
+        if (process.env.CHILD_MODE === 'known-child') process.stdin.on('end', () => process.exit(0));
         createInterface({ input: process.stdin }).on('line', line => {
           const frame = JSON.parse(line);
           if (frame.method === 'initialize') process.stdout.write(JSON.stringify({ id: frame.id, result: { userAgent: 'codex/0.154.0' } }) + '\\n');
           if (frame.method === 'thread/archive') {
             if (!child) createChild();
-            process.stdout.write(JSON.stringify({ id: frame.id, result: {} }) + '\\n', () => process.exit(0));
+            process.stdout.write(JSON.stringify({ id: frame.id, result: {} }) + '\\n', () => {
+              if (process.env.CHILD_MODE !== 'known-child') process.exit(0);
+            });
           }
         });`);
       const authority = await receipt();
