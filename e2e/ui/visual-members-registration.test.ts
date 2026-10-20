@@ -24,6 +24,22 @@ test('[P1] B01 only the new-registration signal enters the real invitation host'
   expect(host.loginCalls).toBe(1);
   expect(host.invitationRequests).toEqual([]);
   await captureRegistration(page, 'B01');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(host.form.locator('img')).toBeHidden();
+  expect(await host.form.evaluate(el => el.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await host.form.getByRole('button', { name: '发送邀请', exact: true }).scrollIntoViewIfNeeded();
+  await expect(host.form.getByRole('button', { name: '发送邀请', exact: true })).toBeVisible();
+  await host.form.getByRole('button', { name: '暂时跳过' }).scrollIntoViewIfNeeded();
+  await expect(host.form.getByRole('button', { name: '暂时跳过' })).toBeVisible();
+  await host.form.locator('[aria-haspopup=listbox]').click();
+  await expect(page.getByRole('option', { name: /管理员/ })).toBeVisible();
+  const menuRect = await page.getByRole('listbox').boundingBox();
+  expect(menuRect).not.toBeNull();
+  expect(menuRect!.x).toBeGreaterThanOrEqual(0);
+  expect(menuRect!.x + menuRect!.width).toBeLessThanOrEqual(390);
+  expect(menuRect!.y + menuRect!.height).toBeLessThanOrEqual(844);
+  await captureRegistration(page, 'B01-narrow');
 });
 
 test('[P1] B04 multiple rows retain independent roles and can be removed', async ({ page }) => {
@@ -103,13 +119,21 @@ test('[P1] B09 B18 confirmed success waits before home and counts exactly two', 
   await page.clock.runFor(999);
   await expect(host.form).toBeVisible();
   await page.clock.runFor(1);
-  await page.clock.resume();
   await expect(host.form).toHaveCount(0);
   await expect(page.getByTestId('home-view')).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: '已向 2 位同事发送邀请' })).toBeVisible();
   await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
   expect(await page.evaluate(key => localStorage.getItem(key), `od.registration-invite.completed:${NEW_ACCOUNT_ID}:${NEW_AUTHORIZATION_ID}`)).toBe('1');
-  await captureRegistration(page, 'B18');
+  const toast = page.getByRole('status').filter({ hasText: '已向 2 位同事发送邀请' });
+  await expect(toast).toHaveCSS('top', '64px');
+  await expect(toast.getByRole('button')).toHaveCount(1);
+  await page.clock.runFor(500);
+  await captureRegistration(page, 'B18', true);
+  await page.clock.runFor(3499);
+  await expect(toast).toHaveCount(1);
+  await page.clock.runFor(1);
+  await expect(toast).toHaveCount(0);
+  await page.clock.resume();
 });
 
 test('[P1] B11 failed batch preserves every recipient and retry sends only one request', async ({ page }) => {
@@ -150,6 +174,10 @@ test('[P1] B12 B19 partial success keeps only failure and skip reports actual cu
   await expect(page.getByRole('status').filter({ hasText: '已向 1 位同事发送邀请' })).toBeVisible();
   await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
   await captureRegistration(page, 'B19');
+  const toast = page.getByRole('status').filter({ hasText: '已向 1 位同事发送邀请' });
+  await expect(toast).toHaveCSS('top', '64px');
+  await toast.getByRole('button').click();
+  await expect(toast).toHaveCount(0);
 });
 
 test('[P1] B13 skip without confirmed success shows home banner and consumes onboarding once', async ({ page }) => {

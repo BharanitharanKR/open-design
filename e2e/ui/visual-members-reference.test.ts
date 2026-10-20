@@ -57,6 +57,8 @@ async function capture(page: Page, state: string) {
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   const options = await page.getByRole('option').evaluateAll(items => items.map(item => { const r = item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height,scrollHeight:item.scrollHeight,clientHeight:item.clientHeight }; }));
   await writeFile(path.join(artifactRoot, `${state}-options.json`), JSON.stringify(options, null, 2));
+  const toastMetrics = await page.locator('.od-toast').evaluateAll(items => items.map(el => { const css = getComputedStyle(el); return { rect: el.getBoundingClientRect().toJSON(), background: css.backgroundColor, borderRadius: css.borderRadius, closeButtons: el.querySelectorAll('button').length }; }));
+  await writeFile(path.join(artifactRoot, `${state}-toast-metrics.json`), JSON.stringify(toastMetrics, null, 2));
   await page.screenshot({ path: path.join(artifactRoot, `${state}.png`), animations: 'disabled' });
 }
 for (const [state, role] of [['B02', 'owner'], ['B03', 'member'], ['B27', 'admin']] as const) {
