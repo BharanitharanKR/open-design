@@ -78,8 +78,10 @@ test('[P1] B20 owner multiple rows and role description', async ({ page }) => {
   await dialog.locator('[aria-haspopup="listbox"]').first().click();
   await expect(page.getByRole('listbox')).toBeVisible();
   await expect.poll(async () => (await page.getByRole('listbox').boundingBox())?.width).toBe(300);
-  await expect(page.getByTestId('invite-role-check')).toHaveText('✓');
-  await expect.poll(async () => (await page.getByTestId('invite-role-check').boundingBox())?.width).toBe(14);
+  const selectedCheck = page.getByRole('option', { selected: true }).getByTestId('invite-role-check');
+  await expect(selectedCheck).toHaveText('✓');
+  await expect.poll(async () => (await selectedCheck.boundingBox())?.width).toBe(14);
+  await expect.poll(() => page.getByTestId('invite-role-check').evaluateAll(items => items.map(item => item.getBoundingClientRect().width))).toEqual([14, 14]);
   await capture(page, 'B20');
   await expect.poll(() => page.getByRole('option').evaluateAll(items => items.map(item => item.scrollHeight <= item.clientHeight))).toEqual([true, true]);
 });
