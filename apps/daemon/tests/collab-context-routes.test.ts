@@ -108,10 +108,12 @@ async function startContextServer(
       route: string,
       options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
     ) {
-      const init: RequestInit = { method: options.method ?? 'GET' };
-      if (options.headers) init.headers = options.headers;
+      // Each case owns a short-lived port-0 server. Do not let Undici retain
+      // its idle socket for a later server that happens to reuse that port.
+      const headers = { ...options.headers, connection: 'close' };
+      const init: RequestInit = { method: options.method ?? 'GET', headers };
       if (options.body !== undefined) {
-        init.headers = { ...options.headers, 'content-type': 'application/json' };
+        init.headers = { ...headers, 'content-type': 'application/json' };
         init.body = JSON.stringify(options.body);
       }
       const response = await fetch(`${base}${route}`, init);
