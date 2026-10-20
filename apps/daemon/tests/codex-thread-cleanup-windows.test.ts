@@ -3,21 +3,21 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Duplex } from 'node:stream';
 import { describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({ metadata: '', calls: 0, failRefresh: false, failInitial: false, stopped: [] as number[][],
-  initialDelayMs: 0, archiveMarker: '', archivedBeforeInitialSnapshot: null as boolean | null }));
+  initialGate: null as Promise<void> | null, onInitialSnapshot: null as (() => void) | null }));
 vi.mock('@open-design/platform', async (load) => {
   const actual = await load<typeof import('@open-design/platform')>();
   return { ...actual,
     captureProcessSnapshot: async (options: { timeoutMs?: number }) => {
-      expect(options.timeoutMs).toBe(3000);
+      expect(options.timeoutMs).toBe(500);
       state.calls++;
-      if (state.calls === 1 && state.initialDelayMs > 0) {
-        await new Promise(resolve => setTimeout(resolve, state.initialDelayMs));
-      }
-      if (state.calls === 1 && state.archiveMarker) {
-        state.archivedBeforeInitialSnapshot = await readFile(state.archiveMarker, 'utf8').then(() => true, () => false);
+      // Ordering tests hold the initial ownership proof at an explicit gate.
+      if (state.calls === 1) {
+        state.onInitialSnapshot?.();
+        if (state.initialGate) await state.initialGate;
       }
       if (state.failInitial || (state.calls > 1 && state.failRefresh)) throw new Error('controlled CIM timeout');
       const pids = JSON.parse(await readFile(state.metadata, 'utf8')) as { wrapper: number; descendant: number };
@@ -75,7 +75,7 @@ describe('controlled process fixture PID safety', () => {
       // Even if this guard regresses, this test cannot deliver any OS signal.
       const processCalls = vi.spyOn(process, 'kill').mockReturnValue(true);
       try {
-        expect(await captureProcessSnapshot({ timeoutMs: 3000 })).toEqual([]);
+        expect(await captureProcessSnapshot({ timeoutMs: 500 })).toEqual([]);
         await expect(stopProcesses([pid as number], { termGraceMs: 0, killGraceMs: 0 }))
           .rejects.toThrow('unsafe PID in controlled fixture');
         expect(state.stopped).toEqual([]);
@@ -234,108 +234,112 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
     },
   );
 
-  // #8122 Windows QA: the CIM ownership snapshot failed within its budget and
-  // the archive RPC was never sent, leaving the thread in the default list.
-  it.each(['slow-initial-snapshot', 'failed-initial-snapshot'])(
-    'never gates the archive RPC on the ownership snapshot for %s', async (mode) => {
-      const root = await mkdtemp(path.join(tmpdir(), 'codex-windows-gate-'));
+  // #8122 Windows QA. The ownership proof is taken while app-server is still
+  // blocked on the archive request, and its outcome never withholds that request.
+  describe('archive ordering around the initial ownership snapshot', () => {
+    // Like app-server: answers archive and exits only once stdin closes.
+    const appServer = `import { spawn } from 'node:child_process';
+      import { writeFileSync } from 'node:fs'; import { createInterface } from 'node:readline';
+      const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+        stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true });
+      writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: child.pid }));
+      process.stdin.on('end', () => process.exit(0));
+      createInterface({ input: process.stdin }).on('line', line => {
+        const frame = JSON.parse(line);
+        if (frame.method === 'initialize') {
+          process.stdout.write(JSON.stringify({ id: frame.id, result: { userAgent: 'codex/0.154.0' } }) + '\\n', () => {
+            if (process.env.EXIT_AFTER_INITIALIZE === 'yes') process.exit(0);
+          });
+        }
+        if (frame.method === 'thread/archive') process.stdout.write(JSON.stringify({ id: frame.id, result: {} }) + '\\n');
+      });`;
+
+    type Run = {
+      cleanup: ReturnType<typeof cleanupClosedCodexThread>;
+      /** True once the host has written thread/archive to app-server's stdin. */
+      archiveRequested: () => boolean;
+      snapshotStarted: Promise<void>;
+      releaseSnapshot: () => void;
+      owned: () => Promise<{ wrapper: number; descendant: number }>;
+    };
+
+    async function withAppServer(
+      options: { failInitial?: boolean; gated?: boolean; exitAfterInitialize?: boolean },
+      body: (run: Run) => Promise<void>,
+    ): Promise<void> {
+      const root = await mkdtemp(path.join(tmpdir(), 'codex-windows-order-'));
       const wrapper = path.join(root, 'wrapper.ts');
       state.metadata = path.join(root, 'owned-pids.json'); state.calls = 0; state.stopped = [];
-      state.failRefresh = false; state.failInitial = mode === 'failed-initial-snapshot';
-      // Slower than the whole 1.5 s protocol budget, like a cold PowerShell/CIM query.
-      state.initialDelayMs = mode === 'slow-initial-snapshot' ? 2000 : 0;
-      state.archiveMarker = path.join(root, 'archived'); state.archivedBeforeInitialSnapshot = null;
-      // Like app-server: it keeps running after archive and exits when stdin closes.
-      // Detach on Windows so wrapper exit cannot satisfy the reaping assertion.
-      await writeFile(wrapper, `import { spawn } from 'node:child_process';
-        import { writeFileSync } from 'node:fs'; import { createInterface } from 'node:readline';
-        const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
-          stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true });
-        writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: child.pid }));
-        const lines = createInterface({ input: process.stdin });
-        lines.on('close', () => process.exit(0));
-        lines.on('line', line => {
-          const frame = JSON.parse(line);
-          if (frame.method === 'initialize') process.stdout.write(JSON.stringify({ id: frame.id, result: { userAgent: 'Codex Desktop/0.146.0 (Windows 10.0.26100; x86_64)' } }) + '\\n');
-          if (frame.method === 'thread/archive') {
-            writeFileSync(process.env.ARCHIVE_MARKER, frame.params.threadId);
-            process.stdout.write(JSON.stringify({ id: frame.id, result: {} }) + '\\n');
-          }
-        });`);
+      state.failRefresh = false; state.failInitial = options.failInitial ?? false;
+      let started!: () => void;
+      const snapshotStarted = new Promise<void>(resolve => { started = resolve; });
+      let release: () => void = () => {};
+      state.onInitialSnapshot = started;
+      state.initialGate = options.gated ? new Promise<void>(resolve => { release = resolve; }) : null;
+      await writeFile(wrapper, appServer);
       const authority = await receipt();
+      // The host's child stdin is a net.Socket; its write is owned by Duplex.prototype.
+      const writes = vi.spyOn(Duplex.prototype, 'write');
+      const archiveRequested = () => writes.mock.calls.some(([chunk]) => String(chunk).includes('"method":"thread/archive"'));
+      const owned = async () => JSON.parse(await readFile(state.metadata, 'utf8')) as { wrapper: number; descendant: number };
       const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
       let cleanup: ReturnType<typeof cleanupClosedCodexThread> | undefined;
       try {
         Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
         cleanup = cleanupClosedCodexThread({ receipt: authority, command: process.execPath, args: [wrapper], cwd: root,
-          env: { PATH: process.env.PATH, OWNED_PIDS: state.metadata, ARCHIVE_MARKER: state.archiveMarker } });
-        const result = await cleanup;
-        const owned = JSON.parse(await readFile(state.metadata, 'utf8')) as { wrapper: number; descendant: number };
-        expect(await readFile(state.archiveMarker, 'utf8')).toBe('owned-thread');
-        expect(await waitForProcessExit(owned.wrapper, 500)).toBe(true);
-        if (mode === 'slow-initial-snapshot') {
-          expect(state.archivedBeforeInitialSnapshot).toBe(true);
-          // The acknowledged archive is not replaced by the protocol timer.
-          expect(result).toMatchObject({ status: 'archived', treeVerified: false });
-          expect(await waitForProcessExit(owned.descendant, 500)).toBe(true);
-          expect(state.stopped.flat()).toContain(owned.descendant);
-        } else {
-          expect(result).toMatchObject({ status: 'failed', treeVerified: false,
-            message: expect.stringContaining('archive acknowledged; process cleanup failed') });
-          // Unproven descendants are never signalled, and no futile second
-          // CIM query runs after the unproven root has exited.
-          expect(state.stopped).toEqual([]);
-          expect(state.calls).toBe(1);
-        }
+          env: { PATH: process.env.PATH, OWNED_PIDS: state.metadata,
+            EXIT_AFTER_INITIALIZE: options.exitAfterInitialize ? 'yes' : 'no' } });
+        await body({ cleanup, archiveRequested, snapshotStarted, releaseSnapshot: () => release(), owned });
       } finally {
+        release();
+        writes.mockRestore();
         Object.defineProperty(process, 'platform', platform);
-        state.initialDelayMs = 0; state.archiveMarker = '';
-        const stored = await readFile(state.metadata, 'utf8').catch(() => null);
-        const owned = stored ? JSON.parse(stored) as { wrapper: number; descendant: number } : null;
-        for (const pid of (owned ? [owned.descendant, owned.wrapper] : []).filter(pid => Number.isSafeInteger(pid) && pid > 0)) {
+        state.initialGate = null; state.onInitialSnapshot = null;
+        const pids = await owned().catch(() => null);
+        const live = (pids ? [pids.descendant, pids.wrapper] : []).filter(pid => Number.isSafeInteger(pid) && pid > 0);
+        for (const pid of live) {
           try { process.kill(pid, 'SIGKILL'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
         }
         await cleanup;
-        for (const pid of (owned ? [owned.descendant, owned.wrapper] : []).filter(pid => Number.isSafeInteger(pid) && pid > 0)) {
-          expect(await waitForProcessExit(pid, 5000)).toBe(true);
-        }
+        for (const pid of live) expect(await waitForProcessExit(pid, 5000)).toBe(true);
         await removeFixture(root);
       }
-    },
-    10_000,
-  );
-
-  it('still sends the archive RPC when the initial snapshot fails and the archive never answers', async () => {
-    // Covered by the lifecycle suite's initial-snapshot-failure case for
-    // process bounds; this asserts the RPC itself was attempted.
-    const root = await mkdtemp(path.join(tmpdir(), 'codex-windows-noack-'));
-    const wrapper = path.join(root, 'wrapper.ts');
-    state.metadata = path.join(root, 'owned-pids.json'); state.calls = 0; state.stopped = [];
-    state.failRefresh = false; state.failInitial = true;
-    const marker = path.join(root, 'archived');
-    await writeFile(wrapper, `import { writeFileSync } from 'node:fs'; import { createInterface } from 'node:readline';
-      writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: -1 }));
-      setInterval(() => {}, 1000);
-      createInterface({ input: process.stdin }).on('line', line => {
-        const frame = JSON.parse(line);
-        if (frame.method === 'initialize') process.stdout.write(JSON.stringify({ id: frame.id, result: { userAgent: 'codex/0.154.0' } }) + '\\n');
-        if (frame.method === 'thread/archive') writeFileSync(process.env.ARCHIVE_MARKER, frame.params.threadId);
-      });`);
-    const authority = await receipt();
-    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
-    let cleanup: ReturnType<typeof cleanupClosedCodexThread> | undefined;
-    try {
-      Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
-      cleanup = cleanupClosedCodexThread({ receipt: authority, command: process.execPath, args: [wrapper], cwd: root,
-        env: { PATH: process.env.PATH, OWNED_PIDS: state.metadata, ARCHIVE_MARKER: marker } });
-      expect(await cleanup).toMatchObject({ status: 'failed', message: expect.stringContaining('timed out'), treeVerified: false });
-      expect(await readFile(marker, 'utf8')).toBe('owned-thread');
-      const owned = JSON.parse(await readFile(state.metadata, 'utf8')) as { wrapper: number };
-      expect(await waitForProcessExit(owned.wrapper, 500)).toBe(true);
-    } finally {
-      Object.defineProperty(process, 'platform', platform);
-      await cleanup;
-      await removeFixture(root);
     }
+
+    it('still sends the archive request when the initial snapshot fails', () => withAppServer({ failInitial: true }, async (run) => {
+      const result = await run.cleanup;
+      const owned = await run.owned();
+      expect(run.archiveRequested()).toBe(true);
+      expect(result).toMatchObject({ status: 'failed', treeVerified: false,
+        message: expect.stringContaining('archive acknowledged; process cleanup failed') });
+      // Without an ownership proof nothing is signalled.
+      expect(state.stopped).toEqual([]);
+      expect(isProcessAlive(owned.descendant)).toBe(true);
+    }));
+
+    it('does not send the archive request before the initial snapshot settles', () => withAppServer({ gated: true }, async (run) => {
+      await run.snapshotStarted;
+      // Drain any synchronous follow-up of the snapshot call before checking.
+      await new Promise(resolve => setImmediate(resolve));
+      expect(run.archiveRequested()).toBe(false);
+      run.releaseSnapshot();
+      const result = await run.cleanup;
+      const owned = await run.owned();
+      expect(run.archiveRequested()).toBe(true);
+      expect(result).toMatchObject({ status: 'archived', treeVerified: false });
+      expect(await waitForProcessExit(owned.descendant, 500)).toBe(true);
+      expect(state.stopped.flat()).toContain(owned.descendant);
+    }));
+
+    it('settles without signalling when app-server exits before the snapshot returns',
+      () => withAppServer({ gated: true, exitAfterInitialize: true }, async (run) => {
+        await run.snapshotStarted;
+        // Settles on the exit itself, without waiting for the held snapshot.
+        const result = await run.cleanup;
+        expect(result).toMatchObject({ status: 'failed', message: expect.stringContaining('exited before acknowledgement') });
+        run.releaseSnapshot();
+        expect(run.archiveRequested()).toBe(false);
+        expect(state.stopped).toEqual([]);
+      }));
   });
 });
