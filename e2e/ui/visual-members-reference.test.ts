@@ -65,16 +65,21 @@ for (const [state, role] of [['B02', 'owner'], ['B03', 'member'], ['B27', 'admin
   test(`[P1] ${state} reference viewport invitation role and layout`, async ({ page }) => {
     const dialog = await setup(page, role);
     await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
+    await expect.poll(async () => (await dialog.locator('.entry-invite__panel').boundingBox())?.width).toBe(560);
+    await expect.poll(async () => (await dialog.locator('.entry-invite__panel').boundingBox())?.height).toBe(284);
     if (role !== 'owner') await expect(dialog.locator('[aria-haspopup="listbox"]:enabled')).toHaveCount(0);
     await capture(page, state);
   });
 }
 test('[P1] B20 owner multiple rows and role description', async ({ page }) => {
   const dialog = await setup(page, 'owner');
-  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(2);
   await dialog.locator('[aria-haspopup="listbox"]').first().click();
   await expect(page.getByRole('listbox')).toBeVisible();
+  await expect.poll(async () => (await page.getByRole('listbox').boundingBox())?.width).toBe(300);
+  await expect(page.getByTestId('invite-role-check')).toHaveText('✓');
+  await expect.poll(async () => (await page.getByTestId('invite-role-check').boundingBox())?.width).toBe(14);
   await capture(page, 'B20');
   await expect.poll(() => page.getByRole('option').evaluateAll(items => items.map(item => item.scrollHeight <= item.clientHeight))).toEqual([true, true]);
 });
@@ -88,15 +93,25 @@ test('[P1] A06 workspace switcher shows the two reference identities', async ({ 
 });
 test('[P1] B21 invalid email stays editable and unsent', async ({ page }) => {
   const dialog = await setup(page, 'owner');
+  let requests = 0;
+  await page.route('**/api/workspace/invite', route => { requests += 1; return route.fulfill({ json: { results: [] } }); });
+  await expect(dialog.locator('input[type="email"]')).toHaveAttribute('placeholder', 'name@company.com');
+  await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
+  expect(requests).toBe(0);
   await dialog.locator('input[type="email"]').fill('invalid-email');
   await dialog.getByRole('button', { name: /发送邀请|确认并邀请/ }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveValue('invalid-email');
   await expect(dialog.getByText(/邮箱格式/)).toBeVisible();
   await capture(page, 'B21');
+  expect(requests).toBe(0);
+  await dialog.locator('input[type="email"]').fill('valid@example.com');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
 });
 test('[P1] B22 duplicate emails retain both rows for correction', async ({ page }) => {
   const dialog = await setup(page, 'owner');
-  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  let requests = 0;
+  await page.route('**/api/workspace/invite', route => { requests += 1; return route.fulfill({ json: { results: [] } }); });
+  await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
   const inputs = dialog.locator('input[type="email"]');
   await inputs.nth(0).fill('lee@example.com');
   await inputs.nth(1).fill('lee@example.com');
@@ -104,6 +119,12 @@ test('[P1] B22 duplicate emails retain both rows for correction', async ({ page 
   await expect(inputs).toHaveCount(2);
   await expect(dialog.getByText(/重复/)).toBeVisible();
   await capture(page, 'B22');
+  expect(requests).toBe(0);
+  await dialog.getByRole('button', { name: '移除', exact: true }).first().click();
+  await expect(inputs).toHaveCount(1);
+  await expect(inputs).toHaveValue('lee@example.com');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await capture(page, 'B22-recovered');
 });
 test('[P1] B24 pending request disables repeated sends', async ({ page }) => {
   let release!: () => void;
@@ -114,7 +135,7 @@ test('[P1] B24 pending request disables repeated sends', async ({ page }) => {
     await route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: true, inviteId: 'visual-only-invite' }] } });
   });
   try {
-    await dialog.getByRole('button', { name: /添加成员/ }).click();
+    await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
     await dialog.locator('input[type="email"]').nth(0).fill('mika@example.com');
     await dialog.locator('input[type="email"]').nth(1).fill('lee@example.com');
     await dialog.getByRole('button', { name: /发送邀请|确认并邀请/ }).click();
@@ -128,13 +149,13 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
     { email: 'mika@example.com', ok: true, inviteId: 'visual-only-sent' },
     { email: 'lee@example.com', ok: false, error: 'active_pending_invite' },
   ] } }));
-  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
   await dialog.locator('input[type="email"]').nth(0).fill('mika@example.com');
   await dialog.locator('input[type="email"]').nth(1).fill('lee@example.com');
-  await dialog.getByRole('button', { name: /发送邀请|确认并邀请/ }).click();
+  await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
-  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toHaveCSS('background-color', 'rgb(32, 32, 32)');
   await capture(page, 'B26-hover');
@@ -160,7 +181,7 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
   const banner = page.getByRole('region', { name: '邀请', exact: true });
   await expect(banner).toBeVisible();
   await capture(page, 'A03');
-  await banner.getByRole('button', { name: '关闭邀请横条' }).click();
+  await banner.getByRole('button', { name: '关闭邀请提示' }).click();
   await expect(banner).toHaveCount(0);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('workspace-switcher')).toBeVisible();
@@ -279,21 +300,30 @@ test('[P1] B23 existing member is a row error with editable email retained', asy
   const input = dialog.locator('input[type="email"]');
   await input.fill('lee@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
-  await expect(dialog.getByText('该邮箱已是团队成员。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已是工作空间成员，无需邀请', { exact: true })).toBeVisible();
   await expect(input).toHaveValue('lee@example.com');
   await expect(input).toBeEditable();
   await page.mouse.move(1300, 800);
   await capture(page, 'B23');
+  await dialog.locator('[aria-haspopup="listbox"]').click();
+  await page.getByRole('option', { name: /^管理员/ }).click();
+  await expect(dialog.getByText('此邮箱已是工作空间成员，无需邀请', { exact: true })).toBeVisible();
+  await expect(input).toHaveValue('lee@example.com');
   await input.fill('new@example.com');
-  await expect(dialog.getByText('该邮箱已是团队成员。')).toHaveCount(0);
+  await expect(dialog.getByText('此邮箱已是工作空间成员，无需邀请', { exact: true })).toHaveCount(0);
 });
 
-test('[P1] B25 whole request failure is inline and preserves retryable form', async ({ page }) => {
+test('[P1] B25 whole request failure shows a top red toast and preserves every row', async ({ page }) => {
   const dialog = await setup(page, 'owner');
   let calls = 0;
   await page.route('**/api/workspace/invite', route => { calls += 1; return route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }); });
-  const input = dialog.locator('input[type="email"]');
-  await input.fill('lee@example.com');
+  await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
+  const inputs = dialog.locator('input[type="email"]');
+  await inputs.nth(0).fill('mika@example.com');
+  await inputs.nth(1).fill('lee@example.com');
+  await dialog.locator('[aria-haspopup="listbox"]').first().click();
+  await page.getByRole('option', { name: /^管理员/ }).click();
+  const rolesBefore = await dialog.locator('[aria-haspopup="listbox"]').allTextContents();
   const submit = dialog.getByRole('button', { name: '发送邀请', exact: true });
   await submit.click();
   await expect(dialog.getByRole('alert')).toHaveText('邀请发送失败，请检查网络后重试。');
@@ -315,12 +345,12 @@ test('[P1] B10 partial success then corrected retry closes with actual cumulativ
       { email: 'lee@example.com', ok: false, error: 'active_pending_invite' },
     ] : [{ email: 'corrected@example.com', ok: true, inviteId: 'visual-two' }] } });
   });
-  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
   await dialog.locator('input[type="email"]').nth(0).fill('mika@example.com');
   await dialog.locator('input[type="email"]').nth(1).fill('lee@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
-  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toBeVisible();
   await dialog.locator('input[type="email"]').fill('corrected@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -445,4 +475,50 @@ test('[P1] H04 rejoined workspace uses a new membership identity without a resto
     await expect(page.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveAttribute('aria-current', 'true');
     await capture(page, 'H04');
   } finally { deliver?.(); }
+});
+
+// These viewports have no supplied reference image: verify readable boundaries,
+// focus, and dismissal only; do not count them as reference visual matches.
+test('[P1] narrow and short invitations retain readable overlays and keyboard escape', async ({ page }) => {
+  const assertInsideViewport = async (locator: Locator, label: string) => {
+    await expect.poll(async () => {
+      const rect = await locator.boundingBox();
+      const viewport = page.viewportSize();
+      return !!rect && !!viewport && rect.x >= 0 && rect.y >= 0
+        && rect.x + rect.width <= viewport.width + 1
+        && rect.y + rect.height <= viewport.height + 1;
+    }, { message: `${label} must remain inside the CSS viewport` }).toBe(true);
+  };
+  for (const viewport of [{ width: 390, height: 844 }, { width: 900, height: 500 }]) {
+    const dialog = await setup(page, 'owner');
+    await page.setViewportSize(viewport);
+    for (let row = 0; row < 3; row += 1) {
+      await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
+    }
+    await expect(dialog.locator('input[type="email"]')).toHaveCount(4);
+    await assertInsideViewport(dialog.locator('.entry-invite__panel'), 'invitation panel');
+    await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeInViewport();
+    const help = dialog.getByRole('button', { name: '邀请成员说明', exact: true });
+    await help.focus();
+    const tooltip = dialog.getByRole('tooltip');
+    await expect(tooltip).toBeVisible();
+    await assertInsideViewport(tooltip, 'invitation explanation');
+    expect(await tooltip.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    await capture(page, `boundary-${viewport.width}x${viewport.height}-tooltip`);
+    await dialog.locator('[aria-haspopup="listbox"]').last().click();
+    const listbox = page.getByRole('listbox');
+    await expect(listbox).toBeVisible();
+    await assertInsideViewport(listbox, 'role menu');
+    for (const option of await listbox.getByRole('option').all()) {
+      expect(await option.evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+    }
+    await capture(page, `boundary-${viewport.width}x${viewport.height}-menu`);
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"], [role="listbox"]')))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(listbox).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+  }
 });
