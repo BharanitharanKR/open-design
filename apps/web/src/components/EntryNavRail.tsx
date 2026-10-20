@@ -71,7 +71,6 @@ import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
 import { MarqueeLabel } from './MarqueeLabel';
 import { RemixIcon } from './RemixIcon';
 import { InviteDialog } from './InviteDialog';
-import { InviteEntry, InviteSuccessNotice } from './InviteEntry';
 import {
   closeRailRecentRowMenu,
   openRailRecentRowMenu,
@@ -704,7 +703,7 @@ function useRailAutoCollapsed(): boolean {
 function handleWorkspaceMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
   const items = Array.from(
-    event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled):not([aria-disabled="true"])'),
+    event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)'),
   );
   if (items.length === 0) return;
 
@@ -918,7 +917,6 @@ export function canAccessWorkspaceInviteFlow(
   );
 }
 
-/** Retained for callers inspecting legacy seat summaries; capacity never gates invites. */
 export function workspaceInviteAvailableSeats(
   context: WorkspaceCollabContext | null | undefined,
 ): number | undefined {
@@ -1392,7 +1390,6 @@ export function EntryTopRightCluster({
       {createPortal(
         <div className={clusterVisible ? 'entry-top-right-cluster' : undefined}>
           {leadingSlot}
-          <InviteEntry context={context} />
           {/* GitHub star chip: its own option in the cluster, right after the
               campaign badge (per product) — it used to live in the account
               menu's social row. */}
@@ -2120,7 +2117,6 @@ export function EntryNavRail({
   const [workspaceDirectoryLoading, setWorkspaceDirectoryLoading] = useState(false);
   const [workspaceSwitchingId, setWorkspaceSwitchingId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteSentCount, setInviteSentCount] = useState(0);
   const inviteTarget = resolveWorkspaceInviteTarget(context);
   const identityWorkspaceItems = workspaceDirectoryForIdentity(workspaceItems, context);
   const currentWorkspaceItem = context
@@ -2403,7 +2399,7 @@ export function EntryNavRail({
                     <span className={styles.workspaceCount}>{visibleWorkspaceItems.length}/50</span>
                   </div>
                   <div
-                    className={`entry-nav-rail__workspace-list ${workspaceMenuStyles.workspaceList}`}
+                    className="entry-nav-rail__workspace-list"
                     data-testid="workspace-switcher-list"
                   >
                     {visibleWorkspaceItems.map((item) => {
@@ -2468,7 +2464,6 @@ export function EntryNavRail({
                           if (inviteTarget.kind === 'vela') {
                             window.open(inviteTarget.url, '_blank', 'noopener,noreferrer');
                           } else if (inviteTarget.kind === 'local') {
-                            setInviteSentCount(0);
                             setInviteOpen(true);
                           }
                         }}
@@ -2492,16 +2487,10 @@ export function EntryNavRail({
                       <a
                         className="entry-nav-rail__menu-item"
                         role="menuitem"
-                        href={visibleWorkspaceItems.length >= 50 ? undefined : teamConsoleUrl(workspaceSettingsUrl, 'create-team')}
+                        href={teamConsoleUrl(workspaceSettingsUrl, 'create-team')}
                         {...externalLinkProps}
                         data-testid="entry-nav-create-team"
-                        aria-disabled={visibleWorkspaceItems.length >= 50 ? true : undefined}
-                        tabIndex={visibleWorkspaceItems.length >= 50 ? -1 : undefined}
-                        onClick={(event) => {
-                          if (visibleWorkspaceItems.length >= 50) {
-                            event.preventDefault();
-                            return;
-                          }
+                        onClick={() => {
                           trackWorkspaceSwitcherClick(analytics.track, {
                             page_name: analyticsPage,
                             area: 'workspace_switcher',
@@ -2513,9 +2502,6 @@ export function EntryNavRail({
                       >
                         <Icon name="plus" size={15} /> {t('workspaceSwitcher.createTeam')}
                       </a>
-                    ) : null}
-                    {workspaceSettingsUrl && visibleWorkspaceItems.length >= 50 ? (
-                      <p className={workspaceMenuStyles.workspaceLimitNote}>{t('workspaceSwitcher.limitReached')}</p>
                     ) : null}
                   </div>
                 </div>
@@ -2814,13 +2800,11 @@ export function EntryNavRail({
 
       <InviteDialog
         open={inviteOpen}
-        onSent={setInviteSentCount}
         onClose={() => setInviteOpen(false)}
         workspaceContext={context}
         canAssignRoles={context?.role === 'owner'}
         entryFrom="workspace_switcher"
       />
-      <InviteSuccessNotice count={inviteSentCount} onClose={() => setInviteSentCount(0)} />
       {/* Top-right chrome cluster: campaign badge (slot) + credits pill,
           mounted into the tabs chrome's no-drag actions host so Electron
           includes it in the first native hit map; the account module it owns

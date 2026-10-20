@@ -52,34 +52,12 @@ import {
 import { listProjects, listTemplates } from '../../src/state/projects';
 import {
   notifyWorkspaceContextRefresh,
-  lastResolvedWorkspaceContext,
   resetTeamProjectsCache,
   resetWorkspaceContextCache,
 } from '../../src/collab/useWorkspaceContext';
 import { resetCoalescedGet } from '../../src/lib/coalesced-get';
 import { resetProjectDisplaySnapshots } from '../../src/state/project-display-cache';
 import { workspaceDirectoryFixture } from '../helpers/workspace-context';
-
-class MembershipEventSource {
-  static instances: MembershipEventSource[] = [];
-  readonly url: string;
-  onopen: ((event: Event) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-  readyState = 0;
-  private listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
-  constructor(url: string | URL) { this.url = String(url); MembershipEventSource.instances.push(this); }
-  addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
-    const listeners = this.listeners.get(type) ?? new Set(); listeners.add(listener); this.listeners.set(type, listeners);
-  }
-  removeEventListener(type: string, listener: EventListenerOrEventListenerObject) { this.listeners.get(type)?.delete(listener); }
-  close() { this.readyState = 2; }
-  emit(type: string) {
-    const event = new MessageEvent(type, { data: JSON.stringify({ type }) });
-    for (const listener of this.listeners.get(type) ?? []) {
-      if (typeof listener === 'function') listener(event); else listener.handleEvent(event);
-    }
-  }
-}
 
 const projectViewLifecycle = vi.hoisted(() => ({
   mounts: vi.fn(),
@@ -1150,102 +1128,5 @@ describe('App project list across a workspace switch', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Retry projects' })));
     expect(screen.getByTestId('entry-projects-failed').textContent).toBe('false');
   });
-
-  function membershipScenario() {
-    const personal = { ...workspaceContext('personal'), workspaceType: 'personal' as const, role: 'owner' as const };
-    const state = { directory: [workspaceContext('ws-a'), workspaceContext('ws-b'), personal], directoryReads: 0 };
-    const activate = vi.fn<typeof fetch>(async () => Response.json({ context: personal }));
-    vi.stubGlobal('EventSource', MembershipEventSource);
-    MembershipEventSource.instances = [];
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input, init) => {
-      const pathname = new URL(String(input), 'http://d.local').pathname;
-      if (pathname === '/api/workspace/directory') {
-        state.directoryReads += 1;
-        return Response.json({ ...workspaceDirectoryFixture(state.directory), activeWorkspaceId: 'ws-a' });
-      }
-      if (pathname === '/api/workspace/context') {
-        const selected = new Headers(init?.headers).get('x-od-workspace-id');
-        return Response.json({ context: state.directory.find(item => item.workspaceId === selected) ?? state.directory[0] });
-      }
-      if (pathname === '/api/workspace/active') return activate(input, init);
-      return Response.json({});
-    }));
-    vi.mocked(listProjects).mockImplementation(async (options) => {
-      if (options?.workspaceContext?.workspaceId === 'personal') return [project('personal-project', 'My default project')];
-      if (options?.workspaceContext?.workspaceId === 'ws-b') return [WORKSPACE_B_PROJECT];
-      return [WORKSPACE_A_PROJECT];
-    });
-    const invalidate = async () => {
-      await act(async () => {
-        for (const stream of MembershipEventSource.instances) {
-          if (stream.url.includes('/api/workspace/events')) stream.emit('workspace-directory-changed');
-        }
-      });
-    };
-    return { state, personal, activate, invalidate };
-  }
-
-  it('membership removal conceals current content until confirming the verified default workspace', async () => {
-    const scenario = membershipScenario();
-    render(<App />);
-    await waitFor(() => {
-      expect(lastResolvedWorkspaceContext()?.workspaceId).toBe('ws-a');
-      expect(MembershipEventSource.instances.some(stream => stream.url.includes('/api/workspace/events'))).toBe(true);
-      expect(screen.getByTestId('entry-project-project-in-a')).toBeVisible();
-    });
-    scenario.state.directory = [scenario.personal];
-    await scenario.invalidate();
-    await waitFor(() => expect(screen.getByTestId('workspace-removal-dialog')).toBeVisible());
-    const shell = document.querySelector('.workspace-shell')!;
-    expect(shell).toHaveAttribute('inert');
-    expect(shell).not.toBeVisible();
-    expect(scenario.activate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /^(确认|confirm)$/i }));
-    await waitFor(() => expect(screen.getByTestId('entry-project-personal-project')).toBeVisible());
-    expect(screen.queryByTestId('workspace-removal-dialog')).toBeNull();
-    expect(screen.queryByTestId('entry-project-project-in-a')).toBeNull();
-    expect(JSON.parse(scenario.activate.mock.calls[0]![1]!.body as string)).toEqual({ workspaceId: 'personal', workspaceMemberId: 'member-personal' });
-  });
-
-  it('membership removal in a background workspace keeps the current content usable', async () => {
-    const scenario = membershipScenario();
-    render(<App />);
-    await waitFor(() => {
-      expect(lastResolvedWorkspaceContext()?.workspaceId).toBe('ws-a');
-      expect(MembershipEventSource.instances.some(stream => stream.url.includes('/api/workspace/events'))).toBe(true);
-      expect(screen.getByTestId('entry-project-project-in-a')).toBeVisible();
-    });
-    scenario.state.directory = [workspaceContext('ws-a'), scenario.personal];
-    await scenario.invalidate();
-    await waitFor(() => expect(scenario.state.directoryReads).toBeGreaterThan(1));
-    expect(screen.queryByTestId('workspace-removal-dialog')).toBeNull();
-    expect(screen.getByTestId('entry-project-project-in-a')).toBeVisible();
-    expect(document.querySelector('.workspace-shell')).not.toHaveAttribute('inert');
-    expect(scenario.activate).not.toHaveBeenCalled();
-  });
-
-  it('membership removal recovery ignores a late default response after signing into another account', async () => {
-    const scenario = membershipScenario();
-    const late = deferred<Response>();
-    scenario.activate.mockImplementation(() => late.promise);
-    render(<App />);
-    await waitFor(() => {
-      expect(lastResolvedWorkspaceContext()?.workspaceId).toBe('ws-a');
-      expect(MembershipEventSource.instances.some(stream => stream.url.includes('/api/workspace/events'))).toBe(true);
-      expect(screen.getByTestId('entry-project-project-in-a')).toBeVisible();
-    });
-    scenario.state.directory = [scenario.personal];
-    await scenario.invalidate();
-    await waitFor(() => expect(screen.getByTestId('workspace-removal-dialog')).toBeVisible());
-    fireEvent.click(screen.getByRole('button', { name: /^(确认|confirm)$/i }));
-    scenario.state.directory = [workspaceContext('ws-b')];
-    await act(async () => { notifyWorkspaceContextRefresh(); });
-    await waitFor(() => expect(screen.getByTestId('entry-project-project-in-b')).toBeVisible());
-    await act(async () => { late.resolve(Response.json({ context: scenario.personal })); await late.promise; });
-    expect(screen.getByTestId('entry-project-project-in-b')).toBeVisible();
-    expect(screen.queryByTestId('entry-project-personal-project')).toBeNull();
-    expect(screen.queryByTestId('workspace-removal-dialog')).toBeNull();
-  });
-
 
 });

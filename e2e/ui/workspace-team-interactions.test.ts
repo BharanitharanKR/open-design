@@ -6,7 +6,7 @@ import { applyStandardMocks } from '@/playwright/mock-factory';
 import { ensureRailOpen, openTeamProjectsTab } from '@/playwright/rail';
 import { T } from '@/timeouts';
 
-type WorkspaceRole = 'owner' | 'admin' | 'member';
+type WorkspaceRole = 'owner' | 'member';
 
 type WorkspaceFixture = {
   workspaceId: string;
@@ -112,7 +112,6 @@ type WorkspaceMocks = {
   }>;
   activeWorkspaceId: () => string;
   setCurrent: (workspace: WorkspaceFixture) => void;
-  setAccount: (accountId: string, workspace: WorkspaceFixture) => void;
   setBalance: (balanceUsd: string) => void;
   setDirectoryUnavailable: (unavailable: boolean) => void;
 };
@@ -472,7 +471,7 @@ test('[P0] account replacement never paints the previous account workspace or pr
   });
   let accountBProjectsRequested = false;
 
-  await page.route('**/api/integrations/vela/status*', async (route) => {
+  await page.route('**/api/integrations/vela/status', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,
@@ -639,178 +638,6 @@ test('[P1] two windows for one account keep Personal and Team billing scopes iso
   );
 });
 
-test('[P0] permanent home invite and banner send locally without dismissing the banner', async ({ page }) => {
-  const mocks = await wireWorkspaceMocks(page, TEAM_FULL, [TEAM_FULL, PERSONAL]);
-  await page.addInitScript(({ workspaceId, workspaceMemberId }) => {
-    if (!sessionStorage.getItem('od.workspaceSelection.v1')) {
-      sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId, workspaceMemberId }));
-    }
-  }, { workspaceId: TEAM_OWNER.workspaceId, workspaceMemberId: TEAM_OWNER.workspaceMemberId });
-  await gotoHome(page);
-  const bannerText = page.getByTestId('workspace-invite-banner').getByText('Invite teammates for free to review designs and share ideas', { exact: true });
-  await expect(bannerText).toBeVisible();
-  const permanentInvite = page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: 'Invite', exact: true });
-  await permanentInvite.click();
-  const dialog = page.getByRole('dialog', { name: 'Invite members' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await bannerText.locator('..').getByRole('button', { name: 'Invite', exact: true }).click();
-  await dialog.getByRole('textbox').first().fill('colleague@example.com');
-  await dialog.getByRole('button', { name: 'Send invitations' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect.poll(() => mocks.inviteBodies).toEqual([{ invites: [{ email: 'colleague@example.com', role: 'member' }] }]);
-  await expect(page.getByRole('status').filter({ hasText: /1/ })).toBeVisible();
-  await expect(bannerText).toBeVisible();
-  await page.getByTestId('workspace-switcher').click();
-  await page.getByRole('menu').getByRole('menuitem', { name: PERSONAL.workspaceName }).click();
-  await expect(page.getByTestId('workspace-switcher')).toContainText(PERSONAL.workspaceName);
-  await expect(bannerText).toBeVisible();
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(permanentInvite).toBeVisible();
-  await expect(bannerText).toBeVisible();
-});
-
-test('[P0] invite banner dismissal survives workspace switches and reload but stays account-specific', async ({ page }) => {
-  const mocks = await wireWorkspaceMocks(page, TEAM_OWNER, [TEAM_OWNER, PERSONAL]);
-  await page.addInitScript(({ workspaceId, workspaceMemberId }) => {
-    if (!sessionStorage.getItem('od.workspaceSelection.v1')) {
-      sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId, workspaceMemberId }));
-    }
-  }, { workspaceId: TEAM_OWNER.workspaceId, workspaceMemberId: TEAM_OWNER.workspaceMemberId });
-  await gotoHome(page);
-  const dismiss = page.getByRole('button', { name: 'Dismiss invitation banner' });
-  await expect(dismiss).toBeVisible();
-  await dismiss.click();
-  await expect(dismiss).toHaveCount(0);
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await ensureRailOpen(page);
-  await expect(dismiss).toHaveCount(0);
-  await page.getByTestId('workspace-switcher').click();
-  await page.getByRole('menu').getByRole('menuitem', { name: PERSONAL.workspaceName }).click();
-  await expect(page.getByTestId('workspace-switcher')).toContainText(PERSONAL.workspaceName);
-  await expect(dismiss).toHaveCount(0);
-  mocks.setAccount('ui-independent-account-b', { ...PERSONAL, workspaceMemberId: 'ui-independent-member-b' });
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(dismiss).toBeVisible();
-  await expect(page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: 'Invite', exact: true })).toBeVisible();
-});
-
-for (const role of ['owner', 'admin', 'member'] as const) {
-  test(`[P1] active ${role} opens local invite with role-appropriate controls`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.addInitScript(() => {
-      localStorage.setItem('open-design:locale', 'zh-CN');
-      localStorage.setItem('open-design:locale-source', 'manual');
-    });
-    const context: WorkspaceFixture = { ...TEAM_FULL, role };
-    await wireWorkspaceMocks(page, context, [context]);
-    await gotoHome(page);
-    await ensureRailOpen(page);
-    await page.getByTestId('workspace-switcher').click();
-    await page.getByRole('menu').getByRole('menuitem', { name: '邀请同事' }).click();
-    const dialog = page.getByRole('dialog', { name: '邀请成员' });
-    await expect(dialog).toBeVisible();
-    const assignRole = dialog.getByRole('button', { name: role === 'owner' ? '分配角色' : '默认身份' });
-    if (role === 'owner') {
-      await expect(assignRole).toBeEnabled();
-      await assignRole.click();
-      await expect(page.getByRole('listbox')).toBeVisible();
-    } else {
-      await expect(assignRole).toBeDisabled();
-    }
-    const panel = dialog.locator('.entry-invite__panel');
-    await expect.poll(async () => (await panel.boundingBox())?.width).toBeCloseTo(560, 0);
-    await expect(dialog.getByRole('textbox').first()).toBeVisible();
-    await expect(dialog.getByRole('button', { name: '发送邀请' })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: '取消', exact: true })).toBeVisible();
-    await page.evaluate(() => document.fonts.ready);
-    await panel.evaluate(async (el) => {
-      await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished));
-    });
-    if (role === 'owner') {
-      const options = page.getByRole('listbox').getByRole('option');
-      await expect.poll(async () => {
-        const description = await options.first().locator('small').boundingBox();
-        const nextOption = await options.nth(1).boundingBox();
-        return description && nextOption ? description.y + description.height - nextOption.y : Number.POSITIVE_INFINITY;
-      }).toBeLessThanOrEqual(0);
-    }
-    // Frozen HTML reference palette, measured in Chromium (light theme).
-    await expect(panel).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-    await expect.poll(async () => (await panel.boundingBox())?.height).toBeCloseTo(284, 0);
-    await expect(dialog.locator('.entry-invite__title')).toHaveCSS('font-weight', '600');
-    await expect(dialog.getByRole('textbox').first()).toHaveAttribute('placeholder', 'name@company.com');
-    if (role === 'owner') {
-      const menu = page.getByRole('listbox');
-      await expect(menu).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-      await expect.poll(async () => (await menu.boundingBox())?.width).toBeCloseTo(300, 0);
-      await expect(menu.getByRole('option').first()).toHaveCSS('background-color', 'rgb(240, 240, 240)');
-      await expect(menu.getByRole('option').first().getByTestId('invite-role-check')).toHaveCSS('color', 'rgb(102, 102, 102)');
-    }
-    await testInfo.attach(`invitation-${role}-layout`, {
-      body: JSON.stringify(await panel.evaluate((el) => ({
-        rect: el.getBoundingClientRect().toJSON(),
-        padding: getComputedStyle(el).padding,
-        backdrop: getComputedStyle(document.querySelector('.entry-invite__backdrop')!).backgroundColor,
-        emailRect: el.querySelector('.entry-invite__input')!.getBoundingClientRect().toJSON(),
-        roleRect: el.querySelector('.entry-invite__role')!.getBoundingClientRect().toJSON(),
-        roleBackground: getComputedStyle(el.querySelector('.entry-invite__role')!).backgroundColor,
-        roleBorder: getComputedStyle(el.querySelector('.entry-invite__role')!).borderColor,
-        addBorder: getComputedStyle(el.querySelector('.entry-invite__add-row')!).borderStyle,
-        closeBorder: getComputedStyle(el.querySelector('.entry-invite__close')!).borderStyle,
-      }))),
-      contentType: 'application/json',
-    });
-    await testInfo.attach(`invitation-${role}-1440x900`, {
-      body: await page.screenshot({ animations: 'disabled' }),
-      contentType: 'image/png',
-    });
-  });
-}
-
-test('[P1] partial invitation retains failed rows and retries only those addresses', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(() => {
-    localStorage.setItem('open-design:locale', 'zh-CN');
-    localStorage.setItem('open-design:locale-source', 'manual');
-  });
-  await wireWorkspaceMocks(page, TEAM_FULL, [TEAM_FULL]);
-  const requests: Array<Array<{ email: string; role: string }>> = [];
-  await page.route('**/api/workspace/invite', async (route) => {
-    const invites = route.request().postDataJSON().invites as Array<{ email: string; role: string }>;
-    requests.push(invites);
-    await route.fulfill({ json: { results: invites.map((invite, index) => ({
-      email: invite.email,
-      ok: requests.length > 1 || index === 0,
-      ...(requests.length === 1 && index === 1 ? { error: 'invite_failed' } : {}),
-    })) } });
-  });
-  await gotoHome(page);
-  await ensureRailOpen(page);
-  await page.getByTestId('workspace-switcher').click();
-  await page.getByRole('menu').getByRole('menuitem', { name: '邀请同事' }).click();
-  const dialog = page.getByRole('dialog', { name: '邀请成员' });
-  const emails = dialog.getByPlaceholder('name@company.com');
-  await emails.first().fill('sent@example.com');
-  await dialog.getByRole('button', { name: '添加成员' }).click();
-  await emails.nth(1).fill('retry@example.com');
-  await dialog.getByRole('button', { name: '发送邀请' }).click();
-  await expect(emails).toHaveCount(1);
-  await expect(emails.first()).toHaveValue('retry@example.com');
-  await expect(dialog.getByRole('alert')).not.toHaveCount(0);
-  await testInfo.attach('invitation-partial-1440x900', {
-    body: await page.screenshot({ animations: 'disabled' }),
-    contentType: 'image/png',
-  });
-  await dialog.getByRole('button', { name: '发送邀请' }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(requests).toEqual([
-    [{ email: 'sent@example.com', role: 'member' }, { email: 'retry@example.com', role: 'member' }],
-    [{ email: 'retry@example.com', role: 'member' }],
-  ]);
-});
-
 test('[P0] team owner completes a multi-row invite with explicit roles', async ({ page }) => {
   await page.addInitScript(
     ({ workspaceId, workspaceMemberId }) => {
@@ -834,7 +661,7 @@ test('[P0] team owner completes a multi-row invite with explicit roles', async (
 
   const dialog = page.getByRole('dialog', { name: 'Invite members' });
   await expect(dialog).toBeVisible();
-  const emailInputs = dialog.getByPlaceholder('name@company.com');
+  const emailInputs = dialog.getByPlaceholder('Enter email address…');
   await emailInputs.first().fill('admin@example.com');
 
   await dialog.getByRole('button', { name: 'Assign role' }).first().click();
@@ -843,7 +670,7 @@ test('[P0] team owner completes a multi-row invite with explicit roles', async (
   await dialog.getByRole('button', { name: 'Add member' }).click();
   await expect(emailInputs).toHaveCount(2);
   await emailInputs.nth(1).fill('member@example.com');
-  await dialog.getByRole('button', { name: 'Send invitations' }).click();
+  await dialog.getByRole('button', { name: 'Confirm and invite' }).click();
 
   await expect.poll(() => mocks.inviteBodies).toEqual([
     {
@@ -853,10 +680,11 @@ test('[P0] team owner completes a multi-row invite with explicit roles', async (
       ],
     },
   ]);
+  await expect(dialog.getByRole('button', { name: 'Invitation sent' })).toBeVisible();
   await expect(dialog).toHaveCount(0, { timeout: 5_000 });
 });
 
-test('[P1] completed invitation does not close a reopened dialog', async ({ page }) => {
+test('[P1] stale invite success timer does not close a reopened dialog', async ({ page }) => {
   await page.addInitScript(
     ({ workspaceId, workspaceMemberId }) => {
       window.sessionStorage.setItem(
@@ -879,11 +707,12 @@ test('[P1] completed invitation does not close a reopened dialog', async ({ page
   await page.getByRole('menu').getByRole('menuitem', { name: 'Invite colleague' }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Invite members' });
-  const emailInput = dialog.getByPlaceholder('name@company.com').first();
+  const emailInput = dialog.getByPlaceholder('Enter email address…').first();
   await emailInput.fill('first@example.com');
-  await dialog.getByRole('button', { name: 'Send invitations' }).click();
+  await dialog.getByRole('button', { name: 'Confirm and invite' }).click();
+  await expect(dialog.getByRole('button', { name: 'Invitation sent' })).toBeVisible();
 
-  await expect(dialog).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Close' }).click();
   await page.getByTestId('workspace-switcher').click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Invite colleague' }).click();
   await expect(dialog).toBeVisible();
@@ -899,7 +728,7 @@ test('[P1] completed invitation does not close a reopened dialog', async ({ page
   await expect(emailInput).toHaveValue('second@example.com');
 });
 
-test('[P0] full team opens local invites across rail and project surfaces', async ({
+test('[P0] full team routes every invite entry to Vela seat resolution without opening the local dialog', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -925,18 +754,21 @@ test('[P0] full team opens local invites across rail and project surfaces', asyn
 
   await page.getByTestId('workspace-switcher').click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Invite colleague' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Invite members' });
-  await expect(dialog).toBeVisible();
-  await expect.poll(() => inviteUrls(page)).toHaveLength(0);
-  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog', { name: 'Invite members' })).toHaveCount(0);
+  await expect.poll(() => inviteUrls(page)).toHaveLength(1);
+  await expect.poll(async () => (await inviteUrls(page))[0]).toContain('invite=auto');
+  await expect.poll(async () => (await inviteUrls(page))[0]).toContain(
+    `workspaceId=${TEAM_FULL.workspaceId}`,
+  );
 
   await openTeamProjectsTab(page);
   await page.getByRole('button', { name: 'Invite teammates' }).click();
-  await expect(dialog).toBeVisible();
-  await expect.poll(() => inviteUrls(page)).toHaveLength(0);
+  await expect(page.getByRole('dialog', { name: 'Invite members' })).toHaveCount(0);
+  await expect.poll(() => inviteUrls(page)).toHaveLength(2);
+  await expect.poll(async () => (await inviteUrls(page))[1]).toContain('invite=auto');
 });
 
-test('[P1] local invite remains available when a full team seat is released', async ({
+test('[P1] an already-open full team restores the local invite flow when a seat is released', async ({
   page,
 }) => {
   // Context reads share a 1s TTL (`coalescedGet`). Install before navigation
@@ -956,12 +788,12 @@ test('[P1] local invite remains available when a full team seat is released', as
 
   await page.getByTestId('workspace-switcher').click();
   await page.getByRole('menu').getByRole('menuitem', { name: 'Invite colleague' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Invite members' });
-  await expect(dialog).toBeVisible();
-  await expect.poll(() => inviteUrls(page)).toHaveLength(0);
-  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog', { name: 'Invite members' })).toHaveCount(0);
+  await expect.poll(() => inviteUrls(page)).toHaveLength(1);
 
-  // Seat availability changes independently of the invitation capability.
+  // A teammate is removed in Vela while this shell remains mounted. The next
+  // authoritative context refresh must stop treating the Team as full and
+  // restore the in-product invitation path without a reload.
   workspaceMocks.setCurrent({
     ...TEAM_FULL,
     seatSummary: {
@@ -984,7 +816,7 @@ test('[P1] local invite remains available when a full team seat is released', as
   await expect(page.getByRole('dialog', { name: 'Invite members' })).toBeVisible({
     timeout: T.long,
   });
-  await expect.poll(() => inviteUrls(page)).toHaveLength(0);
+  await expect.poll(() => inviteUrls(page)).toHaveLength(1);
 });
 
 test('[P0] unknown team seat state keeps local invite available across rail and project surfaces', async ({
@@ -1012,7 +844,7 @@ test('[P0] unknown team seat state keeps local invite available across rail and 
   await expect(dialog).toBeVisible();
 });
 
-test('[P0] ordinary team member can invite without workspace-admin actions', async ({
+test('[P0] ordinary team member sees team projects but no invite or workspace-admin actions', async ({
   page,
 }) => {
   await wireWorkspaceMocks(page, TEAM_MEMBER, [TEAM_MEMBER]);
@@ -1028,8 +860,7 @@ test('[P0] ordinary team member can invite without workspace-admin actions', asy
     'aria-current',
     'true',
   );
-  await menu.getByRole('menuitem', { name: 'Invite colleague' }).click();
-  await expect(page.getByRole('dialog', { name: 'Invite members' })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'Invite colleague' })).toHaveCount(0);
 });
 
 test('[P0] locked workspace removes invite and sharing capabilities and keeps the projects entry', async ({
@@ -1887,7 +1718,7 @@ function workspace(
       ? { seatLimit: 5, usedSeats: 2, availableSeats: 3, isSeatFull: false }
       : { seatLimit: 1, usedSeats: 1, availableSeats: 0, isSeatFull: true },
     permissions: {
-      canInviteMembers: true,
+      canInviteMembers: isTeam && owner,
       canManageBilling: owner,
       canViewWorkspaceSettings: owner,
       canManageSharedResources: isTeam && owner,
@@ -1905,20 +1736,19 @@ async function wireWorkspaceMocks(
   directory: WorkspaceFixture[],
 ): Promise<WorkspaceMocks> {
   let current = initial;
-  let accountId = 'ui-workspace-user';
   let balanceUsd = '0.00';
   let directoryUnavailable = false;
   const activeBodies: WorkspaceMocks['activeBodies'] = [];
   const inviteBodies: WorkspaceMocks['inviteBodies'] = [];
 
-  await page.route('**/api/integrations/vela/status*', async (route) => {
+  await page.route('**/api/integrations/vela/status', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,
         loginInFlight: false,
         profile: 'test',
         user: {
-          id: accountId,
+          id: 'ui-workspace-user',
           email: 'workspace-ui@example.com',
           name: 'Workspace UI',
           plan: current.planId ?? 'free',
@@ -2025,11 +1855,6 @@ async function wireWorkspaceMocks(
     activeBodies,
     inviteBodies,
     activeWorkspaceId: () => current.workspaceId,
-    setAccount: (nextAccountId, nextWorkspace) => {
-      accountId = nextAccountId;
-      current = nextWorkspace;
-      directory.splice(0, directory.length, nextWorkspace);
-    },
     setCurrent: (workspaceFixture) => {
       current = workspaceFixture;
       const directoryIndex = directory.findIndex(
@@ -2093,7 +1918,7 @@ async function wireMultiWindowWorkspaceAuthority(
 ): Promise<void> {
   const directory = [PERSONAL, TEAM_OWNER];
 
-  await page.route('**/api/integrations/vela/status*', async (route) => {
+  await page.route('**/api/integrations/vela/status', async (route) => {
     await route.fulfill({
       json: {
         loggedIn: true,

@@ -6,8 +6,7 @@ import { Icon } from './Icon';
 import { LanguageMenu } from './LanguageMenu';
 import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
-import { currentWorkspaceAccountGeneration, workspaceProjectHeaders } from '../collab/workspace-identity';
-import { WORKSPACE_CONTEXT_REFRESH_EVENT } from '../collab/workspace-context-events';
+import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { useAnalytics } from '../analytics/provider';
 import { trackWorkspaceInviteClick, trackWorkspaceInviteResult, trackWorkspaceSurfaceView } from '../analytics/events';
 import { countBucket, stableAnalyticsErrorCode, workspaceAnalyticsDimensions } from '../analytics/workspace';
@@ -37,14 +36,6 @@ const canonicalRole = (role: string): WorkspaceInviteRole => role === 'admin' ||
 export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAssignRoles = true, entryFrom = 'workspace_switcher', variant = 'dialog', onFinish }: Props) {
   const onboarding = variant === 'onboarding';
   const { t } = useI18n();
-  const canAssignRoles = allowRoleSelection && workspaceContext?.role === 'owner';
-  const cumulativeSentRef = useRef(0);
-  const previousIdentityRef = useRef({ workspaceId: workspaceContext?.workspaceId, memberId: workspaceContext?.workspaceMemberId });
-  const lifecycleRef = useRef(0);
-  useEffect(() => {
-    lifecycleRef.current++;
-    return () => { lifecycleRef.current++; };
-  }, [open, workspaceContext?.workspaceId, workspaceContext?.workspaceMemberId]);
   const analytics = useAnalytics();
   const page = entryFrom === 'all_projects' ? 'all_projects' : 'home';
   const dimensions = workspaceAnalyticsDimensions(workspaceContext);

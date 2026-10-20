@@ -23,7 +23,6 @@ import {
   resetWorkspaceContextCache,
   useWorkspaceContext,
 } from '../../src/collab/useWorkspaceContext';
-import { currentWorkspaceRemoval } from '../../src/collab/workspace-removal';
 import { resetCoalescedGet } from '../../src/lib/coalesced-get';
 import { I18nProvider } from '../../src/i18n';
 
@@ -206,7 +205,7 @@ describe('workspace switch — seeding the context from the PUT response', () =>
     });
   });
 
-  it('conceals a removed current membership while preserving selection until recovery confirmation', async () => {
+  it('clears a cached Team selection when the authoritative directory becomes signed-out empty', async () => {
     let signedOut = false;
     let contextReads = 0;
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
@@ -241,11 +240,6 @@ describe('workspace switch — seeding the context from the PUT response', () =>
       expect(screen.getByTestId('observed-workspace').textContent).toBe('none'),
     );
     expect(contextReads).toBe(1);
-    expect(currentWorkspaceRemoval()).toMatchObject({
-      context: { workspaceId: 'ws-a', workspaceMemberId: 'wm-a' }, defaultWorkspace: null,
-    });
-    expect(JSON.parse(window.sessionStorage.getItem('od.workspaceSelection.v1')!)).toEqual({
-      workspaceId: 'ws-a', workspaceMemberId: 'wm-a',
-    });
+    expect(window.sessionStorage.getItem('od.workspaceSelection.v1')).toBeNull();
   });
 });

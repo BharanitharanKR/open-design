@@ -131,7 +131,6 @@ export type IconName =
   | 'redo'
   | 'upload'
   | 'users'
-  | 'user-plus'
   | 'trash'
   | 'video-ai'
   | 'volume'
@@ -1008,8 +1007,6 @@ export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
           <path d="M12 2v13" />
         </svg>
       );
-    case 'user-plus':
-      return <svg {...common}><circle cx="9" cy="8" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M19 8v6M16 11h6" /></svg>;
     case 'users':
       return (
         <svg {...common}>

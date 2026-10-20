@@ -112,3 +112,17 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 - 原生 Toast 后普通 B10 累计重试成功再次 1/1 通过。B18 实测 x610.99、y64、218.02×40.19、radius999，勾选图标/关闭按钮及 3999ms 保留、4000ms 消失均通过；B19 手动关闭通过。剩余 12 态实现与复测完成，功能无待决项；B12 的约 1px 非阻断视觉差异保留在报告中。
 - 最终 de514e52e9 的根级 guard/typecheck 均 exit0。AMR `feat/seats-phase1-members` 已正常推送并推进至 d0bfcc62f；无 main 合并、发布、生产迁移或外部通知。
 - 独立报告总分 99/100，33 态共 66 张配对图已由 Chromium 验证全部加载，无破图。最终普通 B10 在原生 Toast 源码上补验 1/1 通过；测试 checkpoint d1180f09a1 已串行整合为 8eed5ad183。报告区分受控浏览器、真实 PG/CLI 分层验证与尚未执行的部署后外部邮件/完整跨端业务，不把前两者等同最后一项。
+
+
+## 2026-10-20 integration 冲突处理
+
+Alignment status: READY（合并规则已确认，验证结果见下）
+
+- 用户确认以 `integration/seats-phase1` 为基线。基线 `31105f960a`，保留远端 members `78744b2012` 的注册邀请修复；原本地 `9d1e08b322` 保存到 `codex/backup-seats-members-before-integration-20261020`。
+- C01：邀请入口、成员移除遮罩、表单、角色菜单、工作区切换及浏览器见证沿用 integration/远端现有实现。旧分支重复的 InviteEntry、WorkspaceRemovalDialog、InvitationNotice 及相应旧测试不重复接入；不回退当前权限与默认工作区恢复规则。
+- C02：保留本地邀请投递确认（仅 sent 为成功）、非 Owner 不能邀请 admin、完整目录权限快照校验，以及按旧 workspace/member 身份停止被移除成员任务的保护。对应 daemon invite-create、collab-context-routes、workspace-removal-authority、cancel-revoked-workspace-runs 和 contracts workspace-invite-permissions 测试。
+- C03：保留远端注册事实及引导生命周期，补齐与 integration 合并后缺失的 registrationInviteActive 状态；沿用注册引导、移除遮罩组件测试验证。
+- 已确认行为以用户本轮基线选择、integration 代码和远端 members 修复为准；本次不新增产品流程。
+
+- 验证完成：Node24.19；根级 guard、完整 typecheck 均通过；daemon 定向 6 文件155例、web 定向9文件119例通过，新增投递错误覆盖后 error-copy 18例通过（原15例）；contracts 权限定向6例通过。首次 daemon 运行曾出现账单预检401/403断言失败；integration 原始路由/测试的该用例通过，依赖构建完成后同组155例复跑通过，未改账单逻辑，保留这一首次失败记录。
+- 工作目录 `/private/tmp/od-seats-phase1-members`；本次没有跑浏览器视觉/真实邮箱 E2E，不把上述回归测试视为新的全量产品验收。未推送或发布。

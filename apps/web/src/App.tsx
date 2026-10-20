@@ -975,7 +975,6 @@ function AppInner() {
   const hostPlatform = useMemo(() => getOpenDesignHost()?.client.platform, []);
   useModalWindowDragGuard();
   const workspaceContextState = useWorkspaceContext();
-  const workspaceRemoval = useWorkspaceRemoval();
   const {
     context: workspaceContext,
     loading: workspaceContextLoading,
@@ -1764,6 +1763,7 @@ function AppInner() {
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
+  const [registrationInviteActive, setRegistrationInviteActive] = useState(false);
   // A public URL is a capability. Retain only the last exact active-share GET
   // observed under this App's authenticated account, in memory, for S13 copy.
   const [observedPublicShareLink, setObservedPublicShareLink] = useState<
@@ -5898,8 +5898,6 @@ function AppInner() {
     <>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
-        ref={(node) => { node?.toggleAttribute('inert', Boolean(workspaceRemoval)); }}
-        style={workspaceRemoval ? { visibility: 'hidden' } : undefined}
         data-client-type={clientType}
         data-host-platform={hostPlatform}
       >
@@ -5997,7 +5995,6 @@ function AppInner() {
         </>
       )}
       <TooltipLayer />
-      {workspaceRemoval ? <WorkspaceRemovalDialog notice={workspaceRemoval} onRecovered={() => navigate({ kind: 'home', view: 'home' })} /> : null}
       <UpdateDialog />
       {/* Mounted at shell level, outside the route views, so a survey armed by
           an export inside a project stays on screen when the user navigates

@@ -30,6 +30,10 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'workspaceInvite.deliveryPending': string;
+  'workspaceInvite.deliveryFailed': string;
+  'workspaceInvite.invalidResponse': string;
+
   'billing.wallet': string;
   /** The product name of the allowance pool; kept untranslated in every locale. */
   'billing.codingPlanDesignPlan': string;
@@ -77,30 +81,6 @@ export interface Dict {
   'invite.error.invite_unavailable': string;
   'invite.error.generic': string;
   'invite.error.retry': string;
-  'workspaceInvite.deliveryPending': string;
-  'workspaceInvite.deliveryFailed': string;
-  'workspaceInvite.invalidResponse': string;
-  'workspaceInvite.localLoginAction': string;
-  'workspaceInvite.bannerBody': string;
-  'workspaceInvite.inviteAction': string;
-  'workspaceInvite.dismissBanner': string;
-  'workspaceInvite.adminDescription': string;
-  'workspaceInvite.memberDescription': string;
-  'workspaceRemoval.title': string;
-  'workspaceRemoval.confirm': string;
-  'workspaceRemoval.description': string;
-  'workspaceRemoval.recoveryError': string;
-  'workspaceInvite.helpLabel': string;
-  'workspaceInvite.helpBody': string;
-  'workspaceInvite.localCardTitle': string;
-  'workspaceInvite.localCardBody': string;
-  'workspaceInvite.emailDisplayLabel': string;
-  'workspaceInvite.roleDisplayLabel': string;
-  'workspaceInvite.sentCount': string;
-  'workspaceInvite.invalidEmail': string;
-  'workspaceInvite.duplicateEmail': string;
-  'workspaceInvite.partialSuccess': string;
-  'workspaceInvite.partialSummary': string;
   'workspaceInvite.dialogAria': string;
   'workspaceInvite.title': string;
   'workspaceInvite.onboardingTitle': string;
@@ -1261,8 +1241,6 @@ export interface Dict {
   'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.invite': string;
   'workspaceSwitcher.createTeam': string;
-  'workspaceSwitcher.heading': string;
-  'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.draftsTooltip': string;
   'workspaceSwitcher.allProjectsTooltip': string;
   'entry.primaryNavAria': string;

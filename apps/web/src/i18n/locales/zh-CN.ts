@@ -1,6 +1,9 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  "workspaceInvite.deliveryPending": "邀请邮件正在发送，请稍后确认结果",
+  "workspaceInvite.deliveryFailed": "邀请邮件发送失败，请重试",
+  "workspaceInvite.invalidResponse": "暂时无法确认发送结果，请稍后重试",
   "homeInvite.banner": "免费邀请同事，一起看设计、聊想法",
   "homeInvite.invite": "邀请",
   "homeInvite.dismiss": "关闭邀请横条",

@@ -1,4 +1,3 @@
-import { currentWorkspaceRemoval } from '../src/collab/workspace-removal';
 // @vitest-environment jsdom
 
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';

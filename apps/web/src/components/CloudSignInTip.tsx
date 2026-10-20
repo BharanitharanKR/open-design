@@ -129,7 +129,7 @@ export function CloudSignInTip({ sharePrompt = false, className, onLoginSuccess,
       <strong className="entry-local-mode-tip__title">
         {t('entry.cloudCreditsTitle')}
       </strong>
-      <p>{t('workspaceInvite.localCardBody')}</p>
+      <p>{t('entry.cloudCreditsBody')}</p>
     </div>
   );
 

@@ -23,7 +23,7 @@ function typeAnInvite() {
 
 async function submitWithError(error: string) {
   const fetchSpy = vi.fn(async () =>
-    new Response(JSON.stringify({ results: [{ email: 'teammate@example.com', ok: false, error }] }), { status: 200 }),
+    new Response(JSON.stringify({ results: [{ ok: false, error }] }), { status: 200 }),
   );
   vi.stubGlobal('fetch', fetchSpy);
 
@@ -37,7 +37,7 @@ async function submitWithError(error: string) {
 describe('InviteDialog — legacy error compatibility', () => {
   it('still sends when seats remain', async () => {
     const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ results: [{ email: 'teammate@example.com', ok: true }] }), { status: 200 }),
+      new Response(JSON.stringify({ results: [{ ok: true }] }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchSpy);
 
@@ -65,7 +65,7 @@ describe('InviteDialog — legacy error compatibility', () => {
 
   it('stays permissive while the seat count is still unknown', () => {
     const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ results: [{ email: 'teammate@example.com', ok: true }] }), { status: 200 }),
+      new Response(JSON.stringify({ results: [{ ok: true }] }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchSpy);
 

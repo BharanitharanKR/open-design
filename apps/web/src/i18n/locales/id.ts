@@ -1,6 +1,9 @@
 import type { Dict } from '../types';
 
 export const id: Dict = {
+  "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
+  "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
+  "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",
@@ -79,7 +82,7 @@ export const id: Dict = {
   "workspaceInvite.adminDescription": "All member permissions, plus resending or revoking invitations and removing members.",
   "workspaceInvite.memberDescription": "Create designs using workspace credits and invite colleagues as members.",
   "workspaceInvite.dialogAria": "Invite members",
-  "workspaceInvite.title": "Invite members",
+  "workspaceInvite.title": "Invite members to your team",
   "workspaceInvite.freePlanBody": "The free plan includes 1 seat. Inviting teammates will guide you to upgrade to Teams.",
   "workspaceInvite.teamPlanBody": "Invite teammates to share projects, design systems, and plugins together.",
   "workspaceInvite.seatsExhaustedBody": "Ruang kerja ini tidak memiliki kursi tersisa. Tambahkan kursi untuk mengundang rekan tim.",
@@ -98,7 +101,7 @@ export const id: Dict = {
   "workspaceInvite.visibilityAnswer": "Team members can see designs you share to the team space. Private designs kept in Personal projects are not visible to others.",
   "workspaceInvite.sent": "Invitation sent",
   "workspaceInvite.sending": "Inviting…",
-  "workspaceInvite.confirm": "Send invitations",
+  "workspaceInvite.confirm": "Confirm and invite",
   "workspaceInvite.submitFailed": "Failed to send invitation. Try again later.",
   "workspaceInvite.errorAlreadyMember": "Email ini sudah menjadi anggota tim.",
   "workspaceInvite.errorPendingInvite": "Email ini sudah memiliki undangan yang menunggu.",

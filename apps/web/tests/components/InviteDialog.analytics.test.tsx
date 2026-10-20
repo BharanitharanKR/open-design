@@ -30,7 +30,7 @@ beforeEach(() => {
   analytics.track.mockReset();
   analytics.newRequestId.mockClear();
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
-    results: [{ email: 'private@example.com', ok: true }],
+    results: [{ ok: true }],
   }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
