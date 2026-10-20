@@ -19,6 +19,7 @@ export async function registrationHost(page: Page, options: {
   let loginCalls = 0;
   let statusReads = 0;
   let contextFailure = options.contextFailure;
+  let displayVerificationReady = false;
   const verifiedContextRequests: Record<string, string>[] = [];
   let heldFresh: { gate: Promise<void>; began: () => void; finished: () => void } | null = null;
   const invitationRequests: unknown[] = [];
@@ -33,6 +34,7 @@ export async function registrationHost(page: Page, options: {
   });
   await page.route('**/api/integrations/vela/status**', async route => {
     statusReads += 1;
+    if (loggedIn && new URL(route.request().url()).searchParams.get('refresh') === '1') displayVerificationReady = true;
     const body = loggedIn ? { loggedIn: true, loginInFlight: false, sessionState: 'authenticated', credentialRevision: `revision-${account.id}`, profile: 'test', user: { id: account.id, email: `${account.id}@example.com`, plan: 'free' }, ...(account.receipt ? { registrationInvite: account.receipt } : {}) } : { loggedIn: false, loginInFlight: false, sessionState: 'signed_out', credentialRevision: 'signed-out', profile: 'test', user: null };
     const held = new URL(route.request().url()).searchParams.get('refresh') === '1' ? heldFresh : null;
     if (held) { heldFresh = null; held.began(); await held.gate; }
@@ -46,7 +48,7 @@ export async function registrationHost(page: Page, options: {
   await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: loggedIn ? [workspace()] : [], activeWorkspaceId: loggedIn ? workspace().workspaceId : null } }));
   await page.route('**/api/workspace/context', route => {
     const headers = route.request().headers();
-    const verification = Boolean(headers['x-od-workspace-id'] && headers['x-od-workspace-member-id']);
+    const verification = displayVerificationReady && headers['x-od-workspace-can-share-projects'] !== undefined && Boolean(headers['x-od-workspace-id'] && headers['x-od-workspace-member-id']);
     if (verification) verifiedContextRequests.push(headers);
     if (verification && contextFailure === 'forbidden') return route.fulfill({ status: 403, json: { error: 'workspace_forbidden' } });
     const context = loggedIn ? workspace() : null;
@@ -99,7 +101,7 @@ export async function captureRegistration(page: Page, state: string, transient =
   if (!transient) await waitForVisualStable(page);
   else await page.evaluate(async () => { await document.fonts.ready; });
   await page.addStyleTag({ content: 'nextjs-portal { display:none!important; }' });
-  const metrics = await page.getByRole('region', { name: '邀请成员', exact: true }).evaluateAll(regions => regions.map(region => ({ rect: region.getBoundingClientRect().toJSON(), panels: Array.from(region.children).map(el => ({ tag: el.tagName, rect: el.getBoundingClientRect().toJSON() })) })));
+  const metrics = await page.getByRole('region', { name: '邀请成员', exact: true }).evaluateAll(regions => regions.map(region => ({ rect: region.getBoundingClientRect().toJSON(), panels: Array.from(region.children).map(el => ({ tag: el.tagName, rect: el.getBoundingClientRect().toJSON() })), elements: Array.from(region.querySelectorAll('section,header,form,h1,h2,p,label,input,button,img,div[class*=labels],div[class*=rows],div[class*=center],div[class*=form],div[class*=panel]')).map(el => { const css = getComputedStyle(el); return { tag: el.tagName, text: el.textContent, className: el.className, rect: el.getBoundingClientRect().toJSON(), fontSize: css.fontSize, lineHeight: css.lineHeight, margin: css.margin, padding: css.padding, gap: css.gap, display: css.display, justify: css.justifyContent, color: css.color, background: css.backgroundColor }; }) })));
   await writeFile(path.join(output, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   await page.screenshot({ path: path.join(output, `${state}.png`), animations: 'disabled', caret: 'hide' });
 }
