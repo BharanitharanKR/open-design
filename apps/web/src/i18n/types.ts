@@ -2875,6 +2875,7 @@ export interface Dict {
   'chat.amrBalanceGate.signedOutMessage': string;
   'chat.amrBalanceGate.signInCta': string;
   'chat.amrBalanceGate.watchingWallet': string;
+  'chat.amrBalanceGate.watchingWalletManual': string;
   'chat.amrArtifactUpgrade.title': string;
   'chat.amrArtifactUpgrade.message': string;
   'chat.amrArtifactUpgrade.benefit1': string;
@@ -2973,6 +2974,7 @@ export interface Dict {
   'chat.runError.modelWindowLimitMessageNoTime': string;
   'chat.runError.membershipConcurrencyLimitMessage': string;
   'chat.runError.membershipConcurrencyLimitMessageNoTime': string;
+  'chat.runError.membershipConcurrencyLimitOwnerMessage': string;
   'chat.runError.upstreamUnavailableMessage': string;
   'chat.runError.toolLoopMessage': string;
   'chat.runError.outputInvalidMessage': string;

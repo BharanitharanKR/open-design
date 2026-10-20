@@ -1,0 +1,9 @@
+.panel {
+  width: min(480px, calc(100vw - 32px));
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

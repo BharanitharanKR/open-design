@@ -171,6 +171,7 @@ import {
 import {
   ChatComposer,
   type ChatComposerHandle,
+  type RejectedComposerSend,
   type ChatSendOutcome,
   type ChatSendMeta,
 } from './ChatComposer';
@@ -889,6 +890,7 @@ interface Props {
   // Bumped by the parent to push a draft into the composer (used by the
   // "Import repo" CTA). The nonce lets the same text fire more than once.
   composerDraftSignal?: { text: string; nonce: number };
+  rejectedComposerSend?: RejectedComposerSend;
   // Optional pet wiring forwarded straight through to ChatComposer's
   // /pet button. When omitted the composer hides the button entirely.
   petConfig?: AppConfig['pet'];
@@ -1435,6 +1437,7 @@ export function ChatPane({
   onCreateDesignSystemFromProject,
   createDesignSystemFromProjectBusy,
   composerDraftSignal,
+  rejectedComposerSend,
   petConfig,
   onAdoptPet,
   onTogglePet,
@@ -2772,6 +2775,15 @@ export function ChatPane({
     lastDraftSignalNonceRef.current = composerDraftSignal.nonce;
     composerRef.current?.setDraft(composerDraftSignal.text);
   }, [composerDraftSignal]);
+
+  const lastRejectedSendRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!rejectedComposerSend || lastRejectedSendRef.current === rejectedComposerSend.nonce) return;
+    lastRejectedSendRef.current = rejectedComposerSend.nonce;
+    composerRef.current?.restoreDraft({
+      ...rejectedComposerSend, quotes: rejectedComposerSend.meta?.quotes ?? [], onlyIfEmpty: true,
+    });
+  }, [rejectedComposerSend]);
 
   // Library "optimize design system" hand-off: when the user pushed selected
   // assets into this project's design system from the Library, pre-fill the
