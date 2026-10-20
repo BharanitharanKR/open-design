@@ -26,6 +26,7 @@ interface Props {
   configuredProfile: string;
   context: WorkspaceCollabContext | null;
   identityReady: boolean;
+  allowHost: boolean;
   onExit: (count: number, context: WorkspaceCollabContext) => void;
 }
 /** Registration eligibility comes exclusively from the AMR-issued claim. Local
@@ -34,7 +35,8 @@ export function useRegistrationInvite(props: Props) {
   const { status, accountId, context, identityReady } = props;
   const t = useT();
   const claimKey = status ? registrationInviteCompletionKey(status) : null;
-  const eligible = Boolean(claimKey && status?.user?.id === accountId && status.profile === props.configuredProfile && identityReady
+  const claimedAccount = Boolean(claimKey && status?.user?.id === accountId && status.profile === props.configuredProfile && props.allowHost);
+  const eligible = Boolean(claimedAccount && identityReady
     && context?.memberStatus === 'active' && context.lifecycleState === 'active' && context.permissions.canInviteMembers);
   const principal = eligible ? JSON.stringify([claimKey, status?.profile, status?.credentialRevision, context?.workspaceId, context?.workspaceMemberId]) : '';
   const latest = useRef({ principal, props }); latest.current = { principal, props };
@@ -44,6 +46,8 @@ export function useRegistrationInvite(props: Props) {
   const [settledFor, setSettledFor] = useState('');
   let alreadyComplete = false;
   try { alreadyComplete = Boolean(claimKey && window.localStorage.getItem(claimKey) === '1'); } catch { /* effect exposes recoverable storage failure */ }
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const finishing = useRef(false);
   const pendingCount = useRef<number | null>(null);
   useEffect(() => {
@@ -76,10 +80,11 @@ export function useRegistrationInvite(props: Props) {
   }, [principal, attempt]);
   async function finish(count: number) {
     const captured = candidate;
-    if (!captured || finishing.current || latest.current.principal !== captured.principal) return;
+    if (!mounted.current || !captured || finishing.current || latest.current.principal !== captured.principal) return;
     finishing.current = true; pendingCount.current = count; setErrorFor('');
     try {
       const fresh = await fetchVelaLoginStatus({ refresh: true });
+      if (!mounted.current) return;
       if (!fresh) throw new Error('Registration status unavailable');
       if (latest.current.principal !== captured.principal || !sameClaim(captured.status, fresh)) {
         if (latest.current.principal === captured.principal) { setCandidate(null); setSettledFor(captured.principal); }
@@ -90,10 +95,11 @@ export function useRegistrationInvite(props: Props) {
       window.localStorage.setItem(key, '1');
       setCandidate(null);
       latest.current.props.onExit(count, captured.context);
-    } catch { if (latest.current.principal === captured.principal) setErrorFor(captured.principal); }
+    } catch { if (mounted.current && latest.current.principal === captured.principal) setErrorFor(captured.principal); }
     finally { finishing.current = false; }
   }
   const visible = candidate?.principal === principal && Boolean(principal);
+  if (claimedAccount && !alreadyComplete && (!identityReady || !context)) return <div className={styles.loading}><CenteredLoader label={t('entry.loadingWorkspace')} /></div>;
   if (principal && !alreadyComplete && !visible && errorFor !== principal && settledFor !== principal) return <div className={styles.loading}><CenteredLoader label={t('entry.loadingWorkspace')} /></div>;
   if (!visible && (!principal || errorFor !== principal)) return null;
   return <>

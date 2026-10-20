@@ -12,7 +12,7 @@ const status = { loggedIn: true, sessionState: 'authenticated', credentialRevisi
 const baseContext = workspaceContextFixture({ workspaceId: 'new-workspace', workspaceMemberId: 'new-member', role: 'owner' });
 const context = { ...baseContext, permissions: { ...baseContext.permissions, canInviteMembers: true } };
 function Host({ current = status, ready = true, exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; exit?: (count: number, workspace: typeof context) => void }) {
-  const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, onExit: exit });
+  const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, allowHost: true, onExit: exit });
   return view ?? <div>Normal home</div>;
 }
 function mount(props: Parameters<typeof Host>[0] = {}) { return render(<I18nProvider initial="zh-CN"><Host {...props} /></I18nProvider>); }
@@ -25,7 +25,7 @@ describe('strict registration invitation host', () => {
     mount({ current }); expect(screen.getByText('Normal home')).toBeTruthy(); expect(mocks.status).not.toHaveBeenCalled();
   });
   it('waits for workspace identity and a fresh same-credential status before replacing home', async () => {
-    const result = mount({ ready: false }); expect(screen.getByText('Normal home')).toBeTruthy();
+    const result = mount({ ready: false }); expect(screen.queryByText('Normal home')).toBeNull(); expect(screen.queryByText(title)).toBeNull(); expect(mocks.status).not.toHaveBeenCalled();
     result.rerender(<I18nProvider initial="zh-CN"><Host ready /></I18nProvider>);
     expect(screen.queryByText('Normal home')).toBeNull(); await screen.findByText(title);
     expect(mocks.status).toHaveBeenCalledWith({ refresh: true });
@@ -78,6 +78,14 @@ describe('strict registration invitation host', () => {
     result.rerender(<I18nProvider initial="zh-CN"><Host current={{ ...status, user: { id: 'existing', email: 'old@example.com' }, registrationInvite: undefined }} exit={exit} /></I18nProvider>);
     await act(async () => { resolve(status); }); expect(exit).not.toHaveBeenCalled();
     expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull(); expect(localStorage.getItem('od.invitation-banner.dismissed:existing')).toBeNull();
+  });
+  it('does not acknowledge or navigate from a finishing response after the host unmounts', async () => {
+    let resolve!: (value: VelaLoginStatus) => void;
+    mocks.status.mockResolvedValueOnce(status).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    const exit = vi.fn(); const result = mount({ exit }); await screen.findByText(title);
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); result.unmount();
+    await act(async () => { resolve(status); }); expect(exit).not.toHaveBeenCalled();
+    expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
   });
   it('discards a pending invite result after a same-page account switch', async () => {
     let resolve!: (value: Response) => void;

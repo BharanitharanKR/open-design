@@ -2554,7 +2554,8 @@ it('configures Hosted before the strict new-registration host takes over onboard
   vi.spyOn(workspaceContextModule, 'useWorkspaceContext').mockReturnValue({ context: { ...base, permissions: { ...base.permissions, canInviteMembers: true } }, loading: false });
   const status = { loggedIn: true, sessionState: 'authenticated' as const, profile: 'prod', credentialRevision: 'registered-credential', configPath: '/test', user: { id: 'registered-account', email: 'new@example.com' }, registrationInvite: { accountId: 'registered-account', deviceAuthorizationId: 'new-authorization' } };
   globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => String(input) === '/api/workspace/context' ? jsonResponse({ context: { ...base, permissions: { ...base.permissions, canInviteMembers: true } } }) : jsonResponse(status)) as typeof fetch;
-  const props = renderOnboarding({ amrLoggedIn: true, amrSessionState: 'authenticated', amrAccountId: status.user.id, amrRegistrationStatus: status });
+  const activeChange = vi.fn();
+  const props = renderOnboarding({ onRegistrationInviteActiveChange: activeChange, amrLoggedIn: true, amrSessionState: 'authenticated', amrAccountId: status.user.id, amrRegistrationStatus: status });
   cleanup();
   function RuntimeHarness() {
     const [config, setConfig] = useState(props.config);
@@ -2566,7 +2567,9 @@ it('configures Hosted before the strict new-registration host takes over onboard
   expect(screen.queryByText('Invite colleagues for free. Design together.')).toBeNull();
   fireEvent.click(await screen.findByRole('button', { name: /Continue \(signed in\)/i }));
   await screen.findByText('Invite colleagues for free. Design together.');
+  expect(activeChange).toHaveBeenLastCalledWith(true);
   expect(props.onModeChange).toHaveBeenCalledWith('daemon'); expect(props.onAgentChange).toHaveBeenCalledWith('amr');
   fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
   await waitFor(() => expect(localStorage.getItem('od.registration-invite.completed:registered-account:new-authorization')).toBe('1'));
+  expect(activeChange).toHaveBeenLastCalledWith(false);
 });
