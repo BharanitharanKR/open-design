@@ -285,11 +285,13 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
       const dialog = page.getByRole('alertdialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole('heading')).toContainText('Xiaoyi’s Workspace');
-      await expect(page.getByTestId('home-hero')).toHaveCount(0);
+      await expect(page.getByTestId('home-hero')).toBeHidden();
+      await expect(page.locator('.workspace-shell')).toHaveAttribute('inert', '');
       await capture(page, 'H01');
       await dialog.getByRole('button').click();
       await expect(dialog.getByRole('alert')).toBeVisible();
-      await expect(page.getByTestId('home-hero')).toHaveCount(0);
+      await expect(page.getByTestId('home-hero')).toBeHidden();
+      await expect(page.locator('.workspace-shell')).toHaveAttribute('inert', '');
       await dialog.getByRole('button').click();
       await expect(dialog).toHaveCount(0);
       await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
