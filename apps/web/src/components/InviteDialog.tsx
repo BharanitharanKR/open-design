@@ -39,6 +39,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
   const { t } = useI18n();
   const canAssignRoles = allowRoleSelection && workspaceContext?.role === 'owner';
   const cumulativeSentRef = useRef(0);
+  const previousIdentityRef = useRef({ workspaceId: workspaceContext?.workspaceId, memberId: workspaceContext?.workspaceMemberId });
   const lifecycleRef = useRef(0);
   useEffect(() => {
     lifecycleRef.current++;
