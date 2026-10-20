@@ -5,7 +5,6 @@ import {
   amrConsoleUrlForWorkspace,
   amrPlansUrlForProfile,
   amrPlansUrlForWorkspace,
-  amrRechargeUrlForProfile,
   amrWorkspaceUrl,
   setRuntimeAmrConsoleOrigin,
 } from '../../src/runtime/amr-guidance';
@@ -28,13 +27,7 @@ const profiles = [
   { profile: 'unknown', runtime: runtimeOrigin, dashboard: prodDashboard },
 ];
 const intents = [
-  {
-    intent: '',
-    build: (profile: string, workspaceId?: string | null) =>
-      amrConsoleUrlForProfile(profile, undefined, workspaceId),
-  },
   { intent: 'plan', build: amrPlansUrlForProfile },
-  { intent: 'recharge', build: amrRechargeUrlForProfile },
   { intent: 'auto-recharge', build: amrAutoRechargeUrlForProfile },
 ];
 
@@ -52,7 +45,6 @@ describe.each(profiles)('C-03 profile=$profile runtime=$runtime', ({ profile, ru
 
   it.each(intents)('preserves byte-identical legacy billing=$intent without workspace context', ({ intent, build }) => {
     setRuntimeAmrConsoleOrigin(runtime);
-    // Recharge was historically a dashboard alias; no-workspace callers keep it.
     const suffix = intent && intent !== 'recharge' ? `&billing=${intent}` : '';
     const expected = `${dashboard}?source=open_design${suffix}`;
     expect(build(profile)).toBe(expected);
@@ -75,15 +67,12 @@ describe.each(profiles)('C-03 profile=$profile runtime=$runtime', ({ profile, ru
 describe('C-03 explicit status origin compatibility', () => {
   it('keeps consoleOrigin in argument two and gives it precedence for non-prod', () => {
     setRuntimeAmrConsoleOrigin('https://fallback.example.invalid');
-    expect(amrConsoleUrlForProfile('test', ` ${runtimeOrigin}/ `, 'ws-2')).toBe(
-      `${runtimeOrigin}/dashboard?workspaceId=ws-2&source=open_design`,
-    );
     expect(amrConsoleUrlForProfile('test', ` ${runtimeOrigin}/ `)).toBe(
       `${runtimeOrigin}/dashboard?source=open_design`,
     );
     for (const profile of ['prod', 'unknown', null, undefined, ' ']) {
-      expect(amrConsoleUrlForProfile(profile, runtimeOrigin, 'ws-2')).toBe(
-        `${prodDashboard}?workspaceId=ws-2&source=open_design`,
+      expect(amrConsoleUrlForProfile(profile, runtimeOrigin)).toBe(
+        `${prodDashboard}?source=open_design`,
       );
     }
   });

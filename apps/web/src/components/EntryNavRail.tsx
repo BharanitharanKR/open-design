@@ -1306,7 +1306,7 @@ export function EntryTopRightCluster({
   // (「点击管理, 就跳转到 vela dashboard 就行」), not on the auto-recharge dialog.
   const billingManageUrl = accountBillingUrl;
   // The wallet row asks the console for its manual top-up dialog; see
-  // AMR_CONSOLE_RECHARGE_INTENT for the (pending) B-side handler.
+  // AMR_CONSOLE_RECHARGE_INTENT for the B-side handler.
   const walletRechargeUrl = consoleBillingIntentUrl(accountBillingUrl, AMR_CONSOLE_RECHARGE_INTENT);
   // Product decision: plan comparison lives on public Pricing and payment
   // lives in Cloud. The client refreshes billing + context when focus returns

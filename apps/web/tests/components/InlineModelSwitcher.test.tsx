@@ -667,8 +667,6 @@ describe('InlineModelSwitcher AMR row', () => {
     expect(parsed.origin).toBe('https://open-design.powerformer.net');
     expect(parsed.pathname).toBe('/cloud/dashboard');
     expect(parsed.searchParams.get('billing')).toBe('plan');
-    // CS-04 / CS-09 (DD:1312,1317): pure pass-through from the existing context.
-    expect(parsed.searchParams.get('workspaceId')).toBe(workspaceContext.workspaceId);
     expect(parsed.searchParams.get('od_entry_source')).toBe('inline_amr_upgrade');
     expect(parsed.searchParams.get('od_device_id')).toBe('od-install-abc');
     expect(target).toBe('_blank');

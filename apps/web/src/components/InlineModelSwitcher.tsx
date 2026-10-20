@@ -870,7 +870,6 @@ export function InlineModelSwitcher({
       attributedAmrUrl(
         amrPlansUrlForProfile(
           amrStatus?.profile ?? config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
-          workspaceContext?.workspaceId,
         ),
         attribution,
         deviceId,
@@ -882,7 +881,6 @@ export function InlineModelSwitcher({
     amrStatus?.profile,
     analytics.track,
     campaignNeedsUpgrade,
-    workspaceContext?.workspaceId,
     config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
     config.installationId,
     config.telemetry?.metrics,
@@ -1661,7 +1659,6 @@ export function InlineModelSwitcher({
                               amrPlansUrlForProfile(
                                 amrStatus?.profile ??
                                   config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
-                                workspaceContext?.workspaceId,
                               ),
                               attribution,
                               deviceId,

@@ -138,28 +138,23 @@ export function setRuntimeAmrConsoleOrigin(origin: string | null | undefined): v
 export function amrConsoleUrlForProfile(
   profile: string | null | undefined,
   consoleOrigin?: string | null,
-  workspaceId?: string | null,
 ): string {
   const normalized = profile?.trim() || 'prod';
-  // Prod and unknown profiles stay pinned; runtime origins cannot redirect them.
-  let base = DEFAULT_AMR_RECHARGE_URL;
-  if (normalized !== 'prod' && KNOWN_AMR_PROFILES.has(normalized)) {
-    const statusOrigin = consoleOrigin?.trim().replace(/\/$/, '') ?? '';
-    const origin = statusOrigin || runtimeAmrConsoleOrigin;
-    base = origin
-      ? `${origin}${AMR_CONSOLE_PATH}`
-      : AMR_CONSOLE_URL_BY_PROFILE[normalized] ?? DEFAULT_AMR_RECHARGE_URL;
+  // prod's console is the public product URL and stays pinned to it: a runtime
+  // origin must never be able to redirect a production user's account, plan, or
+  // upgrade links somewhere else. Unrecognized profiles are treated as prod for
+  // the same reason.
+  if (normalized === 'prod' || !KNOWN_AMR_PROFILES.has(normalized)) {
+    return DEFAULT_AMR_RECHARGE_URL;
   }
-  return amrWorkspaceUrl(base, workspaceId) ?? base;
+  const statusOrigin = consoleOrigin?.trim().replace(/\/$/, '') ?? '';
+  if (statusOrigin) return `${statusOrigin}${AMR_CONSOLE_PATH}`;
+  if (runtimeAmrConsoleOrigin) return `${runtimeAmrConsoleOrigin}${AMR_CONSOLE_PATH}`;
+  return AMR_CONSOLE_URL_BY_PROFILE[normalized] ?? DEFAULT_AMR_RECHARGE_URL;
 }
 
-export function amrRechargeUrlForProfile(
-  profile: string | null | undefined,
-  workspaceId?: string | null,
-): string {
-  const base = amrConsoleUrlForProfile(profile);
-  // CS-04 (DD:1312); preserve the legacy dashboard alias without a workspace.
-  return amrWorkspaceUrl(base, workspaceId, AMR_CONSOLE_RECHARGE_INTENT) ?? base;
+export function amrRechargeUrlForProfile(profile: string | null | undefined): string {
+  return amrConsoleUrlForProfile(profile);
 }
 
 export function amrWorkspaceUrl(
