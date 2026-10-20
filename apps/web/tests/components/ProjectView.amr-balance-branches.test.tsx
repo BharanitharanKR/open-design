@@ -77,7 +77,7 @@ const SEED_PROMPT = 'ignored — the branch tests send manually';
  * `planId` 决定订阅档。四种分支就是这两位的四种组合。
  */
 function callerContext(
-  role: 'owner' | 'member',
+  role: 'owner' | 'admin' | 'member',
   planId: string | null,
   extra: Partial<WorkspaceCollabContext> = {},
 ): WorkspaceCollabContext {
@@ -113,10 +113,14 @@ const projectCollabMocks = vi.hoisted(() => ({
   viewerOnly: false,
 }));
 
-vi.mock('../../src/i18n', () => ({
-  useI18n: () => ({ locale: 'zh-CN', setLocale: () => undefined, t: (key: string) => key }),
-  useT: () => (key: string) => key,
-}));
+vi.mock('../../src/i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/i18n')>();
+  return {
+    ...actual,
+    useI18n: () => ({ locale: 'zh-CN', setLocale: () => undefined, t: (key: string) => key }),
+    useT: () => localizedOwnerCopy.enabled ? actual.tForLanguageTag('en')! : (key: string) => key,
+  };
+});
 
 vi.mock('../../src/router', () => ({ navigate: vi.fn() }));
 
@@ -477,6 +481,7 @@ const snapshot = (balanceUsd: string): AmrWalletSnapshot => ({
 });
 
 
+const localizedOwnerCopy = vi.hoisted(() => ({ enabled: false }));
 const mockedWindowOpen = vi.fn();
 
 const EMPTY_WALLET = {
@@ -488,6 +493,7 @@ const EMPTY_WALLET = {
 describe('余额不足:身份 × 订阅的四种分支', () => {
   beforeEach(() => {
     resourceContextObservations.length = 0;
+    localizedOwnerCopy.enabled = false;
     window.sessionStorage.clear();
     window.localStorage.clear();
     resetWorkspaceContextCache();
@@ -536,6 +542,18 @@ describe('余额不足:身份 × 订阅的四种分支', () => {
   function cardBalance(): string {
     return screen.getByTestId('amr-balance-card-prop').textContent ?? '';
   }
+
+  it.each(['free', 'go', 'plus', 'pro', 'max'].flatMap((tier) =>
+    (['admin', 'member'] as const).map((role) => ({ tier, role }))))('$tier / $role contacts Owner without exposing a payment action', async ({ tier, role }) => {
+    localizedOwnerCopy.enabled = true;
+    await sendAs(callerContext(role, tier === 'free' ? null : `team_${tier}`), EMPTY_WALLET);
+    const dialog = await screen.findByTestId('amr-balance-owner-dialog');
+    expect(dialog).toHaveTextContent('workspace Owner');
+    expect(dialog).not.toHaveTextContent('team admin');
+    expect(screen.queryByTestId('amr-balance-dialog-plans')).toBeNull();
+    expect(mockedWindowOpen).not.toHaveBeenCalled();
+    expect(mockedStreamViaDaemon).not.toHaveBeenCalled();
+  });
 
   // 反向对照(T58 的对照组)。这一格**没有变**:同一张弹窗、主按钮仍然落在
   // 套餐页。少了它,把两格合并成「都跳自动充值」也会全绿。
