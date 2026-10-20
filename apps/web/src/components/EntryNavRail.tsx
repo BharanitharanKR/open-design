@@ -1748,6 +1748,7 @@ export function EntryTopRightCluster({
       {context ? (
         <MessageCenter
           hideTrigger
+          workspaceId={context.workspaceId}
           returnFocusRef={messageCenterBellRef}
           open={messageCenterOpen}
           onOpenChange={setMessageCenterOpen}
