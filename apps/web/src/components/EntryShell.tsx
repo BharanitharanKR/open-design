@@ -119,6 +119,7 @@ import {
 } from '../runtime/amr-balance-branch';
 import { installDeepSeekHarnessCompanion } from '../providers/agent-companion';
 import {
+  amrBalanceGateFromMemory,
   amrBalanceGateScopeForWorkspaceContext,
   checkAmrBalanceGate,
   retryUnavailableAmrBalanceGate,
