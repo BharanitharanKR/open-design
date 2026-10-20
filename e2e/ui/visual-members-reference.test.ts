@@ -223,6 +223,7 @@ test('[P1] A06 fifty workspace limit preserves scroll and disables create', asyn
   const menu = await setup(page, 'owner', false, 50);
   await expect(menu).toContainText('50/50');
   await expect(menu.getByRole('menuitem', { name: '新建工作空间' })).toBeDisabled();
+  await expect(menu.getByRole('menuitem', { name: '新建工作空间' })).toHaveCSS('background-color', 'rgb(237, 237, 237)');
   await expect(menu.getByText('已达 50 个上限')).toBeVisible();
   const list = page.getByTestId('workspace-switcher-list');
   await expect.poll(() => list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
