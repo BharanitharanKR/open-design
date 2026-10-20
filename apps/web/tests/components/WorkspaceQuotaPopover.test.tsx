@@ -107,7 +107,7 @@ it.each(['expired', 'canceled'])('E04 C-05 preserves neutral presentation for se
 
 it('E03 adapter ignores account buckets and rejects foreign workspace/member balances (VIEW-012)', () => {
   const foreign = { summary: null, workspaceBalance: { workspaceId: 'b', workspaceMemberId: 'b-member', billingScopeVersion: 2 as const, balanceUsd: '99', expiresAt: null, updatedAt: null } };
-  const state = workspaceQuotaView({ context, response: foreign, tier: 'team_go', balanceUsd: '88' });
+  const state = workspaceQuotaView({ context: { ...context, planId: 'team_go' }, response: foreign, tier: 'team_go', balanceUsd: '88' });
   expect(state.balanceUsd).toBeNull();
   expect(state.tier).toBe('go');
   expect(state.windows).toBeNull();
@@ -117,9 +117,29 @@ it('E03 adapter ignores account buckets and rejects foreign workspace/member bal
 });
 it('A11 adapter distinguishes explicit server zero from absent balance (VIEW-012)', () => {
   const response = { summary: null, workspaceBalance: { workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId, billingScopeVersion: 2 as const, balanceUsd: '0', expiresAt: null, updatedAt: null } };
-  const state = workspaceQuotaView({ context, response, tier: 'free' });
+  const state = workspaceQuotaView({ context: { ...context, planId: null, billingState: 'free' }, response, tier: 'free' });
   expect(state.balanceUsd).toBe('0');
   expect(state.loading).toBe(false);
-  expect(workspaceQuotaView({ context, response: null, tier: null }).tier).toBeNull();
+  expect(workspaceQuotaView({ context: { ...context, planId: null, billingState: undefined }, response: null, tier: null }).tier).toBeNull();
   expect(workspaceQuotaView({ context, response: null, tier: null }).balanceUsd).toBeNull();
+});
+
+it('E09 current workspace Free overrides an account advisory Max tier (VIEW-012)', () => {
+  const free = { ...context, planId: null, billingState: 'free' as const };
+  const state = workspaceQuotaView({ context: free, response: { summary: null, workspaceBalance: null }, tier: 'team_max' });
+  expect(state.tier).toBe('free');
+  expect(state.balanceUsd).toBeNull();
+});
+it('E04 a matching workspace snapshot outranks an older context plan (VIEW-012)', () => {
+  const state = workspaceQuotaView({ context: { ...context, planId: 'free' }, tier: 'free', response: {
+    summary: null, workspaceBalance: null,
+    workspaceSnapshot: { schemaVersion: 1, billingScopeVersion: 2, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+      billing: { billingState: 'active', planId: 'team_pro' }, wallet: { balanceUsd: '24', expiresAt: null, updatedAt: null }, revisions: { billing: 'b1', wallet: 'w1' } },
+  } });
+  expect(state.tier).toBe('pro');
+});
+it('E04 preserves the existing readable locked-workspace billing entrance', () => {
+  render(<I18nProvider initial="zh-CN"><WorkspaceQuotaPopover context={{ ...context, lifecycleState: 'locked' }} view={view('pro')} /></I18nProvider>);
+  expect(screen.getByRole('button', { name: '升级' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '查看余额' })).toBeTruthy();
 });

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { WorkspaceCollabContext } from '@open-design/contracts';
+import { isWorkspaceLifecycleReadable, type WorkspaceCollabContext } from '@open-design/contracts';
 import { Button } from '@open-design/components';
 import { notifyWorkspaceBillingRefresh } from '../collab/useWorkspaceContext';
 import type { WorkspaceQuotaView } from '../collab/workspace-quota-view';
@@ -34,7 +34,8 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
   const max = view.tier === 'max';
   const actionUrl = quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
   const owner = context?.role === 'owner';
-  const active = context?.memberStatus === 'active' && context.lifecycleState === 'active';
+  // Preserve the existing contracts billing policy: locked workspaces remain readable.
+  const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
   // VIEW-012: the host's legacy Free fallback is not proof of a subscription.
   // Team is only an existing family mark; it does not assert a paid tier.
   const shownBadge = !view.planKnown && badgeTier !== 'team'
@@ -56,11 +57,11 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
           {shownBadge ? <PlanWordmark tier={shownBadge} height={shownBadge === 'team' ? 11 : 20} /> : unavailable}
         </span>
         {/* E reviewVariants / division:65: role, not wallet balance, chooses the action. */}
-        {active && owner && view.planKnown && actionUrl ? (
+        {readable && owner && view.planKnown && actionUrl ? (
           <Button className="entry-nav-rail__menu-credits-upgrade" onClick={() => navigate(actionUrl, max ? 'credits' : 'upgrade')}>
             {t(max ? 'entry.creditsManage' : 'entry.creditsUpgrade')}
           </Button>
-        ) : active && !owner ? <span className={styles.contact}>{t('workspaceQuota.contactOwner')}</span> : null}
+        ) : readable && !owner ? <span className={styles.contact}>{t('workspaceQuota.contactOwner')}</span> : null}
       </div>
       {view.loading ? (
         // E12 / VIEW-017: header stays; no spinner, hint, error or retry text.
@@ -108,7 +109,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
           <section className={quota.walletWithQuota} aria-label={t('workspaceQuota.payAsYouGo')}>
             <div className={quota.wallet}>
               <span>{t('workspaceQuota.payAsYouGo')}</span>
-              {consoleUrl && active ? <button type="button" className={`${styles.balance} ${quota.entry}`}
+              {consoleUrl && readable ? <button type="button" className={`${styles.balance} ${quota.entry}`}
                 data-testid="entry-nav-credits-row" aria-label={t('workspaceQuota.viewBalance')}
                 onClick={() => navigate(consoleUrl, 'credits')}>
                 <bdi>{formatVelaBalanceUsd(view.balanceUsd) ?? unavailable}</bdi><Icon name="chevron-right" size={14} />
@@ -117,7 +118,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
             {/* CS-06 / DD:1314: no bucket arithmetic or account-scoped breakdown. */}
             <span className={styles.details} title={view.breakdown ?? unavailable}>{view.breakdown ?? unavailable}</span>
           </section>
-          {consoleUrl && active ? <Button className={styles.refresh} onClick={notifyWorkspaceBillingRefresh}>
+          {consoleUrl && readable ? <Button className={styles.refresh} onClick={notifyWorkspaceBillingRefresh}>
             {t('workspaceQuota.refresh')}
           </Button> : null}
         </>

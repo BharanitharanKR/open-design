@@ -1,5 +1,5 @@
 import type { WorkspaceBillingResponse, WorkspaceCollabContext } from '@open-design/contracts';
-import { workspaceBillingBalanceUsd } from './useWorkspaceContext';
+import { workspaceBillingBalanceUsd, workspaceBillingSnapshotForContext } from './useWorkspaceContext';
 
 export type WorkspaceQuotaTier = 'free' | 'go' | 'plus' | 'pro' | 'max';
 
@@ -39,9 +39,17 @@ export function workspaceQuotaView({ context, response, tier, balanceUsd }: {
       ? workspaceBillingBalanceUsd(response, context)
       : balanceUsd ?? null
     : null;
+  // VIEW-012 / division:65: the host's account advisory tier must not rename
+  // this workspace. Prefer the proven v1 snapshot, then its current context.
+  const snapshot = workspaceBillingSnapshotForContext(response, context);
+  const snapshotTier = snapshot?.billing.planId?.trim()
+    || (snapshot?.billing.billingState === 'free' ? 'free' : null);
+  const scopedTier = snapshotTier || context?.planId?.trim()
+    || (context?.billingState === 'free' ? 'free' : null)
+    || (response === undefined ? tier : null);
   return {
-    tier: workspaceQuotaTier(tier),
-    planKnown: Boolean(tier?.trim()),
+    tier: workspaceQuotaTier(scopedTier),
+    planKnown: Boolean(scopedTier?.trim()),
     loading: balance == null && !response?.workspaceBalance && !response?.workspaceSnapshot,
     balanceUsd: balance,
     // CS-06 / DD:1314: the current v1 snapshot parser does not expose these
