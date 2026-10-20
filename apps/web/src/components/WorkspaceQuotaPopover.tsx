@@ -8,6 +8,7 @@ import { formatVelaBalanceUsd } from '../providers/daemon';
 import { quotaPopoverConsoleUrl } from '../runtime/workspace-quota-links';
 import { PlanWordmark, type PlanBadgeTier } from './PlanWordmark';
 import { Icon } from './Icon';
+import { RemixIcon } from './RemixIcon';
 import card from './PersonalPlanCard.module.css';
 import quota from './CodingPlanUsage.module.css';
 import styles from './WorkspaceQuotaPopover.module.css';
@@ -48,6 +49,12 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
     onNavigate?.(action);
     window.open(url, '_blank', 'noopener,noreferrer');
   }
+  const walletContent = <>
+    <span>{shownBadge === 'team' ? <RemixIcon name="battery-charge-line" size={14} /> : null}{t('workspaceQuota.payAsYouGo')}</span>
+    <span className={quota.value}><bdi>{formatVelaBalanceUsd(view.balanceUsd) ?? unavailable}</bdi>
+      {consoleUrl && readable ? <Icon name="chevron-right" size={14} /> : null}
+    </span>
+  </>;
   return (
     <div className={`entry-nav-rail__menu-credits ${card.card}`} data-plan-status={view.planStatus ?? undefined}>
       <div className="entry-nav-rail__menu-credits-head">
@@ -70,7 +77,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
             <div className={quota.row}><span className={quota.bone} /><span className={`${quota.bone} ${quota.boneEnd}`} /></div>
             <span className={`${quota.bone} ${quota.boneTrack}`} />
           </div>)}
-          <div className={`${quota.wallet} ${durations.length ? quota.walletWithQuota : ''}`} aria-hidden="true">
+          <div className={`${quota.wallet} ${durations.length ? quota.walletWithQuota : ''}`} aria-hidden="true" data-testid="workspace-quota-wallet-skeleton">
             <span className={quota.bone} /><span className={`${quota.bone} ${quota.boneEnd}`} />
           </div>
         </div>
@@ -107,14 +114,10 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
             </span>
           </section>
           <section className={quota.walletWithQuota} aria-label={t('workspaceQuota.payAsYouGo')}>
-            <div className={quota.wallet}>
-              <span>{t('workspaceQuota.payAsYouGo')}</span>
-              {consoleUrl && readable ? <button type="button" className={`${styles.balance} ${quota.entry}`}
-                data-testid="entry-nav-credits-row" aria-label={t('workspaceQuota.viewBalance')}
-                onClick={() => navigate(consoleUrl, 'credits')}>
-                <bdi>{formatVelaBalanceUsd(view.balanceUsd) ?? unavailable}</bdi><Icon name="chevron-right" size={14} />
-              </button> : <bdi>{formatVelaBalanceUsd(view.balanceUsd) ?? unavailable}</bdi>}
-            </div>
+            {consoleUrl && readable ? <button type="button" className={`${styles.balance} ${quota.wallet}`}
+              data-testid="entry-nav-credits-row" aria-label={t('workspaceQuota.viewBalance')}
+              onClick={() => navigate(consoleUrl, 'credits')}>{walletContent}</button>
+              : <div className={quota.wallet}>{walletContent}</div>}
             {/* CS-06 / DD:1314: no bucket arithmetic or account-scoped breakdown. */}
             <span className={styles.details} title={view.breakdown ?? unavailable}>{view.breakdown ?? unavailable}</span>
           </section>

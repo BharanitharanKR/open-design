@@ -41,12 +41,13 @@ export function workspaceQuotaView({ context, response, tier, balanceUsd }: {
     : null;
   // VIEW-012 / division:65: the host's account advisory tier must not rename
   // this workspace. Prefer the proven v1 snapshot, then its current context.
+  // E12 retains the host's scoped tier hint while the raw read is still pending.
   const snapshot = workspaceBillingSnapshotForContext(response, context);
   const snapshotTier = snapshot?.billing.planId?.trim()
     || (snapshot?.billing.billingState === 'free' ? 'free' : null);
   const scopedTier = snapshotTier || context?.planId?.trim()
     || (context?.billingState === 'free' ? 'free' : null)
-    || (response === undefined ? tier : null);
+    || (response == null ? tier : null);
   return {
     tier: workspaceQuotaTier(scopedTier),
     planKnown: Boolean(scopedTier?.trim()),

@@ -143,3 +143,11 @@ it('E04 preserves the existing readable locked-workspace billing entrance', () =
   expect(screen.getByRole('button', { name: '升级' })).toBeTruthy();
   expect(screen.getByRole('button', { name: '查看余额' })).toBeTruthy();
 });
+
+it('E12 keeps a scoped host Go header and two skeletons while a directory-only read is pending', () => {
+  const unknown = workspaceContextFixture({ ...context, workspaceType: 'personal', planId: null, billingState: undefined });
+  const state = workspaceQuotaView({ context: unknown, response: null, tier: 'go' });
+  render(panel(state));
+  expect(screen.getByRole('img', { name: 'go' })).toBeTruthy();
+  expect(screen.getAllByTestId('workspace-quota-window-skeleton')).toHaveLength(2);
+});
