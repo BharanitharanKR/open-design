@@ -120,7 +120,7 @@ it('A11 adapter distinguishes explicit server zero from absent balance (VIEW-012
   const state = workspaceQuotaView({ context: { ...context, planId: null, billingState: 'free' }, response, tier: 'free' });
   expect(state.balanceUsd).toBe('0');
   expect(state.loading).toBe(false);
-  expect(workspaceQuotaView({ context: { ...context, planId: null, billingState: undefined }, response: null, tier: null }).tier).toBeNull();
+  expect(workspaceQuotaView({ context: workspaceContextFixture({ ...context, planId: null, billingState: undefined }), response: null, tier: null }).tier).toBeNull();
   expect(workspaceQuotaView({ context, response: null, tier: null }).balanceUsd).toBeNull();
 });
 
