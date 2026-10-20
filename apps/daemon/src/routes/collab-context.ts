@@ -297,17 +297,17 @@ function workspaceGroupProperties(
  */
 function parseInviteCreateItems(
   body: unknown,
-): Array<{ email: string; role: WorkspaceInviteRole }> {
+): Array<{ email: string; role: WorkspaceInviteRole; idempotencyKey?: string }> {
   const raw = body as { invites?: unknown; email?: unknown; role?: unknown } | null;
   const source: unknown[] = Array.isArray(raw?.invites)
     ? raw!.invites
     : raw && typeof raw === 'object' && typeof raw.email === 'string'
       ? [raw]
       : [];
-  const items: Array<{ email: string; role: WorkspaceInviteRole }> = [];
+  const items: Array<{ email: string; role: WorkspaceInviteRole; idempotencyKey?: string }> = [];
   for (const entry of source) {
     if (!entry || typeof entry !== 'object') continue;
-    const rec = entry as { email?: unknown; role?: unknown };
+    const rec = entry as { email?: unknown; role?: unknown; idempotencyKey?: unknown };
     if (typeof rec.email !== 'string') continue;
     const email = rec.email.trim();
     if (!email) continue;
@@ -315,7 +315,7 @@ function parseInviteCreateItems(
       typeof rec.role === 'string' && ASSIGNABLE_ROLES.has(rec.role as WorkspaceInviteRole)
         ? (rec.role as WorkspaceInviteRole)
         : 'member';
-    items.push({ email, role });
+    items.push({ email, role, ...(typeof rec.idempotencyKey === 'string' && rec.idempotencyKey.trim() && rec.idempotencyKey.length <= 256 ? { idempotencyKey: rec.idempotencyKey.trim() } : {}) });
   }
   return items;
 }
@@ -442,7 +442,7 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
 
     const results: WorkspaceInviteCreateResult[] = [];
     for (const [index, item] of items.entries()) {
-      const outcome = await createInvite({ email: item.email, role: item.role, workspaceId }, requestEnv);
+      const outcome = await createInvite({ ...item, workspaceId }, requestEnv);
       if (!outcome.ok && outcome.error === 'no_session') {
         // Preserve the legacy unauthenticated response before any row completes.
         // A session can disappear between rows; do not discard confirmed results

@@ -1572,7 +1572,7 @@ describe('POST /api/workspace/invite', () => {
     const res = await api.req('/api/workspace/invite', {
       method: 'POST',
       headers,
-      body: { invites: [{ email: 'a@x.com', role: 'admin' }, { email: 'b@x.com', role: 'member' }] },
+      body: { invites: [{ email: 'a@x.com', role: 'admin', idempotencyKey: 'row-a-retry' }, { email: 'b@x.com', role: 'member' }] },
     });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -1582,7 +1582,7 @@ describe('POST /api/workspace/invite', () => {
       ],
     });
     expect(calls).toEqual([
-      { email: 'a@x.com', role: 'admin', workspaceId: 'wm-1' },
+      { email: 'a@x.com', role: 'admin', workspaceId: 'wm-1', idempotencyKey: 'row-a-retry' },
       { email: 'b@x.com', role: 'member', workspaceId: 'wm-1' },
     ]);
   });

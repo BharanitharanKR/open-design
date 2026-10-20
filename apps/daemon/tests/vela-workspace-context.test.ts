@@ -1466,3 +1466,22 @@ describe('workspace directory verified default marker', () => {
     }
   });
 });
+
+
+it('preserves explicit member counts without deriving them from legacy seat usage', () => {
+  expect(mapVelaWorkspaceContext({ ...B_TEAM_CONTEXT, memberCount: 5 })?.memberCount).toBe(5);
+  expect(mapVelaWorkspaceContext(B_TEAM_CONTEXT)?.memberCount).toBeUndefined();
+  expect(mapVelaWorkspaceContext({ ...B_TEAM_CONTEXT, memberCount: -1 })?.memberCount).toBeUndefined();
+});
+
+
+describe('invitation actual directory member count', () => {
+  it('preserves the active count through directory parsing into selected context', () => {
+    const [item] = mapVelaWorkspaceDirectory({ items: [{ ...B_DIRECTORY_ITEM, memberCount: 52 }] });
+    expect(item?.memberCount).toBe(52);
+    expect(workspaceContextFromDirectoryItem(item!).memberCount).toBe(52);
+    expect(workspaceContextFromDirectoryItem(B_DIRECTORY_ITEM).memberCount).toBeUndefined();
+    const [invalid] = mapVelaWorkspaceDirectory({ items: [{ ...B_DIRECTORY_ITEM, memberCount: -1 }] });
+    expect(invalid?.memberCount).toBeUndefined();
+  });
+});

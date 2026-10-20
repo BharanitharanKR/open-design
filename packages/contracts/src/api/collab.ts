@@ -406,6 +406,7 @@ export interface WorkspaceCollabContext {
   billingState: WorkspaceBillingState;
   planId: string | null;
   providerMode: WorkspaceProviderMode;
+  memberCount?: number;
   seatSummary: WorkspaceSeatSummary;
   permissions: WorkspacePermissions;
   billingRecovery?: WorkspaceBillingRecovery;
@@ -453,6 +454,7 @@ export interface WorkspaceContextResponse {
 
 /** A workspace visible to the signed-in Vela identity. Mirrors B's directory item. */
 export interface WorkspaceDirectoryItem {
+  memberCount?: number;
   /** Verified owner default supplied by the upstream account directory. */
   isDefault?: boolean;
   workspaceId: string;
