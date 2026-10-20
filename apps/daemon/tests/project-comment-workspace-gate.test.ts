@@ -52,7 +52,7 @@ import {
   updateProject,
   upsertPreviewComment,
 } from '../src/db.js';
-import { createLocalCommentFiles } from '../src/collab/local-comment-files.js';
+import { createLocalCommentFiles, prepareLocalProjectCommentFile } from '../src/collab/local-comment-files.js';
 import { createAuthorizeProjectRequest } from '../src/collab/project-request-authority.js';
 import { resolveLocalProjectCommentWorkspaceContext } from '../src/collab/project-comment-workspace-context.js';
 import { createEnforceWorkspaceProjectMutation } from '../src/routes/project/index.js';
@@ -211,6 +211,9 @@ async function startServer(
       ),
     resolveAuthorMemberId: async () => undefined,
     ...(centralAuthority ? {
+      prepareCommentFile: async (projectId, filePath, context) => prepareLocalProjectCommentFile({
+        db, projectId, filePath, context, requireWorkspaceAuthority: true,
+      }),
       enforceWorkspaceProjectMutation: createEnforceWorkspaceProjectMutation(
         undefined, undefined, createAuthorizeProjectRequest({
           db,
@@ -1399,3 +1402,25 @@ it('requires the bound private-project caller and rejects body-only or partial i
     }
   }
 });
+
+// Exercise the exact production preparer, including a missing catalog receipt.
+it.each([['p-team', 'conv-team'], ['p-team-mirror', 'conv-team-mirror']])(
+  'MEM-9286 creates a durable local file identity for a member on %s without publishing',
+  async (projectId, conversationId) => {
+    const base = await startServer({}, true);
+    const response = await fetch(`${base}/api/projects/${projectId}/conversations/${conversationId}/comments`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json',
+        'x-od-workspace-id': WORKSPACE_ID, 'x-od-workspace-member-id': OTHER_MEMBER_ID },
+      body: JSON.stringify({ target: COMMENT_TARGET, note: 'first member annotation' }),
+    });
+    expect(response.status).toBe(200);
+    const comments = listProjectPreviewComments(database!, projectId);
+    expect(comments).toHaveLength(1);
+    expect(comments[0]).toMatchObject({ authorMemberId: OTHER_MEMBER_ID });
+    expect(comments[0]?.sourceFileId).toBeTruthy();
+    expect(prepareLocalProjectCommentFile({ db: database!, projectId, filePath: 'index.html',
+      context: { workspaceId: WORKSPACE_ID, workspaceMemberId: OTHER_MEMBER_ID }, requireWorkspaceAuthority: true }))
+      .toBe(comments[0]?.sourceFileId);
+    expect(getProject(database!, projectId)?.metadata?._commentFiles).toBeUndefined();
+  },
+);

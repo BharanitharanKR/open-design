@@ -277,7 +277,7 @@ import {
 import { isAbortedOperationError } from './integrations/aborted-error.js';
 import { projectResourceIdFor } from './integrations/vela-team-projects.js';
 import { normalizeCurrentFileComment, parseCommentFileState } from './collab/comment-file-facts.js';
-import { createLocalCommentFiles } from './collab/local-comment-files.js';
+import { createLocalCommentFiles, prepareLocalProjectCommentFile } from './collab/local-comment-files.js';
 import { createCommentFileDeletion } from './collab/comment-file-deletion.js';
 import { createCommentFilePublisher } from './collab/comment-file-publisher.js';
 import { createCommentFilePublicationCoordination } from './collab/comment-file-publication-coordination.js';
@@ -9299,21 +9299,10 @@ export async function startServer({
     // server-authoritative author, gate status/delete on the caller vs the
     // comment author / project owner, and push the comment lifecycle (create/edit,
     // status change, tombstone) to the cross-daemon relay.
-    prepareCommentFile: async (projectId, filePath, context) => {
-      if (!/\.html?$/i.test(filePath)) return undefined;
-      assertCommentFileNotPending(db, projectId, { filePath });
-      const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
-      const current = state?.files.find(fact => !fact.retired && fact.sourceFilePath === filePath);
-      if (current) return current.sourceFileId;
-      if (!context || !velaCliTeamProjectCatalog) return localCommentFiles.identity(projectId, filePath);
-      const binding = getWorkspaceProjectByProjectId(db, projectId);
-      if (binding?.workspaceId !== context.workspaceId || binding.createdByWorkspaceMemberId !== context.workspaceMemberId) {
-        throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
-      }
-      // New private annotations are local-first. Their UUID is durable now;
-      // only explicit publication admits a receipt, never this save path.
-      return localCommentFiles.identity(projectId, filePath);
-    },
+    prepareCommentFile: async (projectId, filePath, context) => prepareLocalProjectCommentFile({
+      db, projectId, filePath, context,
+      requireWorkspaceAuthority: Boolean(velaCliTeamProjectCatalog),
+    }),
     resolveWorkspaceContext: resolveProjectCommentWorkspaceContext,
     resolveCurrentAuthorDisplayName: () => {
       const user = readVelaControlApiContext(process.env, configuredAmrEnv())?.user;
