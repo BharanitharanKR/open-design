@@ -1257,6 +1257,7 @@ export function RecentProjectsStrip({
                   if (inviteTarget.kind === 'vela') {
                     window.open(inviteTarget.url, '_blank', 'noopener,noreferrer');
                   } else if (inviteTarget.kind === 'local') {
+                    setInviteSentCount(0);
                     setInviteOpen(true);
                   }
                 }}
