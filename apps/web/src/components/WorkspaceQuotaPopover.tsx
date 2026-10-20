@@ -37,11 +37,9 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
   const owner = context?.role === 'owner';
   // Preserve the existing contracts billing policy: locked workspaces remain readable.
   const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
-  // VIEW-012: the host's legacy Free fallback is not proof of a subscription.
-  // Team is only an existing family mark; it does not assert a paid tier.
-  const shownBadge = !view.planKnown && badgeTier !== 'team'
-    ? null
-    : badgeTier === undefined ? view.tier : badgeTier;
+  // VIEW-012: only the existing team FAMILY mark survives from the host.
+  // Personal badges must name the same scoped tier as the quota and action.
+  const shownBadge = badgeTier === 'team' ? 'team' : view.tier;
   const unavailable = t('workspaceQuota.unavailable');
   // E03/E07/E15: Go has 5h + 7d; E04/E13/E14: other paid tiers only 7d.
   const durations = view.tier === 'free' ? [] : view.tier === 'go' ? [18_000, 604_800] : [604_800];
