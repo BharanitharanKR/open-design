@@ -1730,3 +1730,32 @@ describe('exportAsImage', () => {
     expect(target?.filename).toBe('My-Design.png');
   });
 });
+
+describe('Cloud POC PDF download', () => {
+  let captured: Blob | undefined;
+  let filename = '';
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_OD_CLOUD_POC', '1');
+    captured = undefined; filename = '';
+    vi.stubGlobal('URL', {createObjectURL: (blob: Blob) => {captured=blob;return 'blob:test';},revokeObjectURL:vi.fn()});
+    vi.stubGlobal('document', {createElement: () => ({href:'',set download(v:string){filename=v;},click:vi.fn()}),body:{appendChild:vi.fn(),removeChild:vi.fn()}});
+  });
+  afterEach(() => {vi.unstubAllEnvs();vi.unstubAllGlobals();vi.restoreAllMocks();});
+  const options=()=>({deck:false,filePath:'index.html',projectId:'p',title:'设计稿',fallbackPdf:vi.fn()});
+  it('downloads actual PDF bytes using the server filename without opening a print page',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response('%PDF-1.7\nfixture',{headers:{'content-type':'application/pdf','content-disposition':"attachment; filename*=UTF-8''"+encodeURIComponent('设计稿.pdf')}})));
+    const opts=options();
+    expect(await exportProjectAsPdf(opts)).toBe('download');
+    expect(filename).toBe('设计稿.pdf');
+    expect(captured?.type).toBe('application/pdf');
+    expect(await captured?.text()).toBe('%PDF-1.7\nfixture');
+    expect(opts.fallbackPdf).not.toHaveBeenCalled();
+  });
+  it.each(['error','json','invalid-pdf'])('rejects %s instead of opening the blob print fallback',async(kind)=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>kind==='error'?new Response('failed',{status:502}):kind==='json'?Response.json({ok:true}):new Response('<html>not PDF</html>',{headers:{'content-type':'application/pdf'}})));
+    const opts=options();
+    await expect(exportProjectAsPdf(opts)).rejects.toThrow();
+    expect(opts.fallbackPdf).not.toHaveBeenCalled();
+    expect(captured).toBeUndefined();
+  });
+});

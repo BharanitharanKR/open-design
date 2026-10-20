@@ -219,6 +219,10 @@ function shouldUseStandaloneOutput(runtime: WebRuntimeContext): boolean {
 }
 
 function resolveDaemonOrigin(): string | null {
+  // Cloud POC keeps the original UI and forwards the existing daemon protocol.
+  if (process.env.OD_CLOUD_API_ORIGIN) {
+    return new URL(process.env.OD_CLOUD_API_ORIGIN).origin;
+  }
   const port = parsePort(process.env[DAEMON_PORT_ENV]);
   if (port === 0) {
     console.warn(

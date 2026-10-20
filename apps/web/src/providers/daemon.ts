@@ -1431,6 +1431,7 @@ export async function fetchAmrModels(): Promise<AmrModelsResponse | null> {
 }
 
 export interface StartVelaLoginResult {
+  activationUrl?: string;
   ok: boolean;
   status: number;
   pid?: number;
@@ -1479,6 +1480,7 @@ export async function startVelaLogin(
       ok: false,
       status: resp.status,
       alreadyRunning: resp.status === 409,
+      ...(body?.activationUrl ? { activationUrl: body.activationUrl } : {}),
       error: body?.error ?? '',
       ...(body?.authAttemptId ? { authAttemptId: body.authAttemptId } : {}),
       ...(body?.authStages ? { authStages: body.authStages } : {}),

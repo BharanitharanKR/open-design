@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import * as cloudDeviceLoginModule from '../../src/runtime/cloud-device-login';
 import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -307,6 +308,8 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   globalThis.ResizeObserver = originalResizeObserver;
   vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   analyticsMocks.track.mockReset();
   window.sessionStorage.clear();
 });
@@ -1986,6 +1989,45 @@ describe('EntryShell onboarding OpenDesign AMR runtime', () => {
         .hasAttribute('disabled'),
     ).toBe(false);
     expect(props.onCompleteOnboarding).not.toHaveBeenCalled();
+  });
+
+  it('opens a cloud authorization window during the click, before awaiting status', async () => {
+    vi.stubEnv('NEXT_PUBLIC_OD_CLOUD_POC', '1');
+    const popup = { opener: window, closed: false, close: vi.fn(), location: { replace: vi.fn() } };
+    const open = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    renderOnboarding();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in / Sign up' }));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(popup.opener).toBeNull();
+    vi.unstubAllEnvs();
+    open.mockRestore();
+  });
+
+  it('hands an approved cloud session to Home once without publishing into stale desktop routing', async () => {
+    vi.stubEnv('NEXT_PUBLIC_OD_CLOUD_POC', '1');
+    const replace = vi.fn();
+    const popup = { opener: window, closed: false, close: vi.fn(), location: { replace: vi.fn() } };
+    const create = cloudDeviceLoginModule.createCloudDeviceLogin;
+    vi.spyOn(cloudDeviceLoginModule, 'createCloudDeviceLogin').mockImplementation(() => create({ open: () => popup, location: { replace } } as unknown as Window));
+    let approved = false;
+    globalThis.fetch = vi.fn(async (input) => {
+      if (String(input).endsWith('/login')) return jsonResponse({ activationUrl: 'https://open-design.powerformer.net/cloud/cli/activate?deviceId=test&userCode=ABC123' }, 202);
+      if (String(input).endsWith('/status')) return jsonResponse({ loggedIn: approved, sessionState: approved ? 'authenticated' : 'signed_out', loginInFlight: !approved, profile: 'test', configPath: '', user: approved ? { id: 'user', email: 'user@example.test' } : null });
+      return jsonResponse({});
+    }) as typeof fetch;
+    const statusChanged = vi.fn();
+    vi.useFakeTimers();
+    const props = renderOnboarding({ onAmrLoginStatusChange: statusChanged });
+    // Resume an existing pending device attempt, then approve during polling.
+    await act(async () => {});
+    approved = true;
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(replace).toHaveBeenCalledExactlyOnceWith('/');
+    expect(props.onCompleteOnboarding).not.toHaveBeenCalled();
+    expect(statusChanged.mock.calls.some(([status]) => status?.loggedIn)).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(replace).toHaveBeenCalledTimes(1);
   });
 
   it('continues after AMR device authorization completes during polling', async () => {

@@ -110,6 +110,29 @@ async function saveExportDownload(blob: Blob, filename: string): Promise<Downloa
   }
 }
 
+/** Cloud rendering reads the authenticated project source on the server. */
+export async function exportProjectAsMp4(opts: {
+  projectId: string; fileName: string; title: string; signal?: AbortSignal;
+}): Promise<DownloadExportResult> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/export/mp4`, {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    signal: opts.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(310000)]) : AbortSignal.timeout(310000),
+    body: JSON.stringify({ fileName: opts.fileName, title: opts.title }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message || body?.message || `MP4 export failed (${response.status})`);
+  }
+  if (!response.headers.get('content-type')?.includes('video/mp4')) throw new Error('Invalid MP4 response');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length < 12 || bytes.length > 20 * 1024 * 1024 ||
+      String.fromCharCode(...bytes.subarray(4, 8)) !== 'ftyp') throw new Error('Invalid MP4 file');
+  opts.signal?.throwIfAborted();
+  triggerDownload(new Blob([bytes], { type: 'video/mp4' }), `${safeFilename(opts.title, 'motion')}.mp4`);
+  return 'download';
+}
+
 export function exportAsHtml(html: string, title: string): void {
   const doc = buildSrcdoc(html);
   const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
@@ -802,7 +825,7 @@ export function exportAsImage(dataUrl: string, title: string): void {
   }
 }
 
-export type ProjectPdfExportResult = 'desktop' | 'fallback' | 'cancelled';
+export type ProjectPdfExportResult = 'desktop' | 'download' | 'fallback' | 'cancelled';
 
 export async function exportProjectAsPdf(opts: {
   deck: boolean;
@@ -813,6 +836,24 @@ export async function exportProjectAsPdf(opts: {
   versionId?: string;
   workspaceContext?: WorkspaceCollabContext | null;
 }): Promise<ProjectPdfExportResult> {
+  // Cloud POC returns PDF bytes, while the desktop endpoint returns a native
+  // save-dialog JSON result. Keep this boundary explicit: a cloud error must
+  // surface to the user, not silently open a blob HTML print page.
+  if (process.env.NEXT_PUBLIC_OD_CLOUD_POC === '1') {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/export/pdf`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : {}) },
+      body: JSON.stringify({ fileName: opts.filePath, title: opts.title, deck: opts.deck, ...(opts.versionId ? {versionId: opts.versionId} : {}) }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!resp.ok) throw new Error(`Cloud PDF export failed (${resp.status})`);
+    if (!resp.headers.get('content-type')?.includes('application/pdf')) throw new Error('Cloud export did not return a PDF');
+    const bytes = await resp.arrayBuffer();
+    if (new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') throw new Error('Cloud export returned invalid PDF data');
+    const filename = filenameFromContentDisposition(resp) ?? `${safeFilename(opts.title, 'artifact')}.pdf`;
+    triggerDownload(new Blob([bytes], {type: 'application/pdf'}), filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`);
+    return 'download';
+  }
   try {
     const resp = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/export/pdf`, {
       body: JSON.stringify({
@@ -896,7 +937,8 @@ export function exportReactComponentAsZip(
 // active file's project-relative path; if it lives inside a top-level
 // directory we scope the archive to that directory, otherwise we ask the
 // daemon for the whole project. Falls back to the in-memory single-file
-// ZIP on any failure so the action never silently no-ops.
+// ZIP on failure for desktop. Cloud failures must surface because the fallback
+// cannot represent a complete remote project or historical snapshot.
 export async function exportProjectAsZip(opts: {
   projectId: string;
   filePath: string;
@@ -922,6 +964,7 @@ export async function exportProjectAsZip(opts: {
       if (!resp.ok) throw new Error(`version html export request failed (${resp.status})`);
       return exportAsZip(await resp.text(), opts.fallbackTitle);
     } catch (err) {
+      if (process.env.NEXT_PUBLIC_OD_CLOUD_POC === '1') throw err;
       console.warn('[exportProjectAsZip] falling back to single-file ZIP:', err);
       return exportAsZip(opts.fallbackHtml, opts.fallbackTitle);
     }
@@ -940,6 +983,7 @@ export async function exportProjectAsZip(opts: {
     const blob = await resp.blob();
     return saveExportDownload(blob, archiveFilenameFrom(resp, opts.fallbackTitle, root));
   } catch (err) {
+    if (process.env.NEXT_PUBLIC_OD_CLOUD_POC === '1') throw err;
     console.warn('[exportProjectAsZip] falling back to single-file ZIP:', err);
     return exportAsZip(opts.fallbackHtml, opts.fallbackTitle);
   }
@@ -1022,10 +1066,10 @@ export async function exportProjectAsPptx(opts: {
     return { ok: false, unavailable: true, reason: 'unreachable' };
   }
   if (!resp.ok) {
-    // 501 = this runtime has no off-screen renderer → caller may fall back to
-    // the vector/browser PDF. Everything else is a real (semantic) failure that
+    // Desktop 501 means no off-screen renderer; cloud 501 may mean the
+    // requested source/history is unavailable and must remain a real error. Everything else is a real (semantic) failure that
     // must surface, not be masked by the vector path.
-    if (resp.status === 501) return { ok: false, unavailable: true, reason: 'no-renderer' };
+    if (resp.status === 501 && process.env.NEXT_PUBLIC_OD_CLOUD_POC !== '1') return { ok: false, unavailable: true, reason: 'no-renderer' };
     // The proxy in front of the daemon answers instead of failing the fetch
     // when the daemon is down, so an outage arrives as a plain-text 5xx rather
     // than a rejection. Classify it before the generic branch below, otherwise
@@ -1194,8 +1238,8 @@ export async function exportProjectImageDataUrl(opts: {
     return { ok: false, unavailable: true, reason: 'unreachable' };
   }
   if (!resp.ok) {
-    // 501 = this runtime has no off-screen renderer → caller may fall back.
-    if (resp.status === 501) return { ok: false, unavailable: true, reason: 'no-renderer' };
+    // Desktop may fall back on 501; cloud must preserve source/history errors.
+    if (resp.status === 501 && process.env.NEXT_PUBLIC_OD_CLOUD_POC !== '1') return { ok: false, unavailable: true, reason: 'no-renderer' };
     // The proxy in front of the daemon answers instead of failing the fetch
     // when the daemon is down, so an outage arrives as a plain-text 5xx rather
     // than a rejection. Classify it before the generic branch below, otherwise

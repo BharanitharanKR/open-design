@@ -1,3 +1,4 @@
+import { CloudMotionExportButton, isCloudMotionSource } from './CloudMotionExportButton';
 import { commentSelectorsMatch, commentUsesIdentity, ownerCommentNeedsLocation, resolveOwnerCommentAnchor } from '../comments/owner-anchor';
 import { indexCommentTargets } from '../comments/target-index';
 import { useShareSourceGuard } from './share/useShareSourceGuard';
@@ -15869,7 +15870,7 @@ function HtmlViewer({
     // in the browser screenshot flow (DesignBrowserPanel).
     await waitForAnimationFrame();
     await waitForAnimationFrame();
-    // Prefer the daemon's off-screen render (desktop only): isolated from the
+    // Prefer the desktop or cloud server's off-screen render: isolated from the
     // preview pane and, rendering the artifact alone in a hidden window, it can
     // never capture OpenDesign's own UI. Page exports use the selected preview
     // preset; desktop pages and decks retain the renderer defaults. `wholeDeck`
@@ -15878,7 +15879,7 @@ function HtmlViewer({
     // reports; otherwise (Copy screenshot, Mark/Draw capture) it grabs the
     // CURRENT slide, mirroring what's on screen. An ordinary page is its
     // full-page capture either way.
-    if (isOpenDesignHostAvailable() && projectId && file.name) {
+    if ((isOpenDesignHostAvailable() || process.env.NEXT_PUBLIC_OD_CLOUD_POC === '1') && projectId && file.name) {
       // Deck-vs-page uses the same signal as PDF export — broader than the viewer's nav
       // signal — so runtime-managed decks (`<deck-stage>` / `data-screen-label`,
       // no literal `.slide`) export as a deck instead of a single page-mode shot
@@ -17778,6 +17779,10 @@ function HtmlViewer({
                     ) : null}
                     {unifiedActionTab === 'export' && rawCanDownload ? (
                       <div className="chrome-unified-panel">
+                  {process.env.NEXT_PUBLIC_OD_CLOUD_POC === '1' && isCloudMotionSource(source) ? (
+                    <CloudMotionExportButton menu projectId={projectId} fileName={file.name}
+                      title={exportTitle} disabled={viewerOnly || streaming} />
+                  ) : null}
                   <button
                     type="button"
                     className="share-menu-item"

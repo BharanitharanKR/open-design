@@ -113,6 +113,23 @@ describe('FileViewer image export', () => {
   afterEach(() => {
     cleanup();
     vi.resetAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('uses the server renderer for cloud image export without a desktop host', async () => {
+    vi.stubEnv('NEXT_PUBLIC_OD_CLOUD_POC', '1');
+    isOpenDesignHostAvailableMock.mockReturnValue(false);
+    exportProjectImageDataUrlMock.mockResolvedValue({ ok: true, snapshot: { dataUrl: 'data:image/png;base64,cloud', w: 800, h: 600 } });
+    imageDataUrlToBlobMock.mockResolvedValue(new Blob(['png'], { type: 'image/png' }));
+    renderHtmlPreview();
+    await openImageExportDialog();
+    await clickSave();
+    await waitFor(() => {
+      expect(exportProjectImageDataUrlMock).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', fileName: 'workspace.html', deck: false }));
+      expect(imageDataUrlToBlobMock).toHaveBeenCalledWith('data:image/png;base64,cloud', 'png');
+    });
+    expect(requestPreviewSnapshotMock).not.toHaveBeenCalled();
+    expect(captureHostIframeSnapshotMock).not.toHaveBeenCalled();
   });
 
   it('portals the image export dialog above fixed chat composer layers', async () => {

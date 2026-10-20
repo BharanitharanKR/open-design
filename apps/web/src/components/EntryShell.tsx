@@ -8,6 +8,7 @@
 // can be rebased without touching this file. `EntryView` becomes a
 // thin wrapper that passes data and callbacks through to this shell.
 
+import { createCloudDeviceLogin } from '../runtime/cloud-device-login';
 import {
   useCallback,
   useEffect,
@@ -2331,6 +2332,8 @@ function OnboardingView({
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [cliScanStatus, setCliScanStatus] = useState<'idle' | 'scanning' | 'done'>('idle');
   const [amrStatus, setAmrStatus] = useState<VelaLoginStatus | null>(null);
+  const [cloudDeviceLogin] = useState(createCloudDeviceLogin);
+  useEffect(() => () => cloudDeviceLogin.close(), [cloudDeviceLogin]);
   // Initial login status fetch has settled, whether signed in or not. The
   // cloud landing uses this to avoid flashing "Sign in" before flipping to
   // "Continue" for already-authenticated users.
@@ -2966,6 +2969,7 @@ function OnboardingView({
   }
 
   function continueAfterCloudSignIn(): void {
+    if (cloudDeviceLogin.finish()) return;
     if (config.onboardingCompleted === true && hasRestorableModelSourceConfig) {
       if (passiveReauthCompletedRef.current) return;
       passiveReauthCompletedRef.current = true;
@@ -3122,6 +3126,7 @@ function OnboardingView({
     attribution?: AmrEntryAttribution | null,
   ) {
     if (amrLoginBusy || amrLoginCancelPending) return;
+    const cloudAttempt = cloudDeviceLogin.begin();
     amrLoginPollCancelledRef.current = false;
     amrLoginCancelRequestedRef.current = false;
     setAmrLoginError(null);
@@ -3156,6 +3161,7 @@ function OnboardingView({
       ).finally(() => {
         amrLoginStartPendingRef.current = false;
       });
+      cloudDeviceLogin.activate(loginResult.activationUrl, cloudAttempt);
       const authAttemptId = reconcileAmrAuthAttemptId(
         provisionalAuthAttemptId,
         loginResult.authAttemptId,
@@ -3197,6 +3203,7 @@ function OnboardingView({
             resolveAmrAuthTracking(analytics.track, 'cancelled', undefined, {
               authAttemptId,
             });
+            cloudDeviceLogin.close();
             closeAmrActivationWindowBestEffort();
             notifyAmrLoginStatusChanged('login-canceled');
             amrLoginCancelRequestedRef.current = false;
@@ -3234,10 +3241,11 @@ function OnboardingView({
         setAmrLoginError(loginResult.error || t('settings.amrLoginErrorCompact'));
         return;
       }
-      if (await pollAmrLoginCompletion()) {
+      if (await pollAmrLoginCompletion(cloudAttempt)) {
         continueAfterCloudSignIn();
       }
     } finally {
+      cloudDeviceLogin.close(cloudAttempt);
       setAmrLoginPending(false);
     }
   }
@@ -3287,6 +3295,7 @@ function OnboardingView({
         authAttemptId,
       });
     }
+    cloudDeviceLogin.close();
     closeAmrActivationWindowBestEffort();
     setAmrStatus((current) => (
       current
@@ -3297,7 +3306,7 @@ function OnboardingView({
     notifyAmrLoginStatusChanged('login-canceled');
   }
 
-  async function pollAmrLoginCompletion(): Promise<boolean> {
+  async function pollAmrLoginCompletion(cloudAttempt?: number): Promise<boolean> {
     const startedAt = Date.now();
     while (!amrLoginPollCancelledRef.current) {
       await new Promise((resolve) =>
@@ -3305,6 +3314,12 @@ function OnboardingView({
       );
       if (amrLoginPollCancelledRef.current) return false;
       const nextStatus = await fetchVelaLoginStatus();
+      // An older cancelled poll must not close or complete a newer popup.
+      if (!cloudDeviceLogin.isCurrent(cloudAttempt)) return false;
+      cloudDeviceLogin.activate(nextStatus?.activationUrl, cloudAttempt);
+      // Cloud completion replaces the old document before publishing identity
+      // into the desktop's independent onboarding/workspace routing owners.
+      if (isAmrSessionAuthenticated(nextStatus) && cloudDeviceLogin.finish()) return true;
       if (nextStatus) {
         setAmrStatus(nextStatus);
         onAmrLoginStatusChange?.(nextStatus);
