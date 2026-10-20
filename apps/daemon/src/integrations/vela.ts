@@ -253,7 +253,10 @@ export interface VelaUser {
   balanceUsd?: string | null;
 }
 
+export interface VelaRegistrationInvite { accountId: string; deviceAuthorizationId: string; }
+
 export interface VelaLoginStatus {
+  registrationInvite?: VelaRegistrationInvite;
   loggedIn: boolean;
   sessionState?: AmrSessionState;
   credentialRevision?: string;
@@ -395,6 +398,7 @@ export interface VelaApiContext {
 }
 
 interface VelaProfileShape {
+  registrationInvite?: unknown;
   controlKey?: string;
   runtimeKey?: string;
   apiUrl?: string;
@@ -475,8 +479,10 @@ export function readVelaLoginStatus(
   } else if (expiredVelaCredentialRevisions.has(credentialRevision)) {
     sessionState = 'reauth_required';
   }
+  const { registrationInvite, ...sessionStatus } = rawStatus;
   return {
-    ...rawStatus,
+    ...sessionStatus,
+    ...(sessionState === 'authenticated' && registrationInvite ? { registrationInvite } : {}),
     // `loggedIn` remains the backwards-compatible "credential is present"
     // projection. Routing must not treat an expired credential like a brand
     // new user and throw them back into first-run onboarding; new callers use
@@ -485,6 +491,41 @@ export function readVelaLoginStatus(
     sessionState,
     credentialRevision,
   };
+}
+
+function readRegistrationInvite(raw: unknown, accountId: string | undefined): VelaRegistrationInvite | undefined {
+  if (!accountId || !raw || typeof raw !== 'object') return undefined;
+  const claim = raw as Record<string, unknown>;
+  if (claim.accountId !== accountId || typeof claim.deviceAuthorizationId !== 'string'
+    || !claim.deviceAuthorizationId.trim() || claim.deviceAuthorizationId.length > 256) return undefined;
+  return { accountId, deviceAuthorizationId: claim.deviceAuthorizationId };
+}
+
+/** A CLI-issued receipt belongs to the stored account/control API source.
+ * Runtime/env authorization remains unchanged; only onboarding eligibility is
+ * withheld when those request credentials no longer describe that source. */
+function registrationInviteUsesStoredControlSource(
+  stored: VelaProfileShape | undefined,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  const controlOverride = env.VELA_CONTROL_KEY?.trim() ?? '';
+  if (controlOverride && controlOverride !== stored?.controlKey?.trim()) return false;
+  const defaultApi = 'https://amr-api.open-design.ai';
+  const storedApi = stored?.apiUrl?.trim() || defaultApi;
+  // Match readRawVelaControlApiContext: an env control key selects env/default
+  // API directly; otherwise readVelaApiContext gives the stored API precedence.
+  const effectiveApi = controlOverride
+    ? env.VELA_API_URL?.trim() || defaultApi
+    : stored?.apiUrl?.trim() || env.VELA_API_URL?.trim() || defaultApi;
+  const normalize = (value: string): string | null => {
+    try {
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return null;
+      return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+    } catch { return null; }
+  };
+  const source = normalize(storedApi);
+  return source !== null && source === normalize(effectiveApi);
 }
 
 function readRawVelaLoginStatus(
@@ -547,11 +588,14 @@ function readRawVelaLoginStatus(
         ...(typeof rawUser.plan === 'string' ? { plan: rawUser.plan } : {}),
       }
     : null;
+  const registrationInvite = registrationInviteUsesStoredControlSource(stored, mergedEnv)
+    ? readRegistrationInvite(stored?.registrationInvite, user?.id) : undefined;
   return {
     loggedIn: true,
     loginInFlight,
     profile,
     user,
+    ...(registrationInvite ? { registrationInvite } : {}),
     configPath,
     ...readVelaLoginAttemptSnapshot(),
   };

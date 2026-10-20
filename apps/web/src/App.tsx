@@ -1797,6 +1797,7 @@ function AppInner() {
     setLoginUpdateRequest((current) => current?.nonce === nonce ? null : current);
   }, []);
 
+  const [registrationInviteActive, setRegistrationInviteActive] = useState(false);
   const testRuntimeAuthenticated = isAmrSessionAuthenticated(amrLoginStatus);
   const testRuntimeOwner = amrLoginStatus?.user?.id ?? null;
   useEffect(() => {
@@ -2064,7 +2065,8 @@ function AppInner() {
   const showPrivacyConsent =
     daemonConfigLoaded &&
     config.privacyDecisionAt == null &&
-    config.onboardingCompleted === true;
+    config.onboardingCompleted === true &&
+    !registrationInviteActive;
   useEffect(() => {
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
@@ -5804,6 +5806,8 @@ function AppInner() {
           || null
         }
         amrAccountId={amrLoginStatus?.user?.id ?? amrLoginStatus?.credentialRevision ?? null}
+        amrRegistrationStatus={amrLoginStatus}
+        onRegistrationInviteActiveChange={setRegistrationInviteActive}
         config={config}
         providerModelsCache={providerModelsCache}
         onProviderModelsCacheChange={setProviderModelsCache}
