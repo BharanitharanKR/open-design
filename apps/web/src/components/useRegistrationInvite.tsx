@@ -3,6 +3,7 @@ import { Button } from '@open-design/components';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { fetchVelaLoginStatus, type VelaLoginStatus } from '../providers/daemon';
 import { useT } from '../i18n';
+import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { CenteredLoader } from './Loading';
 import { OnboardingInviteView } from './InviteDialog';
 import styles from './RegistrationInviteHost.module.css';
@@ -56,7 +57,19 @@ export function useRegistrationInvite(props: Props) {
         if (!fresh) throw new Error('Registration status unavailable');
         if (!sameClaim(status, fresh)) { setSettledFor(principal); return; }
         if (window.localStorage.getItem(claimKey) === '1') return;
-        setCandidate({ principal, status: fresh, context });
+        // The account status and cached Workspace context resolve independently.
+        // Revalidate this exact member under the current selected credential;
+        // never borrow a previous account's retained navigation snapshot.
+        const response = await fetch('/api/workspace/context', { cache: 'no-store', headers: workspaceProjectHeaders(context) });
+        if (!response.ok) throw new Error('Registration workspace unavailable');
+        const body = await response.json() as { context?: WorkspaceCollabContext };
+        if (disposed || latest.current.principal !== principal) return;
+        const verified = body.context;
+        if (!verified || verified.workspaceId !== context.workspaceId || verified.workspaceMemberId !== context.workspaceMemberId
+          || verified.memberStatus !== 'active' || verified.lifecycleState !== 'active' || !verified.permissions.canInviteMembers) {
+          throw new Error('Registration workspace identity mismatch');
+        }
+        setCandidate({ principal, status: fresh, context: verified });
       } catch { if (!disposed && latest.current.principal === principal) setErrorFor(principal); }
     })();
     return () => { disposed = true; };

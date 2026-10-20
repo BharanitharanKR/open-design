@@ -17,7 +17,7 @@ function Host({ current = status, ready = true, exit = vi.fn() }: { current?: Ve
 }
 function mount(props: Parameters<typeof Host>[0] = {}) { return render(<I18nProvider initial="zh-CN"><Host {...props} /></I18nProvider>); }
 const title = '免费邀请同事，一起做设计';
-beforeEach(() => { window.localStorage.clear(); mocks.status.mockResolvedValue(status); });
+beforeEach(() => { window.localStorage.clear(); mocks.status.mockResolvedValue(status); vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ context }), { status: 200 }))); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks(); vi.useRealTimers(); });
 describe('strict registration invitation host', () => {
   it.each(['absent', 'wrong-account', 'expired', 'no-revision'])('never displays an invitation from %s status', async mode => {
@@ -53,6 +53,19 @@ describe('strict registration invitation host', () => {
     mocks.status.mockResolvedValueOnce(null).mockResolvedValueOnce(status); mount();
     await screen.findByRole('alert'); fireEvent.click(screen.getByRole('button', { name: '重试' })); await screen.findByText(title);
   });
+  it('does not borrow another account’s retained workspace after fresh account verification', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ context: { ...context, workspaceMemberId: 'old-account-member' } }), { status: 200 })));
+    mount(); await screen.findByRole('alert'); expect(screen.queryByText(title)).toBeNull();
+    expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
+  });
+  it('keeps completion unacknowledged after storage failure and retries the same verified claim', async () => {
+    const exit = vi.fn(); mount({ exit }); await screen.findByText(title);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('storage unavailable'); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); });
+    await screen.findByRole('alert'); expect(exit).not.toHaveBeenCalled(); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '重试' })); });
+    expect(exit).toHaveBeenCalledWith(0, context); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBe('1');
+  });
   it('continues an unfinished receipt after reload', async () => {
     const first = mount(); await screen.findByText(title); first.unmount(); mount(); await screen.findByText(title);
     expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
@@ -68,7 +81,7 @@ describe('strict registration invitation host', () => {
   });
   it('discards a pending invite result after a same-page account switch', async () => {
     let resolve!: (value: Response) => void;
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(r => { resolve = r; })));
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => String(input) === '/api/workspace/context' ? Promise.resolve(new Response(JSON.stringify({ context }), { status: 200 })) : new Promise<Response>(r => { resolve = r; })));
     const exit = vi.fn(); const result = mount({ exit }); await screen.findByText(title);
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'colleague@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: '发送邀请' }));

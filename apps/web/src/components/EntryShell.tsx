@@ -1807,14 +1807,14 @@ export function EntryShell({
   // carries a redundant one.
 
 
-  const [registrationInviteExit, setRegistrationInviteExit] = useState<{ count: number; context: import('@open-design/contracts').WorkspaceCollabContext; accountId: string } | null>(null);
+  const [registrationInviteExit, setRegistrationInviteExit] = useState<{ count: number; context: import('@open-design/contracts').WorkspaceCollabContext; accountId: string; credentialRevision: string | undefined; profile: string | undefined } | null>(null);
   const registrationInvite = useRegistrationInvite({
     status: amrRegistrationStatus, accountId: amrAccountId, configuredProfile: amrProfile?.trim() || config.agentCliEnv?.amr?.VELA_PROFILE?.trim() || amrRegistrationStatus?.profile || 'prod', context: railWorkspaceContext,
     identityReady: !workspaceContextState.loading && !workspaceContextState.identityChangePending && !workspaceContextState.failure
       && (view !== 'onboarding' || (config.mode === 'daemon' && config.agentId === 'amr')),
     onExit: (count, context) => {
       if (!amrAccountId) return;
-      setRegistrationInviteExit({ count, context, accountId: amrAccountId });
+      setRegistrationInviteExit({ count, context, accountId: amrAccountId, credentialRevision: amrRegistrationStatus?.credentialRevision, profile: amrRegistrationStatus?.profile });
       finishOnboarding();
     },
   });
@@ -1824,6 +1824,8 @@ export function EntryShell({
     if (completed.accountId === amrAccountId && (workspaceContextState.loading || workspaceContextState.identityChangePending)) return;
     setRegistrationInviteExit(null);
     if (completed.count > 0 && completed.accountId === amrAccountId
+      && amrRegistrationStatus?.sessionState === 'authenticated'
+      && completed.credentialRevision === amrRegistrationStatus.credentialRevision && completed.profile === amrRegistrationStatus.profile
       && completed.context.workspaceId === railWorkspaceContext?.workspaceId
       && completed.context.workspaceMemberId === railWorkspaceContext?.workspaceMemberId) {
       window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
@@ -1831,7 +1833,7 @@ export function EntryShell({
         count: completed.count, totalCount: completed.count,
       } }));
     }
-  }, [registrationInviteExit, view, registrationInvite, amrAccountId, railWorkspaceContext, workspaceContextState.loading, workspaceContextState.identityChangePending]);
+  }, [registrationInviteExit, view, registrationInvite, amrAccountId, amrRegistrationStatus, railWorkspaceContext, workspaceContextState.loading, workspaceContextState.identityChangePending]);
   if (registrationInvite) return registrationInvite;
 
   if (view === 'onboarding') {
