@@ -12,14 +12,17 @@ export async function registrationHost(page: Page, options: {
   account?: RegistrationAccount;
   existingSetup?: boolean;
   initiallyAuthenticated?: boolean;
+  contextFailure?: 'forbidden' | 'workspace' | 'member' | 'permission';
 } = {}) {
   let account = options.account ?? { id: NEW_ACCOUNT_ID, receipt: { accountId: NEW_ACCOUNT_ID, deviceAuthorizationId: NEW_AUTHORIZATION_ID } };
   let loggedIn = options.initiallyAuthenticated ?? false;
   let loginCalls = 0;
   let statusReads = 0;
+  let contextFailure = options.contextFailure;
+  const verifiedContextRequests: Record<string, string>[] = [];
   let heldFresh: { gate: Promise<void>; began: () => void; finished: () => void } | null = null;
   const invitationRequests: unknown[] = [];
-  const config = { mode: 'daemon' as const, apiKey: '', baseUrl: '', model: 'deepseek-v4-flash', agentId: 'amr', skillId: null, designSystemId: null, onboardingCompleted: options.existingSetup ?? true, agentCliEnv: { amr: { OPEN_DESIGN_AMR_PROFILE: 'test' } }, agentModels: { amr: { model: 'deepseek-v4-flash' } } };
+  const config = { privacyDecisionAt: 1, telemetry: { metrics: false, content: false, artifactManifest: false }, mode: 'daemon' as const, apiKey: '', baseUrl: '', model: 'deepseek-v4-flash', agentId: 'amr', skillId: null, designSystemId: null, onboardingCompleted: options.existingSetup ?? true, agentCliEnv: { amr: { OPEN_DESIGN_AMR_PROFILE: 'test' } }, agentModels: { amr: { model: 'deepseek-v4-flash' } } };
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page, { config, agents: [VISUAL_AMR_AGENT], velaLoggedIn: false });
   await page.addInitScript(() => { localStorage.setItem('open-design:locale', 'zh-CN'); localStorage.setItem('open-design:locale-source', 'manual'); });
@@ -41,13 +44,27 @@ export async function registrationHost(page: Page, options: {
   });
   await page.route('**/api/integrations/vela/wallet**', route => route.fulfill({ json: { status: 'available', profile: 'test', user: { id: account.id, email: `${account.id}@example.com`, plan: 'free' }, balanceUsd: '0', stale: false, source: 'vela_api' } }));
   await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: loggedIn ? [workspace()] : [], activeWorkspaceId: loggedIn ? workspace().workspaceId : null } }));
-  await page.route('**/api/workspace/context', route => route.fulfill({ json: { context: loggedIn ? workspace() : null } }));
+  await page.route('**/api/workspace/context', route => {
+    const headers = route.request().headers();
+    const verification = Boolean(headers['x-od-workspace-id'] && headers['x-od-workspace-member-id']);
+    if (verification) verifiedContextRequests.push(headers);
+    if (verification && contextFailure === 'forbidden') return route.fulfill({ status: 403, json: { error: 'workspace_forbidden' } });
+    const context = loggedIn ? workspace() : null;
+    if (verification && context) {
+      if (contextFailure === 'workspace') context.workspaceId = 'another-workspace';
+      if (contextFailure === 'member') context.workspaceMemberId = 'another-member';
+      if (contextFailure === 'permission') context.permissions.canInviteMembers = false;
+    }
+    return route.fulfill({ json: { context } });
+  });
   await page.route('**/api/workspace/projects/team', route => route.fulfill({ json: { projects: [] } }));
   await page.route('**/api/workspaces/*/projects**', route => route.fulfill({ json: { projects: [] } }));
   await page.route('**/api/workspace/invite', route => { invitationRequests.push(route.request().postDataJSON()); return route.fulfill({ status: 503, json: { error: 'unexpected_invitation_request' } }); });
   return {
     form: page.getByRole('region', { name: '邀请成员', exact: true }),
     invitationRequests,
+    verifiedContextRequests,
+    restoreContext() { contextFailure = undefined; },
     get loginCalls() { return loginCalls; },
     get statusReads() { return statusReads; },
     async begin() {

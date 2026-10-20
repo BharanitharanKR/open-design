@@ -266,3 +266,25 @@ for (const success of [false, true]) {
     } finally { held.release(); }
   });
 }
+
+
+for (const failure of ['forbidden', 'workspace', 'member', 'permission'] as const) {
+  test(`[P1] registration fresh context ${failure} fails closed and recovers only after exact verification`, async ({ page }) => {
+    const host = await registrationHost(page, { contextFailure: failure });
+    await host.begin();
+    const recovery = page.getByRole('alert').filter({ has: page.getByRole('button', { name: /重试|Retry/ }) });
+    await expect(recovery).toBeVisible({ timeout: T.long });
+    await expect(host.form).toHaveCount(0);
+    expect(host.invitationRequests).toEqual([]);
+    expect(host.verifiedContextRequests.length).toBeGreaterThan(0);
+    for (const headers of host.verifiedContextRequests) {
+      expect(headers['x-od-workspace-id']).toBe(`${NEW_ACCOUNT_ID}-workspace`);
+      expect(headers['x-od-workspace-member-id']).toBe(`${NEW_ACCOUNT_ID}-member`);
+    }
+    await expectNoCompletionOrDismissal(page, NEW_ACCOUNT_ID, NEW_AUTHORIZATION_ID);
+    host.restoreContext();
+    await recovery.getByRole('button', { name: /重试|Retry/ }).click();
+    await expect(host.form).toBeVisible({ timeout: T.long });
+    expect(host.invitationRequests).toEqual([]);
+  });
+}
