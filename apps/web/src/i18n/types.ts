@@ -80,6 +80,7 @@ export interface Dict {
   'workspaceInvite.deliveryPending': string;
   'workspaceInvite.deliveryFailed': string;
   'workspaceInvite.invalidResponse': string;
+  'workspaceInvite.localLoginAction': string;
   'workspaceInvite.bannerBody': string;
   'workspaceInvite.inviteAction': string;
   'workspaceInvite.dismissBanner': string;

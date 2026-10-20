@@ -1,8 +1,12 @@
-.banner { display: flex; align-items: center; gap: 10px; align-self: center; max-width: calc(100% - 32px); min-height: 36px; padding: 0 12px; border-radius: 999px; background: #f3f4f6; color: #272a30; font-size: 14px; }
-.action, .close { border: 0; background: transparent; cursor: pointer; padding: 4px; font: inherit; }
-.action { color: #159447; white-space: nowrap; }
-.close { color: #737780; display: inline-flex; align-items: center; }
-.separator { height: 14px; width: 1px; background: #d1d5db; }
-.notice { position: fixed; z-index: 2450; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: 90vw; padding: 12px 20px; border-radius: 10px; background: #292929; color: #fff; box-shadow: 0 6px 24px #0002; font-size: 13px; }
-.notice .close { color: inherit; }
-@media (max-width: 520px) { .banner { border-radius: 18px; padding-block: 4px; gap: 6px; } }
+.bannerSlot { height: 36px; flex: none; align-self: stretch; }
+.banner { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; align-self: center; flex: none; gap: 8px; width: max-content; max-width: calc(100% - 32px); min-height: 36px; box-sizing: border-box; padding: 7px 14px; border: 0; border-radius: 8px; background: rgba(0,0,0,.03); color: #494949; font: 400 14px/20px "Albert Sans", "PingFang SC", "Microsoft YaHei", sans-serif; }
+.copy { flex: 1; min-width: 0; color: inherit; font: inherit; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.action { display: inline-flex; align-items: center; flex: none; height: 18px; min-height: 0; min-width: 0; padding: 0 0 0 12px; border: 0; border-left: 1px solid #dbdbdb; border-radius: 0; background: none; color: #027106; font: inherit; font-weight: 500; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.action:hover:not(:disabled), .action:active:not(:disabled) { background: none; color: #027106; text-decoration: underline; text-underline-offset: 3px; }
+.dismiss { display: grid; place-items: center; flex: 0 0 16px; width: 16px; height: 16px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #848484; opacity: .7; cursor: pointer; }
+.dismiss:hover { background: #00000008; color: #555; opacity: 1; }
+.action:focus-visible, .dismiss:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
+.entry { display: inline-flex; align-items: center; gap: 5px; height: 28px; min-height: 28px; padding: 0 11px; border: 1px solid var(--material-separator); border-radius: 999px; background: color-mix(in srgb, var(--bg-elevated) 86%, transparent); box-shadow: var(--shadow-xs); backdrop-filter: blur(12px); color: var(--text-strong); font: 600 13px/13px system-ui,-apple-system,"Segoe UI",sans-serif; white-space: nowrap; cursor: pointer; }
+.entry svg { color: var(--text-soft); }
+.entry:hover { border-color: var(--border-strong); }
+@media (max-width: 760px) { .banner { max-width: calc(100% - 24px); gap: 8px; font-size: 13px; padding-inline: 12px; } .action { padding-left: 10px; } }

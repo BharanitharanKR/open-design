@@ -36,6 +36,9 @@ describe('account-scoped invitation banner', () => {
     expect(screen.getByRole('button', { name: /dismiss invitation banner/i })).toBeVisible();
     expect(localStorage.getItem(inviteBannerStorageKey('account-a'))).toBeNull();
     expect(readStatus).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: /^invite$/i }));
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
   it('does not read account status or persist banner dismissal after a regular permanent-entry invitation', async () => {
     readStatus.mockResolvedValue(status('account-a'));

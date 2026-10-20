@@ -1,27 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button } from '@open-design/components';
+import { useEffect, useState } from 'react';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { fetchVelaLoginStatus } from '../providers/daemon';
 import { useI18n } from '../i18n';
 import { currentWorkspaceAccountGeneration } from '../collab/workspace-identity';
 import { INVITE_BANNER_DISMISSED_EVENT, inviteBannerStorageKey, persistInviteBannerDismissal } from '../collab/invite-banner';
 import { InviteDialog } from './InviteDialog';
-import { Icon } from './Icon';
+import { InvitationNotice } from './InvitationNotice';
 import styles from './InviteEntry.module.css';
 export { inviteBannerStorageKey } from '../collab/invite-banner';
 
 export function InviteSuccessNotice({ count, onClose }: { count: number; onClose: () => void }) {
   const { t } = useI18n();
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    if (count <= 0) return;
-    const timer = window.setTimeout(() => closeRef.current(), 3200);
-    return () => window.clearTimeout(timer);
-  }, [count]);
-  return count > 0 ? <div className={styles.notice} role="status">{t('workspaceInvite.sentCount', { count })}
-    <button type="button" className={styles.close} onClick={onClose} aria-label={t('common.close')}><Icon name="close" size={14} /></button>
-  </div> : null;
+  return count > 0 ? <InvitationNotice message={t('workspaceInvite.sentCount', { count })} tone="success" onClose={onClose} /> : null;
 }
 
 /** Account-level dismissal survives workspace changes without affecting other accounts. */
@@ -79,15 +69,13 @@ export function InviteEntry({ context, banner = false, accountGeneration = 0 }: 
     if (account) persistInviteBannerDismissal(account);
   };
   return <>
-    {banner ? (!dismissed && account ? <div className={styles.banner}>
-      <Icon name="user-plus" size={20} />
-      <span>{t('workspaceInvite.bannerBody')}</span>
-      <button type="button" className={styles.action} onClick={() => setOpen(true)}>{t('workspaceInvite.inviteAction')}</button>
-      <span className={styles.separator} />
-      <button type="button" className={styles.close} onClick={dismiss} aria-label={t('workspaceInvite.dismissBanner')}><Icon name="close" size={14} /></button>
-    </div> : null) : <Button variant="ghost" onClick={() => setOpen(true)}>
-      <Icon name="user-plus" size={16} />{t('workspaceInvite.inviteAction')}
-    </Button>}
+    {banner ? (!dismissed && account ? <div className={styles.bannerSlot}><div className={styles.banner} data-testid="workspace-invite-banner">
+      <span className={styles.copy}>{t('workspaceInvite.bannerBody')}</span>
+      <button type="button" className={styles.action} onClick={() => { setSent(0); setOpen(true); }}>{t('workspaceInvite.inviteAction')}</button>
+      <button type="button" className={styles.dismiss} onClick={dismiss} aria-label={t('workspaceInvite.dismissBanner')}><svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="m4.5 4.5 7 7m0-7-7 7"/></svg></button>
+    </div></div> : null) : <button type="button" className={styles.entry} onClick={() => { setSent(0); setOpen(true); }}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-2a5.5 5.5 0 0 1 11 0v2M16 5.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 3.5 4.4"/></svg>{t('workspaceInvite.inviteAction')}
+    </button>}
     <InviteDialog open={open} onClose={() => setOpen(false)} workspaceContext={context}
       canAssignRoles={context?.role === 'owner'} onSent={setSent} />
     <InviteSuccessNotice count={sent} onClose={() => setSent(0)} />
