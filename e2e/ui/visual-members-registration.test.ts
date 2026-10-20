@@ -140,9 +140,11 @@ test('[P1] B12 B19 partial success keeps only failure and skip reports actual cu
   await expect(host.form.locator('input[type=email]')).toHaveValue('lee@example.com');
   await expect(host.form.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
   await expect(host.form.getByRole('button', { name: '已邀请 1 位同事' })).toBeDisabled();
-  await captureRegistration(page, 'B12', true);
+  await captureRegistration(page, 'B12-transient', true);
   await page.clock.runFor(650);
   await page.clock.resume();
+  await expect(host.form.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
+  await captureRegistration(page, 'B12');
   await host.form.getByRole('button', { name: '暂时跳过' }).click();
   await expect(host.form).toHaveCount(0);
   await expect(page.getByRole('status').filter({ hasText: '已向 1 位同事发送邀请' })).toBeVisible();
@@ -288,3 +290,33 @@ for (const failure of ['forbidden', 'workspace', 'member', 'permission'] as cons
     expect(host.invitationRequests).toEqual([]);
   });
 }
+
+
+test('[P1] registration partial retry sends failed recipient only and exits with cumulative two-success toast', async ({ page }) => {
+  const host = await start(page);
+  const bodies: unknown[] = [];
+  await host.invite(route => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({ json: { results: bodies.length === 1
+      ? [{ email: 'mika@example.com', ok: true }, { email: 'lee@example.com', ok: false, error: 'active_pending_invite' }]
+      : [{ email: 'lee@example.com', ok: true }] } });
+  });
+  await host.form.getByRole('button', { name: '添加成员' }).click();
+  await host.form.locator('input[type=email]').nth(0).fill('mika@example.com');
+  await host.form.locator('input[type=email]').nth(1).fill('lee@example.com');
+  await pauseSuccessTimer(page);
+  await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
+  await expect(host.form.locator('input[type=email]')).toHaveCount(1);
+  await expect(host.form.locator('input[type=email]')).toHaveValue('lee@example.com');
+  await expect(host.form.getByRole('button', { name: '已邀请 1 位同事' })).toBeDisabled();
+  await page.clock.runFor(650);
+  await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
+  await expect(host.form.getByRole('button', { name: '已发送邀请', exact: true })).toBeDisabled();
+  expect(bodies).toHaveLength(2);
+  expect(JSON.stringify(bodies[1])).toContain('lee@example.com');
+  expect(JSON.stringify(bodies[1])).not.toContain('mika@example.com');
+  await page.clock.runFor(1000); await page.clock.resume();
+  await expect(host.form).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: '已向 2 位同事发送邀请' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
+});
