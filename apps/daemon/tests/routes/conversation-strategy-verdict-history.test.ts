@@ -18,7 +18,6 @@ import {
   insertProject,
   listConversations,
   listMessages,
-  listLatestProjectRunStatuses,
   openDatabase,
   updateConversation,
   updateProject,
@@ -36,7 +35,6 @@ import {
   getStrategyTaskExecution,
 } from '../../src/strategies/task-store.js';
 import { strategyTaskCreateIdentityFixture, strategyTaskTurnText } from '../strategies/strategy-task-test-fixtures.js';
-import { settleMarkerTurn } from '../../src/strategies/od-next/marker-settlement.js';
 
 const PROJECT_ID = 'history-project';
 const CONVERSATION_ID = 'history-conversation';
@@ -164,7 +162,7 @@ async function readHistory(
     ids: { randomId: () => 'unused-history-read-id' },
     appConfig: { readAppConfig: async () => ({}) },
     agents: { getAgentDef: () => null },
-    design: { runs: { get: () => null } },
+    design: { runs: {} },
     // Most fixtures are unbound local projects. Scope cases explicitly inject
     // a project-authority boundary; neither claims live Workspace coverage.
     authorizeProjectRequest: options.authorizeProjectRequest,
@@ -203,33 +201,6 @@ describe('persisted strategy verdict in conversation history', () => {
   afterEach(() => {
     closeDatabase();
     fs.rmSync(dataDir, { recursive: true, force: true });
-  });
-
-  it('retains an incomplete video goal after database reopen even if the physical run succeeded', async () => {
-    seedTaskAndMessage(db, 'running');
-    settleMarkerTurn(db, { taskExecutionId: TASK_ID, runId: RUN_ID,
-      parsed: { visibleText: 'First frame exists; video generation failed.',
-        outputGoal: ['video'], productionReady: false, productionSignal: 'missing' },
-      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false, hostDeliveryFailure: true } });
-    closeDatabase();
-    db = openDatabase(dataDir, { dataDir });
-    const messages = await readHistory(db, dataDir);
-    expect(messages[0]).toMatchObject({ runStatus: 'succeeded', strategyDeliveryState: 'incomplete' });
-    expect(messages[0]?.strategyTaskDelivered).not.toBe(true);
-    expect(listLatestProjectRunStatuses(db).get(PROJECT_ID)?.value).toBe('incomplete');
-  });
-
-  it.each([true, false])('does not borrow another task verdict for an imported run ID (same project: %s)', (sameProject) => {
-    seedTaskAndMessage(db, 'running');
-    settleMarkerTurn(db, { taskExecutionId: TASK_ID, runId: RUN_ID,
-      parsed: { visibleText: 'Video unavailable.', outputGoal: ['video'], productionReady: false },
-      completionEvidence: { physicalStatus: 'succeeded', deliverableValid: false } });
-    const projectId = sameProject ? PROJECT_ID : 'imported-project';
-    if (!sameProject) insertProject(db, { id: projectId, name: 'Imported', createdAt: 1, updatedAt: 1 });
-    insertConversation(db, { id: 'imported-conversation', projectId, title: 'Imported', createdAt: 1, updatedAt: 1 });
-    upsertMessage(db, 'imported-conversation', { id: 'imported-message', role: 'assistant', content: 'Answer',
-      runId: RUN_ID, runStatus: 'succeeded', startedAt: 300, endedAt: 400 });
-    expect(listLatestProjectRunStatuses(db).get(projectId)?.value).toBe('succeeded');
   });
 
   it('clears retired blocked verdicts on restart without rewriting physical success', async () => {

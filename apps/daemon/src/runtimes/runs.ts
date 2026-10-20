@@ -1667,7 +1667,6 @@ export function createChatRunService({
     run.endedWithUnfinishedWork =
       Boolean(run.truncatedMidTurn)
       || hostRecordedDeliveryFailure
-      || (status === 'succeeded' && ['incomplete', 'unknown'].includes(run.strategyTask?.settlementFacts?.deliveryState))
       || (!authenticatedDoneProvesDelivery
         && !endedByAskingUser
         && todoSnapshotHasUnfinishedWork(run.lastTodoSnapshot));

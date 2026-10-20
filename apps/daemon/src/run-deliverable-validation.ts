@@ -7,7 +7,6 @@ import type {
   ProjectFile,
   ProjectFileKind,
   ProjectMetadata,
-  StrategyOutputGoal,
 } from '@open-design/contracts';
 
 import { listFiles, resolveProjectDir } from './projects.js';
@@ -47,8 +46,6 @@ interface ValidateRunDeliverableInput {
    * Requires exact current-run touched paths; never enables project-wide inference. */
   allowIndependentOutput?: boolean;
   allowMultipleOutputCandidates?: boolean;
-  /** Current request's authenticated goal, independent of historical project kind. */
-  outputGoal?: StrategyOutputGoal;
 }
 
 export function inferBaselineHtmlEntry(projectRoot: string, paths: Iterable<string>): string | undefined {
@@ -234,19 +231,6 @@ export async function validateProjectDeliverable(
 export async function validateRunDeliverable(
   input: ValidateRunDeliverableInput,
 ): Promise<RunDeliverableValidationResult> {
-  if (input.outputGoal?.length) {
-    // Validate every required type using only current-run files. Dependencies
-    // are retained on disk but cannot stand in for a missing requested output.
-    const primary = await resolveDeliverable({ ...input, scope: 'run' });
-    let representative: RunDeliverableValidationResult | undefined;
-    for (const kind of input.outputGoal) {
-      const result = primary.valid && primary.artifactKind === kind ? primary
-        : await resolveDeliverable({ ...input, scope: 'run', independentOutput: true, requiredKind: kind });
-      if (!result.valid) return result;
-      representative ??= result;
-    }
-    return representative!;
-  }
   const primary = await resolveDeliverable({ ...input, scope: 'run' });
   if (primary.valid || !input.allowIndependentOutput || !input.touchedPaths?.length
     || !['entry_missing', 'entry_not_touched', 'type_mismatch'].includes(primary.validation)) {
@@ -268,7 +252,7 @@ export async function validateRunDeliverable(
 }
 
 async function resolveDeliverable(
-  input: ValidateRunDeliverableInput & { scope: DeliverableValidationScope; independentOutput?: boolean; requiredKind?: ProjectFileKind },
+  input: ValidateRunDeliverableInput & { scope: DeliverableValidationScope; independentOutput?: boolean },
 ): Promise<RunDeliverableValidationResult> {
   const runScoped = input.scope === 'run';
   if (runScoped && input.runStatus !== 'succeeded') {
@@ -306,14 +290,7 @@ async function resolveDeliverable(
       ? [] : [relative.replaceAll(path.sep, '/')];
   }));
   if (input.independentOutput) files = files.filter(file => touched.has(filePath(file)));
-  if (input.requiredKind) {
-    files = files.filter(file => file.kind === input.requiredKind);
-    if (!files.length) return { valid: false, validation: 'type_mismatch' };
-    // Several outputs of the same required type still satisfy that type. Use
-    // deterministic ordering for the existing single-entry preview surface.
-    files.sort((a, b) => filePath(a).localeCompare(filePath(b)));
-  }
-  const acceptedKinds = input.requiredKind ? new Set([input.requiredKind]) : input.independentOutput ? null : acceptedDeliverableKinds(input.projectMetadata);
+  const acceptedKinds = input.independentOutput ? null : acceptedDeliverableKinds(input.projectMetadata);
   const isPrototype = projectKind(input.projectMetadata) === 'prototype';
   const declared = input.independentOutput ? null : safeRelativeFile(input.projectMetadata?.entryFile);
   const baselineEntry = !input.independentOutput && isPrototype && input.touchedPaths
@@ -326,7 +303,7 @@ async function resolveDeliverable(
   const selected = declared
     ? files.find((file) => filePath(file) === declared) ?? null
     : (baselineEntry ? files.find((file) => filePath(file) === baselineEntry) ?? null : null)
-      ?? motionSource ?? (input.requiredKind ? files[0] : inferredEntry(files, acceptedKinds));
+      ?? motionSource ?? inferredEntry(files, acceptedKinds);
   if (!selected) {
     return { valid: false, validation: 'entry_missing' };
   }

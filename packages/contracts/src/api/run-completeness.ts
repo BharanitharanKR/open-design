@@ -350,9 +350,8 @@ export function todoItemsFromTodoWriteInput(input: unknown): unknown {
 
 /** Explicit file evidence only. A completed task merely means its execution ended. */
 export function strategyTaskProvesDelivery(
-  strategyTask: { outcome?: unknown; terminal?: unknown; deliverableValid?: unknown; settlementFacts?: { deliveryState?: unknown } } | null | undefined,
+  strategyTask: { outcome?: unknown; terminal?: unknown; deliverableValid?: unknown } | null | undefined,
 ): boolean {
   return strategyTask?.terminal === true && strategyTask.outcome === 'completed'
-    && strategyTask.deliverableValid === true
-    && (!strategyTask.settlementFacts?.deliveryState || strategyTask.settlementFacts.deliveryState === 'delivered');
+    && strategyTask.deliverableValid === true;
 }

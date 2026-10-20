@@ -351,19 +351,6 @@ async function emitRun(promptText) {
     emitEmptySuccess();
     return;
   }
-  if (promptText.includes('Create an OD Next missing-handoff fixture')
-    || promptText.includes('Create an OD Next auxiliary-frame fixture')) {
-    const key = /<od-production-ready key="([a-f0-9]+)"/.exec(promptText)?.[1];
-    if (!key) throw new Error('Delivery fixture requires OD Next host instructions');
-    const video = promptText.includes('Create an OD Next auxiliary-frame fixture');
-    if (video) await writeFileFs(join(projectDir(), 'first-frame.png'), Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5W6McAAAAASUVORK5CYII=', 'base64'));
-    emitSuccess('<od-output-goal key="' + key + '" kinds="' + (video ? 'video' : 'html') + '" />\\n'
-      + (video ? 'Only the first frame was created; the requested video is still missing.' : 'The prototype plan is ready; implementation has not started.'), false, false);
-    process.exitCode = 0;
-    exitSoon(0);
-    return;
-  }
   if (promptText.includes('This is the production turn')) {
     await emitOdNextProductionRun(promptText);
     return;

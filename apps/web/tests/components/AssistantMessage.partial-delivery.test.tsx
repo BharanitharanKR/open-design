@@ -25,24 +25,6 @@ function reply(withTodos: boolean, withFile: boolean): ChatMessage {
 describe('partial file delivery does not finish declared work', () => {
   afterEach(cleanup);
 
-  it.each(['unknown', 'incomplete'] as const)('does not add recovery or a new footer label for host %s without TodoWrite', (state) => {
-    const onContinue = vi.fn();
-    const message: ChatMessage = { ...reply(false, true), strategyTaskDelivered: false,
-      strategyDeliveryState: state, endedWithUnfinishedWork: true };
-    render(<AssistantMessage message={message} streaming={false}
-      projectId="project-1" conversationId="conv-1" isLast onContinueRemainingTasks={onContinue} />);
-    expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
-    expect(screen.getByTestId('assistant-label').textContent).toBe('Done');
-    expect(screen.getByTestId('assistant-footer').getAttribute('data-unfinished')).toBe('false');
-    expect(onContinue).not.toHaveBeenCalled();
-  });
-
-  it('does not offer recovery for a completed plan-only answer', () => {
-    render(<AssistantMessage message={{ ...reply(false, false), strategyDeliveryState: 'answer' }}
-      streaming={false} projectId="project-1" isLast onContinueRemainingTasks={vi.fn()} />);
-    expect(screen.queryByTestId('assistant-continue-remaining')).toBeNull();
-  });
-
   it('offers the remaining work but continues only after the user clicks', () => {
     const onContinue = vi.fn();
     render(<AssistantMessage message={reply(true, true)} streaming={false}

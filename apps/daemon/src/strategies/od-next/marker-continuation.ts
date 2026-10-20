@@ -28,8 +28,7 @@ export function prepareMarkerContinuation<TMeta extends InternalRunCreateInput, 
     ...(input.completionEvidence ? { completionEvidence: input.completionEvidence } : {}),
     ...(input.updatedAt === undefined ? {} : { updatedAt: input.updatedAt }),
   });
-  if (input.completionEvidence?.physicalStatus !== 'succeeded' || input.completionEvidence.truncated
-    || input.completionEvidence.hostDeliveryFailure || !markerMayContinue(input.task, input.parsed)) {
+  if (input.completionEvidence?.physicalStatus !== 'succeeded' || !markerMayContinue(input.task, input.parsed)) {
     return { result: settle(), start: false };
   }
   const doneKey = mintRunDoneKey();

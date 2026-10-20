@@ -1125,8 +1125,6 @@ export function foldStrategyTaskTurns(messages: ChatMessage[]): FoldedChatMessag
       // Completion belongs to the final physical Run, including false or
       // absent legacy values. Never inherit the planning Run's verdict.
       strategyTaskDelivered: message.strategyTaskDelivered,
-      endedWithUnfinishedWork: message.endedWithUnfinishedWork,
-      strategyDeliveryState: message.strategyDeliveryState,
       ...(message.endedAt ? { endedAt: message.endedAt } : {}),
       ...(message.resultDeliveryState
         ? { resultDeliveryState: message.resultDeliveryState }

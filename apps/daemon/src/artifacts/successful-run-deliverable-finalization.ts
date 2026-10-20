@@ -2,7 +2,6 @@ import type {
   DeliverableSyntaxMetrics,
   DeliverableSyntaxRepairState,
   ProjectMetadata,
-  StrategyOutputGoal,
 } from '@open-design/contracts';
 
 import { resolveProjectDir } from '../projects.js';
@@ -46,7 +45,6 @@ export async function finalizeSuccessfulRunDeliverable(input: {
   baselineEntryFile?: string;
   allowIndependentOutput?: boolean;
   allowMultipleOutputCandidates?: boolean;
-  outputGoal?: StrategyOutputGoal;
   syntaxFinalizerEnabled?: boolean;
 }): Promise<SuccessfulRunDeliverableFinalizationResult> {
   const deliverable = await validateRunDeliverable({
@@ -57,7 +55,6 @@ export async function finalizeSuccessfulRunDeliverable(input: {
       : {}),
     runStatus: 'succeeded',
     artifactCount: input.artifactCount,
-    ...(input.outputGoal ? { outputGoal: input.outputGoal } : {}),
     ...(input.touchedPaths ? { touchedPaths: input.touchedPaths } : {}),
     ...(input.baselineEntryFile ? { baselineEntryFile: input.baselineEntryFile } : {}),
     ...(input.allowIndependentOutput ? { allowIndependentOutput: true } : {}),

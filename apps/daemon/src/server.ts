@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { currentOutputGoal } from './strategies/od-next/delivery-goal.js';
 import { observeDiscoveryEvent } from './strategies/od-next/discovery-observation.js';
 
 import { usesProductionMarker, composeResumedRequest } from './strategies/od-next/request-resume.js';
@@ -16817,10 +16816,7 @@ export async function startServer({
           processTreeQuiescentForFinalization = termination?.quiescent === true;
         }
         await resolveRunArtifactOutcomeBeforeFinishAsync();
-        const outputGoal = strategyTaskAtStart && strategyProtocolResult
-          ? currentOutputGoal(strategyTaskAtStart, strategyProtocolResult) : undefined;
         const deliverableFinalization = await finalizeSuccessfulRunDeliverable({
-          ...(outputGoal ? { outputGoal } : {}),
           allowIndependentOutput: Boolean(strategyTaskAtStart),
           allowMultipleOutputCandidates: run.strategyRolloutDecision?.taskType === 'discovery',
           ...(run.artifactOutcome?.diff && baselineEntryFile ? { baselineEntryFile } : {}),
@@ -17013,7 +17009,6 @@ export async function startServer({
               locale: typeof locale === 'string' ? locale : undefined,
               completionEvidence: {
                 physicalStatus: 'succeeded', deliverableValid,
-                hostDeliveryFailure: Boolean(run.mediaTaskFailures?.length),
                 truncated: run.truncatedMidTurn === true,
                 todoUnfinished: todoSnapshotHasUnfinishedWork(run.lastTodoSnapshot),
               },

@@ -116,19 +116,6 @@ describe('SSE end frame carries the daemon failure verdict', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('preserves successful process status alongside the host unfinished-delivery verdict', async () => {
-    const reader = makeFiniteReader([enc(sseEvent(1, 'end', {
-      code: 0, signal: null, status: 'succeeded', endedWithUnfinishedWork: true,
-    }))]);
-    globalThis.fetch = vi.fn(async () => streamResponse(reader)) as typeof fetch;
-    const onRunStatus = vi.fn();
-    const onError = vi.fn();
-    await reattachDaemonRun({ runId: 'run-incomplete', signal: new AbortController().signal,
-      onRunStatus, handlers: { onDelta: vi.fn(), onDone: vi.fn(), onError, onAgentEvent: vi.fn() } });
-    expect(onRunStatus).toHaveBeenCalledWith('succeeded', { endedWithUnfinishedWork: true });
-    expect(onError).not.toHaveBeenCalled();
-  });
-
   it.each(['auth_required', 'insufficient_balance'])(
     'a completed orchestration keeps the physical %s failure', async (failureDetail) => {
       const err = await failedRunEndingWith({

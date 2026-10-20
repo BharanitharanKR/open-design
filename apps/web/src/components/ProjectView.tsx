@@ -7395,9 +7395,6 @@ export function ProjectView({
                 ...prev,
                 runId: nextRunId,
                 runStatus: 'running',
-                endedWithUnfinishedWork: false,
-                strategyDeliveryState: undefined,
-                strategyTaskDelivered: false,
                 lastRunEventId: undefined,
                 strategyTaskPrefixLength: replayedContent.length,
                 strategyTaskPrefixEventCount: replayedEvents.length,
@@ -7990,7 +7987,7 @@ export function ProjectView({
               }
             },
           },
-          onRunStatus: (runStatus, host) => {
+          onRunStatus: (runStatus) => {
             textBuffer.flush();
             /*
              * 回放出来的「活着」不许压过 daemon 的终态裁定 —— 判据与理由见
@@ -8013,7 +8010,6 @@ export function ProjectView({
               (prev) => ({
                 ...prev,
                 runStatus,
-                ...(host ? { endedWithUnfinishedWork: host.endedWithUnfinishedWork } : {}),
                 endedAt: isTerminalRunStatus(runStatus) ? prev.endedAt ?? Date.now() : prev.endedAt,
               }),
               true,
@@ -10524,9 +10520,6 @@ export function ProjectView({
               ...latestAssistantMsg,
               runId,
               runStatus: 'queued' as const,
-              endedWithUnfinishedWork: false,
-              strategyDeliveryState: undefined,
-              strategyTaskDelivered: false,
               taskAnalytics: resolvedTaskAnalytics,
               ...(strategyTaskExecutionId ? {
                 strategyTaskExecutionId,
@@ -10552,9 +10545,6 @@ export function ProjectView({
               ...prev,
               runId,
               runStatus: 'queued',
-              endedWithUnfinishedWork: false,
-              strategyDeliveryState: undefined,
-              strategyTaskDelivered: false,
               taskAnalytics: resolvedTaskAnalytics,
               ...(strategyTaskExecutionId ? {
                 strategyTaskExecutionId,
@@ -10572,7 +10562,7 @@ export function ProjectView({
           onArtifactPaths: (paths) => {
             authoritativeArtifactPaths = paths;
           },
-          onRunStatus: (runStatus, host) => {
+          onRunStatus: (runStatus) => {
             // streamViaDaemon reports `failed` before onError when POST
             // /api/runs itself fails. Until onRunCreated supplies an id there is
             // no assistant run to finalize or persist; onError moves the failure
@@ -10586,13 +10576,11 @@ export function ProjectView({
             if (currentRunId) {
               pushReconnectSignal({ kind: 'settled', runId: currentRunId, status: runStatus });
             }
-            if (host) latestAssistantMsg = { ...latestAssistantMsg, endedWithUnfinishedWork: host.endedWithUnfinishedWork };
             updateMessageById(
               assistantId,
               (prev) => ({
                 ...prev,
                 runStatus,
-                ...(host ? { endedWithUnfinishedWork: host.endedWithUnfinishedWork } : {}),
                 endedAt: endedAt === undefined ? prev.endedAt : prev.endedAt ?? endedAt,
               }),
               true,

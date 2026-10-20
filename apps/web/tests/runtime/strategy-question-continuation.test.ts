@@ -126,13 +126,6 @@ describe('strategySettledMessageFields', () => {
     }))).toEqual({ strategyTaskDelivered: true });
   });
 
-  it.each(['incomplete', 'unknown'] as const)('does not turn valid helper files into %s task delivery', deliveryState => {
-    expect(strategySettledMessageFields(blockedProjection({ outcome: 'completed', terminal: true,
-      deliverableValid: true, settlementFacts: { deliveryState } }))).toEqual({
-      strategyTaskDelivered: false, strategyDeliveryState: deliveryState,
-    });
-  });
-
   it('keeps the blocked stamp taking precedence', () => {
     expect(strategySettledMessageFields(blockedProjection())).toMatchObject({
       strategyTaskBlocked: true,
