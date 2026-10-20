@@ -647,7 +647,7 @@ test('[P0] permanent home invite and banner send locally without dismissing the 
     }
   }, { workspaceId: TEAM_OWNER.workspaceId, workspaceMemberId: TEAM_OWNER.workspaceMemberId });
   await gotoHome(page);
-  const bannerText = page.getByText('Invite teammates for free and create together with shared credits', { exact: true });
+  const bannerText = page.getByTestId('workspace-invite-banner').getByText('Invite teammates for free to review designs and share ideas', { exact: true });
   await expect(bannerText).toBeVisible();
   const permanentInvite = page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: 'Invite', exact: true });
   await permanentInvite.click();
