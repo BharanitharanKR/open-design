@@ -187,9 +187,12 @@ import {
   amrBalanceDialogUpgradeIntent,
   amrBalanceUpgradeIntent,
   resolveAmrBalanceBranch,
+  type AmrBalanceBranch,
   type AmrBalanceBlockedDialogKind,
 } from '../runtime/amr-balance-branch';
 import { AmrBalanceDialog } from './AmrBalanceDialog';
+import { AmrConcurrencyDialog } from './AmrConcurrencyDialog';
+import { isMembershipConcurrencyLimitFailure } from '@open-design/contracts';
 import { AmrOwnerTopUpDialog } from './chat/AmrOwnerTopUpDialog';
 import { markHistoryReplayLanded } from './chat/useCharReveal';
 import { workspaceAutoRechargeUrl, workspaceUpgradeUrl } from './EntryNavRail';
@@ -344,7 +347,7 @@ import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { ChatPane, foldStrategyTaskTurns } from './ChatPane';
 import { trailingMessageIgnoringHostCards } from '../runtime/chat/host-authored-message';
 import historyDockStyles from './chat/ConversationHistoryDock.module.css';
-import type { ChatSendMeta, ChatSendOutcome } from './ChatComposer';
+import type { ChatSendMeta, ChatSendOutcome, RejectedComposerSend } from './ChatComposer';
 import {
   CritiqueTheaterMount,
   useCritiqueTheaterEnabled,
@@ -2931,6 +2934,13 @@ export function ProjectView({
   const autoOpenedBrandDesignSystemRef = useRef<string | null>(null);
   const brandEmptyTranscriptRetriesRef = useRef<Map<string, number>>(new Map());
   const [chatSeed, setChatSeed] = useState<{ id: string; value: string } | null>(null);
+  const [concurrencyRejection, setConcurrencyRejection] = useState<{
+    conversationId: string; authorityKey: string; accountGeneration: number;
+    branch: AmrBalanceBranch; workspaceContext: WorkspaceCollabContext | null;
+    draft: RejectedComposerSend | null;
+  } | null>(null);
+  const [concurrencyDialogOpen, setConcurrencyDialogOpen] = useState(false);
+  const latestRequestSendRef = useRef(new Map<string, string>());
   // Sign-in blocks and live gateway funding rejections share these dialogs.
   // `conversationId` remembers whose
   // queue to resume when the dialog resolves (sign-in done / recharge landed).
@@ -3644,6 +3654,15 @@ export function ProjectView({
       setAmrBalanceGateBlock(null);
     }
   }, [activeConversationId, projectRunAuthorityKey, amrBalanceGateBlock, config.mode, config.agentId]);
+  useEffect(() => {
+    if (concurrencyRejection && (concurrencyRejection.conversationId !== activeConversationId
+      || concurrencyRejection.authorityKey !== projectRunAuthorityKey
+      || concurrencyRejection.accountGeneration !== currentWorkspaceAccountGeneration()
+      || config.mode !== 'daemon' || config.agentId !== 'amr')) {
+      setConcurrencyDialogOpen(false);
+      setConcurrencyRejection(null);
+    }
+  }, [concurrencyRejection, activeConversationId, projectRunAuthorityKey, config.mode, config.agentId]);
   const conversationsLoadedProjectIdRef = useRef<string | null>(null);
   // Live mirror of the full project prop, for async handlers whose useCallback
   // deps only track `project.id` (e.g. the project-events handler below):
@@ -8844,6 +8863,9 @@ export function ProjectView({
         return meta?.acceptDurableQueue === true;
       }
       const runConversationId = activeConversationId;
+      latestRequestSendRef.current.set(runConversationId, clientRequestId);
+      setConcurrencyDialogOpen(false);
+      setConcurrencyRejection(null);
       // This is the accepted retry boundary: all synchronous refusal paths are
       // above it. A later preflight/POST failure supplies its own current surface.
       if (retryTarget && meta?.retryOfAssistantId) {
@@ -9509,6 +9531,7 @@ export function ProjectView({
       let parsedArtifact: Artifact | null = null;
       let liveHtml = '';
       let streamedText = '';
+      let observedModelWork = false;
 
       const updateAssistant = (updater: (prev: ChatMessage) => ChatMessage) => {
         setMessages((curr) => {
@@ -9798,6 +9821,7 @@ export function ProjectView({
       cancelRef.current = cancelController;
       const handlers = {
         onDelta: (delta: string) => {
+          if (delta.trim()) observedModelWork = true;
           if (delta.trim()) retireFundingHint();
           // See reattach-path comment above for rationale.  PR #4651 round 9.
           if (currentRunId) {
@@ -9809,6 +9833,7 @@ export function ProjectView({
           textBuffer.appendContent(delta);
         },
         onAgentEvent: (ev: AgentEvent) => {
+          if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use' || ev.kind === 'tool_result') observedModelWork = true;
           if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use') retireFundingHint();
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
@@ -10211,6 +10236,33 @@ export function ProjectView({
               conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
               accountGeneration: sendAccountGeneration,
             });
+          }
+          const limitDetail = (err as Error & { failureDetail?: string }).failureDetail;
+          const requestLimit = limitDetail === 'membership_concurrency_limit'
+            || (limitDetail == null && isMembershipConcurrencyLimitFailure(err.message));
+          if (requestLimit && runMayFinalize && latestRequestSendRef.current.get(runConversationId) === clientRequestId
+            && fundingIdentityIsCurrent()
+            && messagesConversationIdRef.current === runConversationId) {
+            const key = `request-limit:${sendAccountGeneration}:${runConversationId}:${assistantId}`;
+            if (!shownFundingFailuresRef.current.has(key)) {
+              shownFundingFailuresRef.current.add(key);
+              // A later model in an active tool workflow can also hit Link's
+              // limit. Keep its history, but never re-inject the whole prompt.
+              const unstarted = !observedModelWork && !streamedText.trim() && !latestAssistantMsg.content.trim()
+                && !(latestAssistantMsg.events ?? []).some((event) => event.kind !== 'status');
+              setConcurrencyRejection({
+                conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+                accountGeneration: sendAccountGeneration,
+                branch: amrBalanceBranchRef.current,
+                workspaceContext: fundingDialogContextRef.current.workspaceContext,
+                draft: meta?.composerOwnedDraft && unstarted ? {
+                  nonce: clientRequestId, text: prompt, attachments: effectiveAttachments,
+                  commentAttachments, meta,
+                } : null,
+              });
+              setConcurrencyDialogOpen(true);
+              amrGatePausedQueueConversationsRef.current.add(runConversationId);
+            }
           }
           if (currentRunId && runMayFinalize && isGenericDaemonDisconnect(err)) {
             manualFileWriteRegistration.release(true);
@@ -14110,6 +14162,11 @@ export function ProjectView({
               onAttachComment={attachPreviewComment}
               onDetachComment={detachPreviewComment}
               onDeleteComment={(commentId) => void removePreviewComment(commentId)}
+              rejectedComposerSend={concurrencyRejection
+                && concurrencyRejection.conversationId === activeConversationId
+                && concurrencyRejection.authorityKey === projectRunAuthorityKey
+                && concurrencyRejection.accountGeneration === currentWorkspaceAccountGeneration()
+                ? concurrencyRejection.draft ?? undefined : undefined}
               onSend={handleComposerSend}
               onResendUserMessage={handleResendUserMessage}
               onRetry={handleRetry}
@@ -14547,6 +14604,15 @@ export function ProjectView({
       {onboardingEntryRef.current && hasPreviewableArtifact && !currentConversationStreaming ? (
         <FirstArtifactHint />
       ) : null}
+      {concurrencyDialogOpen && concurrencyRejection
+        && concurrencyRejection.conversationId === activeConversationId
+        && concurrencyRejection.authorityKey === projectRunAuthorityKey
+        && concurrencyRejection.accountGeneration === currentWorkspaceAccountGeneration()
+        && config.mode === 'daemon' && config.agentId === 'amr' ? (
+        <AmrConcurrencyDialog branch={concurrencyRejection.branch}
+          workspaceContext={concurrencyRejection.workspaceContext}
+          onClose={() => setConcurrencyDialogOpen(false)} />
+      ) : null}
       {amrBalanceGateBlock?.dialog === 'ask_owner' || amrOwnerTopUpFromCard ? (
         /*
          * 非 owner 的成员。他拿不到账单动作,所以这张弹窗不外跳,而是给他一句
@@ -14563,6 +14629,7 @@ export function ProjectView({
       {amrBalanceGateBlock?.dialog === 'upgrade' ? (
         <AmrBalanceDialog
           reason={amrBalanceGateBlock.reason}
+          manualSendOnRecovery={amrBalanceGateBlock.reason === 'insufficient' && amrBalanceGateBlock.fundingSource !== 'gateway'}
           modelId={amrBalanceGateBlock.modelId}
           fundingScope={amrBalanceGateBlock.fundingScope}
           balanceUsd={amrBalanceGateBlock.snapshot?.balanceUsd ?? null}

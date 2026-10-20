@@ -396,6 +396,8 @@ describe('AmrBalanceDialog', () => {
       />);
     });
     fireEvent.click(screen.getByTestId('amr-balance-dialog-plans'));
+    expect(screen.getByTestId('amr-balance-dialog-watching')).toHaveTextContent('send again manually');
+    expect(screen.getByTestId('amr-balance-dialog-watching')).not.toHaveTextContent('continue automatically');
     await act(async () => { await vi.advanceTimersByTimeAsync(WALLET_WATCH_INTERVAL_MS); });
     expect(resolve).not.toHaveBeenCalled();
     actualWorkspace = 'ws-home';
@@ -474,6 +476,7 @@ describe('AmrBalanceDialog', () => {
     );
 
     fireEvent.click(screen.getByTestId('amr-balance-dialog-plans'));
+    expect(screen.getByTestId('amr-balance-dialog-watching')).toHaveTextContent("We'll continue automatically once your allowance updates.");
     expect(screen.getByTestId('amr-balance-dialog-watching')).toBeTruthy();
 
     await act(async () => {

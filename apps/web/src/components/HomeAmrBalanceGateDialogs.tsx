@@ -53,6 +53,7 @@ export function HomeAmrBalanceGateDialogs({ block, metricsConsent, installationI
   return (
     <AmrBalanceDialog
       reason={block.reason}
+      manualSendOnRecovery={block.reason === 'insufficient'}
       modelId={block.modelId}
       fundingScope={block.fundingScope}
       balanceUsd={block.snapshot.balanceUsd}
