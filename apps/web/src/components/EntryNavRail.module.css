@@ -238,3 +238,7 @@
   font-weight: 400;
   line-height: 18px;
 }
+
+.workspaceMenu :global(.entry-nav-rail__workspace-menu-name) {
+  flex: 0 1 auto;
+}
