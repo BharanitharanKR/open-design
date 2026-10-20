@@ -736,6 +736,14 @@ for (const role of ['owner', 'admin', 'member'] as const) {
         return description && nextOption ? description.y + description.height - nextOption.y : Number.POSITIVE_INFINITY;
       }).toBeLessThanOrEqual(0);
     }
+    // Frozen HTML reference palette, measured in Chromium (light theme).
+    await expect(panel).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    if (role === 'owner') {
+      const menu = page.getByRole('listbox');
+      await expect(menu).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+      await expect(menu.getByRole('option').first()).toHaveCSS('background-color', 'rgb(240, 240, 240)');
+      await expect(menu.getByRole('option').first().locator('svg')).toHaveCSS('color', 'rgb(102, 102, 102)');
+    }
     await testInfo.attach(`invitation-${role}-layout`, {
       body: JSON.stringify(await panel.evaluate((el) => ({
         rect: el.getBoundingClientRect().toJSON(),
