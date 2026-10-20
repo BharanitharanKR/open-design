@@ -2190,7 +2190,7 @@ function meaningfulDomFallbackTarget(el) {
     return payload;
   }
   function allTargets(){
-    var annotatedNodes = document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id]');
+    var annotatedNodes = document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id], [id]');
     var includeDomFallback = canUseDomFallback();
     var nodes = includeDomFallback
       ? document.querySelectorAll('body *')
@@ -2263,6 +2263,7 @@ function meaningfulDomFallbackTarget(el) {
     window.parent.postMessage({ type: 'od:preview-scroll-request' }, '*');
   }
   function findCommentTargetByIdentity(elementId, selector){
+    if (String(elementId || '').indexOf('html-id:') === 0) return strictNativeHtmlNode(elementId, selector);
     if (String(elementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(selector)) return strictCommentNode(elementId, selector);
     var el = null;
     if (selector) {

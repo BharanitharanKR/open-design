@@ -12674,7 +12674,9 @@ function HtmlViewer({
   const shareSourceSettled = !streaming && !manualEditMode && !manualEditDraftDirty
     && !manualEditSaving && !manualEditEntryHandoffPending && !manualEditExitHandoffPending
     && !manualEditPendingStyleRef.current && !inspectMode && !savingInspect && !drawOverlayOpen
-    && source !== null && !versionModalOpen && !filesRefreshPending && !shareDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
+    // Preview navigation may stay deferred while comments are open. Publishing
+    // reads the current file from the daemon; it must not wait for that iframe.
+    && source !== null && !versionModalOpen && !shareDraftUnsettled && !queuedBoardNotes.length && !boardImages.length
     && !sendingBoardBatch && !_speakerNotesSaving && !publishingPublicFile;
   const shareSourceInputKey = useMemo(() => JSON.stringify([
     source, reloadKey, file.mtime, filesRefreshKey, commentDraft, queuedBoardNotes,

@@ -1034,7 +1034,7 @@ ${COMMENT_IDENTITY_HELPERS}
   }
   function allTargets(){
     var includeDomFallback = commentEnabled && mode === 'picker';
-    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id]');
+    var nodes = includeDomFallback ? document.querySelectorAll('body *') : document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id], [id]');
     var items = [];
     var seen = Object.create(null);
     for (var i = 0; i < nodes.length; i++) {
@@ -1063,6 +1063,7 @@ ${COMMENT_IDENTITY_HELPERS}
     }, 120);
   }
   function findCommentTargetByIdentity(elementId, selector){
+    if (String(elementId || '').indexOf('html-id:') === 0) return strictNativeHtmlNode(elementId, selector);
     if (String(elementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(selector)) return strictCommentNode(elementId, selector);
     var el = null;
     if (selector) {
@@ -1362,7 +1363,7 @@ ${COMMENT_IDENTITY_HELPERS}
     if (data.type === 'od:comment-active-target') {
       activeCommentElementId = data.elementId ? String(data.elementId) : null;
       activeCommentSelector = data.selector ? String(data.selector) : null;
-      if ((String(activeCommentElementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(activeCommentSelector)) && data.locate && typeof data.requestId === 'string') {
+      if ((String(activeCommentElementId || '').indexOf('html-id:') === 0 || String(activeCommentElementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(activeCommentSelector)) && data.locate && typeof data.requestId === 'string') {
         var target = findCommentTargetByIdentity(activeCommentElementId, activeCommentSelector);
         var payload = target && targetFrom(target, true);
         if (payload) {

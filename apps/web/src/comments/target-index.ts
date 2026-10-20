@@ -7,6 +7,7 @@ export function indexCommentTargets(targets: PreviewCommentSnapshot[]): Map<stri
   for (const target of targets) counts.set(target.elementId, (counts.get(target.elementId) ?? 0) + 1);
   const result = new Map<string, PreviewCommentSnapshot>();
   for (const target of targets) {
+    if (target.elementId.startsWith('html-id:') && counts.get(target.elementId) !== 1) continue;
     if (target.elementId.startsWith('cmt:')) {
       const uuid = commentUuidFromElementId(target.elementId);
       if (!uuid || counts.get(target.elementId) !== 1 || target.selector !== commentIdentitySelector(uuid)) continue;

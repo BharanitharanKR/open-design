@@ -31,6 +31,7 @@ function setup(options: { history?: PreviewComment[]; currentPrepared?: boolean;
   let editedSource: string | null = null;
   let publicationCurrent = false;
   let mtime = 1;
+  let filesRefreshKey = 0;
   const currentSource = () => editedSource ?? (options.currentPrepared ? prepared : original);
   let delayedPlan = false;
   let releasePlan!: () => void;
@@ -56,10 +57,10 @@ function setup(options: { history?: PreviewComment[]; currentPrepared?: boolean;
   });
   vi.stubGlobal('fetch', fetcher); vi.stubGlobal('crypto', webcrypto);
   vi.spyOn(window, 'confirm').mockReturnValue(true);
-  const tree = () => <CollabProvider value={collab}><FileViewer projectId={projectId} projectKind="prototype" file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime }} previewComments={options.history?.map(comment => ({ ...comment, projectId }))} onSavePreviewComment={saveComment} /></CollabProvider>;
+  const tree = () => <CollabProvider value={collab}><FileViewer projectId={projectId} projectKind="prototype" filesRefreshKey={filesRefreshKey} file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime }} previewComments={options.history?.map(comment => ({ ...comment, projectId }))} onSavePreviewComment={saveComment} /></CollabProvider>;
   const view = render(tree());
   const saveB = () => { editedSource = prepared.replace('Target', 'Edited B'); mtime++; view.rerender(tree()); };
-  return { writes, saveComment, fetcher, saveB, delayPlan: () => { delayedPlan = true; }, releasePlan };
+  return { writes, saveComment, fetcher, saveB, refreshFiles: () => { filesRefreshKey++; saveB(); }, delayPlan: () => { delayedPlan = true; }, releasePlan };
 }
 async function acknowledge() {
   const frame = await screen.findByTestId('artifact-preview-frame') as HTMLIFrameElement;
@@ -157,4 +158,17 @@ it.each(['initially-lost', 'saved', 'typed', 'cleared', 'whitespace-edit', 'fres
   expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
   expect(screen.queryByTestId('comment-active-pin')).toBeNull();
   expect(route.writes.mock.calls.some(call => String(call[0]).endsWith('/comment-identities/prepare'))).toBe(false);
+});
+
+it('updates a published file after a settled file-watch change while the comment panel stays open', async () => {
+  const route = setup({ activePublication: true, currentPrepared: true });
+  await acknowledge();
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  await act(async () => route.refreshFiles());
+  await waitFor(() => expect(route.fetcher.mock.calls.some(([input]) => String(input).includes('/raw/index.html'))).toBe(true));
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  const update = await screen.findByRole('button', { name: /update link/i });
+  await waitFor(() => expect(update).toBeEnabled());
+  await act(async () => fireEvent.click(update));
+  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(1);
 });
