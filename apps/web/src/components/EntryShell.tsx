@@ -2001,6 +2001,7 @@ export function EntryShell({
           onPriorityAnnouncementPendingChange={setGoPlanSunsetMessagePending}
           priorityAnnouncementCurrentPlanId={deepSeekCampaignPlan}
           priorityAnnouncementAmrProfile={amrProfile}
+          workspaceQuotaStatus={amrRegistrationStatus}
           priorityAnnouncementMetricsConsent={config.telemetry?.metrics === true}
         />
         {projectSearchOpen ? (

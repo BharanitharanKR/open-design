@@ -13,10 +13,11 @@ import card from './PersonalPlanCard.module.css';
 import quota from './CodingPlanUsage.module.css';
 import styles from './WorkspaceQuotaPopover.module.css';
 
-export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planLabel, onNavigate }: {
+export function WorkspaceQuotaPopover({ view, context, profile, consoleOrigin, badgeTier, planLabel, onNavigate }: {
   view: WorkspaceQuotaView;
   context: WorkspaceCollabContext | null;
   profile?: string | null;
+  consoleOrigin?: string | null;
   /** Keep the host's existing plan-family branding; quota uses the actual tier. */
   badgeTier?: PlanBadgeTier | null;
   planLabel?: string;
@@ -31,11 +32,11 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
     if (workspaceId && memberId) notifyWorkspaceBillingRefresh();
   }, [workspaceId, memberId]);
 
-  const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId);
+  const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId, 'console', consoleOrigin);
   const max = view.tier === 'max';
   // Preserve base EntryNavRail's locked/past-due recovery priority.
   const actionUrl = context?.billingRecovery?.recoveryUrl?.trim()
-    || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
+    || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans', consoleOrigin);
   const owner = context?.role === 'owner';
   // Preserve the existing contracts billing policy: locked workspaces remain readable.
   const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
