@@ -3600,7 +3600,6 @@ export const esES: Dict = {
   'assistant.doneLabel': 'Listo',
   'assistant.awaitingReplyLabel': 'Esperando respuesta',
   'assistant.canceledLabel': 'Tarea detenida',
-  'assistant.canceledDetail': 'Esta ejecución se ha detenido según tu acción.',
   'assistant.copyMarkdown': 'Copiar',
   'assistant.forkConversation': 'Nueva conversación',
   'assistant.forkingConversation': 'Iniciando nueva conversación…',
