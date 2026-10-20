@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { type WorkspaceCollabContext, type WorkspaceInviteRole } from '@open-design/contracts';
 import { Button } from '@open-design/components';
 import { Icon } from './Icon';
+import { Toast } from './Toast';
 import { LanguageMenu } from './LanguageMenu';
 import { useI18n } from '../i18n';
 import { workspaceInviteErrorMessageKey } from '../collab/invite-error-copy';
@@ -45,6 +46,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentCount, setSentCount] = useState(0);
+  const [networkError, setNetworkError] = useState(0);
   const [partialCount, setPartialCount] = useState<number | null>(null);
   const [batchSuccess, setBatchSuccess] = useState<number | null>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +66,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     finishTimer.current = null;
     setBatchSuccess(null); setPartialCount(null);
     controller.current?.abort();
-    setRows([emptyRow()]); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
+    setRows([emptyRow()]); setNetworkError(0); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
     if (!onboarding) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus();
@@ -130,29 +132,35 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     }, { requestId });
     trackWorkspaceInviteClick(analytics.track, { page_name: page, area: 'workspace_invite_dialog', element: 'submit',
       entry_from: entryFrom, invite_count_bucket: countBucket(requested.length), ...dimensions }, { requestId });
-    setSubmitting(true); setError(null); setPartialCount(null); setOpenRoleIndex(null);
+    setSubmitting(true); setNetworkError(0); setError(null); setPartialCount(null); setOpenRoleIndex(null);
     const abort = new AbortController(); controller.current = abort;
+    let networkFailure = false;
     try {
       const response = await fetch('/api/workspace/invite', { method: 'POST', signal: abort.signal,
         headers: { 'content-type': 'application/json', ...workspaceProjectHeaders(requestContext) }, body: JSON.stringify({ invites: requested }) });
       if (version !== requestVersion.current) return;
-      if (!response.ok) { result(0, requested.length, stableAnalyticsErrorCode(response.status)); throw new Error('request_failed'); }
+      if (!response.ok) { networkFailure = response.status >= 500; result(0, requested.length, stableAnalyticsErrorCode(response.status)); throw new Error('request_failed'); }
       const body = await response.json() as { results?: Array<{ email?: string; ok?: boolean; error?: string | undefined }> };
       if (version !== requestVersion.current) return;
       const results = body.results;
       const succeeded: InviteRow[] = []; const failed: Row[] = [];
       let onlyRowConflicts = true;
+      let transportFailures = 0;
       requested.forEach((row, index) => {
         const match = results?.find(item => item.email?.trim().toLowerCase() === row.email.toLowerCase())
           ?? (results?.length === requested.length && results[index]?.email === undefined ? results[index] : undefined);
         if (match?.ok === true) succeeded.push(row);
         else {
+          if (match?.error === 'create_unreachable') transportFailures += 1;
           const key = workspaceInviteErrorMessageKey(match?.error, onboarding);
           if (key !== 'workspaceInvite.onboardingErrorAlreadyMember' && key !== 'workspaceInvite.onboardingErrorPendingInvite') onlyRowConflicts = false;
           failed.push({ ...row, error: t(key) });
         }
       });
       result(succeeded.length, failed.length, failed.length ? 'invite_rejected' : undefined);
+      if (!onboarding && transportFailures === requested.length) {
+        setRows(rows.map(row => ({ ...row, error: undefined }))); setNetworkError(previous => previous + 1); return;
+      }
       if (succeeded.length) {
         setSentCount(previous => previous + succeeded.length);
         if (!onboarding) window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
@@ -177,7 +185,9 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     } catch (caught) {
       if (version !== requestVersion.current) return;
       if (caught instanceof TypeError) result(0, requested.length, 'network_error');
-      setError(t('workspaceInvite.submitFailed'));
+      if (!onboarding && (networkFailure || caught instanceof TypeError)) {
+        setRows(rows.map(row => ({ ...row, error: undefined }))); setNetworkError(previous => previous + 1);
+      } else setError(t('workspaceInvite.submitFailed'));
     } finally { if (version === requestVersion.current && !finishTimer.current) setSubmitting(false); }
   }
 
@@ -192,6 +202,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     }}>
+    {!onboarding && networkError > 0 ? <Toast key={networkError} message={t('workspaceInvite.submitFailed')} tone="error" role="alert" placement="top" portalToBody ttlMs={4000} onDismiss={() => setNetworkError(0)} /> : null}
     {!onboarding ? <div className={styles.backdrop} onClick={close} /> : null}
     <section className={styles.panel} aria-busy={submitting}>
       <header className={styles.heading}><h2 tabIndex={onboarding ? undefined : -1}>{t(onboarding ? 'workspaceInvite.onboardingTitle' : 'workspaceInvite.title')}</h2>

@@ -172,7 +172,7 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   await dialog.getByRole('button', { name: /发送邀请|确认并邀请/ }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
-  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送')).toBeVisible();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toHaveCSS('background-color', 'rgb(32, 32, 32)');
   await capture(page, 'B26-hover');
@@ -240,7 +240,7 @@ test('[P1] banner dismissal is scoped to account identity', async ({ page }) => 
 });
 
 test('[P1] A06 fifty workspace limit preserves scroll and disables create', async ({ page }) => {
-  const menu = await setup(page, 'owner', false, 50);
+  const menu = await setup(page, 'owner', false, 50, { dismissBanner: true });
   await expect(menu).toContainText('50/50');
   await expect(menu.getByRole('menuitem', { name: '新建工作空间' })).toBeDisabled();
   await expect(menu.getByText('已达 50 个上限')).toBeVisible();
@@ -262,7 +262,7 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
     let contextReads = 0;
     const writes: unknown[] = [];
     try {
-      await setup(page, 'owner', false, 2, { workspaceName: 'Xiaoyi’s Workspace', beforeHome: async current => {
+      await setup(page, 'owner', false, 2, { workspaceName: 'Xiaoyi’s Workspace', dismissBanner: true, beforeHome: async current => {
         const fallback = { ...current, workspaceId: 'members-default', workspaceMemberId: 'members-default-owner', workspaceName: 'Xiaoyi’s Workspace', isDefault: true };
         await page.route('**/api/workspace/directory', route => route.fulfill({ json: { items: removed && exact ? [fallback] : removed && removal === 'other-workspace' ? [{ ...current, isDefault: false }] : [{ ...current, isDefault: false }, fallback], activeWorkspaceId: switched ? fallback.workspaceId : current.workspaceId } }));
         await page.route('**/api/workspace/context', route => {
@@ -294,7 +294,11 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
         await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
         await expect(page.getByTestId('home-hero')).toBeVisible();
         expect(writes).toEqual([]);
-        if (removal === 'other-workspace') await capture(page, 'H02');
+        if (removal === 'other-workspace') {
+          await page.getByTestId('workspace-switcher').click();
+          await expect(page.getByRole('menu')).toContainText('1/50');
+          await capture(page, 'H02');
+        }
         return;
       }
       const dialog = page.getByRole('alertdialog');
@@ -322,26 +326,31 @@ test('[P1] B23 existing member is a row error with editable email retained', asy
   const input = dialog.locator('input[type="email"]');
   await input.fill('lee@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
-  await expect(dialog.getByText('该邮箱已是团队成员。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已是工作空间成员，无需邀请')).toBeVisible();
   await expect(input).toHaveValue('lee@example.com');
   await expect(input).toBeEditable();
   await page.mouse.move(1300, 800);
   await capture(page, 'B23');
   await input.fill('new@example.com');
-  await expect(dialog.getByText('该邮箱已是团队成员。')).toHaveCount(0);
+  await expect(dialog.getByText('此邮箱已是工作空间成员，无需邀请')).toHaveCount(0);
 });
 
-test('[P1] B25 whole request failure is inline and preserves retryable form', async ({ page }) => {
+test('[P1] B25 whole request failure shows top error toast and preserves retryable form', async ({ page }) => {
   const dialog = await setup(page, 'owner');
   let calls = 0;
   await page.route('**/api/workspace/invite', route => { calls += 1; return route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }); });
   const input = dialog.locator('input[type="email"]');
-  await input.fill('lee@example.com');
+  await dialog.getByRole('button', { name: /添加成员/ }).click();
+  await input.nth(0).fill('mika@example.com');
+  await input.nth(1).fill('lee@example.com');
   const submit = dialog.getByRole('button', { name: '发送邀请', exact: true });
   await submit.click();
-  await expect(dialog.getByRole('alert')).toHaveText('邀请发送失败，请检查网络后重试。');
-  await expect(input).toHaveValue('lee@example.com');
-  await expect(input).toBeEditable();
+  await expect(page.getByRole('alert')).toContainText('邀请发送失败，请检查网络后重试');
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await expect(input).toHaveCount(2);
+  await expect(input.nth(0)).toHaveValue('mika@example.com');
+  await expect(input.nth(1)).toHaveValue('lee@example.com');
+  await expect(input.nth(1)).toBeEditable();
   await expect(submit).toBeEnabled();
   expect(calls).toBe(1);
   await page.mouse.move(1300, 800);
@@ -363,7 +372,7 @@ test('[P1] B10 partial success then corrected retry closes with actual cumulativ
   await dialog.locator('input[type="email"]').nth(1).fill('lee@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
-  await expect(dialog.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送')).toBeVisible();
   await dialog.locator('input[type="email"]').fill('corrected@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -402,7 +411,7 @@ test('[P1] C12 joined directory appears without account logout and switches by e
   const logoutRequests: string[] = [];
   page.on('request', request => { if (/\/(?:logout|signout|sign-out)(?:[/?]|$)/.test(request.url())) logoutRequests.push(request.url()); });
   try {
-    const menu = await setup(page, 'owner', false, 2, { beforeHome: async current => {
+    const menu = await setup(page, 'owner', false, 2, { dismissBanner: true, beforeHome: async current => {
       const added = { ...current, workspaceId: 'members-joined-design', workspaceMemberId: 'members-joined-owner', workspaceName: 'Design space' };
       await page.route('**/api/workspace/directory', route => {
         directoryReads += 1;
@@ -446,7 +455,7 @@ test('[P1] H04 rejoined workspace uses a new membership identity without a resto
   let activeId = 'members-visual-workspace';
   const writes: unknown[] = [];
   try {
-    const menu = await setup(page, 'owner', false, 2, { beforeHome: async current => {
+    const menu = await setup(page, 'owner', false, 2, { dismissBanner: true, beforeHome: async current => {
       const old = { ...current, workspaceId: 'members-rejoined-design', workspaceMemberId: 'members-rejoined-old', workspaceName: 'Design space' };
       const rejoined = { ...old, workspaceMemberId: 'members-rejoined-new' };
       await page.route('**/api/workspace/directory', route => {

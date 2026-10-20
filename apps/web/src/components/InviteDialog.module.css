@@ -90,3 +90,8 @@
 .root:not(.onboarding) .cancel:disabled { background:var(--invite-secondary-bg);color:#444; }
 .root:not(.onboarding) .remove:disabled,.root:not(.onboarding) .close:disabled { background:transparent;color:var(--invite-note); }
 .root:not(.onboarding) .add:disabled { background:transparent;color:var(--invite-label);opacity:.45; }
+/* Registration reference uses explicit disabled inks rather than primitive fills. */
+.onboarding .role:disabled { background:#fff;color:#bdbdbd;border-color:#dedede;opacity:1; }
+.onboarding .remove:disabled { background:transparent;color:#c6c6c6;opacity:1; }
+.onboarding .add:disabled { background:transparent;color:#666;opacity:1; }
+.onboarding .skip:disabled { background:transparent;color:#888;opacity:1; }
