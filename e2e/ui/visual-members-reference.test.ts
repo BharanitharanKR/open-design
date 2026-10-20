@@ -282,7 +282,14 @@ for (const removal of ['exact', 'other-member', 'other-workspace'] as const) {
         await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
         await expect(page.getByTestId('home-hero')).toBeVisible();
         expect(writes).toEqual([]);
-        if (removal === 'other-workspace') await capture(page, 'H02');
+        if (removal === 'other-workspace') {
+          await capture(page, 'H02');
+          await page.getByTestId('workspace-switcher').click();
+          const menu = page.getByRole('menu');
+          await expect(menu).toContainText('1/50');
+          await expect(menu.getByRole('menuitem', { name: 'Xiaoyi’s Workspace', exact: true })).toHaveCount(1);
+          await capture(page, 'H02-menu');
+        }
         return;
       }
       const dialog = page.getByRole('alertdialog');
