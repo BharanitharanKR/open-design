@@ -323,8 +323,6 @@ test('[P1] B25 whole request failure shows a top red toast and preserves every r
   const inputs = dialog.locator('input[type="email"]');
   await inputs.nth(0).fill('mika@example.com');
   await inputs.nth(1).fill('lee@example.com');
-  await dialog.locator('[aria-haspopup="listbox"]').first().click();
-  await page.getByRole('option', { name: /^管理员/ }).click();
   const rolesBefore = await dialog.locator('[aria-haspopup="listbox"]').allTextContents();
   const submit = dialog.getByRole('button', { name: '发送邀请', exact: true });
   await submit.click();
@@ -335,6 +333,16 @@ test('[P1] B25 whole request failure shows a top red toast and preserves every r
   expect(calls).toBe(1);
   await page.mouse.move(1300, 800);
   await capture(page, 'B25');
+  await dialog.locator('[aria-haspopup="listbox"]').first().click();
+  await page.getByRole('option', { name: /^管理员/ }).click();
+  const editedRoles = await dialog.locator('[aria-haspopup="listbox"]').allTextContents();
+  await submit.click();
+  await expect(toast).toBeVisible();
+  expect(calls).toBe(2);
+  expect(await dialog.locator('[aria-haspopup="listbox"]').allTextContents()).toEqual(editedRoles);
+  await expect(inputs.nth(0)).toHaveValue('mika@example.com');
+  await expect(inputs.nth(1)).toHaveValue('lee@example.com');
+  await capture(page, 'B25-admin');
 });
 
 test('[P1] B10 partial success then corrected retry closes with actual cumulative count two', async ({ page }) => {
