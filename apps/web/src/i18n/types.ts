@@ -1261,6 +1261,8 @@ export interface Dict {
   'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.invite': string;
   'workspaceSwitcher.createTeam': string;
+  'workspaceSwitcher.heading': string;
+  'workspaceSwitcher.limitReached': string;
   'workspaceSwitcher.draftsTooltip': string;
   'workspaceSwitcher.allProjectsTooltip': string;
   'entry.primaryNavAria': string;

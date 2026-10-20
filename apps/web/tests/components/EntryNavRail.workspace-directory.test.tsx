@@ -260,6 +260,28 @@ describe('workspace switcher directory', () => {
     expect(document.activeElement).toBe(createTeam);
   });
 
+  it.each([49, 50, 51])('guards only creation at the workspace count limit (%i)', async (count) => {
+    const items = Array.from({ length: count }, (_, index) => ({
+      ...DIRECTORY[0], workspaceId: index === 0 ? 'ws-team' : `ws-${index}`,
+      workspaceName: `Workspace ${index}`, workspaceMemberId: index === 0 ? 'wm-1' : `member-${index}`,
+    }));
+    globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ items }), { status: 200 })) as typeof fetch;
+    renderRail();
+    fireEvent.click(screen.getByTestId('workspace-switcher'));
+    await waitFor(() => expect(menu().getByText(`${count}/50`)).toBeTruthy());
+    const create = screen.getByTestId('entry-nav-create-team');
+    expect(create.getAttribute('href')).toBe(count >= 50 ? null : 'https://example.com/console/dashboard?workspaceId=ws-team&workspace=create');
+    expect(create.getAttribute('aria-disabled')).toBe(count >= 50 ? 'true' : null);
+    if (count >= 50) {
+      expect(menu().getByText('Limit of 50 reached')).toBeTruthy();
+      expect(fireEvent.click(create)).toBe(false);
+      expect(screen.getByTestId('workspace-switcher').getAttribute('aria-expanded')).toBe('true');
+      expect(menu().getByRole('menuitem', { name: /Invite/ }).getAttribute('disabled')).toBeNull();
+    } else {
+      expect(menu().queryByText('Limit of 50 reached')).toBeNull();
+    }
+  });
+
   it('shows the last known list immediately on a later open, with no loading row', async () => {
     const gate = installGatedFetch();
     const view = renderRail();

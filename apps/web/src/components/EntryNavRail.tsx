@@ -704,7 +704,7 @@ function useRailAutoCollapsed(): boolean {
 function handleWorkspaceMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
   if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
   const items = Array.from(
-    event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)'),
+    event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled):not([aria-disabled="true"])'),
   );
   if (items.length === 0) return;
 
@@ -2403,7 +2403,7 @@ export function EntryNavRail({
                     <span className={styles.workspaceCount}>{visibleWorkspaceItems.length}/50</span>
                   </div>
                   <div
-                    className="entry-nav-rail__workspace-list"
+                    className={`entry-nav-rail__workspace-list ${workspaceMenuStyles.workspaceList}`}
                     data-testid="workspace-switcher-list"
                   >
                     {visibleWorkspaceItems.map((item) => {
@@ -2491,10 +2491,16 @@ export function EntryNavRail({
                       <a
                         className="entry-nav-rail__menu-item"
                         role="menuitem"
-                        href={teamConsoleUrl(workspaceSettingsUrl, 'create-team')}
+                        href={visibleWorkspaceItems.length >= 50 ? undefined : teamConsoleUrl(workspaceSettingsUrl, 'create-team')}
                         {...externalLinkProps}
                         data-testid="entry-nav-create-team"
-                        onClick={() => {
+                        aria-disabled={visibleWorkspaceItems.length >= 50 ? true : undefined}
+                        tabIndex={visibleWorkspaceItems.length >= 50 ? -1 : undefined}
+                        onClick={(event) => {
+                          if (visibleWorkspaceItems.length >= 50) {
+                            event.preventDefault();
+                            return;
+                          }
                           trackWorkspaceSwitcherClick(analytics.track, {
                             page_name: analyticsPage,
                             area: 'workspace_switcher',
@@ -2506,6 +2512,9 @@ export function EntryNavRail({
                       >
                         <Icon name="plus" size={15} /> {t('workspaceSwitcher.createTeam')}
                       </a>
+                    ) : null}
+                    {workspaceSettingsUrl && visibleWorkspaceItems.length >= 50 ? (
+                      <p className={workspaceMenuStyles.workspaceLimitNote}>{t('workspaceSwitcher.limitReached')}</p>
                     ) : null}
                   </div>
                 </div>
