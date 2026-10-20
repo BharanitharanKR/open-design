@@ -35,7 +35,11 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
   const actionUrl = quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
   const owner = context?.role === 'owner';
   const active = context?.memberStatus === 'active' && context.lifecycleState === 'active';
-  const shownBadge = badgeTier === undefined ? view.tier : badgeTier;
+  // VIEW-012: the host's legacy Free fallback is not proof of a subscription.
+  // Team is only an existing family mark; it does not assert a paid tier.
+  const shownBadge = !view.planKnown && badgeTier !== 'team'
+    ? null
+    : badgeTier === undefined ? view.tier : badgeTier;
   const unavailable = t('workspaceQuota.unavailable');
   // E03/E07/E15: Go has 5h + 7d; E04/E13/E14: other paid tiers only 7d.
   const durations = view.tier === 'free' ? [] : view.tier === 'go' ? [18_000, 604_800] : [604_800];
