@@ -21,7 +21,7 @@ it('E12 clicking the quota pill opens the skeleton without navigating or guessin
 
 it('E12 an unknown personal plan does not inherit the host legacy Free fallback (VIEW-012)', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({})));
-  const context = workspaceContextFixture({ workspaceId: 'a', workspaceMemberId: 'member-a', role: 'owner', workspaceType: 'personal', planId: null, billingState: null });
+  const context = workspaceContextFixture({ workspaceId: 'a', workspaceMemberId: 'member-a', role: 'owner', workspaceType: 'personal', planId: null, billingState: undefined });
   await act(async () => { render(<I18nProvider initial="zh-CN"><EntryNavRail view="home" onViewChange={() => {}} onNewProject={() => {}} open context={context} billing={null} billingResponse={null} /></I18nProvider>); });
   fireEvent.click(screen.getByTestId('entry-top-right-credits'));
   expect(screen.getByTestId('workspace-quota-skeleton')).toBeTruthy();
