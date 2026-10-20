@@ -66,9 +66,9 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     setRows([emptyRow()]); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
+    if (!onboarding) dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
     return () => { if (finishTimer.current) clearTimeout(finishTimer.current); requestVersion.current += 1; controller.current?.abort(); previous?.focus(); };
-  }, [open, identity]);
+  }, [open, identity, onboarding]);
   useEffect(() => {
     if (open) trackWorkspaceSurfaceView(analytics.track, { page_name: page, area: 'workspace_invite_dialog', entry_from: entryFrom, ...dimensions });
   }, [open, analytics.track, page, entryFrom, dimensions.workspace_key]);
