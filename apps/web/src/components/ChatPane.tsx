@@ -2529,11 +2529,11 @@ export function ChatPane({
       installationId: config?.installationId,
     });
     window.open(
-      attributedAmrUrl(amrPlansUrlForProfile(amrProfile), attribution, deviceId),
+      attributedAmrUrl(amrPlansUrlForProfile(amrProfile, workspaceContext?.workspaceId), attribution, deviceId),
       '_blank',
       'noopener,noreferrer',
     );
-  }, [amrProfile, analytics.track, config?.installationId, config?.telemetry?.metrics]);
+  }, [amrProfile, analytics.track, config?.installationId, config?.telemetry?.metrics, workspaceContext?.workspaceId]);
   const visibleRecoveryActionTypes = useMemo(() => {
     const actions: TrackingRunRecoveryActionType[] = [];
     if (!displayError) return actions;

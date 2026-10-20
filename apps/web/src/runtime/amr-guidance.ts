@@ -84,11 +84,9 @@ export const AMR_CONSOLE_AUTO_RECHARGE_INTENT = 'auto-recharge';
  * (充值) dialog on arrival". Product ruling 2026-09-23: the billing card's
  * wallet row lands on the recharge dialog, not on the auto-recharge policy.
  *
- * ⚠️ NOT YET HONORED ON B: vela's console has the dialog
- * (`components/commerce/recharge/personal-recharge-modal.tsx`, opened from the
- * wallet route) but its deep-link effect only knows `plan`, `checkout`,
- * `auto-recharge` and `portal_return`. Until B adds this intent the link
- * degrades to the dashboard, the same place the row went before.
+ * DD:1312 (CS-04): AMR's seats console accepts this intent. Free workspaces
+ * open plan selection; non-owners see the console's restricted surface
+ * (AMR 630233699, routes/seats-console.tsx:165-189).
  */
 export const AMR_CONSOLE_RECHARGE_INTENT = 'recharge';
 
@@ -140,35 +138,44 @@ export function setRuntimeAmrConsoleOrigin(origin: string | null | undefined): v
 export function amrConsoleUrlForProfile(
   profile: string | null | undefined,
   consoleOrigin?: string | null,
+  workspaceId?: string | null,
 ): string {
   const normalized = profile?.trim() || 'prod';
-  // prod's console is the public product URL and stays pinned to it: a runtime
-  // origin must never be able to redirect a production user's account, plan, or
-  // upgrade links somewhere else. Unrecognized profiles are treated as prod for
-  // the same reason.
-  if (normalized === 'prod' || !KNOWN_AMR_PROFILES.has(normalized)) {
-    return DEFAULT_AMR_RECHARGE_URL;
+  // Prod and unknown profiles stay pinned; runtime origins cannot redirect them.
+  let base = DEFAULT_AMR_RECHARGE_URL;
+  if (normalized !== 'prod' && KNOWN_AMR_PROFILES.has(normalized)) {
+    const statusOrigin = consoleOrigin?.trim().replace(/\/$/, '') ?? '';
+    const origin = statusOrigin || runtimeAmrConsoleOrigin;
+    base = origin
+      ? `${origin}${AMR_CONSOLE_PATH}`
+      : AMR_CONSOLE_URL_BY_PROFILE[normalized] ?? DEFAULT_AMR_RECHARGE_URL;
   }
-  const statusOrigin = consoleOrigin?.trim().replace(/\/$/, '') ?? '';
-  if (statusOrigin) return `${statusOrigin}${AMR_CONSOLE_PATH}`;
-  if (runtimeAmrConsoleOrigin) return `${runtimeAmrConsoleOrigin}${AMR_CONSOLE_PATH}`;
-  return AMR_CONSOLE_URL_BY_PROFILE[normalized] ?? DEFAULT_AMR_RECHARGE_URL;
+  return amrWorkspaceUrl(base, workspaceId) ?? base;
 }
 
-export function amrRechargeUrlForProfile(profile: string | null | undefined): string {
-  return amrConsoleUrlForProfile(profile);
+export function amrRechargeUrlForProfile(
+  profile: string | null | undefined,
+  workspaceId?: string | null,
+): string {
+  const base = amrConsoleUrlForProfile(profile);
+  // CS-04 (DD:1312); preserve the legacy dashboard alias without a workspace.
+  return amrWorkspaceUrl(base, workspaceId, AMR_CONSOLE_RECHARGE_INTENT) ?? base;
 }
 
 function amrWorkspaceUrl(
-  profile: string | null | undefined,
+  base: string,
   workspaceId: string | null | undefined,
-  intent?: 'plans',
+  intent?: string,
 ): string | null {
   const normalizedWorkspaceId = workspaceId?.trim();
   if (!normalizedWorkspaceId) return null;
-  const url = new URL(amrConsoleUrlForProfile(profile));
-  url.searchParams.set('workspaceId', normalizedWorkspaceId);
-  if (intent === 'plans') url.searchParams.set('billing', AMR_CONSOLE_UPGRADE_INTENT);
+  const url = new URL(base);
+  // CS-04 (DD:1312), inventory C-03: workspace first, attribution, then intent.
+  url.search = new URLSearchParams({
+    workspaceId: normalizedWorkspaceId,
+    source: 'open_design',
+  }).toString();
+  if (intent) url.searchParams.set('billing', intent);
   return url.toString();
 }
 
@@ -176,14 +183,14 @@ export function amrConsoleUrlForWorkspace(
   profile: string | null | undefined,
   workspaceId: string | null | undefined,
 ): string | null {
-  return amrWorkspaceUrl(profile, workspaceId);
+  return amrWorkspaceUrl(amrConsoleUrlForProfile(profile), workspaceId);
 }
 
 export function amrPlansUrlForWorkspace(
   profile: string | null | undefined,
   workspaceId: string | null | undefined,
 ): string | null {
-  return amrWorkspaceUrl(profile, workspaceId, 'plans');
+  return amrWorkspaceUrl(amrConsoleUrlForProfile(profile), workspaceId, AMR_CONSOLE_UPGRADE_INTENT);
 }
 
 /**
@@ -200,8 +207,11 @@ export function amrPlansUrlForWorkspace(
  * `setRuntimeAmrConsoleOrigin`), so there is no second source of truth for
  * "which environment am I".
  */
-export function amrPlansUrlForProfile(profile: string | null | undefined): string {
-  return amrConsoleUrlWithBillingIntent(profile, AMR_CONSOLE_UPGRADE_INTENT);
+export function amrPlansUrlForProfile(
+  profile: string | null | undefined,
+  workspaceId?: string | null,
+): string {
+  return amrConsoleUrlWithBillingIntent(profile, AMR_CONSOLE_UPGRADE_INTENT, workspaceId);
 }
 
 /**
@@ -209,15 +219,21 @@ export function amrPlansUrlForProfile(profile: string | null | undefined): strin
  * Max-tier balance card whose owner has no higher plan to buy. See
  * {@link AMR_CONSOLE_AUTO_RECHARGE_INTENT} for the B-side caveat.
  */
-export function amrAutoRechargeUrlForProfile(profile: string | null | undefined): string {
-  return amrConsoleUrlWithBillingIntent(profile, AMR_CONSOLE_AUTO_RECHARGE_INTENT);
+export function amrAutoRechargeUrlForProfile(
+  profile: string | null | undefined,
+  workspaceId?: string | null,
+): string {
+  return amrConsoleUrlWithBillingIntent(profile, AMR_CONSOLE_AUTO_RECHARGE_INTENT, workspaceId);
 }
 
 function amrConsoleUrlWithBillingIntent(
   profile: string | null | undefined,
   intentValue: string,
+  workspaceId?: string | null,
 ): string {
   const base = amrConsoleUrlForProfile(profile);
+  const workspaceUrl = amrWorkspaceUrl(base, workspaceId, intentValue);
+  if (workspaceUrl) return workspaceUrl;
   const intent = `billing=${intentValue}`;
   return base.includes('?') ? `${base}&${intent}` : `${base}?${intent}`;
 }
