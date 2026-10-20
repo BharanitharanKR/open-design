@@ -158,6 +158,8 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.locator('input[type="email"]')).toHaveValue('lee@example.com');
   await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toHaveCSS('color', 'rgb(240, 65, 66)');
+  await expect(dialog.locator('input[aria-invalid="true"]')).toHaveCSS('border-color', 'rgb(207, 104, 104)');
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toHaveCSS('background-color', 'rgb(32, 32, 32)');
   await capture(page, 'B26-hover');
@@ -369,6 +371,8 @@ test('[P1] B10 partial success then corrected retry closes with actual cumulativ
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
   await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('此邮箱已有待接受的邀请，可在成员页重新发送', { exact: true })).toHaveCSS('color', 'rgb(240, 65, 66)');
+  await expect(dialog.locator('input[aria-invalid="true"]')).toHaveCSS('border-color', 'rgb(207, 104, 104)');
   await dialog.locator('input[type="email"]').fill('corrected@example.com');
   await dialog.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
