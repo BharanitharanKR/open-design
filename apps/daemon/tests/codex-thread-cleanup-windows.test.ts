@@ -37,6 +37,13 @@ import { attachCodexAppServerSession } from '../src/agent-protocol/codex-app-ser
 import { cleanupClosedCodexThread } from '../src/agent-protocol/codex-app-server/thread-cleanup.js';
 import { captureProcessSnapshot, isProcessAlive, stopProcesses, waitForProcessExit } from '@open-design/platform';
 
+async function removeFixture(root: string): Promise<void> {
+  // Windows can briefly retain an exited process's working-directory handle.
+  // Retry only filesystem cleanup; never retry the lifecycle assertions.
+  await rm(root, { recursive: true, force: true,
+    maxRetries: process.platform === 'win32' ? 10 : 0, retryDelay: 100 });
+}
+
 async function receipt() {
   let ready!: () => void;
   const readyPromise = new Promise<void>(resolve => { ready = resolve; });
@@ -75,7 +82,7 @@ describe('controlled process fixture PID safety', () => {
         expect(processCalls).not.toHaveBeenCalled();
       } finally {
         processCalls.mockRestore();
-        await rm(root, { recursive: true, force: true });
+        await removeFixture(root);
       }
     },
   );
@@ -99,8 +106,11 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
             if (process.env.EXIT_WRAPPER === 'yes') process.send('exit-wrapper');
           }
         });`);
+      // The descendant must survive wrapper exit to exercise ownership checks.
+      // Windows otherwise terminates non-detached children with their parent.
       await writeFile(wrapper, `import { spawn } from 'node:child_process'; import { writeFileSync } from 'node:fs';
-        const child = spawn(process.execPath, [process.argv[2]], { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+        const child = spawn(process.execPath, [process.argv[2]], {
+          stdio: ['inherit', 'inherit', 'inherit', 'ipc'], detached: process.platform === 'win32', windowsHide: true });
         writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: child.pid }));
         child.on('message', () => process.exit(0)); child.on('exit', code => process.exit(code ?? 1));`);
       const authority = await receipt();
@@ -142,8 +152,11 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
           try { process.kill(pid, 'SIGKILL'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
         }
         await cleanup;
+        for (const pid of [owned.descendant, owned.wrapper].filter(pid => Number.isSafeInteger(pid) && pid > 0)) {
+          expect(await waitForProcessExit(pid, 5000)).toBe(true);
+        }
         sibling.kill('SIGKILL'); await siblingClosed;
-        await rm(root, { recursive: true, force: true });
+        await removeFixture(root);
       }
     },
   );
@@ -157,7 +170,9 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
         import { writeFileSync } from 'node:fs'; import { createInterface } from 'node:readline';
         let child;
         const save = () => writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: child?.pid ?? -1 }));
-        const createChild = () => { child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' }); save(); };
+        const createChild = () => {
+          child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+            stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true }); save(); };
         if (process.env.CHILD_MODE !== 'late-unknown-child') createChild(); else save();
         createInterface({ input: process.stdin }).on('line', line => {
           const frame = JSON.parse(line);
@@ -210,7 +225,7 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
         await cleanup;
         sibling.kill('SIGKILL'); await siblingClosed;
         for (const pid of (owned ? [owned.descendant, owned.wrapper] : []).filter(pid => Number.isSafeInteger(pid) && pid > 0)) expect(await waitForProcessExit(pid, 500)).toBe(true);
-        await rm(root, { recursive: true, force: true });
+        await removeFixture(root);
       }
     },
   );
@@ -227,9 +242,11 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
       state.initialDelayMs = mode === 'slow-initial-snapshot' ? 2000 : 0;
       state.archiveMarker = path.join(root, 'archived'); state.archivedBeforeInitialSnapshot = null;
       // Like app-server: it keeps running after archive and exits when stdin closes.
+      // Detach on Windows so wrapper exit cannot satisfy the reaping assertion.
       await writeFile(wrapper, `import { spawn } from 'node:child_process';
         import { writeFileSync } from 'node:fs'; import { createInterface } from 'node:readline';
-        const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+        const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+          stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true });
         writeFileSync(process.env.OWNED_PIDS, JSON.stringify({ wrapper: process.pid, descendant: child.pid }));
         const lines = createInterface({ input: process.stdin });
         lines.on('close', () => process.exit(0));
@@ -275,7 +292,10 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
           try { process.kill(pid, 'SIGKILL'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
         }
         await cleanup;
-        await rm(root, { recursive: true, force: true });
+        for (const pid of (owned ? [owned.descendant, owned.wrapper] : []).filter(pid => Number.isSafeInteger(pid) && pid > 0)) {
+          expect(await waitForProcessExit(pid, 5000)).toBe(true);
+        }
+        await removeFixture(root);
       }
     },
     10_000,
@@ -311,7 +331,7 @@ describe('Windows owned cleanup lifecycle with controlled generation records', (
     } finally {
       Object.defineProperty(process, 'platform', platform);
       await cleanup;
-      await rm(root, { recursive: true, force: true });
+      await removeFixture(root);
     }
   });
 });

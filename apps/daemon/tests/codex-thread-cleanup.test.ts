@@ -96,9 +96,14 @@ async function scenario(options: { sourceExit?: string; originator?: string; arc
 }
 
 describe('closed owned Codex thread cleanup over real stdio', () => {
+  // Windows reports archive success separately from proof that no late
+  // descendants survived. Keep the exact platform-specific result contract.
+  const archivedResult = process.platform === 'win32'
+    ? { status: 'archived', treeVerified: false } : { status: 'archived' };
+
   it.each(['0', '1', 'kill'])('archives only the captured owned ID after physical exit %s', async (sourceExit) => {
     const { cleanup, cleanupRequests } = await scenario({ sourceExit });
-    expect(cleanup).toEqual({ status: 'archived' });
+    expect(cleanup).toEqual(archivedResult);
     expect(cleanupRequests.map(request => request.method)).toEqual(['initialize', 'initialized', 'thread/archive']);
     expect(cleanupRequests.at(-1)?.params).toEqual({ threadId: 'owned-thread' });
   });
@@ -107,7 +112,7 @@ describe('closed owned Codex thread cleanup over real stdio', () => {
     const { cleanup, cleanupRequests } = await scenario({
       sourceExit: 'kill', originator: 'Codex Desktop', cleanupVersion,
     });
-    expect(cleanup).toEqual({ status: 'archived' });
+    expect(cleanup).toEqual(archivedResult);
     expect(cleanupRequests.map(request => request.method)).toEqual(['initialize', 'initialized', 'thread/archive']);
     expect(cleanupRequests.at(-1)?.params).toEqual({ threadId: 'owned-thread' });
   });
@@ -131,7 +136,10 @@ describe('closed owned Codex thread cleanup over real stdio', () => {
   it('reaps its own hung cleanup process within the existing archive budget', async () => {
     // Real child I/O and actual process closure are the assertion boundary;
     // fake timers would not establish that the precise spawned PID was reaped.
-    expect((await scenario({ archive: 'hang' })).cleanup).toEqual({ status: 'failed', message: 'codex thread cleanup timed out' });
+    expect((await scenario({ archive: 'hang' })).cleanup).toEqual({
+      status: 'failed', message: 'codex thread cleanup timed out',
+      ...(process.platform === 'win32' ? { remainingPids: [], treeVerified: true } : {}),
+    });
   });
 
   it('does not archive legacy history after a downgrade to paginated-only writer protection', async () => {
