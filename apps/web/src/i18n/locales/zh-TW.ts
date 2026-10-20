@@ -88,6 +88,7 @@ export const zhTW: Dict = {
   "workspaceInvite.roleLabel": "角色",
   "workspaceInvite.defaultRoleLabel": "Default role",
   "workspaceInvite.emailPlaceholder": "name@company.com",
+  "workspaceInvite.onboardingEmailPlaceholder": "輸入電子郵件地址……",
   "workspaceInvite.removeRow": "Remove",
   "workspaceInvite.addMember": "Add member",
   "workspaceInvite.visibilityQuestion": "Will team members see my designs?",

@@ -199,7 +199,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
         <div className={`${styles.labels} ${rows.length === 1 ? styles.single : ''}`}><span>{t(onboarding ? 'workspaceInvite.onboardingEmailLabel' : 'workspaceInvite.emailLabel')}</span><span>{t('workspaceInvite.roleLabel')}</span></div>
         <div className={styles.rows} data-invite-rows>
           {rows.map((row, index) => <div className={`${styles.row} ${rows.length === 1 ? styles.single : ''}`} key={index}>
-            <input type="email" className={styles.input} value={row.email} placeholder={t('workspaceInvite.emailPlaceholder')} aria-label={t('workspaceInvite.emailLabel')}
+            <input type="email" className={styles.input} value={row.email} placeholder={t(onboarding ? 'workspaceInvite.onboardingEmailPlaceholder' : 'workspaceInvite.emailPlaceholder')} aria-label={t('workspaceInvite.emailLabel')}
               disabled={submitting} aria-invalid={validated && !!errors[index]} aria-describedby={validated && errors[index] ? `${id}-error-${index}` : undefined}
               onChange={event => updateRow(index, { email: event.target.value })} onBlur={() => { if (row.email.trim()) setValidated(true); }} />
             {owner ? <Button ref={element => { triggers.current[index] = element; }} className={styles.role} disabled={submitting}
@@ -220,7 +220,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       </form>
       {onboarding ? <><Button className={styles.skip} disabled={submitting} onClick={() => onFinish?.(sentCount)}>{t('workspaceInvite.skip')}</Button><footer className={styles.onboardingFooter}><LanguageMenu placement="up" align="start" /><span>© {new Date().getFullYear()} OpenDesign · {t('settings.onboardingCloudRights')}</span></footer></> : null}
     </section>
-    {onboarding ? <div className={styles.art} aria-hidden="true"><img src="/onboarding/onboarding-cloud-art.webp" alt="" /></div> : null}
+    {onboarding ? <div className={styles.art} aria-hidden="true"><img src="/onboarding/registration-invite-art.png" alt="" /></div> : null}
     {owner && openRoleIndex !== null ? createPortal(<div className={styles.menu} ref={menu} style={menuPos} role="listbox" id={`${id}-roles`}
       onKeyDown={event => {
         if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); event.stopPropagation(); setOpenRoleIndex(null); triggers.current[openRoleIndex]?.focus(); }

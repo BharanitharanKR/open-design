@@ -88,6 +88,7 @@ export const zhCN: Dict = {
   "workspaceInvite.roleLabel": "角色",
   "workspaceInvite.defaultRoleLabel": "默认身份",
   "workspaceInvite.emailPlaceholder": "name@company.com",
+  "workspaceInvite.onboardingEmailPlaceholder": "输入电子邮件地址……",
   "workspaceInvite.removeRow": "移除",
   "workspaceInvite.addMember": "添加成员",
   "workspaceInvite.visibilityQuestion": "团队成员会看到我的设计吗?",

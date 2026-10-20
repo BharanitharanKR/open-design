@@ -88,6 +88,7 @@ export const ko: Dict = {
   "workspaceInvite.roleLabel": "Assign role",
   "workspaceInvite.defaultRoleLabel": "Default role",
   "workspaceInvite.emailPlaceholder": "Enter email address…",
+  "workspaceInvite.onboardingEmailPlaceholder": "이메일 주소 입력…",
   "workspaceInvite.removeRow": "Remove",
   "workspaceInvite.addMember": "Add member",
   "workspaceInvite.visibilityQuestion": "Will team members see my designs?",

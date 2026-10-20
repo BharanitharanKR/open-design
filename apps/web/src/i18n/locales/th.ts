@@ -88,6 +88,7 @@ export const th: Dict = {
   "workspaceInvite.roleLabel": "Assign role",
   "workspaceInvite.defaultRoleLabel": "Default role",
   "workspaceInvite.emailPlaceholder": "Enter email address…",
+  "workspaceInvite.onboardingEmailPlaceholder": "กรอกที่อยู่อีเมล…",
   "workspaceInvite.removeRow": "Remove",
   "workspaceInvite.addMember": "Add member",
   "workspaceInvite.visibilityQuestion": "Will team members see my designs?",
