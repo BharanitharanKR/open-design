@@ -11,7 +11,7 @@ vi.mock('../../src/components/LanguageMenu', () => ({ LanguageMenu: () => null }
 const status = { loggedIn: true, sessionState: 'authenticated', credentialRevision: 'credential-a', profile: 'selected', user: { id: 'new-account', email: 'new@example.com' }, configPath: '/test', registrationInvite: { accountId: 'new-account', deviceAuthorizationId: 'cuid-registration-1' } } as VelaLoginStatus;
 const baseContext = workspaceContextFixture({ workspaceId: 'new-workspace', workspaceMemberId: 'new-member', role: 'owner' });
 const context = { ...baseContext, permissions: { ...baseContext.permissions, canInviteMembers: true } };
-function Host({ current = status, ready = true, exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; exit?: ReturnType<typeof vi.fn> }) {
+function Host({ current = status, ready = true, exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; exit?: (count: number, workspace: typeof context) => void }) {
   const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, onExit: exit });
   return view ?? <div>Normal home</div>;
 }
