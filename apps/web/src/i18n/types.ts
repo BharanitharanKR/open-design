@@ -30,6 +30,12 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'workspaceQuota.unavailable': string;
+  'workspaceQuota.unsubscribed': string;
+  'workspaceQuota.contactOwner': string;
+  'workspaceQuota.payAsYouGo': string;
+  'workspaceQuota.resetAt': string;
+  'workspaceQuota.viewBalance': string;
   'workspaceInvite.deliveryPending': string;
   'workspaceInvite.deliveryFailed': string;
   'workspaceInvite.invalidResponse': string;

@@ -4,6 +4,13 @@ export const ptBR: Dict = {
   "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
   "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
   "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
+  "workspaceQuota.unavailable": "Detalhes indisponíveis",
+  "workspaceQuota.unsubscribed": "Sem assinatura",
+  "workspaceQuota.contactOwner": "Contatar Owner",
+  "workspaceQuota.payAsYouGo": "Saldo por uso",
+  "workspaceQuota.resetAt": "Redefine em {time}",
+  "workspaceQuota.viewBalance": "Ver saldo",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

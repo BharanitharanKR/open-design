@@ -5864,6 +5864,7 @@ function AppInner() {
             <AmrArtifactUpgradeHomeCard
               key={amrArtifactUpgradeHomeOffer.sessionKey}
               profile={amrLoginStatus?.profile ?? null}
+              workspaceId={amrUpgradeWorkspaceContext?.workspaceId}
               metricsConsent={config.telemetry?.metrics === true}
               installationId={config.installationId}
               onViewArtifact={() => {
@@ -6021,6 +6022,7 @@ function AppInner() {
         }
         profile={amrLoginStatus?.profile ?? null}
         metricsConsent={config.telemetry?.metrics === true}
+        workspaceId={amrUpgradeWorkspaceContext?.workspaceId}
         installationId={config.installationId}
         onHomeOfferChange={
           amrArtifactUpgradeHomeMock

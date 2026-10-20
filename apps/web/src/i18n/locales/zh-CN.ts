@@ -4,6 +4,13 @@ export const zhCN: Dict = {
   "workspaceInvite.deliveryPending": "邀请邮件正在发送，请稍后确认结果",
   "workspaceInvite.deliveryFailed": "邀请邮件发送失败，请重试",
   "workspaceInvite.invalidResponse": "暂时无法确认发送结果，请稍后重试",
+  "workspaceQuota.unavailable": "明细暂不可用",
+  "workspaceQuota.unsubscribed": "未订阅",
+  "workspaceQuota.contactOwner": "联系 Owner",
+  "workspaceQuota.payAsYouGo": "按量额度",
+  "workspaceQuota.resetAt": "{time} 重置",
+  "workspaceQuota.viewBalance": "查看余额",
+
   "homeInvite.banner": "免费邀请同事，一起看设计、聊想法",
   "homeInvite.invite": "邀请",
   "homeInvite.dismiss": "关闭邀请横条",

@@ -4,6 +4,13 @@ export const de: Dict = {
   "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
   "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
   "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
+  "workspaceQuota.unavailable": "Details nicht verfügbar",
+  "workspaceQuota.unsubscribed": "Nicht abonniert",
+  "workspaceQuota.contactOwner": "Owner kontaktieren",
+  "workspaceQuota.payAsYouGo": "Nutzungsabhängiges Guthaben",
+  "workspaceQuota.resetAt": "Zurückgesetzt am {time}",
+  "workspaceQuota.viewBalance": "Guthaben ansehen",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

@@ -1,4 +1,5 @@
-import { CodingPlanUsage } from './CodingPlanUsage';
+import { WorkspaceQuotaPopover } from './WorkspaceQuotaPopover';
+import { workspaceQuotaView } from '../collab/workspace-quota-view';
 import planCardStyles from './PersonalPlanCard.module.css';
 import styles from './EntryNavRail.module.css';
 // Team-edition entry navigation rail (Lovart/Manus-style labeled column).
@@ -103,10 +104,10 @@ import {
 import { canUpgradeFromPlanTier, isMaxPlanTier, resolvePlanLabelTier } from '../collab/team-plan';
 import {
   AMR_CONSOLE_AUTO_RECHARGE_INTENT,
-  AMR_CONSOLE_RECHARGE_INTENT,
   amrAutoRechargeUrlForProfile,
   amrConsoleUrlForWorkspace,
   amrPlansUrlForProfile,
+  amrWorkspaceUrl,
 } from '../runtime/amr-guidance';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
@@ -819,26 +820,6 @@ function formatWalletBalance(raw: string | null | undefined): string | null {
 }
 
 /**
- * The already-resolved console URL, asked to open its auto-recharge settings
- * on arrival.
- *
- * Deliberately NOT `teamConsoleUrl(base, 'auto-recharge')`: that builds a path
- * from the workspace-SETTINGS URL, while the caller here holds a URL that is
- * already the dashboard, so routing through it would append a second
- * `/dashboard` segment. Only the intent has to be added.
- */
-function consoleBillingIntentUrl(base: string | null, intent: string): string | null {
-  if (!base) return null;
-  try {
-    const url = new URL(base);
-    url.searchParams.set('billing', intent);
-    return url.toString();
-  } catch {
-    return base;
-  }
-}
-
-/**
  * Shared destination for every generic 「升级」/「升级套餐」 affordance. Pricing
  * owns comparison; selecting a concrete card there is what hands checkout to
  * Cloud.
@@ -870,7 +851,7 @@ export function workspaceUpgradeUrl(
   // workspace identity to authorize yet.
   if (context && !canReachWorkspaceBillingEntrance(context)) return null;
   if (!context && !options) return null;
-  return amrPlansUrlForProfile(options?.fallbackProfile);
+  return amrPlansUrlForProfile(options?.fallbackProfile, context?.workspaceId);
 }
 
 /**
@@ -894,8 +875,12 @@ export function workspaceAutoRechargeUrl(
 ): string | null {
   if (context && context.permissions?.canManageAutoRecharge !== true) return null;
   const settingsUrl = context?.workspaceSettingsUrl?.trim() || null;
-  if (settingsUrl) return teamConsoleUrl(settingsUrl, 'auto-recharge');
-  return amrAutoRechargeUrlForProfile(options.fallbackProfile);
+  if (settingsUrl) return amrWorkspaceUrl(
+    teamConsoleUrl(settingsUrl, 'auto-recharge'),
+    context?.workspaceId,
+    AMR_CONSOLE_AUTO_RECHARGE_INTENT,
+  ) ?? teamConsoleUrl(settingsUrl, 'auto-recharge');
+  return amrAutoRechargeUrlForProfile(options.fallbackProfile, context?.workspaceId);
 }
 
 export type WorkspaceInviteTarget =
@@ -1281,7 +1266,8 @@ export function EntryTopRightCluster({
   // #5517. It used to open a wallet page; balance, top-up and the auto-recharge
   // policy were rehomed onto the dashboard (vela #1055).
   const billingConsoleUrl = workspaceSettingsUrl
-    ? teamConsoleUrl(workspaceSettingsUrl, 'billing')
+    ? amrWorkspaceUrl(teamConsoleUrl(workspaceSettingsUrl, 'billing'), context?.workspaceId)
+      ?? teamConsoleUrl(workspaceSettingsUrl, 'billing')
     : null;
   // Where the account menu's 账单 row goes. The workspace-settings URL is the
   // better answer when the context carries one (it pins the console to THIS
@@ -1299,9 +1285,6 @@ export function EntryTopRightCluster({
   // 管理 (Max) lands on the plain dashboard — product ruling 2026-09-23
   // (「点击管理, 就跳转到 vela dashboard 就行」), not on the auto-recharge dialog.
   const billingManageUrl = accountBillingUrl;
-  // The wallet row asks the console for its manual top-up dialog; see
-  // AMR_CONSOLE_RECHARGE_INTENT for the (pending) B-side handler.
-  const walletRechargeUrl = consoleBillingIntentUrl(accountBillingUrl, AMR_CONSOLE_RECHARGE_INTENT);
   // Product decision: plan comparison lives on public Pricing and payment
   // lives in Cloud. The client refreshes billing + context when focus returns
   // so a completed web upgrade syncs plan, credits, seats and gates.
@@ -1343,16 +1326,7 @@ export function EntryTopRightCluster({
   // billing card under it); what it SAYS follows the zero-balance ruling
   // above — a subscriber at $0.00 keeps the plan wordmark and drops the
   // number, so the card stays reachable without a permanent zero next to it.
-  const showCreditsPill = Boolean(billing || balanceLabel);
-
-  function openBillingUpgrade() {
-    if (!billingUpgradeUrl) return;
-    window.open(billingUpgradeUrl, '_blank', 'noopener,noreferrer');
-    window.setTimeout(() => {
-      notifyWorkspaceBillingRefresh();
-      // Billing refresh must not reset workspace identity or a removal notice.
-    }, 3000);
-  }
+  const showCreditsPill = Boolean(context || billing || balanceLabel);
 
   function trackAccountAction(element: AccountMenuClickProps['element']) {
     trackAccountMenuClick(analytics.track, {
@@ -1439,19 +1413,9 @@ export function EntryTopRightCluster({
                   aria-controls={creditsPanelOpen ? creditsPanelId : undefined}
                   aria-label={isFreePlan ? t('entry.creditsUpgrade') : t('entry.credits')}
                   onClick={() => {
-                    // The free pill IS the upgrade CTA, so it opens the upgrade
-                    // flow when this member is allowed to buy. Without that
-                    // permission (or without an upgrade URL) it falls back to
-                    // the console, which is where the paid pill always goes.
-                    if (isFreePlan && canUpgrade) {
-                      trackAccountAction('upgrade');
-                      openBillingUpgrade();
-                      return;
-                    }
+                    // Clicking, hovering or focusing opens the quota panel.
                     trackAccountAction('credits');
-                    if (accountBillingUrl) {
-                      window.open(accountBillingUrl, '_blank', 'noopener,noreferrer');
-                    }
+                    openCreditsPanel();
                   }}
                 >
                   {isFreePlan ? (
@@ -1496,93 +1460,20 @@ export function EntryTopRightCluster({
                   id={creditsPanelId}
                   role="dialog"
                   aria-label={t('entry.credits')}
-                  className={`entry-top-right-credits-panel ${planTier !== 'team' ? planCardStyles.panel : ''}`}
+                  className={`entry-top-right-credits-panel ${planCardStyles.panel}`}
                   data-testid="entry-top-right-credits-panel"
                 >
-                  <div
-                    className={`entry-nav-rail__menu-credits ${planTier !== 'team' ? planCardStyles.card : ''}`}
-                  >
-                    <div className="entry-nav-rail__menu-credits-head">
-                      <span
-                        className="entry-nav-rail__menu-credits-plan"
-                        role={planTier !== 'team' ? 'img' : undefined}
-                        aria-label={planTier !== 'team' ? planTier ?? tierLabel : undefined}
-                      >
-                        {planTier === 'team' ? tierLabel : null}
-                        {planTier ? (
-                          <PlanWordmark tier={planTier} height={planTier === 'team' ? 11 : 20} />
-                        ) : null}
-                      </span>
-                      {canUpgrade && !canManageTopTierBilling ? (
-                        <button
-                          type="button"
-                          className="entry-nav-rail__menu-credits-upgrade"
-                          onClick={() => {
-                            trackAccountAction('upgrade');
-                            setCreditsPanelOpen(false);
-                            openBillingUpgrade();
-                          }}
-                        >
-                          {t('entry.creditsUpgrade')}
-                        </button>
-                      ) : canManageTopTierBilling ? (
-                        <button
-                          type="button"
-                          className="entry-nav-rail__menu-credits-upgrade"
-                          onClick={() => {
-                            trackAccountAction('credits');
-                            setCreditsPanelOpen(false);
-                            if (billingManageUrl) {
-                              window.open(billingManageUrl, '_blank', 'noopener,noreferrer');
-                            }
-                          }}
-                        >
-                          {t('entry.creditsManage')}
-                        </button>
-                      ) : null}
-                    </div>
-                    {planTier !== 'team' ? (
-                      <CodingPlanUsage
-                        context={context}
-                        planTier={planTier}
-                        billing={billingResponse}
-                        usageUrl={accountBillingUrl}
-                        onUsageClick={() => {
-                          trackAccountAction('credits');
-                          setCreditsPanelOpen(false);
-                        }}
-                        wallet={{
-                          balanceUsd,
-                          url: walletRechargeUrl,
-                          onClick: () => {
-                            trackAccountAction('credits');
-                            setCreditsPanelOpen(false);
-                          },
-                        }}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="entry-nav-rail__menu-credits-row"
-                        data-testid="entry-nav-credits-row"
-                        onClick={() => {
-                          trackAccountAction('credits');
-                          setCreditsPanelOpen(false);
-                          if (walletRechargeUrl) {
-                            window.open(walletRechargeUrl, '_blank', 'noopener,noreferrer');
-                          }
-                        }}
-                      >
-                        <span className="entry-nav-rail__menu-credits-label">
-                          <RemixIcon name="battery-charge-line" size={14} /> {t('billing.wallet')}
-                        </span>
-                        <span className="entry-nav-rail__menu-credits-value">
-                          <bdi>{walletBalanceLabel ?? '—'}</bdi>
-                          <Icon name="chevron-right" size={14} />
-                        </span>
-                      </button>
-                    )}
-                  </div>
+                  <WorkspaceQuotaPopover
+                    view={workspaceQuotaView({ context, response: billingResponse, tier: labelTier, balanceUsd })}
+                    context={context}
+                    profile={priorityAnnouncementAmrProfile}
+                    badgeTier={planTier}
+                    planLabel={tierLabel}
+                    onNavigate={(action) => {
+                      trackAccountAction(action);
+                      setCreditsPanelOpen(false);
+                    }}
+                  />
                 </div>
               ) : null}
             </div>
@@ -1823,6 +1714,7 @@ export function EntryTopRightCluster({
       {context ? (
         <MessageCenter
           hideTrigger
+          workspaceId={context.workspaceId}
           returnFocusRef={messageCenterBellRef}
           open={messageCenterOpen}
           onOpenChange={setMessageCenterOpen}
