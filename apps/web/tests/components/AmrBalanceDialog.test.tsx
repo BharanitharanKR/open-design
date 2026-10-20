@@ -7,6 +7,7 @@ import {
   WALLET_WATCH_INTERVAL_MS,
   WALLET_WATCH_TIMEOUT_MS,
 } from '../../src/components/AmrBalanceDialog';
+import { HomeAmrBalanceGateDialogs } from '../../src/components/HomeAmrBalanceGateDialogs';
 import { resetWorkspaceContextCache } from '../../src/collab/useWorkspaceContext';
 import {
   workspaceContextFixture,
@@ -360,6 +361,48 @@ describe('AmrBalanceDialog', () => {
       'https://open-design.ai/cloud/dashboard',
     );
     expect(target.searchParams.get('billing')).toBe('plan');
+  });
+
+  it('Home actual wallet watch dismisses the block on exact funding recovery instead of authorizing an automatic submit', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    const resolve = vi.fn();
+    const context = workspaceContextFixture({ workspaceId: 'ws-home', workspaceMemberId: 'wm-home', workspaceType: 'team', role: 'owner' });
+    context.permissions.canManageBilling = true;
+    let actualWorkspace = 'unrelated-workspace';
+    const recoveryReads: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('includePreflight=1')) {
+        recoveryReads.push(url);
+        const observedAt = new Date().toISOString();
+        return new Response(JSON.stringify({
+          workspaceBalance: { billingScopeVersion: 2, workspaceId: actualWorkspace, workspaceMemberId: 'wm-home', balanceUsd: '10', updatedAt: observedAt },
+          workspaceRuntime: { workspaceId: actualWorkspace, workspaceMemberId: 'wm-home', status: 'fresh', observedAt, hardExpiresAt: new Date(Date.now() + 60_000).toISOString() },
+          authoritativeWorkspaceRead: { workspaceId: actualWorkspace, workspaceMemberId: 'wm-home', observedAt },
+        }));
+      }
+      if (url.includes('/api/workspace/directory')) return new Response(JSON.stringify(workspaceDirectoryFixture([context])));
+      if (url.includes('/api/workspace/context')) return new Response(JSON.stringify({ context }));
+      if (url.includes('/api/workspace/billing')) return new Response(JSON.stringify({ summary: { workspaceId: 'ws-home', membershipTier: 'go' } }));
+      return new Response('{}');
+    });
+    await act(async () => {
+      render(<HomeAmrBalanceGateDialogs
+        block={{ reason: 'insufficient', dialog: 'upgrade', upgradeIntent: 'pricing',
+          modelId: 'model', fundingScope: { workspaceType: 'team', workspaceId: 'ws-home', workspaceMemberId: 'wm-home' },
+          snapshot: { status: 'available', profile: 'prod', user: null, balanceUsd: '0', updatedAt: null, fetchedAt: new Date().toISOString(), stale: false, source: 'vela_api' }, resolve }}
+        metricsConsent={false} installationId={null}
+      />);
+    });
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-plans'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(WALLET_WATCH_INTERVAL_MS); });
+    expect(resolve).not.toHaveBeenCalled();
+    actualWorkspace = 'ws-home';
+    await act(async () => { await vi.advanceTimersByTimeAsync(WALLET_WATCH_INTERVAL_MS); });
+    expect(resolve).toHaveBeenCalledExactlyOnceWith('dismiss');
+    expect(recoveryReads).toHaveLength(2);
+    expect(recoveryReads.every((url) => url.includes('workspaceId=ws-home') && url.includes('modelId=model'))).toBe(true);
   });
 
   it('keeps one recovery preflight in flight and stops watching after ten minutes', async () => {

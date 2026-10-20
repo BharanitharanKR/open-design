@@ -8825,8 +8825,7 @@ export function ProjectView({
        */
       const amrGateApplies =
         config.mode === 'daemon'
-        && config.agentId === 'amr'
-        && !meta?.amrGatePrechecked;
+        && config.agentId === 'amr';
       // The gate's await opens a window where the conversation is not yet
       // marked busy. A second send arriving during that window behaves like
       // a busy conversation: it queues instead of racing a duplicate run.
@@ -8989,21 +8988,19 @@ export function ProjectView({
         setAmrBalanceGateBlock((previous) => previous?.fundingSource === 'preflight'
           && previous.fundingRunKey === assistantId ? null : previous);
       };
-      if (config.mode === 'daemon' && assistantAgentId === 'amr') {
-        const modelId = effectiveAgentModelId(selectedAgent, selectedAgentChoice);
-        // Start alongside send preparation, before any agent spawn or run POST.
-        // A stalled/unsupported preflight has no effect on sending.
-        void checkAmrFundingFeedback(amrBalanceCardScope, modelId).then((result) => {
-          if (result !== 'insufficient' || !fundingHintRelevant ||
-            streamingConversationIdRef.current !== runConversationId ||
-            memoryTurnAssistantRef.current?.assistantId !== assistantId) return;
-          showAmrFundingFailure({
-            code: AMR_INSUFFICIENT_BALANCE_CODE, runKey: assistantId,
-            conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
-            accountGeneration: sendAccountGeneration, source: 'preflight', modelId,
-          });
-        });
-      }
+      const fundingModelId = effectiveAgentModelId(selectedAgent, selectedAgentChoice);
+      // Start the exact member/model read alongside preparation, but a known
+      // insufficiency must settle before run persistence or provider dispatch.
+      // Unknown/unavailable reads still defer authority to the backend.
+      const fundingIdentityIsCurrent = () => mountedRef.current
+        && projectIdRef.current === project.id
+        && projectRunAuthorityKeyRef.current === projectRunAuthorityKey
+        && currentWorkspaceAccountGeneration() === sendAccountGeneration
+        && fundingDialogContextRef.current.isAmr
+        && fundingDialogContextRef.current.modelId === fundingModelId;
+      const fundingFeedback = config.mode === 'daemon' && assistantAgentId === 'amr'
+        ? checkAmrFundingFeedback(amrBalanceCardScope, fundingModelId, fundingIdentityIsCurrent)
+        : Promise.resolve('unknown' as const);
       /**
        * 把刚画出去的那一轮收回 —— 只有预检拒绝时才走这里。
        *
@@ -9013,16 +9010,20 @@ export function ProjectView({
        */
       const retractPaintedTurn = () => {
         retireFundingHint();
-        const restore = paintedFrom.messages;
-        paintedFrom.messages = null;
         clearStreamingMarker(runConversationId);
-        if (restore === null) return;
         if (messagesConversationIdRef.current !== runConversationId) return;
-        setMessages(restore);
+        // A cached verdict can settle before React flushes the paint updater.
+        // Queue the rollback behind it so that its original transcript exists.
+        setMessages((current) => {
+          const restore = paintedFrom.messages;
+          paintedFrom.messages = null;
+          return messagesConversationIdRef.current === runConversationId
+            ? restore ?? current : current;
+        });
       };
-      // The send check confirms sign-in only; funding is decided by Link as
-      // the run starts. Home sends that already checked the same identity skip
-      // the duplicate sign-in read here.
+      // A Home witness skips only the duplicate sign-in read. Every actual
+      // send still waits for its scoped funding verdict; Link remains the
+      // final authority when the read is unsupported or unavailable.
       if (amrGateApplies) {
         const gateConversationId = runConversationId;
         amrGateInFlightConversationsRef.current.add(gateConversationId);
@@ -9052,7 +9053,7 @@ export function ProjectView({
             config.agentModels?.amr,
           );
           const gate =
-            deferAmrPreflightToDaemon
+            deferAmrPreflightToDaemon || meta?.amrGatePrechecked
               ? { kind: 'allow' as const }
               : await checkAmrBalanceGate(
                   projectRunPreflightContext
@@ -9136,6 +9137,29 @@ export function ProjectView({
           // the original conversation instead of dropping it.
           if (messagesConversationIdRef.current !== activeConversationId) {
             return acceptedDurableQueue(queueGateSend());
+          }
+          const funding = await fundingFeedback;
+          if (!fundingIdentityIsCurrent()) {
+            if (meta?.composerOwnedDraft) amrGateBlockedRequestRef.current = clientRequestId;
+            if (mountedRef.current) retractPaintedTurn();
+            return false;
+          }
+          if (messagesConversationIdRef.current !== activeConversationId) {
+            return acceptedDurableQueue(queueGateSend());
+          }
+          if (streamingConversationIdRef.current !== runConversationId) return false;
+          if (funding === 'insufficient' && gate.kind !== 'hard') {
+            const accepted = meta?.composerOwnedDraft
+              ? rejectBlockedSend()
+              : acceptedDurableQueue(parkBlockedSend());
+            // Retraction retires the provisional turn. Present the rejection
+            // after it so the current draft owns the dialog, not a phantom run.
+            showAmrFundingFailure({
+              code: AMR_INSUFFICIENT_BALANCE_CODE, runKey: assistantId,
+              conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
+              accountGeneration: sendAccountGeneration, source: 'preflight', modelId: fundingModelId,
+            });
+            return accepted;
           }
           if (gate.kind === 'hard') {
             const recoveryActionInstanceId = `blocked:${taskAnalytics.taskExecutionId}`;
@@ -14561,6 +14585,9 @@ export function ProjectView({
             // makes the final funding decision for each new run.
             const conversationId = amrBalanceGateBlock.conversationId;
             setAmrBalanceGateBlock(null);
+            // A pre-send quota rejection never resubmits on recovery. The
+            // composer draft (or held non-composer payload) needs manual Send.
+            if (amrBalanceGateBlock.fundingSource === 'preflight') return;
             amrGatePausedQueueConversationsRef.current.delete(conversationId);
             setQueuedAutoStartTick((tick) => tick + 1);
           }}

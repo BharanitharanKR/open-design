@@ -6,8 +6,8 @@ import { AmrOwnerTopUpDialog } from './chat/AmrOwnerTopUpDialog';
 
 /**
  * A Home gate for confirmed insufficient funding or sign-out. The dialog resolves the promise the submit handler is awaiting:
- * 'retry' (sign-in completed / recharge landed) re-runs the gate and continues
- * the very same create-and-run; 'dismiss' hands the composer back to the user.
+ * 'retry' after sign-in re-runs authorization for the pending submit. Funding
+ * recovery only dismisses the block and returns the draft for a manual Send.
  */
 export interface HomeAmrBalanceGateBlock {
   reason: 'insufficient' | 'signed_out';
@@ -62,7 +62,7 @@ export function HomeAmrBalanceGateDialogs({ block, metricsConsent, installationI
       metricsConsent={metricsConsent}
       installationId={installationId}
       onClose={() => block.resolve('dismiss')}
-      onResolved={() => block.resolve('retry')}
+      onResolved={() => block.resolve(block.reason === 'signed_out' ? 'retry' : 'dismiss')}
     />
   );
 }
