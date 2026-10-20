@@ -510,6 +510,7 @@ test('[P1] narrow and short invitations retain readable overlays and keyboard es
   for (const viewport of [{ width: 390, height: 844 }, { width: 900, height: 500 }]) {
     const dialog = await setup(page, 'owner');
     await page.setViewportSize(viewport);
+    await capture(page, `boundary-${viewport.width}x${viewport.height}-initial`);
     for (let row = 0; row < 3; row += 1) {
       await dialog.getByRole('button', { name: '添加成员', exact: true }).click();
     }
