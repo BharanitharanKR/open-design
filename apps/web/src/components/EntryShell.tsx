@@ -112,6 +112,8 @@ import { UpdaterPopup } from './UpdaterPopup';
 import { WhatsNewPopup } from './WhatsNewPopup';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
 import type { HomeAmrBalanceGateBlock } from './HomeAmrBalanceGateDialogs';
+import { AmrConcurrencyDialog } from './AmrConcurrencyDialog';
+import { readAmrRequestConcurrency } from '../runtime/amr-request-concurrency';
 import {
   amrBalanceBlockedDialog,
   amrBalanceDialogUpgradeIntent,
@@ -765,6 +767,17 @@ export function EntryShell({
   const homeFundingIdentityRef = useRef(homeFundingIdentity);
   homeFundingIdentityRef.current = homeFundingIdentity;
   const cancelHomeFundingDialogRef = useRef<(() => void) | null>(null);
+  const homeConcurrencyPendingRef = useRef(false);
+  const homeConcurrencyEpochRef = useRef(0);
+  const [homeConcurrencyBlock, setHomeConcurrencyBlock] = useState<{
+    identity: string | null;
+    branch: ReturnType<typeof resolveAmrBalanceBranch>;
+    workspaceContext: ReturnType<typeof workspaceResourceReadContext>;
+  } | null>(null);
+  useEffect(() => {
+    homeConcurrencyEpochRef.current++;
+    return () => { homeConcurrencyEpochRef.current++; };
+  }, [homeFundingIdentity]);
   useEffect(() => {
     if (!homeFundingIdentity) return;
     // Warm once per Home/account/member/model selection. Never poll or wait
@@ -1502,6 +1515,28 @@ export function EntryShell({
         workspaceContextStateRef.current.failure === 'unsupported'
           ? null : workspaceResourceReadContext(workspaceContextStateRef.current),
       );
+      if (homeConcurrencyPendingRef.current) return 'blocked' as const;
+      const hintEpoch = homeConcurrencyEpochRef.current;
+      const hintIdentity = homeFundingIdentityRef.current;
+      const hintAccountGeneration = currentWorkspaceAccountGeneration();
+      homeConcurrencyPendingRef.current = true;
+      const hint = await readAmrRequestConcurrency(scope);
+      homeConcurrencyPendingRef.current = false;
+      // A workspace, model, identity, route change or unmount while reading must
+      // never dispatch the earlier payload under the new principal.
+      if (hintEpoch !== homeConcurrencyEpochRef.current || hintIdentity !== homeFundingIdentityRef.current
+        || hintAccountGeneration !== currentWorkspaceAccountGeneration()) return 'blocked' as const;
+      if (hint?.status === 'full') {
+        setHomeConcurrencyBlock({
+          identity: hintIdentity,
+          branch: resolveAmrBalanceBranch({ context: homeFundingContext, billing: workspaceBilling }),
+          workspaceContext: homeFundingContext,
+        });
+        return 'blocked' as const;
+      }
+      // Unknown is not proof of an available slot. Preserve the existing real
+      // Link request path and named-rejection fallback rather than inventing a
+      // client quota or blocking legitimate old CLI deployments.
       // Restore #8240's pre-handoff memory gate using both the wallet and
       // Coding Plan projection. The existing billing stream/fallback refreshes
       // this projection; confirmed backend insufficiency survives cache refreshes.
@@ -1881,6 +1916,11 @@ export function EntryShell({
 
   return (
     <div className="entry-shell entry-shell--no-header">
+      {homeConcurrencyBlock && homeConcurrencyBlock.identity === homeFundingIdentity ? (
+        <AmrConcurrencyDialog branch={homeConcurrencyBlock.branch}
+          workspaceContext={homeConcurrencyBlock.workspaceContext}
+          onClose={() => setHomeConcurrencyBlock(null)} />
+      ) : null}
       <div
         className={`entry${railOpen ? ' entry--rail-open' : ''}`}
         // The team/local shell is a labeled Manus-style rail, so widen the rail

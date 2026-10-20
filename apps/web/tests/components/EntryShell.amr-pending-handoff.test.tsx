@@ -247,6 +247,85 @@ describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
     resetTeamProjectsCache();
   });
 
+  it('keeps exact attachments and only a fresh manual Send retries after real counter release', async () => {
+    const context = personalContext();
+    const previous = globalThis.fetch;
+    let full = true;
+    let reads = 0;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/billing/request-concurrency?')) {
+        reads++;
+        return jsonResponse({ requestConcurrencyHint: {
+          workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+          observedAt: new Date().toISOString(), status: full ? 'full' : 'available', running: full ? 10 : 0, limit: 10,
+        } });
+      }
+      return previous(input, init);
+    }) as typeof fetch;
+    const h = harness('amr');
+    await screen.findByTestId('home-hero-input');
+    const attachment = new File(['original complete bytes'], 'brief.txt', { type: 'text/plain' });
+    fireEvent.change(screen.getByTestId('home-hero-file-input'), { target: { files: [attachment] } });
+    await submitHome('Never auto send this draft');
+    await screen.findByTestId('amr-concurrency-dialog');
+    full = false;
+    fireEvent.click(screen.getByTestId('amr-concurrency-close'));
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(reads).toBe(1);
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+    await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+    expect(h.onCreateProject.mock.calls[0]![0]).toMatchObject({ pendingPrompt: 'Never auto send this draft', pendingFiles: [attachment] });
+    expect(reads).toBe(2);
+  });
+
+  it('a pending read cannot dispatch after the account identity changes', async () => {
+    const context = personalContext();
+    const previous = globalThis.fetch;
+    let release!: (response: Response) => void;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/billing/request-concurrency?')) return new Promise<Response>((resolve) => { release = resolve; });
+      return previous(input, init);
+    }) as typeof fetch;
+    const h = harness('amr');
+    await submitHome('Identity-fenced original prompt');
+    await waitFor(() => expect(release).toBeTypeOf('function'));
+    await act(async () => {
+      advanceWorkspaceAccountGeneration('hint-account-switch');
+      release(jsonResponse({ requestConcurrencyHint: { workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+        observedAt: new Date().toISOString(), status: 'available', running: 0, limit: 10 } }));
+    });
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    expect(screen.getByTestId('home-hero-input')).toHaveTextContent('Identity-fenced original prompt');
+  });
+
+  it.each(['owner', 'admin', 'member'] as const)('real Link full hint holds %s on Home without creating or clearing the prompt', async (role) => {
+    const context = { ...personalContext(), role,
+      permissions: buildWorkspacePermissions({ role, lifecycleState: 'active' }) };
+    const previous = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/api/workspace/directory')) return jsonResponse(workspaceDirectoryFixture([context]));
+      if (url.endsWith('/api/workspace/context')) return jsonResponse({ context });
+      if (url.includes('/billing/request-concurrency?')) return jsonResponse({ requestConcurrencyHint: {
+        workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+        observedAt: new Date().toISOString(), status: 'full', running: 10, limit: 10,
+      } });
+      return previous(input, init);
+    }) as typeof fetch;
+    const { onBeginProjectCreation, onCreateProject } = harness('amr');
+    const started = performance.now();
+    await submitHome('Keep this original Home prompt');
+    await screen.findByTestId('amr-concurrency-dialog');
+    const elapsedMs = performance.now() - started;
+    process.stdout.write(JSON.stringify({ evidence: 'controlled-home-hint-latency', role, elapsedMs, thresholdMs: 500 }) + '\n');
+    expect(elapsedMs).toBeLessThanOrEqual(500);
+    expect(onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(onCreateProject).not.toHaveBeenCalled();
+    expect(screen.getByTestId('home-hero-input').textContent).toContain('Keep this original Home prompt');
+  });
+
   it('allow: begin → gate → create, and the create reuses the optimistic id with the gate witness', async () => {
     const h = harness('amr');
     await submitHome('Draft a landing page.');

@@ -120,6 +120,38 @@ async function startContextServer(
   };
 }
 
+describe('read-only Link concurrency route', () => {
+  it.runIf(Boolean(process.env.LINK_CONCURRENCY_HTTP_URL && process.env.LINK_CONCURRENCY_VELA_BINARY))('real daemon route → built Vela CLI → authenticated Link → actual full Redis counter', async () => {
+    const api = await startContextServer({ configuredEnv: () => ({
+      VELA_BIN: process.env.LINK_CONCURRENCY_VELA_BINARY!,
+      VELA_LINK_URL: process.env.LINK_CONCURRENCY_HTTP_URL!,
+      VELA_RUNTIME_KEY: 'runtime',
+    }) });
+    const response = await api.req('/api/workspace/billing/request-concurrency?workspaceId=space');
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ requestConcurrencyHint: { workspaceId: 'space', workspaceMemberId: 'member', status: 'full', running: 10, limit: 10 } });
+    expect((await api.req('/api/workspace/billing/request-concurrency?workspaceId=other')).status).toBe(403);
+  });
+
+  it('uses the authenticated upstream reader without waiting for display billing', async () => {
+    const display = vi.fn(() => new Promise<never>(() => {}));
+    const hint = { workspaceId: 'wm-1', workspaceMemberId: 'member', observedAt: new Date().toISOString(), status: 'full' as const, running: 10, limit: 10 };
+    const read = vi.fn(async () => hint);
+    const api = await startContextServer({ fetchBilling: display, fetchWorkspaceDirectory: display, fetchRequestConcurrency: read });
+    const response = await api.req('/api/workspace/billing/request-concurrency?workspaceId=wm-1');
+    expect(response).toEqual({ status: 200, body: { requestConcurrencyHint: hint } });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(display).not.toHaveBeenCalled();
+  });
+  it('keeps authorization and absent old capability distinct', async () => {
+    const read = vi.fn().mockRejectedValueOnce(new Error('API request failed with status 403: forbidden')).mockResolvedValueOnce(null);
+    const api = await startContextServer({ fetchRequestConcurrency: read });
+    expect((await api.req('/api/workspace/billing/request-concurrency?workspaceId=wm-1')).status).toBe(403);
+    expect((await api.req('/api/workspace/billing/request-concurrency?workspaceId=wm-1')).status).toBe(503);
+    expect((await api.req('/api/workspace/billing/request-concurrency')).status).toBe(400);
+  });
+});
+
 describe('independent billing preflight', () => {
   it('reads backend funding directly without waiting for display billing or the directory', async () => {
     const display = vi.fn(() => new Promise<never>(() => {}));
