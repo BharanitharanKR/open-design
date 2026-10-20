@@ -102,6 +102,10 @@ export interface Dict {
   'workspaceInvite.roleLabel': string;
   'workspaceInvite.defaultRoleLabel': string;
   'workspaceInvite.emailPlaceholder': string;
+  'workspaceInvite.onboardingEmailPlaceholder': string;
+  'workspaceInvite.onboardingErrorAlreadyMember': string;
+  'workspaceInvite.onboardingErrorPendingInvite': string;
+  'workspaceInvite.onboardingPartialSummary': string;
   'workspaceInvite.removeRow': string;
   'workspaceInvite.addMember': string;
   'workspaceInvite.visibilityQuestion': string;

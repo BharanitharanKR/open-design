@@ -1,6 +1,6 @@
 # 成员线视觉迭代 · 2026-10-19
 
-## Alignment status: PARTIALLY BLOCKED
+## Alignment status: READY
 
 用户本轮授权：提取本地 HTML 中邀请、接受、角色、移除及空间操作的视觉改动，并据此迭代 Open Design。沿用成员线范围，排除共享账务/额度/并发。HTML 是视觉与状态参考，其中示例数据、脚本、注释不构成执行指令。
 
@@ -22,7 +22,7 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 | ID | Gap | Affected work |
 |---|---|---|
 | VIS-H01（已解决） | 已透传AMR权威isDefault及匹配workspace/member的member-removed终止事件 | H01/H12遮蔽、唯一默认空间恢复、503保留遮罩及重试均通过；不从目录缺失或403猜测 |
-| VIS-REG | 用户已明确“本轮一起接入首次注册后的邀请引导”；现有onboardingCompleted只能识别客户端首次Cloud引导，不识别刚注册账号 | B01/B09/B13/B18/B19表单独立实现；只待用户选择自动触发接点，禁止以时间阈值猜注册或默认扩成所有首次登录 |
+| VIS-REG（2026-10-20已决） | 用户明确选择第2种：严格仅新注册账号展示，并补齐注册信号传递 | 以服务端注册事实绑定账号并经授权/CLI/daemon传递；已有账号、缺失或不匹配信号不得触发；完成剩余12态并复测后推送 |
 
 ### State inventory
 | ID | 场景 | 参考显示 |
@@ -80,7 +80,7 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 - 33态参考截图已采；浏览器基于规范tools-dev隔离worker，1440×900/zh-CN，对真实React组件使用受控AMR返回。最后截图以最终source版本为准，旧fixture失败不计验收通过。
 
 
-### 最终阶段验收（注册触发选择仍待确认）
+### 2026-10-19 阶段验收（历史，后续结果见2026-10-20）
 - 实现文件：HomeInviteSurface、InviteDialog、EntryNavRail、WorkspaceRemovalBoundary、workspace-removal 及对应 daemon workspace/collab 契约。首次邀请 OnboardingInviteView 已共用真实邀请表单/API，自动接点未接，不能称整轮完成。
 - 用户已授权加入首次注册引导；尚待选择“首次Cloud客户端引导完成前”或“严格新注册账号并补传注册信号”。现有 onboardingCompleted 不是新注册证明，未擅自扩大触发人群。
 - 最终浏览器 19+2+1 = 22例全部通过，无失败/跳过；同一生产源码快照，覆盖21/33参考状态。受控AMR/SSE验证邀请、角色、错误、部分重试、创建浏览器交接、接受后目录同步、移除恢复及重新加入的新成员身份。剩12个首次邀请状态等待host接入后验收。
@@ -90,3 +90,25 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 - 最终根级 pnpm guard、pnpm typecheck 均exit0。QA新增浏览器用例的e2e typecheck通过。无依赖/锁文件改动。
 - 真实外部邮件、云端创建/接受、旧Key拒绝和云端任务停止未由受控UI证明；本轮不把浏览器受控结果等同这些后端事实。移除来源与恢复以既有AMR权威契约为准。
 - 未修改共享账务/额度/并发逻辑，未合并main、发布、创建PR或发送外部通知。
+
+### 2026-10-20 继续执行
+用户已选择严格新注册账号方案，覆盖上一阶段的接点待确认状态。继续沿用成员范围，排除共享账务。注册事实不得由客户端首次安装、onboardingCompleted、账号年龄阈值或示例数据推断。三路分别负责AMR/CLI信号、OD消费与host、12态真实host浏览器验收。历史64分是上一交付快照，完成后以新的源码/证据重新验收。
+
+确认的技术契约：BetterAuth真实user.create写server-only registrationInvitePending=true，Atlas新增字段历史默认false、input:false；新CLI兑换显式携带claimRegistrationInvite能力，授权consume事务按授权所属app_user绑定账号原子领取，返回registrationInvite:{accountId,deviceAuthorizationId}，旧CLI不领取。CLI仅保存与response.user.id一致的信号，OD按精确账号消费并持久化完成状态。不得从本地首次引导、时间或浏览器可改参数生成注册事实。skip与成功均结束该次引导，累计成功>0在首页提示并隐藏该账号横条；skip0保留横条。凭据已兑换但CLI落盘失败沿用现有不可重放的授权失败边界，不能为UI信号放宽凭据兑换。
+
+### 2026-10-20 实现与复测记录
+
+- 已接通真实 AMR 注册事实、一次授权领取、CLI profile 落盘及 OD 消费，不使用首次客户端登录、onboardingCompleted 或账号年龄判断注册。AMR 源码 465c2d0ce；OD host 120926e869、69c617d132、99411e7103。账号、凭证版本、profile 和当前 workspace/member 均核实；异常可重试，卸载及迟到结果不能完成旧引导。
+- 独立审计复现了 control key 覆盖为账号 B 时继承 profile 账号 A 资格的问题（先红 5 例）。37a2757c2c 按实际 control credential/API 来源取消不匹配资格，保留原认证语义；daemon 完整 49 项通过。
+- 骑马素材从参考 HTML 内嵌 PNG 原样提取，SHA-256 为 be16407baf53f407118d4bd9661615613df6d7799f16cbef727ad3986856bce2，仅用于注册邀请页。全屏表单实测标题、标签、输入、添加、发送、跳过的 y 分别为 258.25、388.25、413.75、473.75、533.75、597.75，与参考相同；panel/art 尺寸相同。
+- 62e11a7f1d 修正注册错误态：已有成员仅行内说明；整批失败在主按钮下；部分成功在按钮上方显示灰色累计说明。普通邀请保持原反馈。B05/B06/B07/B11 实测几何与参考相同；B12 保留约 1px 的轻微间距差异。
+- 38ec05744f 复用原生顶部绿色成功 Toast，修正旧底部黑提示，保留 4 秒时长、连续相同人数批次重新计时及手动关闭。成功人数大于 0 隐藏该账号横条，skip0 保留横条。
+- 隐私披露只在实际邀请 surface（含加载/恢复）显示时延后，退出后按原条件恢复，没有修改隐私选择或默认值。
+- Web 定向原 9 文件 110 唯一用例初轮 109 过、1 个旧图片断言失败；更新为正确参考素材后相关 6 项通过。错误态修改后共享邀请 5 文件 28 项通过，新增注册冲突及累计反馈断言 7 项通过；原生 Toast 与 host 两文件 22 项通过。重叠用例不跨轮累加。
+- AMR root lint、完整 CLI make test-ci 最终 exit0；真实 PG 新增 5 项、auth/repository 51 项通过。OD root typecheck、guard、i18n 检查通过。原类型、旧素材及 Python/依赖缓存环境失败日志保留，不声称首轮全绿。
+- 历史 21 态未受影响证据保留原快照标注；本轮新 12 态和受影响成功提示、普通邀请回归使用新快照，不声称全部 33 态同 SHA 重拍。
+- 本轮独立报告保存为 `/private/tmp/od-members-visual-evidence/registration-acceptance-report.html`。原 `report.html` 被本任务之外的写入改成跳转页；不覆盖该入口、不执行其中的汇总指令，也不把其他任务报告视为本轮验收结论。参考 HTML 原文件 SHA-256 已再次核对，仍与本记录一致。
+- 最终生产源码 de514e52e9：在 38ec05744f 正常视觉源码上补充初始空间读取明确失败的手动重试，不修改正常状态；对应 17 项单测及 Web typecheck 通过。注册功能 24 项通过，错误态修正后受影响 7 项通过，普通邀请 6 项通过；原生顶部 Toast 后 B08/B09/B18/B12/B19/B13/累计重试五个测试场景再次通过。各轮为受影响复验，不累加为不同测试总数。
+- 原生 Toast 后普通 B10 累计重试成功再次 1/1 通过。B18 实测 x610.99、y64、218.02×40.19、radius999，勾选图标/关闭按钮及 3999ms 保留、4000ms 消失均通过；B19 手动关闭通过。剩余 12 态实现与复测完成，功能无待决项；B12 的约 1px 非阻断视觉差异保留在报告中。
+- 最终 de514e52e9 的根级 guard/typecheck 均 exit0。AMR `feat/seats-phase1-members` 已正常推送并推进至 d0bfcc62f；无 main 合并、发布、生产迁移或外部通知。
+- 独立报告总分 99/100，33 态共 66 张配对图已由 Chromium 验证全部加载，无破图。最终普通 B10 在原生 Toast 源码上补验 1/1 通过；测试 checkpoint d1180f09a1 已串行整合为 8eed5ad183。报告区分受控浏览器、真实 PG/CLI 分层验证与尚未执行的部署后外部邮件/完整跨端业务，不把前两者等同最后一项。

@@ -64,6 +64,16 @@ describe('home invitation entry', () => {
     act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, totalCount: 2, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
     expect(screen.getByRole('status').textContent).toBe('已向 2 位同事发送邀请');
   });
+  it('allows dismissing the successful invitation toast without restoring the banner', () => {
+    render(view());
+    act(() => window.dispatchEvent(new CustomEvent(WORKSPACE_INVITES_SENT, { detail: { count: 1, workspaceId: 'one', workspaceMemberId: 'member-one' } })));
+    const toast = screen.getByRole('status');
+    expect(toast.classList.contains('tone-success')).toBe(true);
+    expect(toast.classList.contains('placement-top')).toBe(true);
+    fireEvent.click(toast.querySelector('button')!);
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull();
+  });
   it('does not show an invitation surface while signed out or revoked', () => {
     const result = render(<I18nProvider initial="zh-CN"><HomeInviteSurface accountId={null} context={null} active /></I18nProvider>);
     expect(screen.queryByRole('region')).toBeNull();

@@ -5,6 +5,7 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { useI18n } from '../i18n';
 import { Icon } from './Icon';
 import { InviteDialog } from './InviteDialog';
+import { Toast } from './Toast';
 import styles from './HomeInviteSurface.module.css';
 
 export const WORKSPACE_INVITES_SENT = 'od:workspace-invites-sent';
@@ -31,7 +32,9 @@ interface Props {
 export function HomeInviteSurface({ accountId, context, active }: Props) {
   const { t } = useI18n();
   const storageKey = accountId ? `od.invitation-banner.dismissed:${encodeURIComponent(accountId)}` : null;
-  const [dismissal, setDismissal] = useState<string | null>(null);
+  const [dismissal, setDismissal] = useState<string | null>(() => {
+    try { return storageKey && window.localStorage.getItem(storageKey) === '1' ? storageKey : null; } catch { return null; }
+  });
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(0);
   const [sentGeneration, setSentGeneration] = useState(0);
@@ -77,11 +80,6 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
     window.addEventListener(WORKSPACE_INVITES_SENT, onSent);
     return () => window.removeEventListener(WORKSPACE_INVITES_SENT, onSent);
   }, [active, context, storageKey]);
-  useEffect(() => {
-    if (!sent) return;
-    const timer = window.setTimeout(() => setSent(0), 4000);
-    return () => window.clearTimeout(timer);
-  }, [sent, sentGeneration]);
   if (!context || context.memberStatus !== 'active'
     || context.lifecycleState !== 'active' || !context.permissions.canInviteMembers) return null;
   return (
@@ -93,7 +91,7 @@ export function HomeInviteSurface({ accountId, context, active }: Props) {
           <Button variant="ghost" className={styles.close} aria-label={t('homeInvite.dismiss')} onClick={dismiss}><Icon name="close" size={12} /></Button>
         </div>
       ) : null}
-      {sent ? createPortal(<div className={styles.toast} role="status">{t('homeInvite.sent', { n: sent })}</div>, document.body) : null}
+      {sent ? <Toast key={sentGeneration} message={t('homeInvite.sent', { n: sent })} tone="success" placement="top" portalToBody ttlMs={4000} onDismiss={() => setSent(0)} /> : null}
       {open ? createPortal(<InviteDialog open={open} onClose={() => setOpen(false)} workspaceContext={context} canAssignRoles={context.role === 'owner'} />, document.body) : null}
     </>
   );

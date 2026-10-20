@@ -1295,6 +1295,8 @@ export interface VelaLiveAccount {
 }
 
 export interface VelaLoginStatus {
+  /** One-time AMR new-registration claim persisted by the CLI. */
+  registrationInvite?: { accountId: string; deviceAuthorizationId: string };
   loggedIn: boolean;
   sessionState?: import('@open-design/contracts').AmrSessionState;
   credentialRevision?: string;
