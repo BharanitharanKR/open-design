@@ -501,6 +501,33 @@ function readRegistrationInvite(raw: unknown, accountId: string | undefined): Ve
   return { accountId, deviceAuthorizationId: claim.deviceAuthorizationId };
 }
 
+/** A CLI-issued receipt belongs to the stored account/control API source.
+ * Runtime/env authorization remains unchanged; only onboarding eligibility is
+ * withheld when those request credentials no longer describe that source. */
+function registrationInviteUsesStoredControlSource(
+  stored: VelaProfileShape | undefined,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  const controlOverride = env.VELA_CONTROL_KEY?.trim() ?? '';
+  if (controlOverride && controlOverride !== stored?.controlKey?.trim()) return false;
+  const defaultApi = 'https://amr-api.open-design.ai';
+  const storedApi = stored?.apiUrl?.trim() || defaultApi;
+  // Match readRawVelaControlApiContext: an env control key selects env/default
+  // API directly; otherwise readVelaApiContext gives the stored API precedence.
+  const effectiveApi = controlOverride
+    ? env.VELA_API_URL?.trim() || defaultApi
+    : stored?.apiUrl?.trim() || env.VELA_API_URL?.trim() || defaultApi;
+  const normalize = (value: string): string | null => {
+    try {
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) return null;
+      return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+    } catch { return null; }
+  };
+  const source = normalize(storedApi);
+  return source !== null && source === normalize(effectiveApi);
+}
+
 function readRawVelaLoginStatus(
   env: NodeJS.ProcessEnv = process.env,
   configuredEnv: Record<string, string> = {},
@@ -561,7 +588,8 @@ function readRawVelaLoginStatus(
         ...(typeof rawUser.plan === 'string' ? { plan: rawUser.plan } : {}),
       }
     : null;
-  const registrationInvite = readRegistrationInvite(stored?.registrationInvite, user?.id);
+  const registrationInvite = registrationInviteUsesStoredControlSource(stored, mergedEnv)
+    ? readRegistrationInvite(stored?.registrationInvite, user?.id) : undefined;
   return {
     loggedIn: true,
     loginInFlight,

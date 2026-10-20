@@ -740,3 +740,47 @@ describe('new-registration invitation claim', () => {
     expect(readVelaLoginStatus({ ...env, VELA_RUNTIME_KEY: 'env-key', VELA_LINK_URL: 'https://link.example' }).registrationInvite).toBeUndefined();
   });
 });
+
+describe('registration claim credential-source binding', () => {
+  const claim = { accountId: 'account-a', deviceAuthorizationId: 'authorization-a' };
+  const profile = { runtimeKey: 'runtime-a', controlKey: 'control-a', apiUrl: 'https://api-a.example', user: { id: 'account-a', email: 'a@example.com' }, registrationInvite: claim };
+  it.each(['env', 'configured'] as const)('drops only the claim when %s overrides the effective control credential', source => {
+    writeConfig({ profiles: { local: profile } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', ...(source === 'env' ? { VELA_CONTROL_KEY: 'control-b', VELA_API_URL: profile.apiUrl } : {}) };
+    const configured = source === 'configured' ? { VELA_CONTROL_KEY: 'control-b', VELA_API_URL: profile.apiUrl } : {};
+    const status = readVelaLoginStatus(env, configured);
+    expect(status).toMatchObject({ loggedIn: true, sessionState: 'authenticated', user: { id: 'account-a' } });
+    expect(readVelaControlApiContext(env, configured)?.controlKey).toBe('control-b');
+    expect(status.registrationInvite).toBeUndefined();
+  });
+  it('drops the claim when a matching key is redirected to a different API source', () => {
+    writeConfig({ profiles: { local: profile } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', VELA_CONTROL_KEY: profile.controlKey, VELA_API_URL: 'https://api-b.example' };
+    expect(readVelaControlApiContext(env)?.apiUrl).toBe('https://api-b.example');
+    expect(readVelaLoginStatus(env).registrationInvite).toBeUndefined();
+  });
+  it('does not borrow a stored test-source claim when env control defaults to production API', () => {
+    writeConfig({ profiles: { local: profile } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', VELA_CONTROL_KEY: profile.controlKey };
+    expect(readVelaControlApiContext(env)?.apiUrl).toBe('https://amr-api.open-design.ai');
+    expect(readVelaLoginStatus(env).registrationInvite).toBeUndefined();
+  });
+  it('drops an effective API override when the stored profile has no explicit API source', () => {
+    const { apiUrl: _apiUrl, ...withoutApi } = profile;
+    writeConfig({ profiles: { local: withoutApi } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', VELA_API_URL: 'https://api-b.example' };
+    expect(readVelaControlApiContext(env)?.apiUrl).toBe('https://api-b.example');
+    expect(readVelaLoginStatus(env).registrationInvite).toBeUndefined();
+  });
+  it('preserves the claim when the effective key and API source are the selected stored values', () => {
+    writeConfig({ profiles: { local: profile } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', VELA_CONTROL_KEY: profile.controlKey, VELA_API_URL: `${profile.apiUrl}/` };
+    expect(readVelaLoginStatus(env).registrationInvite).toEqual(claim);
+  });
+  it('does not reject a dormant API env value which the stored API source actually overrides', () => {
+    writeConfig({ profiles: { local: profile } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local', VELA_API_URL: 'https://ignored-api.example' };
+    expect(readVelaControlApiContext(env)?.apiUrl).toBe(profile.apiUrl);
+    expect(readVelaLoginStatus(env).registrationInvite).toEqual(claim);
+  });
+});
