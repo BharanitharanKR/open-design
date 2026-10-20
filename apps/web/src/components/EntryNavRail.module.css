@@ -242,3 +242,8 @@
 .workspaceMenu :global(.entry-nav-rail__workspace-menu-name) {
   flex: 0 1 auto;
 }
+
+.workspaceMenu :global(.entry-nav-rail__menu-item.is-current) > :global(svg),
+.workspaceMenu :global(.entry-nav-rail__menu-item.is-current) > :global(.od-icon) {
+  margin-left: 0;
+}
