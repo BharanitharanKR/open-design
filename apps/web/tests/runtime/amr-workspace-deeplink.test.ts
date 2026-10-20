@@ -6,6 +6,7 @@ import {
   amrPlansUrlForProfile,
   amrPlansUrlForWorkspace,
   amrRechargeUrlForProfile,
+  amrWorkspaceUrl,
   setRuntimeAmrConsoleOrigin,
 } from '../../src/runtime/amr-guidance';
 
@@ -85,5 +86,20 @@ describe('C-03 explicit status origin compatibility', () => {
         `${prodDashboard}?workspaceId=ws-2&source=open_design`,
       );
     }
+  });
+});
+
+// Settings-derived URLs share the same workspace construction without changing
+// the section resolver or its malformed-URL fallback (TASK C caller-only edits).
+describe('C-03 settings-derived console URL', () => {
+  it('replaces stale workspace/source while preserving the base path and remaining parameters', () => {
+    expect(amrWorkspaceUrl('https://console.example.invalid/cloud/dashboard?source=old&workspaceId=stale&lang=en', 'current', 'recharge')).toBe(
+      'https://console.example.invalid/cloud/dashboard?workspaceId=current&source=open_design&lang=en&billing=recharge',
+    );
+  });
+
+  it('lets callers retain their existing fallback for malformed or unscoped bases', () => {
+    expect(amrWorkspaceUrl('not-a-url', 'current')).toBeNull();
+    expect(amrWorkspaceUrl('https://console.example.invalid/dashboard', ' ')).toBeNull();
   });
 });

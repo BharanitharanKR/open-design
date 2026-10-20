@@ -107,6 +107,7 @@ import {
   amrAutoRechargeUrlForProfile,
   amrConsoleUrlForWorkspace,
   amrPlansUrlForProfile,
+  amrWorkspaceUrl,
 } from '../runtime/amr-guidance';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
@@ -737,7 +738,6 @@ export function teamConsoleUrl(
     | 'create-team'
     | 'auto-recharge'
     | 'invite',
-  workspaceId?: string | null,
 ): string {
   // B's console routes: members live at /team, everything account/billing
   // shaped reports on the dashboard. The settings URL the context carries
@@ -767,15 +767,6 @@ export function teamConsoleUrl(
       segments.push(path);
     }
     url.pathname = `/${segments.join('/')}`;
-    const currentWorkspaceId = workspaceId?.trim() || url.searchParams.get('workspaceId')?.trim();
-    if (currentWorkspaceId && ['dashboard', 'billing', 'auto-recharge'].includes(section)) {
-      // CS-04 (DD:1312), inventory C-03: keep financial links on the current workspace.
-      const params = new URLSearchParams({ workspaceId: currentWorkspaceId, source: 'open_design' });
-      for (const [key, value] of url.searchParams) {
-        if (key !== 'workspaceId' && key !== 'source') params.append(key, value);
-      }
-      url.search = params.toString();
-    }
     // Auto-recharge lives on the same dashboard; the intent asks B to open its
     // settings dialog on arrival. See AMR_CONSOLE_AUTO_RECHARGE_INTENT for the
     // (unconfirmed) B-side handler this depends on.
@@ -904,7 +895,11 @@ export function workspaceAutoRechargeUrl(
 ): string | null {
   if (context && context.permissions?.canManageAutoRecharge !== true) return null;
   const settingsUrl = context?.workspaceSettingsUrl?.trim() || null;
-  if (settingsUrl) return teamConsoleUrl(settingsUrl, 'auto-recharge', context?.workspaceId);
+  if (settingsUrl) return amrWorkspaceUrl(
+    teamConsoleUrl(settingsUrl, 'auto-recharge'),
+    context?.workspaceId,
+    AMR_CONSOLE_AUTO_RECHARGE_INTENT,
+  ) ?? teamConsoleUrl(settingsUrl, 'auto-recharge');
   return amrAutoRechargeUrlForProfile(options.fallbackProfile, context?.workspaceId);
 }
 
@@ -1291,7 +1286,8 @@ export function EntryTopRightCluster({
   // #5517. It used to open a wallet page; balance, top-up and the auto-recharge
   // policy were rehomed onto the dashboard (vela #1055).
   const billingConsoleUrl = workspaceSettingsUrl
-    ? teamConsoleUrl(workspaceSettingsUrl, 'billing', context?.workspaceId)
+    ? amrWorkspaceUrl(teamConsoleUrl(workspaceSettingsUrl, 'billing'), context?.workspaceId)
+      ?? teamConsoleUrl(workspaceSettingsUrl, 'billing')
     : null;
   // Where the account menu's 账单 row goes. The workspace-settings URL is the
   // better answer when the context carries one (it pins the console to THIS

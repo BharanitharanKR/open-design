@@ -162,19 +162,25 @@ export function amrRechargeUrlForProfile(
   return amrWorkspaceUrl(base, workspaceId, AMR_CONSOLE_RECHARGE_INTENT) ?? base;
 }
 
-function amrWorkspaceUrl(
+export function amrWorkspaceUrl(
   base: string,
   workspaceId: string | null | undefined,
   intent?: string,
 ): string | null {
   const normalizedWorkspaceId = workspaceId?.trim();
   if (!normalizedWorkspaceId) return null;
-  const url = new URL(base);
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return null;
+  }
   // CS-04 (DD:1312), inventory C-03: workspace first, attribution, then intent.
-  url.search = new URLSearchParams({
-    workspaceId: normalizedWorkspaceId,
-    source: 'open_design',
-  }).toString();
+  const params = new URLSearchParams({ workspaceId: normalizedWorkspaceId, source: 'open_design' });
+  for (const [key, value] of url.searchParams) {
+    if (key !== 'workspaceId' && key !== 'source') params.append(key, value);
+  }
+  url.search = params.toString();
   if (intent) url.searchParams.set('billing', intent);
   return url.toString();
 }

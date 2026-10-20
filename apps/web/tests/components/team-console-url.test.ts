@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { teamConsoleUrl, workspaceAutoRechargeUrl, workspaceUpgradeUrl } from '../../src/components/EntryNavRail';
-import { setRuntimeAmrConsoleOrigin } from '../../src/runtime/amr-guidance';
+import { amrWorkspaceUrl, setRuntimeAmrConsoleOrigin } from '../../src/runtime/amr-guidance';
 import type { WorkspaceBillingSummary, WorkspaceCollabContext } from '@open-design/contracts';
 
 // Stand-in for an internal deployment's console origin — the real hostnames are
@@ -32,7 +32,7 @@ describe('teamConsoleUrl', () => {
   it('maps sections onto the real console routes, keeping the deep-link param', () => {
     expect(teamConsoleUrl(base, 'members')).toBe('https://web.example/team?workspaceId=ws-1');
     expect(teamConsoleUrl(base, 'dashboard')).toBe(
-      'https://web.example/dashboard?workspaceId=ws-1&source=open_design',
+      'https://web.example/dashboard?workspaceId=ws-1',
     );
     expect(teamConsoleUrl(base, 'settings')).toBe(
       'https://web.example/settings?workspaceId=ws-1',
@@ -44,7 +44,7 @@ describe('teamConsoleUrl', () => {
   // which is where balance, top-up and the auto-recharge policy now report
   // (vela #1055 rehomed them off the wallet route).
   it('sends the team billing row to the console dashboard, not a wallet page', () => {
-    expect(teamConsoleUrl(base, 'billing')).toBe('https://web.example/dashboard?workspaceId=ws-1&source=open_design');
+    expect(teamConsoleUrl(base, 'billing')).toBe('https://web.example/dashboard?workspaceId=ws-1');
   });
 
   // recvq725Kx0rM4 / recvqfXzHtY5wg: B's create-workspace dialog opens from a
@@ -60,17 +60,17 @@ describe('teamConsoleUrl', () => {
   });
 
   it('uses the current financial workspace over the URL and adds attribution in order', () => {
-    expect(teamConsoleUrl('https://web.example/cloud/settings?source=old&workspaceId=stale', 'auto-recharge', ' current / ')).toBe(
+    expect(amrWorkspaceUrl(teamConsoleUrl('https://web.example/cloud/settings?source=old&workspaceId=stale', 'auto-recharge'), ' current / ', 'auto-recharge')).toBe(
       'https://web.example/cloud/dashboard?workspaceId=current+%2F&source=open_design&billing=auto-recharge',
     );
-    expect(teamConsoleUrl('https://web.example/settings', 'billing', 'ws-1')).toBe(
+    expect(amrWorkspaceUrl(teamConsoleUrl('https://web.example/settings', 'billing'), 'ws-1')).toBe(
       'https://web.example/dashboard?workspaceId=ws-1&source=open_design',
     );
   });
 
   it('keeps unscoped section URLs byte-identical', () => {
     expect(teamConsoleUrl('https://web.example/settings', 'billing')).toBe('https://web.example/dashboard');
-    expect(teamConsoleUrl('https://web.example/settings', 'auto-recharge', '  ')).toBe('https://web.example/dashboard?billing=auto-recharge');
+    expect(teamConsoleUrl('https://web.example/settings', 'auto-recharge')).toBe('https://web.example/dashboard?billing=auto-recharge');
   });
 
   it('falls back to the raw URL when it cannot be parsed', () => {
