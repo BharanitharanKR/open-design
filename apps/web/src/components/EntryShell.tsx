@@ -1813,6 +1813,8 @@ export function EntryShell({
   const registrationInvite = useRegistrationInvite({
     status: amrRegistrationStatus, accountId: amrAccountId, configuredProfile: amrProfile?.trim() || config.agentCliEnv?.amr?.VELA_PROFILE?.trim() || amrRegistrationStatus?.profile || 'prod', context: railWorkspaceContext,
     identityReady: !workspaceContextState.loading && !workspaceContextState.identityChangePending && !workspaceContextState.failure,
+    identityUnavailable: Boolean(workspaceContextState.failure && !workspaceContextState.loading && !workspaceContextState.identityChangePending),
+    onRetryIdentity: () => notifyWorkspaceContextRefresh(),
     allowHost: view !== 'onboarding' || (config.mode === 'daemon' && config.agentId === 'amr'),
     onExit: (count, context) => {
       if (!amrAccountId) return;

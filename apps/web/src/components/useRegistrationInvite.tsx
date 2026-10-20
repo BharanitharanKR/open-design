@@ -26,6 +26,8 @@ interface Props {
   configuredProfile: string;
   context: WorkspaceCollabContext | null;
   identityReady: boolean;
+  identityUnavailable: boolean;
+  onRetryIdentity: () => void;
   allowHost: boolean;
   onExit: (count: number, context: WorkspaceCollabContext) => void;
 }
@@ -99,6 +101,7 @@ export function useRegistrationInvite(props: Props) {
     finally { finishing.current = false; }
   }
   const visible = candidate?.principal === principal && Boolean(principal);
+  if (claimedAccount && !alreadyComplete && props.identityUnavailable) return <div className={styles.recovery} role="alert"><p>{t('invite.error.generic')}</p><Button onClick={props.onRetryIdentity}>{t('invite.error.retry')}</Button></div>;
   if (claimedAccount && !alreadyComplete && (!identityReady || !context)) return <div className={styles.loading}><CenteredLoader label={t('entry.loadingWorkspace')} /></div>;
   if (principal && !alreadyComplete && !visible && errorFor !== principal && settledFor !== principal) return <div className={styles.loading}><CenteredLoader label={t('entry.loadingWorkspace')} /></div>;
   if (!visible && (!principal || errorFor !== principal)) return null;

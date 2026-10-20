@@ -11,8 +11,8 @@ vi.mock('../../src/components/LanguageMenu', () => ({ LanguageMenu: () => null }
 const status = { loggedIn: true, sessionState: 'authenticated', credentialRevision: 'credential-a', profile: 'selected', user: { id: 'new-account', email: 'new@example.com' }, configPath: '/test', registrationInvite: { accountId: 'new-account', deviceAuthorizationId: 'cuid-registration-1' } } as VelaLoginStatus;
 const baseContext = workspaceContextFixture({ workspaceId: 'new-workspace', workspaceMemberId: 'new-member', role: 'owner' });
 const context = { ...baseContext, permissions: { ...baseContext.permissions, canInviteMembers: true } };
-function Host({ current = status, ready = true, exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; exit?: (count: number, workspace: typeof context) => void }) {
-  const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, allowHost: true, onExit: exit });
+function Host({ current = status, ready = true, unavailable = false, retry = vi.fn(), exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; unavailable?: boolean; retry?: () => void; exit?: (count: number, workspace: typeof context) => void }) {
+  const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, identityUnavailable: unavailable, onRetryIdentity: retry, allowHost: true, onExit: exit });
   return view ?? <div>Normal home</div>;
 }
 function mount(props: Parameters<typeof Host>[0] = {}) { return render(<I18nProvider initial="zh-CN"><Host {...props} /></I18nProvider>); }
@@ -29,6 +29,17 @@ describe('strict registration invitation host', () => {
     result.rerender(<I18nProvider initial="zh-CN"><Host ready /></I18nProvider>);
     expect(screen.queryByText('Normal home')).toBeNull(); await screen.findByText(title);
     expect(mocks.status).toHaveBeenCalledWith({ refresh: true });
+  });
+  it('offers an identity retry on an explicit context failure before showing the verified invitation', async () => {
+    const retry = vi.fn(); const result = mount({ ready: false, unavailable: true, retry });
+    expect(screen.getByRole('alert')).toBeTruthy(); expect(screen.queryByText(title)).toBeNull();
+    expect(mocks.status).not.toHaveBeenCalled(); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '重试' })); expect(retry).toHaveBeenCalledTimes(1);
+    result.rerender(<I18nProvider initial="zh-CN"><Host ready={false} unavailable={false} retry={retry} /></I18nProvider>);
+    expect(screen.queryByRole('alert')).toBeNull(); expect(screen.queryByText(title)).toBeNull(); expect(mocks.status).not.toHaveBeenCalled();
+    result.rerender(<I18nProvider initial="zh-CN"><Host ready unavailable={false} retry={retry} /></I18nProvider>);
+    await screen.findByText(title); expect(mocks.status).toHaveBeenCalledWith({ refresh: true });
+    expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
   });
   it('ignores a late old-account verification after an account switch', async () => {
     let resolve!: (value: VelaLoginStatus) => void; mocks.status.mockReturnValue(new Promise(r => { resolve = r; }));
