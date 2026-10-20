@@ -4,6 +4,7 @@ import type { ChatMessage, MessagesStreamRecord } from '@open-design/contracts';
 export async function readMessageStream(
   response: Response,
   signal?: AbortSignal,
+  onProgress?: () => void,
 ): Promise<ChatMessage[]> {
   signal?.throwIfAborted();
   if (!response.body) throw new Error('Missing transcript response body');
@@ -52,6 +53,8 @@ export async function readMessageStream(
       const { value, done } = await reader.read();
       signal?.throwIfAborted();
       if (done) break;
+      // Renew on bytes, not complete lines: one large message may span many reads.
+      if (value.byteLength > 0) onProgress?.();
       consume(decoder.decode(value, { stream: true }));
     }
     consume(decoder.decode());

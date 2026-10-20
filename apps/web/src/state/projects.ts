@@ -1459,6 +1459,7 @@ export async function listMessages(
   conversationId: string,
   workspaceContext?: WorkspaceCollabContext | null,
   signal?: AbortSignal,
+  onProgress?: () => void,
 ): Promise<ChatMessage[]> {
   try {
     const resp = await fetch(
@@ -1481,7 +1482,7 @@ export async function listMessages(
       );
     }
     if (resp.headers.get('content-type')?.split(';')[0]?.trim() === MESSAGES_STREAM_CONTENT_TYPE) {
-      return await readMessageStream(resp, signal);
+      return await readMessageStream(resp, signal, onProgress);
     }
     const json = (await resp.json()) as { messages: ChatMessage[] };
     return json.messages ?? [];
