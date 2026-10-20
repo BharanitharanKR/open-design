@@ -52,10 +52,13 @@ vi.mock('../../src/collab/workspace-events', async (importOriginal) => {
 });
 
 vi.mock('../../src/components/AmrBalanceDialog', () => ({
-  AmrBalanceDialog: ({ onClose }: { onClose: () => void }) => (
+  AmrBalanceDialog: ({ onClose, onResolved }: { onClose: () => void; onResolved: () => void }) => (
     <div data-testid="amr-balance-dialog">
       <button type="button" data-testid="amr-balance-dialog-dismiss" onClick={onClose}>
         later
+      </button>
+      <button type="button" data-testid="amr-balance-dialog-funded" onClick={onResolved}>
+        authoritative wallet recovery
       </button>
     </div>
   ),
@@ -494,6 +497,41 @@ describe('Home memory funding gate', () => {
     await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
     expect(h.calls).toEqual(['begin', 'gate', 'create']);
     expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
+  });
+
+  it('a post-recharge dialog resolution restores the original Home draft/file and creates nothing until a new manual Send', async () => {
+    const h = await primeHomeFunding();
+    const attachment = new File(['original bytes'], 'brief.txt', { type: 'text/plain' });
+    fireEvent.change(screen.getByTestId('home-hero-file-input'), { target: { files: [attachment] } });
+    await submitHome('Keep this exact draft and attachment.');
+    await screen.findByTestId('amr-balance-dialog');
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    await act(async () => { h.confirm('available'); });
+    // Simulates the real dialog's authenticated funding-watch callback, not a
+    // second user Send. Background availability must never become consent.
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-funded'));
+    await waitFor(() => expect(screen.getByTestId('home-hero-submit')).toBeEnabled());
+    expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    expect(screen.getByTestId('home-hero-input')).toHaveTextContent('Keep this exact draft and attachment.');
+    expect(screen.getAllByText('brief.txt').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+    await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+    expect(h.onCreateProject.mock.calls[0]![0]).toMatchObject({ pendingFiles: [attachment] });
+  });
+
+  it('still rechecks sign-in and continues the pending submit when authentication completes', async () => {
+    const h = harness('amr');
+    await waitForWalletInMemory();
+    h.setGate({ kind: 'hard', reason: 'signed_out', snapshot: emptyWallet() });
+    await submitHome('Continue only after sign-in.');
+    await screen.findByTestId('amr-balance-dialog');
+    expect(h.onCreateProject).not.toHaveBeenCalled();
+    h.setGate({ kind: 'allow' });
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-funded'));
+    await waitFor(() => expect(h.onCreateProject).toHaveBeenCalledTimes(1));
+    expect(h.calls).toEqual(['begin', 'gate', 'gate', 'create']);
+    expect(h.rollback).not.toHaveBeenCalled();
   });
 
   it.each(['unknown', 'missing', 'unavailable', 'timeout'] as const)('keeps Home blocked after %s confirmation and permits a fresh retry', async (result) => {
