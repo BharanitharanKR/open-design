@@ -1,6 +1,15 @@
 import type { Dict } from '../types';
 
 export const th: Dict = {
+  "workspaceQuota.unavailable": "ไม่สามารถแสดงรายละเอียดได้",
+  "workspaceQuota.unsubscribed": "ยังไม่ได้สมัครสมาชิก",
+  "workspaceQuota.contactOwner": "ติดต่อ Owner",
+  "workspaceQuota.payAsYouGo": "ยอดคงเหลือแบบจ่ายตามการใช้งาน",
+  "workspaceQuota.resetAt": "รีเซ็ตเมื่อ {time}",
+  "workspaceQuota.models": "การเข้าถึงโมเดล",
+  "workspaceQuota.viewBalance": "ดูยอดคงเหลือ",
+  "workspaceQuota.refresh": "รีเฟรช",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

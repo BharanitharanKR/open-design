@@ -1,6 +1,15 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  "workspaceQuota.unavailable": "詳細は現在利用できません",
+  "workspaceQuota.unsubscribed": "未契約",
+  "workspaceQuota.contactOwner": "Owner に連絡",
+  "workspaceQuota.payAsYouGo": "従量制残高",
+  "workspaceQuota.resetAt": "{time} にリセット",
+  "workspaceQuota.models": "モデルの利用条件",
+  "workspaceQuota.viewBalance": "残高を確認",
+  "workspaceQuota.refresh": "更新",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",

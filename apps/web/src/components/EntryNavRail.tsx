@@ -1,3 +1,5 @@
+import { WorkspaceQuotaPopover } from './WorkspaceQuotaPopover';
+import { workspaceQuotaView } from '../collab/workspace-quota-view';
 import { CodingPlanUsage } from './CodingPlanUsage';
 import planCardStyles from './PersonalPlanCard.module.css';
 import styles from './EntryNavRail.module.css';
@@ -1343,7 +1345,7 @@ export function EntryTopRightCluster({
   // billing card under it); what it SAYS follows the zero-balance ruling
   // above — a subscriber at $0.00 keeps the plan wordmark and drops the
   // number, so the card stays reachable without a permanent zero next to it.
-  const showCreditsPill = Boolean(billing || balanceLabel);
+  const showCreditsPill = Boolean(context || billing || balanceLabel);
 
   function openBillingUpgrade() {
     if (!billingUpgradeUrl) return;
@@ -1439,19 +1441,9 @@ export function EntryTopRightCluster({
                   aria-controls={creditsPanelOpen ? creditsPanelId : undefined}
                   aria-label={isFreePlan ? t('entry.creditsUpgrade') : t('entry.credits')}
                   onClick={() => {
-                    // The free pill IS the upgrade CTA, so it opens the upgrade
-                    // flow when this member is allowed to buy. Without that
-                    // permission (or without an upgrade URL) it falls back to
-                    // the console, which is where the paid pill always goes.
-                    if (isFreePlan && canUpgrade) {
-                      trackAccountAction('upgrade');
-                      openBillingUpgrade();
-                      return;
-                    }
+                    // C-01 E-state triggers: clicking, hovering or focusing opens the quota panel.
                     trackAccountAction('credits');
-                    if (accountBillingUrl) {
-                      window.open(accountBillingUrl, '_blank', 'noopener,noreferrer');
-                    }
+                    openCreditsPanel();
                   }}
                 >
                   {isFreePlan ? (
@@ -1496,93 +1488,20 @@ export function EntryTopRightCluster({
                   id={creditsPanelId}
                   role="dialog"
                   aria-label={t('entry.credits')}
-                  className={`entry-top-right-credits-panel ${planTier !== 'team' ? planCardStyles.panel : ''}`}
+                  className={`entry-top-right-credits-panel ${planCardStyles.panel}`}
                   data-testid="entry-top-right-credits-panel"
                 >
-                  <div
-                    className={`entry-nav-rail__menu-credits ${planTier !== 'team' ? planCardStyles.card : ''}`}
-                  >
-                    <div className="entry-nav-rail__menu-credits-head">
-                      <span
-                        className="entry-nav-rail__menu-credits-plan"
-                        role={planTier !== 'team' ? 'img' : undefined}
-                        aria-label={planTier !== 'team' ? planTier ?? tierLabel : undefined}
-                      >
-                        {planTier === 'team' ? tierLabel : null}
-                        {planTier ? (
-                          <PlanWordmark tier={planTier} height={planTier === 'team' ? 11 : 20} />
-                        ) : null}
-                      </span>
-                      {canUpgrade && !canManageTopTierBilling ? (
-                        <button
-                          type="button"
-                          className="entry-nav-rail__menu-credits-upgrade"
-                          onClick={() => {
-                            trackAccountAction('upgrade');
-                            setCreditsPanelOpen(false);
-                            openBillingUpgrade();
-                          }}
-                        >
-                          {t('entry.creditsUpgrade')}
-                        </button>
-                      ) : canManageTopTierBilling ? (
-                        <button
-                          type="button"
-                          className="entry-nav-rail__menu-credits-upgrade"
-                          onClick={() => {
-                            trackAccountAction('credits');
-                            setCreditsPanelOpen(false);
-                            if (billingManageUrl) {
-                              window.open(billingManageUrl, '_blank', 'noopener,noreferrer');
-                            }
-                          }}
-                        >
-                          {t('entry.creditsManage')}
-                        </button>
-                      ) : null}
-                    </div>
-                    {planTier !== 'team' ? (
-                      <CodingPlanUsage
-                        context={context}
-                        planTier={planTier}
-                        billing={billingResponse}
-                        usageUrl={accountBillingUrl}
-                        onUsageClick={() => {
-                          trackAccountAction('credits');
-                          setCreditsPanelOpen(false);
-                        }}
-                        wallet={{
-                          balanceUsd,
-                          url: walletRechargeUrl,
-                          onClick: () => {
-                            trackAccountAction('credits');
-                            setCreditsPanelOpen(false);
-                          },
-                        }}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className="entry-nav-rail__menu-credits-row"
-                        data-testid="entry-nav-credits-row"
-                        onClick={() => {
-                          trackAccountAction('credits');
-                          setCreditsPanelOpen(false);
-                          if (walletRechargeUrl) {
-                            window.open(walletRechargeUrl, '_blank', 'noopener,noreferrer');
-                          }
-                        }}
-                      >
-                        <span className="entry-nav-rail__menu-credits-label">
-                          <RemixIcon name="battery-charge-line" size={14} /> {t('billing.wallet')}
-                        </span>
-                        <span className="entry-nav-rail__menu-credits-value">
-                          <bdi>{walletBalanceLabel ?? '—'}</bdi>
-                          <Icon name="chevron-right" size={14} />
-                        </span>
-                      </button>
-                    )}
-                  </div>
+                  <WorkspaceQuotaPopover
+                    view={workspaceQuotaView({ context, response: billingResponse, tier: labelTier, balanceUsd })}
+                    context={context}
+                    profile={priorityAnnouncementAmrProfile}
+                    badgeTier={planTier}
+                    planLabel={tierLabel}
+                    onNavigate={(action) => {
+                      trackAccountAction(action);
+                      setCreditsPanelOpen(false);
+                    }}
+                  />
                 </div>
               ) : null}
             </div>

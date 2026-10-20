@@ -1,6 +1,15 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  "workspaceQuota.unavailable": "明细暂不可用",
+  "workspaceQuota.unsubscribed": "未订阅",
+  "workspaceQuota.contactOwner": "联系 Owner",
+  "workspaceQuota.payAsYouGo": "按量额度",
+  "workspaceQuota.resetAt": "{time} 重置",
+  "workspaceQuota.models": "模型说明",
+  "workspaceQuota.viewBalance": "查看余额",
+  "workspaceQuota.refresh": "刷新",
+
   "homeInvite.banner": "免费邀请同事，一起看设计、聊想法",
   "homeInvite.invite": "邀请",
   "homeInvite.dismiss": "关闭邀请横条",

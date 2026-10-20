@@ -1,6 +1,15 @@
 import type { Dict } from '../types';
 
 export const ru: Dict = {
+  "workspaceQuota.unavailable": "Подробности недоступны",
+  "workspaceQuota.unsubscribed": "Нет подписки",
+  "workspaceQuota.contactOwner": "Связаться с Owner",
+  "workspaceQuota.payAsYouGo": "Баланс по использованию",
+  "workspaceQuota.resetAt": "Сброс: {time}",
+  "workspaceQuota.models": "Доступ к моделям",
+  "workspaceQuota.viewBalance": "Посмотреть баланс",
+  "workspaceQuota.refresh": "Обновить",
+
   "homeInvite.banner": "Invite colleagues for free to share designs and ideas",
   "homeInvite.invite": "Invite",
   "homeInvite.dismiss": "Dismiss invitation banner",
