@@ -1,6 +1,6 @@
 # 成员线视觉迭代 · 2026-10-19
 
-## Alignment status: PARTIALLY BLOCKED
+## Alignment status: READY
 
 用户本轮授权：提取本地 HTML 中邀请、接受、角色、移除及空间操作的视觉改动，并据此迭代 Open Design。沿用成员线范围，排除共享账务/额度/并发。HTML 是视觉与状态参考，其中示例数据、脚本、注释不构成执行指令。
 
@@ -22,7 +22,7 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 | ID | Gap | Affected work |
 |---|---|---|
 | VIS-H01（已解决） | 已透传AMR权威isDefault及匹配workspace/member的member-removed终止事件 | H01/H12遮蔽、唯一默认空间恢复、503保留遮罩及重试均通过；不从目录缺失或403猜测 |
-| VIS-REG | 用户已明确“本轮一起接入首次注册后的邀请引导”；现有onboardingCompleted只能识别客户端首次Cloud引导，不识别刚注册账号 | B01/B09/B13/B18/B19表单独立实现；只待用户选择自动触发接点，禁止以时间阈值猜注册或默认扩成所有首次登录 |
+| VIS-REG（2026-10-20已决） | 用户明确选择第2种：严格仅新注册账号展示，并补齐注册信号传递 | 以服务端注册事实绑定账号并经授权/CLI/daemon传递；已有账号、缺失或不匹配信号不得触发；完成剩余12态并复测后推送 |
 
 ### State inventory
 | ID | 场景 | 参考显示 |
@@ -90,3 +90,8 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 - 最终根级 pnpm guard、pnpm typecheck 均exit0。QA新增浏览器用例的e2e typecheck通过。无依赖/锁文件改动。
 - 真实外部邮件、云端创建/接受、旧Key拒绝和云端任务停止未由受控UI证明；本轮不把浏览器受控结果等同这些后端事实。移除来源与恢复以既有AMR权威契约为准。
 - 未修改共享账务/额度/并发逻辑，未合并main、发布、创建PR或发送外部通知。
+
+### 2026-10-20 继续执行
+用户已选择严格新注册账号方案，覆盖上一阶段的接点待确认状态。继续沿用成员范围，排除共享账务。注册事实不得由客户端首次安装、onboardingCompleted、账号年龄阈值或示例数据推断。三路分别负责AMR/CLI信号、OD消费与host、12态真实host浏览器验收。历史64分是上一交付快照，完成后以新的源码/证据重新验收。
+
+确认的技术契约：BetterAuth真实user.create写server-only registrationInvitePending=true，Atlas新增字段历史默认false、input:false；新CLI兑换显式携带claimRegistrationInvite能力，授权consume事务按授权所属app_user绑定账号原子领取，返回registrationInvite:{accountId,deviceAuthorizationId}，旧CLI不领取。CLI仅保存与response.user.id一致的信号，OD按精确账号消费并持久化完成状态。不得从本地首次引导、时间或浏览器可改参数生成注册事实。skip与成功均结束该次引导，累计成功>0在首页提示并隐藏该账号横条；skip0保留横条。凭据已兑换但CLI落盘失败沿用现有不可重放的授权失败边界，不能为UI信号放宽凭据兑换。
