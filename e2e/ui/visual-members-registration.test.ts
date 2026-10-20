@@ -1,5 +1,5 @@
 import { expect, test } from '@/playwright/suite';
-import { captureRegistration, registrationHost } from '@/playwright/members-registration';
+import { captureRegistration, registrationHost, NEW_ACCOUNT_ID, NEW_AUTHORIZATION_ID } from '@/playwright/members-registration';
 import { T } from '@/timeouts';
 import type { Page } from '@playwright/test';
 
@@ -108,6 +108,7 @@ test('[P1] B09 B18 confirmed success waits before home and counts exactly two', 
   await expect(page.getByTestId('home-view')).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: '已向 2 位同事发送邀请' })).toBeVisible();
   await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(key => localStorage.getItem(key), `od.registration-invite.completed:${NEW_ACCOUNT_ID}:${NEW_AUTHORIZATION_ID}`)).toBe('1');
   await captureRegistration(page, 'B18');
 });
 
@@ -155,6 +156,8 @@ test('[P1] B13 skip without confirmed success shows home banner and consumes onb
   await expect(host.form).toHaveCount(0);
   await expect(page.getByRole('region', { name: '邀请', exact: true })).toBeVisible();
   expect(host.invitationRequests).toEqual([]);
+  expect(await page.evaluate(key => localStorage.getItem(key), `od.registration-invite.completed:${NEW_ACCOUNT_ID}:${NEW_AUTHORIZATION_ID}`)).toBe('1');
+  expect(await page.evaluate(key => localStorage.getItem(key), `od.invitation-banner.dismissed:${NEW_ACCOUNT_ID}`)).toBeNull();
   await captureRegistration(page, 'B13');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('home-view')).toBeVisible();
@@ -185,8 +188,81 @@ test('[P1] completed registration does not leak or reappear across account switc
   await host.changeAccount({ id: 'second-existing-account' });
   await expect(page.getByTestId('home-view')).toBeVisible();
   await expect(host.form).toHaveCount(0);
-  await host.changeAccount({ id: 'registration-new-account', receipt: { accountId: 'registration-new-account', deviceAuthorizationId: 'registration-authorization-one' } });
+  await host.changeAccount({ id: NEW_ACCOUNT_ID, receipt: { accountId: NEW_ACCOUNT_ID, deviceAuthorizationId: NEW_AUTHORIZATION_ID } });
   await expect(page.getByTestId('home-view')).toBeVisible();
   await expect(host.form).toHaveCount(0);
   expect(host.invitationRequests).toEqual([]);
 });
+
+
+test('[P1] unfinished registration survives reload without another login or lost receipt', async ({ page }) => {
+  const host = await start(page);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(host.form).toBeVisible({ timeout: T.long });
+  await expect(host.form.getByRole('heading')).toHaveText('免费邀请同事，一起做设计');
+  expect(host.loginCalls).toBe(1);
+  expect(host.invitationRequests).toEqual([]);
+});
+
+test('[P1] completed account does not suppress a separate new account receipt', async ({ page }) => {
+  const host = await start(page);
+  await host.form.getByRole('button', { name: '暂时跳过' }).click();
+  await expect(page.getByTestId('home-view')).toBeVisible();
+  await host.changeAccount({ id: '33333333-3333-4333-8333-333333333333', receipt: { accountId: '33333333-3333-4333-8333-333333333333', deviceAuthorizationId: '44444444-4444-4444-8444-444444444444' } });
+  await expect(host.form).toBeVisible({ timeout: T.long });
+});
+
+async function expectNoCompletionOrDismissal(page: Page, id: string, authorization: string) {
+  const completion = `od.registration-invite.completed:${encodeURIComponent(id)}:${encodeURIComponent(authorization)}`;
+  const dismissal = `od.invitation-banner.dismissed:${encodeURIComponent(id)}`;
+  expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), [completion, dismissal])).toEqual([null, null]);
+}
+
+test('[P1] account change during send aborts old success without dismissing the next account', async ({ page }) => {
+  const host = await start(page);
+  await page.clock.install();
+  let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+  let settled = false;
+  await host.invite(async route => { await gate; try { await route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: true }] } }); } finally { settled = true; } });
+  try {
+    await host.form.locator('input[type=email]').fill('mika@example.com');
+    await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
+    await expect(host.form.getByRole('button', { name: /正在发送/ })).toBeDisabled();
+    await host.changeAccount({ id: 'second-existing-account' }, false);
+    await expect(host.form).toHaveCount(0);
+    await expect(page.getByTestId('home-view')).toBeVisible({ timeout: T.long });
+    release(); await expect.poll(() => settled).toBe(true);
+    await page.clock.fastForward(2000);
+    await expect(page.getByRole('status').filter({ hasText: /已向.*位同事发送邀请/ })).toHaveCount(0);
+    await expectNoCompletionOrDismissal(page, NEW_ACCOUNT_ID, NEW_AUTHORIZATION_ID);
+    await expectNoCompletionOrDismissal(page, 'second-existing-account', NEW_AUTHORIZATION_ID);
+    await expect(page.getByRole('region', { name: '邀请', exact: true })).toBeVisible();
+  } finally { release(); }
+});
+
+for (const success of [false, true]) {
+  test(`[P1] pending finish fresh identity read cannot consume switched account success=${success}`, async ({ page }) => {
+    const host = await start(page);
+    await page.clock.install();
+    const held = host.holdNextFresh();
+    try {
+      if (success) {
+        await host.invite(route => route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: true }] } }));
+        await host.form.locator('input[type=email]').fill('mika@example.com');
+        await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
+        await expect(host.form.getByRole('button', { name: '已发送邀请', exact: true })).toBeDisabled();
+        await page.clock.fastForward(1000);
+      } else await host.form.getByRole('button', { name: '暂时跳过' }).click();
+      await expect.poll(() => held.opened, { timeout: T.long }).toBe(true);
+      await host.changeAccount({ id: 'second-existing-account' }, false);
+      await expect(host.form).toHaveCount(0);
+      await expect(page.getByTestId('home-view')).toBeVisible({ timeout: T.long });
+      held.release(); await held.settled;
+      await page.clock.fastForward(2000);
+      await expectNoCompletionOrDismissal(page, NEW_ACCOUNT_ID, NEW_AUTHORIZATION_ID);
+      await expectNoCompletionOrDismissal(page, 'second-existing-account', NEW_AUTHORIZATION_ID);
+      await expect(page.getByRole('status').filter({ hasText: /已向.*位同事发送邀请/ })).toHaveCount(0);
+      await expect(page.getByRole('region', { name: '邀请', exact: true })).toBeVisible();
+    } finally { held.release(); }
+  });
+}

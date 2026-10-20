@@ -4,6 +4,8 @@ import { expect, type Page, type Route } from '@playwright/test';
 import { configureVisualPage, VISUAL_AMR_AGENT, waitForVisualStable } from './visual.js';
 import { T } from '../timeouts.js';
 
+export const NEW_ACCOUNT_ID = '11111111-1111-4111-8111-111111111111';
+export const NEW_AUTHORIZATION_ID = '22222222-2222-4222-8222-222222222222';
 export interface RegistrationReceipt { accountId: string; deviceAuthorizationId: string }
 export interface RegistrationAccount { id: string; receipt?: RegistrationReceipt }
 export async function registrationHost(page: Page, options: {
@@ -11,12 +13,13 @@ export async function registrationHost(page: Page, options: {
   existingSetup?: boolean;
   initiallyAuthenticated?: boolean;
 } = {}) {
-  let account = options.account ?? { id: 'registration-new-account', receipt: { accountId: 'registration-new-account', deviceAuthorizationId: 'registration-authorization-one' } };
+  let account = options.account ?? { id: NEW_ACCOUNT_ID, receipt: { accountId: NEW_ACCOUNT_ID, deviceAuthorizationId: NEW_AUTHORIZATION_ID } };
   let loggedIn = options.initiallyAuthenticated ?? false;
   let loginCalls = 0;
   let statusReads = 0;
+  let heldFresh: { gate: Promise<void>; began: () => void; finished: () => void } | null = null;
   const invitationRequests: unknown[] = [];
-  const config = { mode: 'daemon' as const, apiKey: '', baseUrl: '', model: 'deepseek-v4-flash', agentId: 'amr', skillId: null, designSystemId: null, onboardingCompleted: options.existingSetup ?? true, agentModels: { amr: { model: 'deepseek-v4-flash' } } };
+  const config = { mode: 'daemon' as const, apiKey: '', baseUrl: '', model: 'deepseek-v4-flash', agentId: 'amr', skillId: null, designSystemId: null, onboardingCompleted: options.existingSetup ?? true, agentCliEnv: { amr: { OPEN_DESIGN_AMR_PROFILE: 'test' } }, agentModels: { amr: { model: 'deepseek-v4-flash' } } };
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page, { config, agents: [VISUAL_AMR_AGENT], velaLoggedIn: false });
   await page.addInitScript(() => { localStorage.setItem('open-design:locale', 'zh-CN'); localStorage.setItem('open-design:locale-source', 'manual'); });
@@ -25,9 +28,12 @@ export async function registrationHost(page: Page, options: {
     if (route.request().method() === 'PUT') { Object.assign(config, route.request().postDataJSON()); return route.fulfill({ json: { ok: true } }); }
     return route.fulfill({ json: { config } });
   });
-  await page.route('**/api/integrations/vela/status', route => {
+  await page.route('**/api/integrations/vela/status**', async route => {
     statusReads += 1;
-    return route.fulfill({ json: loggedIn ? { loggedIn: true, loginInFlight: false, sessionState: 'authenticated', credentialRevision: `revision-${account.id}`, profile: 'test', user: { id: account.id, email: `${account.id}@example.com`, plan: 'free' }, ...(account.receipt ? { registrationInvite: account.receipt } : {}) } : { loggedIn: false, loginInFlight: false, sessionState: 'signed_out', credentialRevision: 'signed-out', profile: 'test', user: null } });
+    const body = loggedIn ? { loggedIn: true, loginInFlight: false, sessionState: 'authenticated', credentialRevision: `revision-${account.id}`, profile: 'test', user: { id: account.id, email: `${account.id}@example.com`, plan: 'free' }, ...(account.receipt ? { registrationInvite: account.receipt } : {}) } : { loggedIn: false, loginInFlight: false, sessionState: 'signed_out', credentialRevision: 'signed-out', profile: 'test', user: null };
+    const held = new URL(route.request().url()).searchParams.get('refresh') === '1' ? heldFresh : null;
+    if (held) { heldFresh = null; held.began(); await held.gate; }
+    try { await route.fulfill({ json: body }); } finally { held?.finished(); }
   });
   await page.route('**/api/integrations/vela/login', route => {
     loginCalls += 1; loggedIn = true;
@@ -54,7 +60,19 @@ export async function registrationHost(page: Page, options: {
     async invite(handler: (route: Route) => Promise<void>) {
       await page.route('**/api/workspace/invite', async route => { invitationRequests.push(route.request().postDataJSON()); await handler(route); });
     },
-    async changeAccount(next: RegistrationAccount) { account = next; loggedIn = true; await page.reload({ waitUntil: 'domcontentloaded' }); },
+    holdNextFresh() {
+      let release!: () => void; let began!: () => void; let finished!: () => void; let opened = false;
+      const gate = new Promise<void>(resolve => { release = resolve; });
+      const started = new Promise<void>(resolve => { began = () => { opened = true; resolve(); }; });
+      const settled = new Promise<void>(resolve => { finished = resolve; });
+      heldFresh = { gate, began, finished };
+      return { release, started, settled, get opened() { return opened; } };
+    },
+    async changeAccount(next: RegistrationAccount, reload = true) {
+      account = next; loggedIn = true;
+      if (reload) await page.reload({ waitUntil: 'domcontentloaded' });
+      else await page.evaluate(() => window.dispatchEvent(new CustomEvent('od:amr-login-status-change', { detail: { reason: 'status-changed' } })));
+    },
   };
 }
 
