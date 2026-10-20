@@ -139,6 +139,7 @@ export function mapVelaWorkspaceContext(
     : billingStateFromLifecycle(lifecycleState);
 
   const context: WorkspaceCollabContext = {
+    ...(typeof raw.memberCount === 'number' && Number.isSafeInteger(raw.memberCount) && raw.memberCount >= 0 ? { memberCount: raw.memberCount } : {}),
     workspaceId,
     workspaceType,
     workspaceMemberId,
@@ -206,6 +207,8 @@ function mapVelaWorkspaceDirectoryItem(input: unknown): WorkspaceDirectoryItem |
   if (!MEMBER_STATUSES.has(raw.memberStatus as WorkspaceMemberStatus)) return null;
   if (!LIFECYCLE_STATES.has(raw.lifecycleState as WorkspaceLifecycleState)) return null;
   const item: WorkspaceDirectoryItem = {
+    ...(Number.isInteger(raw.memberCount) && (raw.memberCount as number) >= 0
+      ? { memberCount: raw.memberCount as number } : {}),
     ...(raw.isDefault === true ? { isDefault: true } : {}),
     workspaceId,
     workspaceName,
@@ -377,6 +380,7 @@ export function workspaceContextFromDirectoryItem(
   configuredEnv: Record<string, string> = {},
 ): WorkspaceCollabContext {
   const context: WorkspaceCollabContext = {
+    ...(item.memberCount !== undefined ? { memberCount: item.memberCount } : {}),
     workspaceId: item.workspaceId,
     workspaceType: item.workspaceType,
     workspaceMemberId: item.workspaceMemberId,
