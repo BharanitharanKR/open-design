@@ -95,7 +95,7 @@ export async function createWorkspaceInvite(
       };
     }
     const body = (await response.json().catch(() => null)) as
-      | { inviteId?: unknown; id?: unknown }
+      | { inviteId?: unknown; id?: unknown; deliveryStatus?: unknown }
       | null;
     const inviteId =
       typeof body?.inviteId === 'string'
@@ -103,6 +103,18 @@ export async function createWorkspaceInvite(
         : typeof body?.id === 'string'
           ? body.id
           : '';
+    if (!inviteId.trim()) {
+      return { ok: false, status: 502, error: 'create_invalid_response' };
+    }
+    if (body?.deliveryStatus === 'pending') {
+      return { ok: false, status: 502, error: 'delivery_pending' };
+    }
+    if (body?.deliveryStatus === 'delivery_failed') {
+      return { ok: false, status: 502, error: 'delivery_failed' };
+    }
+    if (body?.deliveryStatus !== 'sent') {
+      return { ok: false, status: 502, error: 'create_invalid_response' };
+    }
     return { ok: true, inviteId };
   } catch {
     return { ok: false, status: 502, error: 'create_unreachable' };

@@ -1,6 +1,9 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
+  "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
+  "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
   "workspaceQuota.unavailable": "明細暫不可用",
   "workspaceQuota.unsubscribed": "未訂閱",
   "workspaceQuota.contactOwner": "聯絡 Owner",

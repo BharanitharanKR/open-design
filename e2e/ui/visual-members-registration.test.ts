@@ -95,9 +95,11 @@ test('[P1] B07 existing member error remains local to the editable row', async (
 test('[P1] B08 pending request prevents repeat submits and skip', async ({ page }) => {
   const host = await start(page);
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
-  await host.invite(async route => { await gate; await route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: false, error: 'create_unreachable' }] } }); });
+  await host.invite(async route => { await gate; await route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: false, error: 'create_unreachable' }, { email: 'lee@example.com', ok: false, error: 'create_unreachable' }] } }); });
   try {
-    await host.form.locator('input[type=email]').fill('mika@example.com');
+    await host.form.getByRole('button', { name: '添加成员' }).click();
+    await host.form.locator('input[type=email]').nth(0).fill('mika@example.com');
+    await host.form.locator('input[type=email]').nth(1).fill('lee@example.com');
     await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
     await expect(host.form.getByRole('button', { name: /正在发送/ })).toBeDisabled();
     await expect(host.form.getByRole('button', { name: '暂时跳过' })).toBeDisabled();

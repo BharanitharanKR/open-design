@@ -36,6 +36,9 @@ export interface Dict {
   'workspaceQuota.payAsYouGo': string;
   'workspaceQuota.resetAt': string;
   'workspaceQuota.viewBalance': string;
+  'workspaceInvite.deliveryPending': string;
+  'workspaceInvite.deliveryFailed': string;
+  'workspaceInvite.invalidResponse': string;
 
   'billing.wallet': string;
   /** The product name of the allowance pool; kept untranslated in every locale. */

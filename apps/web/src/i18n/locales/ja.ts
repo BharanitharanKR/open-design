@@ -1,6 +1,9 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
+  "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
+  "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
   "workspaceQuota.unavailable": "詳細は現在利用できません",
   "workspaceQuota.unsubscribed": "未契約",
   "workspaceQuota.contactOwner": "Owner に連絡",

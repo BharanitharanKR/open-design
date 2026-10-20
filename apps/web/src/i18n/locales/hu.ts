@@ -1,6 +1,9 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
+  "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
+  "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
   "workspaceQuota.unavailable": "A részletek nem érhetők el",
   "workspaceQuota.unsubscribed": "Nincs előfizetés",
   "workspaceQuota.contactOwner": "Kapcsolat az Ownerrel",

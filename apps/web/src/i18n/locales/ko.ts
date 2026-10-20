@@ -1,6 +1,9 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  "workspaceInvite.deliveryPending": "Invitation delivery is pending. Check again shortly.",
+  "workspaceInvite.deliveryFailed": "Invitation delivery failed. Please retry.",
+  "workspaceInvite.invalidResponse": "Unable to confirm invitation delivery. Please retry later.",
   "workspaceQuota.unavailable": "세부 정보를 사용할 수 없습니다",
   "workspaceQuota.unsubscribed": "구독 안 함",
   "workspaceQuota.contactOwner": "Owner에게 문의",

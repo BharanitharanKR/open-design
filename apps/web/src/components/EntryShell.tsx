@@ -1922,7 +1922,7 @@ export function EntryShell({
   };
 
   return (
-    <div className="entry-shell entry-shell--no-header">
+    <div className={`entry-shell entry-shell--no-header${['home', 'all-projects', 'projects', 'drafts'].includes(view) ? ` ${styles.memberFrame}` : ''}`}>
       <div
         className={`entry${railOpen ? ' entry--rail-open' : ''}`}
         // The team/local shell is a labeled Manus-style rail, so widen the rail
