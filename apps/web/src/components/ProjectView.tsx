@@ -1,3 +1,4 @@
+import { homeAutoSendIdentity, stableIdentityDigest, type HomeRequestConcurrencyRejection } from '../runtime/home-auto-send-identity';
 import { readRetriedErrorSurface, retriedErrorSurfaceKey, writeRetriedErrorSurface } from '../runtime/chat/retried-error-surface';
 import {
   startTransition,
@@ -488,6 +489,8 @@ type ProjectChatSendMeta = ChatSendMeta & {
    * 交给队列项保管了,回放时再声称「输入框在等它」就是撒谎。
    */
   composerOwnedDraft?: true;
+  /** Only Home auto-send owns the original Home input and initial request. */
+  initialHomeSend?: true;
   /** Stable task lineage for retries, resumes and clarification answers. */
   taskAnalytics?: ChatTaskExecutionAnalytics;
   /** Explicit daemon-issued OD Next continuation handle. */
@@ -985,6 +988,8 @@ interface Props {
   creationHandoff?: { prompt: string; files?: readonly File[] } | null;
   /** The first transcript is on screen (or failed to load): drop the card. */
   onCreationHandoffSettled?: (projectId: string) => void;
+  onInitialHomeRequestConcurrencyRejected?: (input: HomeRequestConcurrencyRejection) => boolean;
+  onInitialHomeRequestProgress?: (projectId: string, clientRequestId: string) => void;
 }
 
 export type ProjectRenameFenceToken = Readonly<{
@@ -1413,29 +1418,6 @@ function designSystemNeedsWorkPrompt(
 
 function autoSendFirstMessageKey(projectId: string): string {
   return `od:auto-send-first:${projectId}`;
-}
-
-function stableIdentityDigest(value: string): string {
-  // FNV-1a 64-bit keeps the daemon-facing id bounded while preserving a
-  // deterministic identity across retries and ProjectView remounts.
-  let hash = 0xcbf29ce484222325n;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= BigInt(value.charCodeAt(index));
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
-  }
-  return hash.toString(36).padStart(13, '0');
-}
-
-function homeAutoSendIdentity(projectId: string): Pick<
-  ProjectChatSendMeta,
-  'assistantMessageId' | 'clientRequestId' | 'userMessageId'
-> {
-  const handoffId = `home-auto-send-${stableIdentityDigest(projectId)}`;
-  return {
-    clientRequestId: handoffId,
-    userMessageId: `${handoffId}-user`,
-    assistantMessageId: `${handoffId}-assistant`,
-  };
 }
 
 /**
@@ -2179,6 +2161,8 @@ export function ProjectView({
   onRunActivityChange,
   creationHandoff = null,
   onCreationHandoffSettled,
+  onInitialHomeRequestConcurrencyRejected,
+  onInitialHomeRequestProgress,
 }: Props) {
   const { locale, t } = useI18n();
   const amrAuthRetryMountIdRef = useRef<string | null>(null);
@@ -2919,6 +2903,7 @@ export function ProjectView({
     conversationId: string; authorityKey: string; accountGeneration: number;
     branch: AmrBalanceBranch; workspaceContext: WorkspaceCollabContext | null;
     draft: RejectedComposerSend | null;
+    initialHomeSend: boolean;
   } | null>(null);
   const [concurrencyDialogOpen, setConcurrencyDialogOpen] = useState(false);
   const latestRequestSendRef = useRef(new Map<string, string>());
@@ -9413,6 +9398,12 @@ export function ProjectView({
       let liveHtml = '';
       let streamedText = '';
       let observedModelWork = false;
+      let homeRejectionSourceRetired = false;
+      const retireHomeRejectionSource = () => {
+        if (homeRejectionSourceRetired || !meta?.initialHomeSend) return;
+        homeRejectionSourceRetired = true;
+        onInitialHomeRequestProgress?.(project.id, clientRequestId);
+      };
 
       const updateAssistant = (updater: (prev: ChatMessage) => ChatMessage) => {
         setMessages((curr) => {
@@ -9700,7 +9691,7 @@ export function ProjectView({
       cancelRef.current = cancelController;
       const handlers = {
         onDelta: (delta: string) => {
-          if (delta.trim()) observedModelWork = true;
+          if (delta.trim()) { observedModelWork = true; retireHomeRejectionSource(); }
           if (delta.trim()) retireFundingHint();
           // See reattach-path comment above for rationale.  PR #4651 round 9.
           if (currentRunId) {
@@ -9712,7 +9703,7 @@ export function ProjectView({
           textBuffer.appendContent(delta);
         },
         onAgentEvent: (ev: AgentEvent) => {
-          if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use' || ev.kind === 'tool_result') observedModelWork = true;
+          if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use' || ev.kind === 'tool_result') { observedModelWork = true; retireHomeRejectionSource(); }
           if (ev.kind === 'text' || ev.kind === 'thinking' || ev.kind === 'tool_use') retireFundingHint();
           if (currentRunId) {
             transientFailedRetriesRef.current.delete(currentRunId);
@@ -9775,6 +9766,7 @@ export function ProjectView({
           });
         },
         onDone: (fullText = '') => {
+          retireHomeRejectionSource();
           retireFundingHint();
           liveFocusClosed = true;
           // The daemon delivers onDone even for a canceled run, so a run
@@ -10121,6 +10113,7 @@ export function ProjectView({
           const limitDetail = (err as Error & { failureDetail?: string }).failureDetail;
           const requestLimit = limitDetail === 'membership_concurrency_limit'
             || (limitDetail == null && isMembershipConcurrencyLimitFailure(err.message));
+          if (!requestLimit) retireHomeRejectionSource();
           if (requestLimit && runMayFinalize && latestRequestSendRef.current.get(runConversationId) === clientRequestId
             && fundingIdentityIsCurrent()
             && messagesConversationIdRef.current === runConversationId) {
@@ -10136,7 +10129,8 @@ export function ProjectView({
                 accountGeneration: sendAccountGeneration,
                 branch: amrBalanceBranchRef.current,
                 workspaceContext: fundingDialogContextRef.current.workspaceContext,
-                draft: meta?.composerOwnedDraft && unstarted ? {
+                initialHomeSend: meta?.initialHomeSend === true,
+                draft: (meta?.composerOwnedDraft || meta?.initialHomeSend) && unstarted ? {
                   nonce: clientRequestId, text: prompt, attachments: effectiveAttachments,
                   commentAttachments, meta,
                 } : null,
@@ -10963,6 +10957,7 @@ export function ProjectView({
       projectMutationReadOnly,
       projectWorkspaceScopeState.scope,
       showAmrFundingFailure,
+      onInitialHomeRequestProgress,
       amrBalanceCardScope,
     ],
   );
@@ -13774,6 +13769,7 @@ export function ProjectView({
     void handleSend(seed, attachments, [], {
         ...(context ? { context } : {}),
         ...homeAutoSendIdentity(project.id),
+        initialHomeSend: true,
         acceptDurableQueue: true,
         // Only reuse Home's decision for the exact persisted project scope.
         // A workspace/member mismatch falls through to handleSend's normal gate.
@@ -14026,6 +14022,19 @@ export function ProjectView({
                 && concurrencyRejection.authorityKey === projectRunAuthorityKey
                 && concurrencyRejection.accountGeneration === currentWorkspaceAccountGeneration()
                 ? concurrencyRejection.draft ?? undefined : undefined}
+              onRejectedComposerSendRestored={(nonce, restored) => {
+                if (!restored || !concurrencyRejection?.initialHomeSend
+                  || concurrencyRejection.draft?.nonce !== nonce
+                  || concurrencyRejection.conversationId !== activeConversationId
+                  || concurrencyRejection.authorityKey !== projectRunAuthorityKey
+                  || concurrencyRejection.accountGeneration !== currentWorkspaceAccountGeneration()) return;
+                onInitialHomeRequestConcurrencyRejected?.({
+                  projectId: project.id, clientRequestId: nonce,
+                  accountGeneration: concurrencyRejection.accountGeneration,
+                  workspaceContext: concurrencyRejection.workspaceContext,
+                  branch: concurrencyRejection.branch,
+                });
+              }}
               onSend={handleComposerSend}
               onResendUserMessage={handleResendUserMessage}
               onRetry={handleRetry}
@@ -15000,6 +15009,7 @@ function stripQueueOnlyFromMeta(
     // 回放走,否则一条排过队的输入框消息在回放时被拦下,会去撤一个早就清空的
     // 草稿,而队列里那条反而被扔掉。见 `composerOwnedDraft` 的说明。
     composerOwnedDraft: _composerOwnedDraft,
+    initialHomeSend: _initialHomeSend,
     ...rest
   } = meta as ProjectChatSendMeta;
   return Object.keys(rest).length > 0 ? rest : undefined;

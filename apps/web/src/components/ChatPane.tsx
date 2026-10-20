@@ -891,6 +891,7 @@ interface Props {
   // "Import repo" CTA). The nonce lets the same text fire more than once.
   composerDraftSignal?: { text: string; nonce: number };
   rejectedComposerSend?: RejectedComposerSend;
+  onRejectedComposerSendRestored?: (nonce: string, restored: boolean) => void;
   // Optional pet wiring forwarded straight through to ChatComposer's
   // /pet button. When omitted the composer hides the button entirely.
   petConfig?: AppConfig['pet'];
@@ -1438,6 +1439,7 @@ export function ChatPane({
   createDesignSystemFromProjectBusy,
   composerDraftSignal,
   rejectedComposerSend,
+  onRejectedComposerSendRestored,
   petConfig,
   onAdoptPet,
   onTogglePet,
@@ -2780,10 +2782,11 @@ export function ChatPane({
   useEffect(() => {
     if (!rejectedComposerSend || lastRejectedSendRef.current === rejectedComposerSend.nonce) return;
     lastRejectedSendRef.current = rejectedComposerSend.nonce;
-    composerRef.current?.restoreDraft({
+    const restored = composerRef.current?.restoreDraft({
       ...rejectedComposerSend, quotes: rejectedComposerSend.meta?.quotes ?? [], onlyIfEmpty: true,
-    });
-  }, [rejectedComposerSend]);
+    }) === true;
+    onRejectedComposerSendRestored?.(rejectedComposerSend.nonce, restored);
+  }, [rejectedComposerSend, onRejectedComposerSendRestored]);
 
   // Library "optimize design system" hand-off: when the user pushed selected
   // assets into this project's design system from the Library, pre-fill the
