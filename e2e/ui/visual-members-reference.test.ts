@@ -345,7 +345,9 @@ test('[P1] B25 whole request failure shows top error toast and preserves retryab
   await input.nth(1).fill('lee@example.com');
   const submit = dialog.getByRole('button', { name: '发送邀请', exact: true });
   await submit.click();
-  await expect(page.getByRole('alert')).toContainText('邀请发送失败，请检查网络后重试');
+  const networkToast = page.getByRole('alert').filter({ hasText: '邀请发送失败，请检查网络后重试' });
+  await expect(networkToast).toBeVisible();
+  await expect(networkToast).toHaveCSS('top', '64px');
   await expect(dialog.getByRole('alert')).toHaveCount(0);
   await expect(input).toHaveCount(2);
   await expect(input.nth(0)).toHaveValue('mika@example.com');
