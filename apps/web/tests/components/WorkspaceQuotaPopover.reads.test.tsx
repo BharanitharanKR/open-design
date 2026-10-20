@@ -84,17 +84,22 @@ it('E04 re-reads on open/reopen, foreground/payment signal, visibility and manua
   await act(async () => { mounted = render(<Harness context={a} />); });
   expect(screen.getByText('$24.00')).toBeTruthy();
   const initial = calls();
+  // The existing shared reader coalesces forced refresh bursts for 250ms.
+  // These are distinct user actions; advance its virtual clock past that boundary.
+  await act(async () => { await vi.advanceTimersByTimeAsync(251); });
   amount = '25';
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: '刷新' })); });
   expect(screen.getByText('$25.00')).toBeTruthy();
   expect(calls()).toBeGreaterThan(initial);
   await act(async () => { mounted.rerender(<Harness context={a} open={false} />); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(251); });
   amount = '26';
   await act(async () => { mounted.rerender(<Harness context={a} />); });
   expect(screen.getByText('$26.00')).toBeTruthy();
   amount = '27';
   await act(async () => { await vi.advanceTimersByTimeAsync(2_000); window.dispatchEvent(new Event('focus')); });
   expect(screen.getByText('$27.00')).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(251); });
   amount = '28';
   await act(async () => { notifyWorkspaceBillingRefresh(); });
   expect(screen.getByText('$28.00')).toBeTruthy();
@@ -110,8 +115,11 @@ it('E12 failure keeps skeleton until data arrives; later failed refresh retains 
   read = async () => Response.json(response(a, '24'));
   await act(async () => { notifyWorkspaceBillingRefresh(); });
   expect(screen.getByText('$24.00')).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(251); });
+  const beforeFailure = calls();
   read = async () => new Response(null, { status: 503 });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: '刷新' })); });
   expect(screen.getByText('$24.00')).toBeTruthy();
   expect(screen.queryByText('$0.00')).toBeNull();
+  expect(calls()).toBeGreaterThan(beforeFailure);
 });
