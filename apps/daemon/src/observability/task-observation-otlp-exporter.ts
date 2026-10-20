@@ -11,7 +11,7 @@ import {
   postLangfuseBatch,
   type LangfuseConfig,
   type LangfuseDeliveryState,
-  type TelemetrySinkConfig,
+  type RunTelemetrySinkConfig,
 } from '../langfuse-trace.js';
 import {
   buildLegacyTaskObservationPayload,
@@ -116,7 +116,7 @@ function parseMode(value: string | undefined): TaskObservationExporterMode {
 }
 
 export function readTaskObservationExporterConfig(
-  sink: TelemetrySinkConfig | null,
+  sink: RunTelemetrySinkConfig | null,
   env: NodeJS.ProcessEnv = process.env,
 ): TaskObservationExporterConfig | null {
   // Consume the already-selected Task sink. Do not resolve again here: doing
