@@ -253,7 +253,10 @@ export interface VelaUser {
   balanceUsd?: string | null;
 }
 
+export interface VelaRegistrationInvite { accountId: string; deviceAuthorizationId: string; }
+
 export interface VelaLoginStatus {
+  registrationInvite?: VelaRegistrationInvite;
   loggedIn: boolean;
   sessionState?: AmrSessionState;
   credentialRevision?: string;
@@ -395,6 +398,7 @@ export interface VelaApiContext {
 }
 
 interface VelaProfileShape {
+  registrationInvite?: unknown;
   controlKey?: string;
   runtimeKey?: string;
   apiUrl?: string;
@@ -475,8 +479,10 @@ export function readVelaLoginStatus(
   } else if (expiredVelaCredentialRevisions.has(credentialRevision)) {
     sessionState = 'reauth_required';
   }
+  const { registrationInvite, ...sessionStatus } = rawStatus;
   return {
-    ...rawStatus,
+    ...sessionStatus,
+    ...(sessionState === 'authenticated' && registrationInvite ? { registrationInvite } : {}),
     // `loggedIn` remains the backwards-compatible "credential is present"
     // projection. Routing must not treat an expired credential like a brand
     // new user and throw them back into first-run onboarding; new callers use
@@ -485,6 +491,14 @@ export function readVelaLoginStatus(
     sessionState,
     credentialRevision,
   };
+}
+
+function readRegistrationInvite(raw: unknown, accountId: string | undefined): VelaRegistrationInvite | undefined {
+  if (!accountId || !raw || typeof raw !== 'object') return undefined;
+  const claim = raw as Record<string, unknown>;
+  if (claim.accountId !== accountId || typeof claim.deviceAuthorizationId !== 'string'
+    || !claim.deviceAuthorizationId.trim() || claim.deviceAuthorizationId.length > 256) return undefined;
+  return { accountId, deviceAuthorizationId: claim.deviceAuthorizationId };
 }
 
 function readRawVelaLoginStatus(
@@ -547,11 +561,13 @@ function readRawVelaLoginStatus(
         ...(typeof rawUser.plan === 'string' ? { plan: rawUser.plan } : {}),
       }
     : null;
+  const registrationInvite = readRegistrationInvite(stored?.registrationInvite, user?.id);
   return {
     loggedIn: true,
     loginInFlight,
     profile,
     user,
+    ...(registrationInvite ? { registrationInvite } : {}),
     configPath,
     ...readVelaLoginAttemptSnapshot(),
   };

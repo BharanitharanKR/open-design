@@ -31,7 +31,9 @@ interface Props {
 export function HomeInviteSurface({ accountId, context, active }: Props) {
   const { t } = useI18n();
   const storageKey = accountId ? `od.invitation-banner.dismissed:${encodeURIComponent(accountId)}` : null;
-  const [dismissal, setDismissal] = useState<string | null>(null);
+  const [dismissal, setDismissal] = useState<string | null>(() => {
+    try { return storageKey && window.localStorage.getItem(storageKey) === '1' ? storageKey : null; } catch { return null; }
+  });
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(0);
   const [sentGeneration, setSentGeneration] = useState(0);

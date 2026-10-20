@@ -1,3 +1,5 @@
+import * as workspaceContextModule from '../../src/collab/useWorkspaceContext';
+import { workspaceContextFixture } from '../helpers/workspace-context';
 // @vitest-environment jsdom
 
 import { useState } from 'react';
@@ -2544,4 +2546,27 @@ describe('EntryShell onboarding OpenDesign AMR runtime', () => {
     expect(skipClicks).toHaveLength(0);
     expect(trackedEvents('onboarding_complete_result')).toHaveLength(0);
   });
+});
+
+
+it('configures Hosted before the strict new-registration host takes over onboarding', async () => {
+  const base = workspaceContextFixture({ workspaceId: 'registered-workspace', workspaceMemberId: 'registered-member', role: 'owner' });
+  vi.spyOn(workspaceContextModule, 'useWorkspaceContext').mockReturnValue({ context: { ...base, permissions: { ...base.permissions, canInviteMembers: true } }, loading: false });
+  const status = { loggedIn: true, sessionState: 'authenticated' as const, profile: 'prod', credentialRevision: 'registered-credential', configPath: '/test', user: { id: 'registered-account', email: 'new@example.com' }, registrationInvite: { accountId: 'registered-account', deviceAuthorizationId: 'new-authorization' } };
+  globalThis.fetch = vi.fn(async () => jsonResponse(status)) as typeof fetch;
+  const props = renderOnboarding({ amrLoggedIn: true, amrSessionState: 'authenticated', amrAccountId: status.user.id, amrRegistrationStatus: status });
+  cleanup();
+  function RuntimeHarness() {
+    const [config, setConfig] = useState(props.config);
+    return <I18nProvider initial="en"><EntryShell {...props} config={config}
+      onModeChange={mode => { props.onModeChange(mode); setConfig(old => ({ ...old, mode })); }}
+      onAgentChange={agentId => { props.onAgentChange(agentId); setConfig(old => ({ ...old, agentId })); }} /></I18nProvider>;
+  }
+  render(<RuntimeHarness />);
+  expect(screen.queryByText('Invite colleagues for free. Design together.')).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: /Continue \(signed in\)/i }));
+  await screen.findByText('Invite colleagues for free. Design together.');
+  expect(props.onModeChange).toHaveBeenCalledWith('daemon'); expect(props.onAgentChange).toHaveBeenCalledWith('amr');
+  fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+  await waitFor(() => expect(localStorage.getItem('od.registration-invite.completed:registered-account:new-authorization')).toBe('1'));
 });

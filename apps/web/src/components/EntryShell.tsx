@@ -1,3 +1,4 @@
+import { useRegistrationInvite } from './useRegistrationInvite';
 // EntryShell — the centered-hero entry layout.
 //
 // This component owns the entire JSX render and local UI state for
@@ -514,6 +515,7 @@ interface Props {
    */
   amrAccountPlan?: string | null;
   amrAccountId?: string | null;
+  amrRegistrationStatus?: VelaLoginStatus | null;
   daemonLive: boolean;
   onModeChange: (mode: ExecMode) => void;
   onAgentChange: (id: string) => void;
@@ -657,6 +659,7 @@ export function EntryShell({
   amrSessionState,
   amrAccountPlan = null,
   amrAccountId = null,
+  amrRegistrationStatus = null,
   daemonLive,
   onModeChange,
   onAgentChange,
@@ -1803,6 +1806,33 @@ export function EntryShell({
   // the settings entry (EntryNavRail onOpenSettings), so the top strip no longer
   // carries a redundant one.
 
+
+  const [registrationInviteExit, setRegistrationInviteExit] = useState<{ count: number; context: import('@open-design/contracts').WorkspaceCollabContext; accountId: string } | null>(null);
+  const registrationInvite = useRegistrationInvite({
+    status: amrRegistrationStatus, accountId: amrAccountId, configuredProfile: amrProfile?.trim() || config.agentCliEnv?.amr?.VELA_PROFILE?.trim() || amrRegistrationStatus?.profile || 'prod', context: railWorkspaceContext,
+    identityReady: !workspaceContextState.loading && !workspaceContextState.identityChangePending && !workspaceContextState.failure
+      && (view !== 'onboarding' || (config.mode === 'daemon' && config.agentId === 'amr')),
+    onExit: (count, context) => {
+      if (!amrAccountId) return;
+      setRegistrationInviteExit({ count, context, accountId: amrAccountId });
+      finishOnboarding();
+    },
+  });
+  useEffect(() => {
+    if (!registrationInviteExit || view !== 'home' || registrationInvite) return;
+    const completed = registrationInviteExit;
+    if (completed.accountId === amrAccountId && (workspaceContextState.loading || workspaceContextState.identityChangePending)) return;
+    setRegistrationInviteExit(null);
+    if (completed.count > 0 && completed.accountId === amrAccountId
+      && completed.context.workspaceId === railWorkspaceContext?.workspaceId
+      && completed.context.workspaceMemberId === railWorkspaceContext?.workspaceMemberId) {
+      window.dispatchEvent(new CustomEvent('od:workspace-invites-sent', { detail: {
+        workspaceId: completed.context.workspaceId, workspaceMemberId: completed.context.workspaceMemberId,
+        count: completed.count, totalCount: completed.count,
+      } }));
+    }
+  }, [registrationInviteExit, view, registrationInvite, amrAccountId, railWorkspaceContext, workspaceContextState.loading, workspaceContextState.identityChangePending]);
+  if (registrationInvite) return registrationInvite;
 
   if (view === 'onboarding') {
     return (

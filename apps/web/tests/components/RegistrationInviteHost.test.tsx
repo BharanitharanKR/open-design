@@ -1,0 +1,87 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { I18nProvider } from '../../src/i18n';
+import { useRegistrationInvite, registrationInviteCompletionKey } from '../../src/components/useRegistrationInvite';
+import type { VelaLoginStatus } from '../../src/providers/daemon';
+import { workspaceContextFixture } from '../helpers/workspace-context';
+const mocks = vi.hoisted(() => ({ status: vi.fn() }));
+vi.mock('../../src/providers/daemon', () => ({ fetchVelaLoginStatus: mocks.status }));
+vi.mock('../../src/components/LanguageMenu', () => ({ LanguageMenu: () => null }));
+const status = { loggedIn: true, sessionState: 'authenticated', credentialRevision: 'credential-a', profile: 'selected', user: { id: 'new-account', email: 'new@example.com' }, configPath: '/test', registrationInvite: { accountId: 'new-account', deviceAuthorizationId: 'cuid-registration-1' } } as VelaLoginStatus;
+const baseContext = workspaceContextFixture({ workspaceId: 'new-workspace', workspaceMemberId: 'new-member', role: 'owner' });
+const context = { ...baseContext, permissions: { ...baseContext.permissions, canInviteMembers: true } };
+function Host({ current = status, ready = true, exit = vi.fn() }: { current?: VelaLoginStatus; ready?: boolean; exit?: ReturnType<typeof vi.fn> }) {
+  const view = useRegistrationInvite({ status: current, accountId: current.user?.id ?? null, configuredProfile: current.profile, context, identityReady: ready, onExit: exit });
+  return view ?? <div>Normal home</div>;
+}
+function mount(props: Parameters<typeof Host>[0] = {}) { return render(<I18nProvider initial="zh-CN"><Host {...props} /></I18nProvider>); }
+const title = '免费邀请同事，一起做设计';
+beforeEach(() => { window.localStorage.clear(); mocks.status.mockResolvedValue(status); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks(); vi.useRealTimers(); });
+describe('strict registration invitation host', () => {
+  it.each(['absent', 'wrong-account', 'expired', 'no-revision'])('never displays an invitation from %s status', async mode => {
+    const current = { ...status, ...(mode === 'absent' ? { registrationInvite: undefined } : mode === 'wrong-account' ? { registrationInvite: { ...status.registrationInvite!, accountId: 'other' } } : mode === 'expired' ? { sessionState: 'reauth_required' as const } : { credentialRevision: undefined }) };
+    mount({ current }); expect(screen.getByText('Normal home')).toBeTruthy(); expect(mocks.status).not.toHaveBeenCalled();
+  });
+  it('waits for workspace identity and a fresh same-credential status before replacing home', async () => {
+    const result = mount({ ready: false }); expect(screen.getByText('Normal home')).toBeTruthy();
+    result.rerender(<I18nProvider initial="zh-CN"><Host ready /></I18nProvider>);
+    expect(screen.queryByText('Normal home')).toBeNull(); await screen.findByText(title);
+    expect(mocks.status).toHaveBeenCalledWith({ refresh: true });
+  });
+  it('ignores a late old-account verification after an account switch', async () => {
+    let resolve!: (value: VelaLoginStatus) => void; mocks.status.mockReturnValue(new Promise(r => { resolve = r; }));
+    const result = mount();
+    result.rerender(<I18nProvider initial="zh-CN"><Host current={{ ...status, user: { id: 'existing', email: 'old@example.com' }, registrationInvite: undefined }} /></I18nProvider>);
+    await act(async () => { resolve(status); }); expect(screen.queryByText(title)).toBeNull(); expect(screen.getByText('Normal home')).toBeTruthy();
+  });
+  it('skips once, persists completion across reload, and preserves the homepage banner', async () => {
+    const exit = vi.fn(); const result = mount({ exit }); await screen.findByText(title);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); });
+    expect(exit).toHaveBeenCalledWith(0, context); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBe('1');
+    expect(localStorage.getItem('od.invitation-banner.dismissed:new-account')).toBeNull();
+    result.unmount(); mount(); expect(screen.getByText('Normal home')).toBeTruthy(); expect(screen.queryByText(title)).toBeNull();
+  });
+  it('does not acknowledge completion when the finishing credential expired', async () => {
+    mocks.status.mockResolvedValueOnce(status).mockResolvedValueOnce({ ...status, sessionState: 'reauth_required' });
+    const exit = vi.fn(); mount({ exit }); await screen.findByText(title);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '暂时跳过' })); });
+    expect(exit).not.toHaveBeenCalled(); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
+  });
+  it('retries a failed fresh read without manufacturing registration eligibility', async () => {
+    mocks.status.mockResolvedValueOnce(null).mockResolvedValueOnce(status); mount();
+    await screen.findByRole('alert'); fireEvent.click(screen.getByRole('button', { name: '重试' })); await screen.findByText(title);
+  });
+  it('continues an unfinished receipt after reload', async () => {
+    const first = mount(); await screen.findByText(title); first.unmount(); mount(); await screen.findByText(title);
+    expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull();
+  });
+  it('discards a finishing status response after a same-page account switch', async () => {
+    let resolve!: (value: VelaLoginStatus) => void;
+    mocks.status.mockResolvedValueOnce(status).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+    const exit = vi.fn(); const result = mount({ exit }); await screen.findByText(title);
+    fireEvent.click(screen.getByRole('button', { name: '暂时跳过' }));
+    result.rerender(<I18nProvider initial="zh-CN"><Host current={{ ...status, user: { id: 'existing', email: 'old@example.com' }, registrationInvite: undefined }} exit={exit} /></I18nProvider>);
+    await act(async () => { resolve(status); }); expect(exit).not.toHaveBeenCalled();
+    expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull(); expect(localStorage.getItem('od.invitation-banner.dismissed:existing')).toBeNull();
+  });
+  it('discards a pending invite result after a same-page account switch', async () => {
+    let resolve!: (value: Response) => void;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(r => { resolve = r; })));
+    const exit = vi.fn(); const result = mount({ exit }); await screen.findByText(title);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'colleague@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送邀请' }));
+    result.rerender(<I18nProvider initial="zh-CN"><Host current={{ ...status, user: { id: 'existing', email: 'old@example.com' }, registrationInvite: undefined }} exit={exit} /></I18nProvider>);
+    await act(async () => { resolve(new Response(JSON.stringify({ results: [{ email: 'colleague@example.com', ok: true }] }), { status: 200 })); });
+    expect(exit).not.toHaveBeenCalled(); expect(localStorage.getItem(registrationInviteCompletionKey(status)!)).toBeNull(); expect(localStorage.getItem('od.invitation-banner.dismissed:existing')).toBeNull();
+  });
+  it('returns the confirmed sent count only after exit and hides the account banner', async () => {
+    const exit = vi.fn(); mount({ exit }); await screen.findByText(title);
+    vi.useFakeTimers(); vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ results: [{ email: 'colleague@example.com', ok: true }] }), { status: 200 })));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'colleague@example.com' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '发送邀请' })); });
+    expect(exit).not.toHaveBeenCalled(); await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(exit).toHaveBeenCalledWith(1, context); expect(localStorage.getItem('od.invitation-banner.dismissed:new-account')).toBe('1');
+  });
+});

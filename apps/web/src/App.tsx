@@ -5681,6 +5681,7 @@ function AppInner() {
           || null
         }
         amrAccountId={amrLoginStatus?.user?.id ?? amrLoginStatus?.credentialRevision ?? null}
+        amrRegistrationStatus={amrLoginStatus}
         config={config}
         providerModelsCache={providerModelsCache}
         onProviderModelsCacheChange={setProviderModelsCache}

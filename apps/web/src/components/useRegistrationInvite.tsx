@@ -1,0 +1,90 @@
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@open-design/components';
+import type { WorkspaceCollabContext } from '@open-design/contracts';
+import { fetchVelaLoginStatus, type VelaLoginStatus } from '../providers/daemon';
+import { useT } from '../i18n';
+import { CenteredLoader } from './Loading';
+import { OnboardingInviteView } from './InviteDialog';
+import styles from './RegistrationInviteHost.module.css';
+
+export function registrationInviteCompletionKey(status: VelaLoginStatus): string | null {
+  const claim = status.registrationInvite;
+  if (!status.loggedIn || status.sessionState !== 'authenticated' || !status.credentialRevision
+    || !status.user?.id || claim?.accountId !== status.user.id
+    || typeof claim.deviceAuthorizationId !== 'string' || !claim.deviceAuthorizationId.trim()
+    || claim.deviceAuthorizationId.length > 256) return null;
+  return `od.registration-invite.completed:${encodeURIComponent(claim.accountId)}:${encodeURIComponent(claim.deviceAuthorizationId)}`;
+}
+function sameClaim(a: VelaLoginStatus, b: VelaLoginStatus | null): b is VelaLoginStatus {
+  return Boolean(b && registrationInviteCompletionKey(b) === registrationInviteCompletionKey(a)
+    && b.profile === a.profile && b.credentialRevision === a.credentialRevision);
+}
+interface Props {
+  status: VelaLoginStatus | null | undefined;
+  accountId: string | null;
+  configuredProfile: string;
+  context: WorkspaceCollabContext | null;
+  identityReady: boolean;
+  onExit: (count: number, context: WorkspaceCollabContext) => void;
+}
+/** Registration eligibility comes exclusively from the AMR-issued claim. Local
+ * storage only records completion; it never manufactures registration status. */
+export function useRegistrationInvite(props: Props) {
+  const { status, accountId, context, identityReady } = props;
+  const t = useT();
+  const claimKey = status ? registrationInviteCompletionKey(status) : null;
+  const eligible = Boolean(claimKey && status?.user?.id === accountId && status.profile === props.configuredProfile && identityReady
+    && context?.memberStatus === 'active' && context.lifecycleState === 'active' && context.permissions.canInviteMembers);
+  const principal = eligible ? JSON.stringify([claimKey, status?.profile, status?.credentialRevision, context?.workspaceId, context?.workspaceMemberId]) : '';
+  const latest = useRef({ principal, props }); latest.current = { principal, props };
+  const [candidate, setCandidate] = useState<{ principal: string; status: VelaLoginStatus; context: WorkspaceCollabContext } | null>(null);
+  const [errorFor, setErrorFor] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [settledFor, setSettledFor] = useState('');
+  let alreadyComplete = false;
+  try { alreadyComplete = Boolean(claimKey && window.localStorage.getItem(claimKey) === '1'); } catch { /* effect exposes recoverable storage failure */ }
+  const finishing = useRef(false);
+  const pendingCount = useRef<number | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    setCandidate(null); setErrorFor(''); pendingCount.current = null; finishing.current = false;
+    if (!principal || !status || !context || !claimKey || alreadyComplete) return;
+    void (async () => {
+      try {
+        const fresh = await fetchVelaLoginStatus({ refresh: true });
+        if (disposed || latest.current.principal !== principal) return;
+        if (!fresh) throw new Error('Registration status unavailable');
+        if (!sameClaim(status, fresh)) { setSettledFor(principal); return; }
+        if (window.localStorage.getItem(claimKey) === '1') return;
+        setCandidate({ principal, status: fresh, context });
+      } catch { if (!disposed && latest.current.principal === principal) setErrorFor(principal); }
+    })();
+    return () => { disposed = true; };
+  }, [principal, attempt]);
+  async function finish(count: number) {
+    const captured = candidate;
+    if (!captured || finishing.current || latest.current.principal !== captured.principal) return;
+    finishing.current = true; pendingCount.current = count; setErrorFor('');
+    try {
+      const fresh = await fetchVelaLoginStatus({ refresh: true });
+      if (!fresh) throw new Error('Registration status unavailable');
+      if (latest.current.principal !== captured.principal || !sameClaim(captured.status, fresh)) {
+        if (latest.current.principal === captured.principal) { setCandidate(null); setSettledFor(captured.principal); }
+        return;
+      }
+      const key = registrationInviteCompletionKey(fresh)!;
+      if (count > 0) window.localStorage.setItem(`od.invitation-banner.dismissed:${encodeURIComponent(fresh.user!.id)}`, '1');
+      window.localStorage.setItem(key, '1');
+      setCandidate(null);
+      latest.current.props.onExit(count, captured.context);
+    } catch { if (latest.current.principal === captured.principal) setErrorFor(captured.principal); }
+    finally { finishing.current = false; }
+  }
+  const visible = candidate?.principal === principal && Boolean(principal);
+  if (principal && !alreadyComplete && !visible && errorFor !== principal && settledFor !== principal) return <div className={styles.loading}><CenteredLoader label={t('entry.loadingWorkspace')} /></div>;
+  if (!visible && (!principal || errorFor !== principal)) return null;
+  return <>
+    {visible ? <OnboardingInviteView key={principal} workspaceContext={candidate.context} onFinish={count => void finish(count)} /> : null}
+    {principal && errorFor === principal ? <div className={styles.recovery} role="alert"><p>{t('invite.error.generic')}</p><Button onClick={() => pendingCount.current === null ? setAttempt(n => n + 1) : void finish(pendingCount.current)}>{t('invite.error.retry')}</Button></div> : null}
+  </>;
+}

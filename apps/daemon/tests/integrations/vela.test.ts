@@ -722,3 +722,21 @@ describe('velaLiveAccountCacheKey + clearAllVelaLiveAccounts', () => {
     expect(peekVelaLiveAccount(oldKey)).toBeNull();
   });
 });
+
+describe('new-registration invitation claim', () => {
+  it('reads only the selected profile claim matching its account', () => {
+    writeConfig({ profiles: { local: { runtimeKey: 'selected-runtime', user: { id: 'new-account', email: 'new@example.com' }, registrationInvite: { accountId: 'new-account', deviceAuthorizationId: 'cuid-authorization' } }, prod: { runtimeKey: 'other-runtime', user: { id: 'existing', email: 'old@example.com' } } } });
+    expect(readVelaLoginStatus({}, { OPEN_DESIGN_AMR_PROFILE: 'local' }).registrationInvite).toEqual({ accountId: 'new-account', deviceAuthorizationId: 'cuid-authorization' });
+    expect(readVelaLoginStatus({}, { OPEN_DESIGN_AMR_PROFILE: 'prod' }).registrationInvite).toBeUndefined();
+  });
+  it.each([undefined, { accountId: 'other', deviceAuthorizationId: 'cuid' }, { accountId: 'new-account', deviceAuthorizationId: '' }, { accountId: 'new-account', deviceAuthorizationId: 123 }, { accountId: 'new-account', deviceAuthorizationId: 'a'.repeat(257) }])('rejects an absent or malformed registration claim %#', claim => {
+    writeConfig({ profiles: { local: { runtimeKey: 'runtime', user: { id: 'new-account', email: 'new@example.com' }, registrationInvite: claim } } });
+    expect(readVelaLoginStatus({ OPEN_DESIGN_AMR_PROFILE: 'local' }).registrationInvite).toBeUndefined();
+  });
+  it('does not surface a stored claim on an expired credential or an env-backed anonymous identity', () => {
+    writeConfig({ profiles: { local: { runtimeKey: 'runtime', user: { id: 'new-account', email: 'new@example.com' }, registrationInvite: { accountId: 'new-account', deviceAuthorizationId: 'cuid' } } } });
+    const env = { OPEN_DESIGN_AMR_PROFILE: 'local' };
+    markVelaAuthorizationExpired(env); expect(readVelaLoginStatus(env).registrationInvite).toBeUndefined();
+    expect(readVelaLoginStatus({ ...env, VELA_RUNTIME_KEY: 'env-key', VELA_LINK_URL: 'https://link.example' }).registrationInvite).toBeUndefined();
+  });
+});
