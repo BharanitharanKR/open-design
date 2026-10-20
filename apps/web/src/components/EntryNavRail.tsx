@@ -107,6 +107,7 @@ import {
   amrAutoRechargeUrlForProfile,
   amrConsoleUrlForWorkspace,
   amrPlansUrlForProfile,
+  amrWorkspaceUrl,
 } from '../runtime/amr-guidance';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
@@ -870,7 +871,7 @@ export function workspaceUpgradeUrl(
   // workspace identity to authorize yet.
   if (context && !canReachWorkspaceBillingEntrance(context)) return null;
   if (!context && !options) return null;
-  return amrPlansUrlForProfile(options?.fallbackProfile);
+  return amrPlansUrlForProfile(options?.fallbackProfile, context?.workspaceId);
 }
 
 /**
@@ -894,8 +895,12 @@ export function workspaceAutoRechargeUrl(
 ): string | null {
   if (context && context.permissions?.canManageAutoRecharge !== true) return null;
   const settingsUrl = context?.workspaceSettingsUrl?.trim() || null;
-  if (settingsUrl) return teamConsoleUrl(settingsUrl, 'auto-recharge');
-  return amrAutoRechargeUrlForProfile(options.fallbackProfile);
+  if (settingsUrl) return amrWorkspaceUrl(
+    teamConsoleUrl(settingsUrl, 'auto-recharge'),
+    context?.workspaceId,
+    AMR_CONSOLE_AUTO_RECHARGE_INTENT,
+  ) ?? teamConsoleUrl(settingsUrl, 'auto-recharge');
+  return amrAutoRechargeUrlForProfile(options.fallbackProfile, context?.workspaceId);
 }
 
 export type WorkspaceInviteTarget =
@@ -1281,7 +1286,8 @@ export function EntryTopRightCluster({
   // #5517. It used to open a wallet page; balance, top-up and the auto-recharge
   // policy were rehomed onto the dashboard (vela #1055).
   const billingConsoleUrl = workspaceSettingsUrl
-    ? teamConsoleUrl(workspaceSettingsUrl, 'billing')
+    ? amrWorkspaceUrl(teamConsoleUrl(workspaceSettingsUrl, 'billing'), context?.workspaceId)
+      ?? teamConsoleUrl(workspaceSettingsUrl, 'billing')
     : null;
   // Where the account menu's 账单 row goes. The workspace-settings URL is the
   // better answer when the context carries one (it pins the console to THIS
@@ -1300,7 +1306,7 @@ export function EntryTopRightCluster({
   // (「点击管理, 就跳转到 vela dashboard 就行」), not on the auto-recharge dialog.
   const billingManageUrl = accountBillingUrl;
   // The wallet row asks the console for its manual top-up dialog; see
-  // AMR_CONSOLE_RECHARGE_INTENT for the (pending) B-side handler.
+  // AMR_CONSOLE_RECHARGE_INTENT for the B-side handler.
   const walletRechargeUrl = consoleBillingIntentUrl(accountBillingUrl, AMR_CONSOLE_RECHARGE_INTENT);
   // Product decision: plan comparison lives on public Pricing and payment
   // lives in Cloud. The client refreshes billing + context when focus returns
