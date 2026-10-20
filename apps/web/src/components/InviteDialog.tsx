@@ -67,7 +67,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     setRows([emptyRow()]); setError(null); setSentCount(0); setValidated(false); setSubmitting(false); setOpenRoleIndex(null);
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    if (!onboarding) dialog.current?.querySelector<HTMLInputElement>('input')?.focus();
+    if (!onboarding) dialog.current?.querySelector<HTMLHeadingElement>('h2')?.focus();
     return () => { if (finishTimer.current) clearTimeout(finishTimer.current); requestVersion.current += 1; controller.current?.abort(); previous?.focus(); };
   }, [open, identity, onboarding]);
   useEffect(() => {
@@ -186,15 +186,15 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
     onKeyDown={event => {
       if (event.key === 'Escape') { event.stopPropagation(); if (openRoleIndex !== null) setOpenRoleIndex(null); else close(); }
       if (event.key === 'Tab') {
-        const focusable = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)');
+        const focusable = dialog.current?.querySelectorAll<HTMLElement>(':is(button,input):not([disabled])');
         const first = focusable?.[0]; const last = focusable?.[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current?.querySelector('h2'))) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     }}>
     {!onboarding ? <div className={styles.backdrop} onClick={close} /> : null}
     <section className={styles.panel} aria-busy={submitting}>
-      <header className={styles.heading}><h2>{t(onboarding ? 'workspaceInvite.onboardingTitle' : 'workspaceInvite.title')}</h2>
+      <header className={styles.heading}><h2 tabIndex={onboarding ? undefined : -1}>{t(onboarding ? 'workspaceInvite.onboardingTitle' : 'workspaceInvite.title')}</h2>
         {!onboarding ? <>
         <span className={styles.help}><Button className={styles.info} aria-label={t('workspaceInvite.helpLabel')} aria-describedby={`${id}-help`}><Icon name="info" size={16} /></Button>
           <span className={styles.tooltip} id={`${id}-help`} role="tooltip">{t('workspaceInvite.teamPlanBody')}</span></span>
@@ -230,7 +230,7 @@ export function InviteDialog({ open, onClose, workspaceContext, onSubmit, canAss
       {onboarding ? <><Button className={styles.skip} disabled={submitting} onClick={() => onFinish?.(sentCount)}>{t('workspaceInvite.skip')}</Button><footer className={styles.onboardingFooter}><LanguageMenu placement="up" align="start" /><span>© {new Date().getFullYear()} OpenDesign · {t('settings.onboardingCloudRights')}</span></footer></> : null}
     </section>
     {onboarding ? <div className={styles.art} aria-hidden="true"><img src="/onboarding/registration-invite-art.png" alt="" /></div> : null}
-    {owner && openRoleIndex !== null ? createPortal(<div className={styles.menu} ref={menu} style={menuPos} role="listbox" id={`${id}-roles`}
+    {owner && openRoleIndex !== null ? createPortal(<div className={`${styles.menu} ${onboarding ? '' : styles.dialogMenu}`} ref={menu} style={menuPos} role="listbox" id={`${id}-roles`}
       onKeyDown={event => {
         if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); event.stopPropagation(); setOpenRoleIndex(null); triggers.current[openRoleIndex]?.focus(); }
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const buttons = Array.from(menu.current?.querySelectorAll('button') ?? []); const index = buttons.indexOf(document.activeElement as HTMLButtonElement); buttons[(index + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length]?.focus(); }

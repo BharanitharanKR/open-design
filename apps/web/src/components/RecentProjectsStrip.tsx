@@ -1245,8 +1245,8 @@ export function RecentProjectsStrip({
             {/* The invite CTA belongs to the team collection: the team space
                 grid, and the 团队项目 tab of 全部项目 that replaced the rail's
                 team entry (OPEND-3108). */}
-            {canAccessInviteFlow &&
-            inviteTarget.kind !== 'unavailable' ? (
+            {(space === 'team' || (showCollectionTabs && collection === 'teamProjects')) &&
+            canAccessInviteFlow && inviteTarget.kind !== 'unavailable' ? (
               <button
                 type="button"
                 className="recent-projects__invite"

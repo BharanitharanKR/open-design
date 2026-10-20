@@ -9,12 +9,32 @@ import { ensureRailOpen } from '@/playwright/rail';
 // controlled Workspace/AMR responses. No claim of real invitations or revocation.
 test.use({ actionTimeout: 15_000, navigationTimeout: 20_000 });
 const artifactRoot = process.env.OD_MEMBERS_VISUAL_ARTIFACT_DIR ?? path.resolve('.tmp/members-visual-qa');
-async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true, workspaceCount = 2, options: { workspaceName?: string; beforeHome?: (context: Record<string, unknown>) => Promise<void> } = {}) {
+// Match the reference's selected prototype and example catalog through normal
+// browser/API seams; these are controlled test data, never production fallbacks.
+async function configureReferenceExamples(page: Page) {
+  const plugins = ['模拟产品官网', '模拟项目报告'].map((title, index) => ({
+    id: `members-reference-example-${index}`, title, version: '1.0.0', trust: 'trusted', sourceKind: 'local',
+    source: `/tmp/members-reference-example-${index}`, fsPath: `/tmp/members-reference-example-${index}`,
+    capabilitiesGranted: ['prompt:inject'], installedAt: 1700000000000, updatedAt: 1700000000000,
+    manifest: { name: `members-reference-example-${index}`, title, version: '1.0.0', description: `请用「${title}」制作一个模拟作品。`,
+      od: { kind: 'scenario', mode: 'prototype', taskKind: 'new-generation', useCase: { query: { 'zh-CN': `请用「${title}」制作一个模拟作品。`, en: `Create ${title}.` } } } },
+  }));
+  const prototype = { ...plugins[0]!, id: 'example-web-prototype', manifest: { ...plugins[0]!.manifest, name: 'example-web-prototype', od: { kind: 'scenario', mode: 'prototype', taskKind: 'new-generation' } } };
+  await page.route('**/api/plugins', route => route.fulfill({ json: { plugins: [prototype, ...plugins] } }));
+}
+async function selectReferencePrototype(page: Page) {
+  await page.getByTestId('home-hero-template-picker').getByRole('button', { name: '创作类型', exact: true }).click();
+  await page.getByTestId('home-hero-template-menu').getByRole('option', { name: '原型', exact: true }).click();
+  await expect(page.getByTestId('home-hero-template-picker')).toHaveAttribute('data-type', 'prototype');
+  await page.getByTestId('home-hero-input').blur();
+}
+async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite = true, workspaceCount = 2, options: { workspaceName?: string; workspaceType?: 'personal' | 'team'; dismissBanner?: boolean; beforeHome?: (context: Record<string, unknown>) => Promise<void> } = {}) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page);
+  await configureReferenceExamples(page);
   await mockSignedInVelaAccount(page, { email: 'designer@example.com' });
   const context = {
-    workspaceId: 'members-visual-workspace', workspaceName: options.workspaceName ?? 'Xiaoyi’s Workspace', workspaceType: 'team',
+    workspaceId: 'members-visual-workspace', workspaceName: options.workspaceName ?? 'Xiaoyi’s Workspace', workspaceType: options.workspaceType ?? 'team',
     workspaceMemberId: `members-visual-${role}`, role, memberStatus: 'active', lifecycleState: 'active',
     billingState: 'active', planId: 'team-pro', workspaceSettingsUrl: 'https://console.example.test/settings?workspaceId=members-visual-workspace',
     seatSummary: { seatLimit: 3, usedSeats: 3, availableSeats: 0, isSeatFull: true },
@@ -39,8 +59,10 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
     const projects = [1, 2, 3].map(n => { const project = { id: `visual-reference-project-${n}`, name: `Mock project ${n}`, skillId: null, designSystemId: null, createdAt: 1700000000000, updatedAt: 1700000000000, metadata: {} }; return { ...project, project, workspaceId, visibility: 'personal', resourceState: 'active', createdByWorkspaceMemberId: memberId, updatedByWorkspaceMemberId: memberId, resourceHubResourceId: null, cloudTombstonedAt: null, syncState: 'local_only', currentUserAccess: { canOpen: true, canRename: true, canDelete: true, canDuplicate: true, canMoveToTeam: true, canMoveToPersonal: false, canExport: true, canSendTo: true, canRestoreVersion: true } }; });
     return route.fulfill({ json: { projects } });
   });
+  if (options.dismissBanner ?? openInvite) await page.addInitScript(() => localStorage.setItem('od.invitation-banner.dismissed:u1', '1'));
   await options.beforeHome?.(context);
   await gotoVisualHome(page);
+  await selectReferencePrototype(page);
   await ensureRailOpen(page);
   await page.getByTestId('workspace-switcher').click();
   if (!openInvite) return page.getByRole('menu');
@@ -51,8 +73,16 @@ async function setup(page: Page, role: 'owner' | 'admin' | 'member', openInvite 
 }
 async function capture(page: Page, state: string) {
   await mkdir(artifactRoot, { recursive: true });
+  if (!state.endsWith('-hover')) await page.mouse.move(1300, 800);
   await waitForVisualStable(page);
+  if (['A01', 'A03', 'A05', 'A06', 'A07'].includes(state)) {
+    await expect(page.locator('.entry-main--scroll')).toHaveCSS('background-color', 'rgb(252, 250, 249)');
+    await expect(page.locator('.entry-shell--no-header')).toHaveCSS('background-color', 'rgb(229, 223, 220)');
+    await expect(page.locator('.workspace-tabs-chrome')).toHaveCSS('background-color', 'rgb(229, 223, 220)');
+  }
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+  const frameMetrics = await page.locator('.home-hero, .home-hero__title, .home-hero__subtitle, .home-hero__input-card, .entry-main--scroll').evaluateAll(elements => elements.map(el => ({ className: el.className, rect: el.getBoundingClientRect().toJSON(), background: getComputedStyle(el).backgroundColor })));
+  await writeFile(path.join(artifactRoot, `${state}-frame.json`), JSON.stringify(frameMetrics, null, 2));
   const metrics = await page.evaluate(() => Object.fromEntries(['card', 'banner', 'panel', 'heading', 'context', 'labels', 'row', 'close', 'add', 'footer', 'submit'].map(name => { const el = name === 'card' ? document.querySelector('[data-testid=entry-cloud-signin-tip]') : name === 'banner' ? document.querySelector('[role=region][aria-label="邀请"]') : document.querySelector(`[role=dialog] [class*=\"_${name}_\"], [role=dialog][class*=\"_${name}_\"]`); if (!el) return [name, null]; const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return [name,{x:r.x,y:r.y,width:r.width,height:r.height,margin:css.margin,padding:css.padding,font:css.font,lineHeight:css.lineHeight,background:css.backgroundColor,color:css.color,opacity:css.opacity}]; })));
   await writeFile(path.join(artifactRoot, `${state}-metrics.json`), JSON.stringify(metrics, null, 2));
   const options = await page.getByRole('option').evaluateAll(items => items.map(item => { const r = item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height,scrollHeight:item.scrollHeight,clientHeight:item.clientHeight }; }));
@@ -67,6 +97,13 @@ for (const [state, role] of [['B02', 'owner'], ['B03', 'member'], ['B27', 'admin
     await expect(dialog.locator('input[type="email"]')).toHaveCount(1);
     if (role !== 'owner') await expect(dialog.locator('[aria-haspopup="listbox"]:enabled')).toHaveCount(0);
     await capture(page, state);
+    if (role === 'owner') {
+      await expect(dialog.getByRole('heading')).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(dialog.getByRole('button', { name: '发送邀请', exact: true })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(dialog.getByRole('button', { name: '邀请成员说明', exact: true })).toBeFocused();
+    }
   });
 }
 test('[P1] B20 owner multiple rows and role description', async ({ page }) => {
@@ -79,7 +116,8 @@ test('[P1] B20 owner multiple rows and role description', async ({ page }) => {
   await expect.poll(() => page.getByRole('option').evaluateAll(items => items.map(item => item.scrollHeight <= item.clientHeight))).toEqual([true, true]);
 });
 test('[P1] A06 workspace switcher shows the two reference identities', async ({ page }) => {
-  const menu = await setup(page, 'owner', false);
+  const menu = await setup(page, 'owner', false, 2, { dismissBanner: true });
+  await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
   await expect(menu).toContainText('Xiaoyi’s Workspace');
   await expect(menu).toContainText('Design space');
   await expect(menu.getByTestId('entry-nav-create-team')).toBeVisible();
@@ -146,15 +184,17 @@ test('[P1] B26 partial failure keeps only the failed recipient', async ({ page }
 test('[P1] A01 local identity shows cloud sign-in entry', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await configureVisualPage(page, { velaLoggedIn: false });
+  await configureReferenceExamples(page);
   await page.addInitScript(() => { localStorage.setItem('open-design:locale', 'zh-CN'); localStorage.setItem('open-design:locale-source', 'manual'); });
   await gotoVisualHome(page);
   await ensureRailOpen(page);
+  await selectReferencePrototype(page);
   await expect(page.getByTestId('entry-cloud-signin-tip')).toBeVisible();
   await capture(page, 'A01');
 });
 
 test('[P1] A03 and A05 dismissal persists across reload while header invite remains', async ({ page }) => {
-  await setup(page, 'owner', false);
+  await setup(page, 'owner', false, 2, { workspaceType: 'personal' });
   await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
   await expect(page.getByRole('menu')).toHaveCount(0);
   const banner = page.getByRole('region', { name: '邀请', exact: true });
@@ -171,6 +211,9 @@ test('[P1] A03 and A05 dismissal persists across reload while header invite rema
   await expect(banner).toHaveCount(0);
   const persistentInvite = page.getByRole('banner', { name: 'Workspace tabs' }).getByRole('button', { name: '邀请', exact: true });
   await expect(persistentInvite).toBeVisible();
+  await page.addInitScript(() => sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId: 'members-visual-workspace', workspaceMemberId: 'members-visual-owner' })));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('workspace-switcher')).toContainText('Xiaoyi’s Workspace');
   await page.getByTestId('entry-nav-drafts').click();
   await expect(page).toHaveURL(/\/drafts$/);
   await expect(page.getByTestId('recent-projects-strip')).toBeVisible();
@@ -332,7 +375,8 @@ test('[P1] B10 partial success then corrected retry closes with actual cumulativ
 });
 
 test('[P1] A07 create workspace hands off to a browser without adding a client form', async ({ page }) => {
-  const menu = await setup(page, 'owner', false);
+  const menu = await setup(page, 'owner', false, 2, { dismissBanner: true });
+  await expect(page.getByRole('region', { name: '邀请', exact: true })).toHaveCount(0);
   const create = menu.getByTestId('entry-nav-create-team');
   const href = await create.getAttribute('href');
   expect(href).toBeTruthy();
@@ -445,4 +489,24 @@ test('[P1] H04 rejoined workspace uses a new membership identity without a resto
     await expect(page.getByRole('menuitem', { name: 'Design space', exact: true })).toHaveAttribute('aria-current', 'true');
     await capture(page, 'H04');
   } finally { deliver?.(); }
+});
+
+test('[P1] member entry light frame preserves dark and narrow surfaces', async ({ page }) => {
+  await setup(page, 'owner', false, 2, { dismissBanner: true });
+  await page.locator('.entry-nav-rail__menu-backdrop').click({ position: { x: 10, y: 700 } });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+  await expect(page.locator('.entry-main--scroll')).not.toHaveCSS('background-color', 'rgb(252, 250, 249)');
+  await expect(page.locator('.workspace-tabs-chrome')).not.toHaveCSS('background-color', 'rgb(229, 223, 220)');
+  await capture(page, 'supplement-dark');
+  await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('.entry-main--scroll')).not.toHaveCSS('background-color', 'rgb(252, 250, 249)');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('.entry-main--scroll')).toHaveCSS('background-color', 'rgb(252, 250, 249)');
+  await page.setViewportSize({ width: 768, height: 900 });
+  const bounds = await page.locator('.entry-main--scroll').boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(768);
+  await capture(page, 'supplement-narrow');
 });

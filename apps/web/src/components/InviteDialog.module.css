@@ -77,3 +77,16 @@
 @media(max-width:800px) { .onboarding { grid-template-columns:minmax(0,1fr); }.art { display:none; }.onboarding .panel { padding:32px 24px 110px; } }
 
 .onboardingFooter :global(.foot-pill) { width:112px;min-width:0;height:36px;padding:6px 12px;border:1px solid #e5e5e5;border-radius:999px;background:#f5f5f5;color:#888;font-size:12px;line-height:12px;gap:6px; }
+
+/* Ordinary invitation follows the console reference; onboarding keeps its own geometry. */
+.root:not(.onboarding) .lineError { margin:0; }
+.root:not(.onboarding) .input::placeholder { color:#757575;opacity:1; }
+.dialogMenu .option { align-items:center;gap:24px; }
+
+/* Preserve the console palette before applying disabled opacity; shared Button
+   disabled tokens otherwise wash out both the foreground and background. */
+.root:not(.onboarding) .submit:disabled { background:var(--invite-ink);color:var(--invite-surface);opacity:.4; }
+.root:not(.onboarding) .role:disabled { background:var(--invite-surface);color:var(--invite-text);border-color:var(--invite-border); }
+.root:not(.onboarding) .cancel:disabled { background:var(--invite-secondary-bg);color:#444; }
+.root:not(.onboarding) .remove:disabled,.root:not(.onboarding) .close:disabled { background:transparent;color:var(--invite-note); }
+.root:not(.onboarding) .add:disabled { background:transparent;color:var(--invite-label);opacity:.45; }

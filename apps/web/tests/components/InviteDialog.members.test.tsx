@@ -10,6 +10,19 @@ function email(value: string, index = 0) { fireEvent.change(screen.getAllByRole(
 function response(results: unknown[]) { return new Response(JSON.stringify({ results }), { status: 200 }); }
 
 describe('member-line invitation states', () => {
+  it('initially focuses the ordinary dialog title without marking the email input focused', () => {
+    render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    expect(document.activeElement).toBe(screen.getByRole('heading'));
+    expect(screen.getByRole('heading').getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('wraps Shift+Tab from the initial title focus to the last enabled dialog control', () => {
+    render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    const title = screen.getByRole('heading');
+    expect(document.activeElement).toBe(title);
+    fireEvent.keyDown(title, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(sendButton());
+  });
   it('does not gate free or full workspaces on purchased seats and closes immediately after actual success', async () => {
     const close = vi.fn(); const event = vi.fn(); window.addEventListener('od:workspace-invites-sent', event);
     vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'new@example.com', ok: true }])));
