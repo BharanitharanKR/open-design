@@ -10,6 +10,19 @@ function email(value: string, index = 0) { fireEvent.change(screen.getAllByRole(
 function response(results: unknown[]) { return new Response(JSON.stringify({ results }), { status: 200 }); }
 
 describe('member-line invitation states', () => {
+  it('initially focuses the ordinary dialog title without marking the email input focused', () => {
+    render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    expect(document.activeElement).toBe(screen.getByRole('heading'));
+    expect(screen.getByRole('heading').getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('wraps Shift+Tab from the initial title focus to the last enabled dialog control', () => {
+    render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    const title = screen.getByRole('heading');
+    expect(document.activeElement).toBe(title);
+    fireEvent.keyDown(title, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(sendButton());
+  });
   it('does not gate free or full workspaces on purchased seats and closes immediately after actual success', async () => {
     const close = vi.fn(); const event = vi.fn(); window.addEventListener('od:workspace-invites-sent', event);
     vi.stubGlobal('fetch', vi.fn(async () => response([{ email: 'new@example.com', ok: true }])));
@@ -74,6 +87,25 @@ describe('member-line invitation states', () => {
     fireEvent.click(sendButton());
     await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
     expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ invites: [{ email: 'unsent@example.com', role: 'member' }] });
+  });
+  it.each(['transport', 'server', 'upstream'] as const)('shows ordinary %s failures in a native top error toast and preserves all rows for retry', async (kind) => {
+    const fetcher = vi.fn().mockImplementationOnce(() => kind === 'transport' ? Promise.reject(new TypeError('offline')) : Promise.resolve(kind === 'server' ? new Response('{}', { status: 503 }) : response([{ email: 'one@example.com', ok: false, error: 'create_unreachable' }, { email: 'two@example.com', ok: false, error: 'create_unreachable' }]))).mockResolvedValueOnce(response([{ email: 'one@example.com', ok: true }, { email: 'two@example.com', ok: true }]));
+    vi.stubGlobal('fetch', vi.fn((url, init) => String(url) === '/api/workspace/invite' ? fetcher(url, init) : Promise.resolve(new Response('{}', { status: 200 })))); const close = vi.fn();
+    render(<InviteDialog open workspaceContext={owner} onClose={close} />);
+    email('one@example.com'); fireEvent.click(screen.getByRole('button', { name: /添加成员|add member/i })); email('two@example.com', 1); fireEvent.click(sendButton());
+    const toast = await screen.findByRole('alert');
+    expect(toast.classList.contains('od-toast')).toBe(true);
+    expect(toast.classList.contains('placement-top')).toBe(true);
+    expect(toast.classList.contains('tone-error')).toBe(true);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getAllByRole('textbox').map(node => (node as HTMLInputElement).value)).toEqual(['one@example.com', 'two@example.com']);
+    fireEvent.click(sendButton()); await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+  });
+  it('keeps domain failures inline instead of treating every HTTP rejection as a network outage', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })));
+    render(<InviteDialog open workspaceContext={owner} onClose={() => {}} />);
+    email('one@example.com'); fireEvent.click(sendButton());
+    const error = await screen.findByRole('alert'); expect(error.classList.contains('od-toast')).toBe(false);
   });
   it('disables every editable control while sending and retains all inputs on transport failure', async () => {
     let reject!: (reason: unknown) => void;

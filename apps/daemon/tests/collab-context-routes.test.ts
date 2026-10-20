@@ -1547,7 +1547,7 @@ describe('POST /api/workspace/invite', () => {
     'x-od-workspace-member-id': 'wm-1',
     'x-od-workspace-role': 'owner',
   };
-  const directory = (role: 'admin' | 'member' = 'admin') => ({
+  const directory = (role: 'owner' | 'admin' | 'member' = 'admin') => ({
     ok: true,
     items: [{
       workspaceId: 'wm-1',
@@ -1563,7 +1563,7 @@ describe('POST /api/workspace/invite', () => {
   it('creates each invite against the verified workspaceId and reports per-row results', async () => {
     const calls: Array<{ email: string; role: string; workspaceId: string }> = [];
     const api = await startContextServer({
-      fetchWorkspaceDirectory: async () => directory('admin'),
+      fetchWorkspaceDirectory: async () => directory('owner'),
       createInvite: async (input) => {
         calls.push(input);
         return { ok: true, inviteId: `inv-${input.email}` };

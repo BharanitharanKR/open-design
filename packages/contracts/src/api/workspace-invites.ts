@@ -34,6 +34,9 @@ export type WorkspaceInviteRole = Extract<CollabMemberRole, 'admin' | 'member'>;
 export const WORKSPACE_INVITE_CREATE_ERROR_CODES = [
   'already_member',
   'active_pending_invite',
+  'delivery_pending',
+  'delivery_failed',
+  'create_invalid_response',
   'workspace_seat_limit_reached',
   'workspace_subscription_seat_allocation_unavailable',
 ] as const;
@@ -177,12 +180,13 @@ export interface WorkspaceInviteCreateRequest {
 export interface WorkspaceInviteCreateResult {
   email: string;
   ok: boolean;
-  /** B's created invite id, present when ok === true. */
+  /** B's created invite id, present only after deliveryStatus === 'sent'. */
   inviteId?: string;
   /**
    * Stable failure code when ok === false — mirrors the daemon helper's typed
    * outcomes (`create_<status>` for B's HTTP errors, `create_unreachable` for a
-   * transport failure). Never thrown into the client.
+   * transport failure, delivery_pending/delivery_failed for an unsent invite,
+   * create_invalid_response when delivery cannot be confirmed). Never thrown into the client.
    */
   error?: string;
 }

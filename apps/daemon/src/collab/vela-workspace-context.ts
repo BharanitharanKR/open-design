@@ -899,7 +899,13 @@ export async function fetchVelaWorkspaceDirectory(
         status: response.status,
       };
     }
-    const items = mapVelaWorkspaceDirectory(await response.json());
+    const body = await response.json() as { items?: unknown } | null;
+    const items = mapVelaWorkspaceDirectory(body);
+    // A directory is an authority snapshot, not a best-effort display list.
+    // Dropping malformed rows would falsely revoke previously active members.
+    if (!Array.isArray(body?.items) || items.length !== body.items.length) {
+      return { ok: false, items: [], reason: 'upstream', status: 502 };
+    }
     getDiagnosticsEvidence()?.observeDirectory(items);
     return { ok: true, items };
   } catch (error) {

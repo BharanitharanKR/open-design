@@ -77,6 +77,23 @@ afterEach(() => {
 });
 
 describe('RecentProjectsStrip invite target (recvqgbyLNk4eE)', () => {
+  it.each(['recent', 'personalProjects'] as const)('does not duplicate the shell invitation entry in the %s collection', (collection) => {
+    workspaceState.context = teamContext(0);
+    render(<RecentProjectsStrip projects={[]} heading="All projects" onOpen={() => {}} space="drafts" collection={collection} />);
+    expect(screen.queryByRole('button', { name: /Invite teammates|邀请同事/ })).toBeNull();
+  });
+  it('keeps the established invitation action in the actual team collection', () => {
+    workspaceState.context = teamContext(0);
+    render(<RecentProjectsStrip projects={[]} heading="All projects" onOpen={() => {}} space="drafts" collection="teamProjects" />);
+    fireEvent.click(screen.getByRole('button', { name: /Invite teammates|邀请同事/ }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+  it('does not add a second invitation action to the home recent-project strip', () => {
+    workspaceState.context = teamContext(0);
+    render(<RecentProjectsStrip projects={[]} heading="Recent projects" onOpen={() => {}} space="recent" />);
+    expect(screen.queryByRole('button', { name: /Invite teammates|邀请同事/ })).toBeNull();
+  });
+
   it('opens the local invitation dialog even when historical seats are full', () => {
     workspaceState.context = teamContext(0);
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);

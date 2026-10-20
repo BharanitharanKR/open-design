@@ -6,6 +6,7 @@ import { usesProductionMarker, composeResumedRequest } from './strategies/od-nex
 import { todoSnapshotHasUnfinishedWork } from '@open-design/contracts';
 import { createUserDesignSystem } from './design-systems/index.js';
 import { resolveWorkspaceScope } from './collab/workspace-scope.js';
+import { cancelRevokedWorkspaceRuns, createWorkspaceMembershipRevocationObserver } from './collab/cancel-revoked-workspace-runs.js';
 import { startEvidenceDelivery } from './services/evidence-delivery.js';
 import type {
   DesktopExportArtifactInput,
@@ -276,7 +277,7 @@ import {
 import { isAbortedOperationError } from './integrations/aborted-error.js';
 import { projectResourceIdFor } from './integrations/vela-team-projects.js';
 import { normalizeCurrentFileComment, parseCommentFileState } from './collab/comment-file-facts.js';
-import { createLocalCommentFiles } from './collab/local-comment-files.js';
+import { createLocalCommentFiles, prepareLocalProjectCommentFile } from './collab/local-comment-files.js';
 import { createCommentFileDeletion } from './collab/comment-file-deletion.js';
 import { createCommentFilePublisher } from './collab/comment-file-publisher.js';
 import { createCommentFilePublicationCoordination } from './collab/comment-file-publication-coordination.js';
@@ -3849,6 +3850,16 @@ export async function startServer({
       configuredAmrEnv(),
     ),
   });
+  // The subscriber can connect while later asynchronous startup is still
+  // constructing the run service. Retain exact account-scoped revocations
+  // until that service exists instead of closing over its temporal dead zone.
+  const pendingRunRevocations: Array<{ workspaceId: string; identityKey: string; workspaceMemberId?: string }> = [];
+  let stopRevokedWorkspaceRuns = (workspaceId: string, workspaceMemberId?: string, identityKey = velaWorkspaceDirectoryIdentity(readVelaControlApiContext, configuredAmrEnv())) => {
+    pendingRunRevocations.push({ workspaceId, identityKey, ...(workspaceMemberId ? { workspaceMemberId } : {}) });
+  };
+  const workspaceMembershipRevocations = createWorkspaceMembershipRevocationObserver(
+    (workspaceId, memberId, identity) => stopRevokedWorkspaceRuns(workspaceId, memberId, identity),
+  );
   const workspaceDirectoryAuthority = createWorkspaceDirectoryAuthorityBroker({
     fetchDirectory: async () => {
       const result = await fetchVelaWorkspaceDirectory({
@@ -3873,8 +3884,11 @@ export async function startServer({
       mode: workspaceAuthorityCacheMode,
       ...input,
     }),
-    onAcceptedResult: (result, identity) =>
-      workspaceExactAuthorityCache.observe(identity, result.items),
+    onAcceptedResult: (result, identity) => {
+      workspaceExactAuthorityCache.observe(identity, result.items);
+      workspaceMembershipRevocations.observe(identity,
+        velaWorkspaceDirectoryIdentity(readVelaControlApiContext, configuredAmrEnv()), result);
+    },
   });
   const fetchWorkspaceDirectory = workspaceDirectoryAuthority.read;
   const fetchFreshMutationWorkspaceDirectory =
@@ -6619,6 +6633,9 @@ export async function startServer({
       ) {
         return;
       }
+      // Revocation frames do not identify the former member. Revalidate the
+      // complete directory below; only its old/new principal diff may stop a
+      // run, so a delayed old stream cannot cancel a newly rejoined member.
       const revocationReceivedAt = performance.now();
       const exactWorkspaceId = workspaceId ?? subscribedWorkspaceId;
       console.info(
@@ -6660,6 +6677,8 @@ export async function startServer({
       ) {
         return;
       }
+      // This dirty signal carries no member id. The fresh directory's exact
+      // principal diff owns cancellation, including delayed/replayed events.
       requestWorkspaceDirectoryRefresh(
         'event_dirty',
         event.at
@@ -8389,6 +8408,15 @@ export async function startServer({
     getAppVersion: currentAppVersion,
     readAnalyticsContext,
   };
+  stopRevokedWorkspaceRuns = (workspaceId: string, workspaceMemberId?: string) => {
+    void cancelRevokedWorkspaceRuns(design.runs, workspaceId, workspaceMemberId)
+      .catch(error => console.error('[od] failed to stop removed Workspace runs', error));
+  };
+  for (const revocation of pendingRunRevocations.splice(0)) {
+    if (revocation.identityKey === currentWorkspaceDirectoryIdentity()) {
+      stopRevokedWorkspaceRuns(revocation.workspaceId, revocation.workspaceMemberId);
+    }
+  }
   const taskObservationRollout = createTaskObservationRolloutService({
     db,
     dataDir: RUNTIME_DATA_DIR,
@@ -9271,21 +9299,10 @@ export async function startServer({
     // server-authoritative author, gate status/delete on the caller vs the
     // comment author / project owner, and push the comment lifecycle (create/edit,
     // status change, tombstone) to the cross-daemon relay.
-    prepareCommentFile: async (projectId, filePath, context) => {
-      if (!/\.html?$/i.test(filePath)) return undefined;
-      assertCommentFileNotPending(db, projectId, { filePath });
-      const state = parseCommentFileState(getProject(db, projectId)?.metadata?._commentFiles);
-      const current = state?.files.find(fact => !fact.retired && fact.sourceFilePath === filePath);
-      if (current) return current.sourceFileId;
-      if (!context || !velaCliTeamProjectCatalog) return localCommentFiles.identity(projectId, filePath);
-      const binding = getWorkspaceProjectByProjectId(db, projectId);
-      if (binding?.workspaceId !== context.workspaceId || binding.createdByWorkspaceMemberId !== context.workspaceMemberId) {
-        throw new Error('COMMENT_FILE_AUTHORITY_UNAVAILABLE');
-      }
-      // New private annotations are local-first. Their UUID is durable now;
-      // only explicit publication admits a receipt, never this save path.
-      return localCommentFiles.identity(projectId, filePath);
-    },
+    prepareCommentFile: async (projectId, filePath, context) => prepareLocalProjectCommentFile({
+      db, projectId, filePath, context,
+      requireWorkspaceAuthority: Boolean(velaCliTeamProjectCatalog),
+    }),
     resolveWorkspaceContext: resolveProjectCommentWorkspaceContext,
     resolveCurrentAuthorDisplayName: () => {
       const user = readVelaControlApiContext(process.env, configuredAmrEnv())?.user;

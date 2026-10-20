@@ -112,3 +112,41 @@ SHA-256: `46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6`
 - 原生 Toast 后普通 B10 累计重试成功再次 1/1 通过。B18 实测 x610.99、y64、218.02×40.19、radius999，勾选图标/关闭按钮及 3999ms 保留、4000ms 消失均通过；B19 手动关闭通过。剩余 12 态实现与复测完成，功能无待决项；B12 的约 1px 非阻断视觉差异保留在报告中。
 - 最终 de514e52e9 的根级 guard/typecheck 均 exit0。AMR `feat/seats-phase1-members` 已正常推送并推进至 d0bfcc62f；无 main 合并、发布、生产迁移或外部通知。
 - 独立报告总分 99/100，33 态共 66 张配对图已由 Chromium 验证全部加载，无破图。最终普通 B10 在原生 Toast 源码上补验 1/1 通过；测试 checkpoint d1180f09a1 已串行整合为 8eed5ad183。报告区分受控浏览器、真实 PG/CLI 分层验证与尚未执行的部署后外部邮件/完整跨端业务，不把前两者等同最后一项。
+
+
+## 2026-10-20 integration 冲突处理
+
+Alignment status: READY（合并规则已确认，验证结果见下）
+
+- 用户确认以 `integration/seats-phase1` 为基线。基线 `31105f960a`，保留远端 members `78744b2012` 的注册邀请修复；原本地 `9d1e08b322` 保存到 `codex/backup-seats-members-before-integration-20261020`。
+- C01：邀请入口、成员移除遮罩、表单、角色菜单、工作区切换及浏览器见证沿用 integration/远端现有实现。旧分支重复的 InviteEntry、WorkspaceRemovalDialog、InvitationNotice 及相应旧测试不重复接入；不回退当前权限与默认工作区恢复规则。
+- C02：保留本地邀请投递确认（仅 sent 为成功）、非 Owner 不能邀请 admin、完整目录权限快照校验，以及按旧 workspace/member 身份停止被移除成员任务的保护。对应 daemon invite-create、collab-context-routes、workspace-removal-authority、cancel-revoked-workspace-runs 和 contracts workspace-invite-permissions 测试。
+- C03：保留远端注册事实及引导生命周期，补齐与 integration 合并后缺失的 registrationInviteActive 状态；沿用注册引导、移除遮罩组件测试验证。
+- 已确认行为以用户本轮基线选择、integration 代码和远端 members 修复为准；本次不新增产品流程。
+
+- 验证完成：Node24.19；根级 guard、完整 typecheck 均通过；daemon 定向 6 文件155例、web 定向9文件119例通过，新增投递错误覆盖后 error-copy 18例通过（原15例）；contracts 权限定向6例通过。首次 daemon 运行曾出现账单预检401/403断言失败；integration 原始路由/测试的该用例通过，依赖构建完成后同组155例复跑通过，未改账单逻辑，保留这一首次失败记录。
+- 工作目录 `/private/tmp/od-seats-phase1-members`；本次没有跑浏览器视觉/真实邮箱 E2E，不把上述回归测试视为新的全量产品验收。未推送或发布。
+
+
+### 2026-10-20 整页视觉纠偏（覆盖旧99分结论）
+用户指出A组背景不一致，复核成立：原99/100撤回，不再把功能通过计为整页视觉通过。飞书修订报告 https://powerformer.feishu.cn/wiki/KtUzwuvi3ikmbBkM6VXccCUYnhg 。
+本轮用户授权修复A01/A03/A05/A06/A07，随后其余28态逐项复核、最终源码复测、更新同一飞书报告并推送。严格新账号注册信号和共享账务排除边界不变。
+验收先整页再局部：浅色entry背景采用参考侧栏/顶部#E5DFDC、内容#FCFAF9；不修改全局账务/权限/数据语义。A组对齐相同workspace、banner、viewport与受控数据，不能靠关闭真实业务功能或伪造平台装饰来宣称一致。保留每态可比数据及现有产品结构差异。
+待复验：五态背景及布局；全部33态最终截图；暗色/窄屏与受影响交互；独立功能结果。历史截图和旧评分仅作历史，不作当前通过证据。
+
+
+### 最终复核口径补正
+- 远端成员分支已整合integration及评论工作，基线更新至83ab50b59f；本轮只在其上追加成员视觉改动，不回退这些提交。
+- 普通B25按用户HTML截图及已明示状态恢复顶部红色Toast，原“最终JS应行内”的旧判断撤回；普通业务错误和注册B11仍保留各自定位反馈。
+- 普通B23/B26文案、错误行间距、role check、disabled颜色、初始标题焦点和Shift+Tab环回按参考修复；注册仅修disabled颜色，不改资格、权限、累计人数和布局。
+- H01仍卸载已撤权内容：参考保留内容与权限遮蔽要求有冲突，保持已确认安全边界并在报告明确整图差异，不恢复旧空间数据来追求截图一致。A01真实账户/社交入口有既有需求，保留并明示与旧稿不同；不伪造宿主OS按钮或账务徽标。
+- 最终33态将统一新采，同一产品快照、1440×900/zh-CN/light；场景准备修正B08两行、B25两行、H02事件后展开菜单及A05默认个人空间，不改生产数据来凑图。
+
+
+### 本轮交付验证
+- 产品源码固定2aa8f21de18cca970f0efccc0083485338bdda9e（83ab50b59f之后的成员视觉两提交），已完成全部33态本轮新截图；14:22至14:26、1440×900/zh-CN/light，另有暗色/系统暗色/768px及注册390px检查。A五态原图(10,10)/(10,200)/(1100,800)取样与参考逐点一致，包含菜单阴影合成色。
+- 浏览器统一47项首轮46过，B25严格定位器同时命中Next路由announcer和真实错误Toast失败；仅测试改为按真实文案定位并核top64后，B25单项1/1通过。产品源码未改变，不冒称首轮全绿。全部截图源保持同一产品快照。
+- 根guard、完整typecheck、Web及daemon生产构建均通过。远端新基线依赖完成冻结锁安装及依赖产物重建后复验；早期IPC/Node版本/旧契约产物失败不记通过。项目入口3文件29项、邀请/注册/业务错误4文件49项定向测试通过，重叠不跨轮累加。
+- 飞书同一报告已更新并回读：https://powerformer.feishu.cn/wiki/KtUzwuvi3ikmbBkM6VXccCUYnhg ，revision16，33组66图全部上传绑定。总分保持撤回；真实剩余差异包括普通邀请顶栏遮罩、B12约1px/角色字形、缺权威人数、示例/宿主外观和H01权限卸载。不能把功能绿写成整页视觉通过。
+- 本地同报告：/private/tmp/od-members-visual-evidence/registration-acceptance-report.html；66图由Chromium验证无破图且有原图入口。证据哈希与采图时间：report-repair-20261020/evidence-manifest.json。未改用户原始HTML，SHA保持46becf5cbb0ca9747d44df0a9ccdf95956f2ac5989c447df372b8d43da3a85b6。
+- 排除共享账务；不伪造成员人数，不移除现有团队功能，不合并main、不发布、不发送通知。

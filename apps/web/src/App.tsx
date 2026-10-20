@@ -1763,6 +1763,7 @@ function AppInner() {
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
+  const [registrationInviteActive, setRegistrationInviteActive] = useState(false);
   // A public URL is a capability. Retain only the last exact active-share GET
   // observed under this App's authenticated account, in memory, for S13 copy.
   const [observedPublicShareLink, setObservedPublicShareLink] = useState<
@@ -1797,7 +1798,7 @@ function AppInner() {
     setLoginUpdateRequest((current) => current?.nonce === nonce ? null : current);
   }, []);
 
-  const [registrationInviteActive, setRegistrationInviteActive] = useState(false);
+
   const testRuntimeAuthenticated = isAmrSessionAuthenticated(amrLoginStatus);
   const testRuntimeOwner = amrLoginStatus?.user?.id ?? null;
   useEffect(() => {

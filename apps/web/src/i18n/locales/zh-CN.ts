@@ -1,6 +1,9 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  "workspaceInvite.deliveryPending": "邀请邮件正在发送，请稍后确认结果",
+  "workspaceInvite.deliveryFailed": "邀请邮件发送失败，请重试",
+  "workspaceInvite.invalidResponse": "暂时无法确认发送结果，请稍后重试",
   "homeInvite.banner": "免费邀请同事，一起看设计、聊想法",
   "homeInvite.invite": "邀请",
   "homeInvite.dismiss": "关闭邀请横条",
@@ -74,7 +77,7 @@ export const zhCN: Dict = {
   "workspaceInvite.memberCount": "已有 {count} 位成员",
   "workspaceInvite.errorInvalidEmail": "邮箱格式不正确，请检查后重新输入",
   "workspaceInvite.errorDuplicateEmail": "此邮箱已填写，请勿重复添加",
-  "workspaceInvite.partialSummary": "已发送 {sent} 位，{failed} 位未发送，可修改或重试剩余项。",
+  "workspaceInvite.partialSummary": "已发送 {sent} 位，{failed} 位未发送。请修改或重试失败项，已发送项不会重复发送。",
   "workspaceInvite.sentCount": "已向 {count} 位同事发送邀请",
   "workspaceInvite.adminDescription": "拥有成员的全部权限，还可重发或撤销邀请、移除普通成员。",
   "workspaceInvite.memberDescription": "可使用工作空间额度创建设计，并邀请同事以成员身份加入。",
@@ -100,8 +103,8 @@ export const zhCN: Dict = {
   "workspaceInvite.sending": "正在发送…",
   "workspaceInvite.confirm": "发送邀请",
   "workspaceInvite.submitFailed": "邀请发送失败，请检查网络后重试。",
-  "workspaceInvite.errorAlreadyMember": "该邮箱已是团队成员。",
-  "workspaceInvite.errorPendingInvite": "该邮箱已有待接受的邀请。",
+  "workspaceInvite.errorAlreadyMember": "此邮箱已是工作空间成员，无需邀请",
+  "workspaceInvite.errorPendingInvite": "此邮箱已有待接受的邀请，可在成员页重新发送",
   "workspaceInvite.errorNoSession": "请先登录你的 Vela 账号再邀请成员。",
   "workspaceInvite.errorNoWorkspace": "当前还没有可邀请成员的团队空间。",
   "workspaceInvite.errorUnreachable": "邀请未能送达，请稍后重试。",
