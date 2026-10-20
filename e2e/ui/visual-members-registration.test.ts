@@ -69,11 +69,11 @@ test('[P1] B07 existing member error remains local to the editable row', async (
   await host.invite(route => route.fulfill({ json: { results: [{ email: 'mika@example.com', ok: false, error: 'already_member' }] } }));
   await host.form.locator('input[type=email]').fill('mika@example.com');
   await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
-  await expect(host.form.getByText('该邮箱已是团队成员。')).toBeVisible();
+  await expect(host.form.getByText('此邮箱已是工作空间成员，无需邀请')).toBeVisible();
   await expect(host.form.locator('input[type=email]')).toBeEditable();
   await captureRegistration(page, 'B07');
   await host.form.locator('input[type=email]').fill('corrected@example.com');
-  await expect(host.form.getByText('该邮箱已是团队成员。')).toHaveCount(0);
+  await expect(host.form.getByText('此邮箱已是工作空间成员，无需邀请')).toHaveCount(0);
 });
 
 test('[P1] B08 pending request prevents repeat submits and skip', async ({ page }) => {
@@ -138,7 +138,7 @@ test('[P1] B12 B19 partial success keeps only failure and skip reports actual cu
   await host.form.getByRole('button', { name: '发送邀请', exact: true }).click();
   await expect(host.form.locator('input[type=email]')).toHaveCount(1);
   await expect(host.form.locator('input[type=email]')).toHaveValue('lee@example.com');
-  await expect(host.form.getByText('该邮箱已有待接受的邀请。')).toBeVisible();
+  await expect(host.form.getByText('此邮箱已有待接受的邀请')).toBeVisible();
   await expect(host.form.getByRole('button', { name: '已邀请 1 位同事' })).toBeDisabled();
   await captureRegistration(page, 'B12-transient', true);
   await page.clock.runFor(650);
