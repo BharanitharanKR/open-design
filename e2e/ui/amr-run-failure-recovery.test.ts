@@ -229,7 +229,7 @@ test('[P0] @critical AMR insufficient-balance failures open a dialog and preserv
     .toBeTruthy();
 });
 
-test('[P0] @critical AMR preflight opens before agent startup and never cancels a successful run', async ({ page }, testInfo) => {
+test('[P0] @critical AMR insufficient preflight retains the draft and recovers only after an explicit send', async ({ page }, testInfo) => {
   await stubRuntimeAgents(page);
   await page.route('**/api/integrations/vela/status', (route) => route.fulfill({ json: {
     loggedIn: true, profile: 'local',
@@ -240,17 +240,21 @@ test('[P0] @critical AMR preflight opens before agent startup and never cancels 
     assistantText: 'The gateway admitted this run.',
   });
   await gotoProject(page, amr.projectId);
-  // Hold the real run POST, while the independent daemon -> Vela preflight
-  // remains live. No agent process can start before we release this request.
+  // RUN-003/011/012: confirmed insufficiency cannot race into startup. The
+  // original CI red expected the unchanged insufficient fixture to execute
+  // merely because this POST route gate was released. Preserve the successful
+  // run/zero-cancellation check after a genuine fixture recovery and manual Send.
   let releaseRun!: () => void;
   const heldRun = new Promise<void>((resolve) => { releaseRun = resolve; });
   let runForwarded = false;
+  let runPosts = 0;
   let cancellations = 0;
   page.on('request', (request) => {
     if (/\/api\/runs\/[^/]+\/cancel/.test(request.url())) cancellations++;
   });
   await page.route('**/api/runs', async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
+    runPosts++;
     await heldRun;
     runForwarded = true;
     await route.continue();
@@ -264,14 +268,43 @@ test('[P0] @critical AMR preflight opens before agent startup and never cancels 
     const dialog = page.getByTestId('amr-balance-dialog');
     await expect(dialog).toBeVisible({ timeout: T.long });
     expect(runForwarded).toBe(false);
+    expect(runPosts).toBe(0);
     await testInfo.attach('independent-preflight-timing', { contentType: 'application/json',
       body: JSON.stringify({ elapsedMs: Date.now() - startedAt, runForwarded, source: 'local fake Vela preflight; real daemon and browser' }) });
     await testInfo.attach('independent-preflight-before-agent', {
       body: await page.screenshot(), contentType: 'image/png',
     });
     await expect(page.getByTestId('chat-upgrade-card')).toHaveCount(0);
+    await expect(input).toHaveText('Check funding independently of agent startup');
+    // Update the actual fake CLI used by the real daemon, including a positive
+    // cash balance. Do not mock a successful POST or infer available from time.
+    await writeFakeVelaBin(join(amr.root, 'bin'), {
+      fundingCheck: { status: 'available', workspaceMemberId: AMR_PERSONAL_WORKSPACE_ITEM.workspaceMemberId, balanceUsd: '20.00' },
+      assistantText: 'The gateway admitted this run.', requireLoginConfig: false, requireSetModel: false,
+    });
+    const available = page.waitForResponse(response => response.url().includes('/api/workspace/billing/preflight?'));
+    await page.evaluate(() => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
+    const availableResponse = await available;
+    expect(availableResponse.ok()).toBe(true);
+    const availableBody = await availableResponse.json();
+    expect(availableBody.preflight.fundingCheck).toBe('available');
+    expect(Number(availableBody.preflight.balanceUsd)).toBe(20);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
+    expect(runPosts, 'Recovery alone cannot submit the retained draft').toBe(0);
+    if (await dialog.isVisible()) await dialog.getByRole('button', { name: /Not now|暂不需要|稍后|Later/i }).click();
+    await expect(input).toHaveText('Check funding independently of agent startup');
+    await expect(input).toBeEditable();
     releaseRun();
+    const created = page.waitForResponse(response => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/api/runs');
+    await page.getByTestId('chat-send').click();
+    const createdResponse = await created;
+    expect(createdResponse.status()).toBe(202);
+    expect(runPosts).toBe(1);
     await expect(page.getByText('The gateway admitted this run.').first()).toBeVisible({ timeout: T.long });
+    const { runId } = await createdResponse.json();
+    await expect.poll(async () => (await (await page.request.get(`/api/runs/${runId}`)).json()).status,
+      { timeout: T.long }).toBe('succeeded');
     await expect(dialog).toBeHidden();
     expect(cancellations).toBe(0);
   } finally {
