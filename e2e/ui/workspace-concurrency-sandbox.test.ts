@@ -136,6 +136,7 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
         const saved = await fetch(new URL(`/api/projects/${projectId}/files/${artifactName}`, runtime.webUrl!), { headers });
         expect.soft(saved.ok && await saved.text() === artifact, `${surface}: existing HTML preserved`).toBe(true);
         expect.soft(dialogVisible && /concurren|too many requests|并发/i.test(dialogText ?? ''), `${surface}: actual Link-full concurrency dialog must be visible, do not fabricate it if lease bridge blocks first`).toBe(true);
+        expect.soft(actual.actual.runPosts, `${surface}: Link-full refusal must not create a run`).toBe(0);
         expect.soft(actual.actual.input, `${surface}: rejected input retained`).toBe(prompt);
         expect.soft(actual.actual.staged.join(' '), `${surface}: rejected real attachment retained`).toContain(attachment);
         if (dialogVisible) {
