@@ -962,4 +962,34 @@ describe('Link request concurrency rejection preserves the original send', () =>
     expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(1);
   });
 
+  it.each([false, true])('Home auto-send only requests a route recovery after an empty actual composer witness (new text=%s)', async (typed) => {
+    realChatPane.enabled = true;
+    workspaceScopeMocks.ambientContext = callerContext('owner', 'team_pro');
+    window.sessionStorage.setItem(`od:auto-send-first:${PROJECT_ID}`, '1');
+    window.sessionStorage.setItem(`od:auto-send-prompt:${PROJECT_ID}`, 'original Home prompt');
+    window.sessionStorage.setItem(`od:auto-send-attachments:${PROJECT_ID}`, JSON.stringify([{ path: 'home.png', name: 'home.png', kind: 'image' }]));
+    const onRejected = vi.fn().mockReturnValue(true);
+    renderProjectView({ project: { ...project(), pendingPrompt: 'original Home prompt' } as never,
+      onInitialHomeRequestConcurrencyRejected: onRejected });
+    await waitFor(() => expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(1));
+    await flushMounts();
+    if (typed) await typeAndSettle('new project draft');
+    const options = mockedStreamViaDaemon.mock.calls[0]![0];
+    await act(async () => {
+      options.onRunCreated?.('home-first-request');
+      await options.handlers.onError(Object.assign(new Error('actual request limit'), { failureDetail: 'membership_concurrency_limit' }));
+    });
+    await flushMounts();
+    if (typed) {
+      expect(onRejected).not.toHaveBeenCalled();
+      expect(composerText()).toBe('new project draft');
+    } else {
+      expect(onRejected).toHaveBeenCalledOnce();
+      expect(onRejected).toHaveBeenCalledWith(expect.objectContaining({ projectId: PROJECT_ID,
+        clientRequestId: options.clientRequestId }));
+      expect(composerText()).toBe('original Home prompt');
+      expect(within(screen.getByTestId('staged-attachments')).getByTitle('home.png')).toBeTruthy();
+    }
+  });
+
 });
