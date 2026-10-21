@@ -1861,6 +1861,12 @@ export function EntryShell({
 
 
   const [registrationInviteExit, setRegistrationInviteExit] = useState<{ count: number; context: import('@open-design/contracts').WorkspaceCollabContext; accountId: string; credentialRevision: string | undefined; profile: string | undefined } | null>(null);
+  const [registrationEntryFade, setRegistrationEntryFade] = useState(false);
+  useEffect(() => {
+    if (!registrationEntryFade) return;
+    const timer = window.setTimeout(() => setRegistrationEntryFade(false), 200);
+    return () => window.clearTimeout(timer);
+  }, [registrationEntryFade]);
   const registrationInvite = useRegistrationInvite({
     status: amrRegistrationStatus, accountId: amrAccountId, configuredProfile: amrProfile?.trim() || config.agentCliEnv?.amr?.VELA_PROFILE?.trim() || amrRegistrationStatus?.profile || 'prod', context: railWorkspaceContext,
     identityReady: !workspaceContextState.loading && !workspaceContextState.identityChangePending && !workspaceContextState.failure,
@@ -1870,6 +1876,7 @@ export function EntryShell({
     onExit: (count, context) => {
       if (!amrAccountId) return;
       setRegistrationInviteExit({ count, context, accountId: amrAccountId, credentialRevision: amrRegistrationStatus?.credentialRevision, profile: amrRegistrationStatus?.profile });
+      setRegistrationEntryFade(true);
       finishOnboarding();
     },
   });
@@ -2071,7 +2078,7 @@ export function EntryShell({
             onClose={() => setProjectSearchOpen(false)}
           />
         ) : null}
-        <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
+        <main className={`entry-main entry-main--scroll${registrationEntryFade ? ' entry-main--registration-entry' : ''}`} ref={entryMainScrollRef}>
           {/* #5517: no entry topbar. The rail toggle is the pinned Home tab in
               the workspace tabs bar (entryRailBridge), the updater popup host
               lives in the rail footer, and everything below is fixed-position
