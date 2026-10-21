@@ -147,6 +147,17 @@ test('[P0] VIEW-015 cash0 with real available Design Plan completes one correctl
         return terminal;
       }, { timeout: T.xlong, intervals: [250, 500, 1_000] }).toBe(true);
       expect(result!.status, 'A scoped HTTP202 alone does not prove a model completed').toBe('succeeded');
+      const events = await fetch(client.runtime.url.web(`/api/runs/${runId}/events`), {
+        headers: fundingHeaders(client.fixture.spaces.dp), signal: AbortSignal.timeout(T.short),
+      });
+      expect(events.ok, 'Capture actual completed-run events before owned runtime cleanup').toBe(true);
+      const eventText = await events.text();
+      await info.attach('cash0-DP-completed-run-events', { body: eventText, contentType: 'text/plain' });
+      await client.attach('cash0-DP-stop-reason-observation', {
+        runId, endTurnStringObserved: /["']stopReason["']\s*:\s*["']end_turn["']/.test(eventText),
+        // Event shape is observed, not imposed as a new product requirement.
+        wholeQaPassed: false,
+      });
     } finally {
       await client.attach('cash0-DP-actual-run-terminal', {
         runId, workspaceId: client.fixture.spaces.dp.workspaceId, result, observations,
