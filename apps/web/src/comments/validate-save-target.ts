@@ -30,6 +30,7 @@ export function validateCommentSaveTarget(
         text: typeof data.text === 'string' ? data.text : target.text,
         label: typeof data.label === 'string' ? data.label : target.label,
         htmlHint: typeof data.htmlHint === 'string' ? data.htmlHint : target.htmlHint,
+        style: data.style && typeof data.style === 'object' && !Array.isArray(data.style) ? data.style : undefined,
         position: data.position });
     };
     const timeout = window.setTimeout(() => finish('unavailable'), 3000);

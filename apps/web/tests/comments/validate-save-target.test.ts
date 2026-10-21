@@ -51,3 +51,14 @@ it('rejects a response for a different queried selector', async () => {
     data: { ...target, requestedSelector: 'other', type: 'od:comment-active-target-update', requestId: request.requestId } }));
   expect(await result).toBe('unavailable');
 });
+
+it.each([{ color: 'blue', fontSize: '20px' }, undefined])('uses current style, including clearing absent style: %j', async style => {
+  const frame = document.createElement('iframe'); document.body.append(frame);
+  const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+  const result = validateCommentSaveTarget(frame, { ...target, style: { color: 'red', fontSize: '12px' } });
+  const request = post.mock.calls[0]![0] as { requestId: string };
+  window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow,
+    data: { ...target, style, requestedSelector: target.selector,
+      type: 'od:comment-active-target-update', requestId: request.requestId } }));
+  expect(await result).toMatchObject({ style });
+});
