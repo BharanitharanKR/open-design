@@ -14474,6 +14474,7 @@ export function ProjectView({
         && config.mode === 'daemon' && config.agentId === 'amr' ? (
         <AmrConcurrencyDialog branch={concurrencyRejection.branch}
           workspaceContext={concurrencyRejection.workspaceContext}
+          profile={config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE ?? null}
           onClose={() => setConcurrencyDialogOpen(false)} />
       ) : null}
       {amrBalanceGateBlock?.dialog === 'ask_owner' || amrOwnerTopUpFromCard ? (
