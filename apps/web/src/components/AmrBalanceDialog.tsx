@@ -30,7 +30,7 @@ export const WALLET_WATCH_TIMEOUT_MS = 10 * 60_000;
 interface Props {
   /** Backend funding rejection, or a pre-send sign-in block. */
   reason: 'insufficient' | 'signed_out';
-  /** Pre-send rejection recovery never authorizes an automatic send. */
+  /** Funding recovery may dismiss the prompt without authorizing a send. */
   manualSendOnRecovery?: boolean;
   modelId?: string | null;
   fundingScope?: AmrBalanceGateScope;

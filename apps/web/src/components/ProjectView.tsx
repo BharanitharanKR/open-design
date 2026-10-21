@@ -2908,8 +2908,8 @@ export function ProjectView({
   const [concurrencyDialogOpen, setConcurrencyDialogOpen] = useState(false);
   const latestRequestSendRef = useRef(new Map<string, string>());
   // Sign-in blocks and live gateway funding rejections share these dialogs.
-  // `conversationId` remembers whose
-  // queue to resume when the dialog resolves (sign-in done / recharge landed).
+  // `conversationId` remembers whose sign-in queue may resume. Funding
+  // recovery leaves paused sends under explicit user control.
   const [amrBalanceGateBlock, setAmrBalanceGateBlock] = useState<
     {
       reason: 'insufficient' | 'signed_out';
@@ -14490,7 +14490,7 @@ export function ProjectView({
       {amrBalanceGateBlock?.dialog === 'upgrade' ? (
         <AmrBalanceDialog
           reason={amrBalanceGateBlock.reason}
-          manualSendOnRecovery={amrBalanceGateBlock.reason === 'insufficient' && amrBalanceGateBlock.fundingSource !== 'gateway'}
+          manualSendOnRecovery={amrBalanceGateBlock.reason === 'insufficient'}
           modelId={amrBalanceGateBlock.modelId}
           fundingScope={amrBalanceGateBlock.fundingScope}
           balanceUsd={amrBalanceGateBlock.snapshot?.balanceUsd ?? null}
@@ -14507,15 +14507,14 @@ export function ProjectView({
           installationId={config.installationId}
           onClose={() => setAmrBalanceGateBlock(null)}
           onResolved={() => {
-            // Resume pending sends after sign-in or funding recovery. A run
-            // that already failed remains in history for an explicit retry;
-            // this only releases other sends waiting in the queue. Link still
-            // makes the final funding decision for each new run.
             const conversationId = amrBalanceGateBlock.conversationId;
             setAmrBalanceGateBlock(null);
-            // A pre-send quota rejection never resubmits on recovery. The
-            // composer draft (or held non-composer payload) needs manual Send.
-            if (amrBalanceGateBlock.fundingSource === 'preflight') return;
+            // Current QA RUN-012: funding recovery does not submit inputs
+            // that have not been sent. Preserve the gateway-paused queue and
+            // its full payload for the existing manual "send now" action;
+            // the failed run also remains in history for explicit retry.
+            // Sign-in recovery retains its original queue behavior.
+            if (amrBalanceGateBlock.reason === 'insufficient') return;
             amrGatePausedQueueConversationsRef.current.delete(conversationId);
             setQueuedAutoStartTick((tick) => tick + 1);
           }}

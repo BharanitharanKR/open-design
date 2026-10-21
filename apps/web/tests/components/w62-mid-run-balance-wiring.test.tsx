@@ -30,7 +30,7 @@ import type { ProjectWorkspaceScopeState } from '../../src/collab/useProjectWork
 import { resetWorkspaceContextCache } from '../../src/collab/useWorkspaceContext';
 import { advanceWorkspaceAccountGeneration, resetWorkspaceAccountGeneration } from '../../src/collab/workspace-identity';
 import { fetchAmrWalletSnapshot, fetchChatRunStatus, reattachDaemonRun, streamViaDaemon } from '../../src/providers/daemon';
-import { checkAmrBalanceGate } from '../../src/runtime/amr-balance-gate';
+import { checkAmrBalanceGate, hasAmrFundingRecovered } from '../../src/runtime/amr-balance-gate';
 import { checkAmrFundingFeedback } from '../../src/runtime/amr-funding-feedback';
 import {
   createConversation,
@@ -165,7 +165,7 @@ vi.mock('../../src/runtime/amr-balance-gate', async () => {
   const actual = await vi.importActual<typeof import('../../src/runtime/amr-balance-gate')>(
     '../../src/runtime/amr-balance-gate',
   );
-  return { ...actual, checkAmrBalanceGate: vi.fn().mockResolvedValue({ kind: 'allow' }) };
+  return { ...actual, checkAmrBalanceGate: vi.fn().mockResolvedValue({ kind: 'allow' }), hasAmrFundingRecovered: vi.fn().mockResolvedValue(false) };
 });
 
 vi.mock('../../src/providers/project-events', () => ({
@@ -567,6 +567,53 @@ describe('跑到一半余额不足:谁点亮升级卡', () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     resetWorkspaceContextCache();
+  });
+
+  // Current QA client:RUN-012 step 2: inputs not yet sent must not be
+  // submitted by funding recovery. This is an existing user queue paused by
+  // the real gateway failure, not a new queue for rejected composer drafts.
+  it('keeps gateway-paused text and files until the user explicitly sends after recharge', async () => {
+    mockedStreamViaDaemon.mockImplementation(() => new Promise(() => {}));
+    mockedFetchAmrWalletSnapshot.mockResolvedValue(snapshot('0'));
+    workspaceBillingResponse = provenWorkspaceBilling('0');
+    vi.mocked(hasAmrFundingRecovered).mockResolvedValue(true);
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    await sendOnce();
+    const active = mockedStreamViaDaemon.mock.calls[0]![0];
+    const file = { path: 'original-brief.pdf', name: 'original-brief.pdf', kind: 'file' };
+    await act(async () => {
+      active.onRunCreated?.('funding-active-run');
+      active.handlers.onDelta('Keep this existing output.');
+      await chatPaneSpy.mock.calls.at(-1)![0].onSend('keep queued follow-up', [file], []);
+    });
+    expect(chatPaneSpy.mock.calls.at(-1)![0].queuedItems).toHaveLength(1);
+    await act(async () => {
+      await active.handlers.onError(Object.assign(new Error('insufficient balance'), { code: 'AMR_INSUFFICIENT_BALANCE' }));
+    });
+    await screen.findByTestId('amr-balance-dialog');
+    expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(1);
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByTestId('amr-balance-dialog-plans'));
+    const hint = screen.getByTestId('amr-balance-dialog-watching').textContent;
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(hasAmrFundingRecovered).toHaveBeenCalled();
+    expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
+    // A recharge is not the user's permission to dispatch queued requests.
+    expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(1);
+    expect(hint).toBe('chat.amrBalanceGate.watchingWalletManual');
+    const queued = chatPaneSpy.mock.calls.at(-1)![0].queuedItems;
+    expect(queued).toHaveLength(1);
+    expect(queued[0]).toMatchObject({ prompt: 'keep queued follow-up', attachments: [file] });
+    const history = chatPaneSpy.mock.calls.at(-1)![0].messages;
+    expect(history.some((message: ChatMessage) => message.content.includes('Keep this existing output.'))).toBe(true);
+    await act(async () => { chatPaneSpy.mock.calls.at(-1)![0].onSendQueuedNow(queued[0].id); });
+    expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(2);
+    const retry = mockedStreamViaDaemon.mock.calls[1]![0];
+    expect(retry.history.at(-1)).toMatchObject({ role: 'user', content: 'keep queued follow-up', attachments: [file] });
+    expect(retry.attachments).toEqual([file.path]);
+    expect(retry.workspaceContext?.workspaceId).toBe(TEAM_WORKSPACE);
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(2);
   });
 
   it('跑到一半的余额不足:把钱包读数交给升级卡', async () => {
