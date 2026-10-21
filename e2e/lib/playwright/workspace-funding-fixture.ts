@@ -7,10 +7,13 @@ export type FundingSpace = {
   workspaceId: string;
   ownerMemberId: string;
   runtimeKey: string;
+  /** Version2 keeps the actual owner distinct from this logged-in actor. */
+  actorMemberId?: string;
+  actorRole?: 'owner' | 'admin' | 'member';
 };
 
 export type FundingFixture = {
-  version: 1;
+  version: 1 | 2;
   isolation: {
     runId: string;
     expiresAt: string;
@@ -44,8 +47,8 @@ function requireValue(value: unknown, label: string): asserts value is string {
 
 export function validateFundingFixture(value: unknown, expectedRunId: string): FundingFixture {
   const fixture = value as FundingFixture | undefined;
-  if (fixture?.version !== 1 || fixture.isolation?.exclusive !== true) {
-    throw new Error('Requires version 1 exclusively leased disposable sandbox fixture');
+  if (![1, 2].includes(fixture?.version ?? 0) || fixture?.isolation?.exclusive !== true) {
+    throw new Error('Requires version 1 or 2 exclusively leased disposable sandbox fixture');
   }
   requireValue(expectedRunId, 'OD_FUNDING_RUN_ID');
   if (fixture.isolation.runId !== expectedRunId) throw new Error('Sandbox run ID mismatch');
@@ -82,6 +85,16 @@ export function validateFundingFixture(value: unknown, expectedRunId: string): F
     for (const key of ['workspaceId', 'ownerMemberId', 'runtimeKey'] as const) {
       requireValue(fixture.spaces?.[alias]?.[key], `spaces.${alias}.${key}`);
     }
+    const space = fixture.spaces[alias];
+    if (fixture.version === 2) {
+      requireValue(space.actorMemberId, `spaces.${alias}.actorMemberId`);
+      if (!['owner', 'admin', 'member'].includes(space.actorRole ?? '')) throw new Error('Version2 requires an explicit actor role');
+      if ((space.actorRole === 'owner') !== (space.actorMemberId === space.ownerMemberId)) {
+        throw new Error('Actual owner and actor membership/role must agree');
+      }
+    } else if (space.actorMemberId !== undefined || space.actorRole !== undefined) {
+      throw new Error('Role-aware fixtures require version2; legacy version1 is Owner-only');
+    }
   }
   if (new Set(Object.values(fixture.spaces).map(s => s.workspaceId)).size !== 3
     || new Set(Object.values(fixture.spaces).map(s => s.runtimeKey)).size !== 3) {
@@ -108,8 +121,8 @@ export async function readFundingFixture(): Promise<FundingFixture> {
 export function fundingHeaders(space: FundingSpace): Record<string, string> {
   return {
     'x-od-workspace-id': space.workspaceId,
-    'x-od-workspace-member-id': space.ownerMemberId,
-    'x-od-workspace-role': 'owner',
+    'x-od-workspace-member-id': space.actorMemberId ?? space.ownerMemberId,
+    'x-od-workspace-role': space.actorRole ?? 'owner',
     'x-od-workspace-type': 'team',
     'x-od-workspace-lifecycle-state': 'active',
     'x-od-workspace-member-status': 'active',

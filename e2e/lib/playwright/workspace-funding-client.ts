@@ -102,8 +102,8 @@ export async function startFundingClient(page: Page, info: TestInfo) {
       const item = items.find(item => item.workspaceId === space.workspaceId);
       expect(item, 'Every sandbox workspace must be authorized for the explicit actor').toBeTruthy();
       expect(item!.workspaceName.startsWith(fixture.isolation.workspaceNamePrefix), 'Sandbox workspace isolation prefix').toBe(true);
-      expect(item!.workspaceMemberId).toBe(space.ownerMemberId);
-      expect(item!.role).toBe('owner');
+      expect(item!.workspaceMemberId).toBe(space.actorMemberId ?? space.ownerMemberId);
+      expect(item!.role).toBe(space.actorRole ?? 'owner');
     }
     const preconditions: Record<string, Preflight> = {};
     for (const [alias, space] of Object.entries(fixture.spaces)) {
@@ -114,7 +114,7 @@ export async function startFundingClient(page: Page, info: TestInfo) {
       expect(response.ok).toBe(true);
       const { preflight } = await response.json() as { preflight: Preflight };
       expect(preflight.workspaceId).toBe(space.workspaceId);
-      expect(preflight.workspaceMemberId).toBe(space.ownerMemberId);
+      expect(preflight.workspaceMemberId).toBe(space.actorMemberId ?? space.ownerMemberId);
       expect(preflight.modelId).toBe(fixture.runtime.modelId);
       expect(preflight.billingMode).toBe('shared');
       expect(preflight.codingPlan.tier).toBe('go');
@@ -147,7 +147,7 @@ export async function startFundingClient(page: Page, info: TestInfo) {
       localStorage.setItem('open-design:locale', 'en');
       localStorage.setItem('open-design:locale-source', 'manual');
       sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({
-        workspaceId: space.workspaceId, workspaceMemberId: space.ownerMemberId,
+        workspaceId: space.workspaceId, workspaceMemberId: space.actorMemberId ?? space.ownerMemberId,
       }));
     }, { config, space: fixture.spaces.dp });
     const select = async (space: FundingSpace) => {
@@ -175,7 +175,7 @@ export async function startFundingClient(page: Page, info: TestInfo) {
       await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('od.workspaceSelection.v1') ?? 'null')?.workspaceId)).toBe(space.workspaceId);
     };
     return {
-      fixture, runtime, posts, attach, select,
+      fixture, runtime, posts, attach, select, authorizedSpaces: items,
       async createProject(space: FundingSpace) {
         const id = `funding-${randomUUID()}`;
         const response = await fetch(runtime.url.web('/api/projects'), {

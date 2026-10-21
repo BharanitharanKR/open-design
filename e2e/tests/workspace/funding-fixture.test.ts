@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { validateFundingFixture, requireDpModelCoverage, type FundingFixture } from '@/playwright/workspace-funding-fixture';
+import { validateFundingFixture, requireDpModelCoverage, fundingHeaders, type FundingFixture } from '@/playwright/workspace-funding-fixture';
 import { assertFundingLeaseIdentity, withFundingLease } from '@/playwright/workspace-funding-lease';
 import type { FundingRuntimeReceipt, CanonicalFundingStatus } from '@/playwright/workspace-funding-lease';
 
@@ -21,6 +21,34 @@ describe('explicit disposable funding sandbox guard', () => {
   it('accepts a matching loopback lease without consulting a host profile', () => {
     const fixture = disposableFixture();
     expect(validateFundingFixture(fixture, 'unit-run')).toBe(fixture);
+  });
+
+  const roleFixture = () => {
+    const f = disposableFixture();
+    f.version = 2;
+    for (const [alias, space] of Object.entries(f.spaces)) {
+      space.actorRole = alias === 'funded' ? 'owner' : 'member';
+      space.actorMemberId = alias === 'funded' ? space.ownerMemberId : `${space.workspaceId}-actual-member`;
+    }
+    return f;
+  };
+
+  it('keeps the real B owner distinct from the logged-in Member principal', () => {
+    const f = roleFixture();
+    expect(validateFundingFixture(f, 'unit-run')).toBe(f);
+    expect(fundingHeaders(f.spaces.empty)['x-od-workspace-member-id']).toBe('empty-actual-member');
+    expect(fundingHeaders(f.spaces.empty)['x-od-workspace-role']).toBe('member');
+    expect(f.spaces.empty.ownerMemberId).toBe('empty-owner');
+  });
+
+  it.each(['missing-member', 'missing-role', 'false-owner', 'member-is-owner', 'legacy-downgrade'] as const)('rejects role-principal ambiguity: %s', field => {
+    const f = roleFixture();
+    if (field === 'missing-member') delete f.spaces.empty.actorMemberId;
+    if (field === 'missing-role') delete f.spaces.empty.actorRole;
+    if (field === 'false-owner') f.spaces.empty.actorRole = 'owner';
+    if (field === 'member-is-owner') f.spaces.empty.actorMemberId = f.spaces.empty.ownerMemberId;
+    if (field === 'legacy-downgrade') f.version = 1;
+    expect(() => validateFundingFixture(f, 'unit-run')).toThrow();
   });
 
   it.each([

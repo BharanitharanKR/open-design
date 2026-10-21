@@ -98,8 +98,8 @@ async function main() {
       const args = ['pnpm', 'exec', 'playwright', 'test', '-c', 'lib/playwright/funding.config.ts'];
       const selection = process.env.OD_FUNDING_CASE;
       if (selection) {
-        const filters: Record<string, string> = { project: 'VIEW-015 project', home: 'VIEW-015 home', dp: 'VIEW-015 cash0' };
-        if (!filters[selection]) throw new Error('OD_FUNDING_CASE must be project, home, or dp');
+        const filters: Record<string, string> = { project: 'VIEW-015 project', home: 'VIEW-015 home', dp: 'VIEW-015 cash0', inflight: 'VIEW-015 existing A task' };
+        if (!filters[selection]) throw new Error('OD_FUNDING_CASE must be project, home, dp, or inflight');
         args.push('--grep', filters[selection]);
       }
       receipts.push({ entrypoint: 'lib/playwright/funding-runner.ts',
