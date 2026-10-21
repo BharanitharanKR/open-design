@@ -2066,7 +2066,7 @@ function RailSocialRow({
         onClick={() => track(community.platform)}
       >
         {community.platform === 'feishu'
-          ? <FeishuIcon width={glyph} height={glyph} />
+          ? <FeishuIcon monochrome width={glyph} height={glyph} />
           : <Icon name="discord" size={glyph} />}
       </a>
       <a

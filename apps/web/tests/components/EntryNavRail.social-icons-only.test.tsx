@@ -127,7 +127,7 @@ describe('OPEND-3180 — icon-only social links at the rail foot', () => {
       expect(link.getAttribute('aria-label')).toBe(locale === 'zh-CN' ? '加入 OpenDesign 飞书群' : '加入 OpenDesign 飛書群');
       expect(link.getAttribute('data-tooltip')).toBe(link.getAttribute('aria-label'));
       expect(link.getAttribute('data-community-platform')).toBe('feishu');
-      expect(link.querySelector('svg path[fill="#3370FF"]')).not.toBeNull();
+      expect(link.querySelector('svg')).not.toBeNull();
       expect(visibleText(link)).toBe('');
       view.unmount();
     }

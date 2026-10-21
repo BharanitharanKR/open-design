@@ -338,7 +338,7 @@ export function EntrySettingsMenu({
           >
             <span className="entry-settings-menu__item-icon" aria-hidden>
               {community.platform === 'feishu'
-                ? <FeishuIcon width={14} height={14} />
+                ? <FeishuIcon monochrome width={14} height={14} />
                 : <Icon name="discord" size={14} />}
             </span>
             <span>{t('entry.communityLabel')}</span>
