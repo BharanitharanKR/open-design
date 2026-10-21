@@ -203,7 +203,7 @@ it.each(['present', 'missing'] as const)('validates the current selector at save
     if (!request.validateForSave) return;
     queueMicrotask(() => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: state === 'missing'
       ? { type: 'od:comment-location-missing', requestId: request.requestId }
-      : { ...target, elementId: 'replacement', text: 'Changed text', type: 'od:comment-active-target-update', requestId: request.requestId } })));
+      : { ...target, requestedSelector: target.selector, elementId: 'replacement', text: 'Changed text', type: 'od:comment-active-target-update', requestId: request.requestId } })));
   });
   await act(async () => fireEvent.click(screen.getByTestId('probe-save')));
   if (state === 'present') {

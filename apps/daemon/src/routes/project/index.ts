@@ -1363,9 +1363,8 @@ ${COMMENT_IDENTITY_HELPERS}
       var saveNode = null;
       try { saveNode = document.querySelector(String(data.selector)); } catch (_) {}
       var saveTarget = saveNode && targetFrom(saveNode, true);
-      if (saveTarget) saveTarget.selector = data.selector;
       window.parent.postMessage(saveTarget
-        ? Object.assign({}, saveTarget, { type: 'od:comment-active-target-update', requestId: data.requestId })
+        ? Object.assign({}, saveTarget, { type: 'od:comment-active-target-update', requestId: data.requestId, requestedSelector: data.selector })
         : { type: 'od:comment-location-missing', requestId: data.requestId }, '*');
       return;
     }

@@ -1445,11 +1445,17 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
         var query={type:'od:comment-active-target',validateForSave:true,elementId:'old-id',selector:'body > button:nth-of-type(1)',requestId:'save'};
         window.dispatchEvent(new MessageEvent('message',{data:query}));
         var found=window.posted.at(-1);
+        window.dispatchEvent(new MessageEvent('message',{data:{type:'od:comment-mode',enabled:true,mode:'picker'}}));
+        document.querySelector('button').setAttribute('data-od-comment-id','12345678-1234-4234-8234-123456789abc');
+        window.dispatchEvent(new MessageEvent('message',{data:query}));
+        var replacement=window.posted.at(-1);
         document.querySelector('button').remove();
         window.dispatchEvent(new MessageEvent('message',{data:query}));
-        return {found,missing:window.posted.at(-1)};
+        return {found,replacement,missing:window.posted.at(-1)};
       })()`);
       expect(result).toMatchObject({ found: { type: 'od:comment-active-target-update', elementId: 'new', text: 'Changed copy' },
+        replacement: { elementId: 'cmt:12345678-1234-4234-8234-123456789abc',
+          selector: '[data-od-comment-id="12345678-1234-4234-8234-123456789abc"]', requestedSelector: 'body > button:nth-of-type(1)' },
         missing: { type: 'od:comment-location-missing', requestId: 'save' } });
     } finally { dom.window.close(); }
   });

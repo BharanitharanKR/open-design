@@ -1,3 +1,4 @@
+import { randomUUID } from '../utils/uuid';
 import type { PreviewCommentSnapshot } from './anchor';
 
 /** Query the live frame by selector at save time. No publication-version or
@@ -10,7 +11,7 @@ export function validateCommentSaveTarget(
   const recipient = frame.contentWindow;
   const src = frame.src;
   const srcdoc = frame.srcdoc;
-  const requestId = `comment-save-${crypto.randomUUID()}`;
+  const requestId = `comment-save-${randomUUID()}`;
   return new Promise(resolve => {
     const finish = (result: PreviewCommentSnapshot | 'missing' | 'unavailable') => {
       window.clearTimeout(timeout);
@@ -23,7 +24,7 @@ export function validateCommentSaveTarget(
       if (!frame.isConnected || frame.src !== src || frame.srcdoc !== srcdoc) return finish('unavailable');
       if (data.type === 'od:comment-location-missing') return finish('missing');
       if (data.type !== 'od:comment-active-target-update') return;
-      if (data.selector !== target.selector || typeof data.elementId !== 'string' || !data.elementId
+      if (data.requestedSelector !== target.selector || typeof data.selector !== 'string' || !data.selector || typeof data.elementId !== 'string' || !data.elementId
         || !data.position || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(data.position[key]))) return finish('unavailable');
       finish({ ...target, elementId: data.elementId, selector: data.selector,
         text: typeof data.text === 'string' ? data.text : target.text,

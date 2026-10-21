@@ -2,14 +2,14 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { validateCommentSaveTarget } from '../../src/comments/validate-save-target';
 const target = { filePath: 'index.html', elementId: 'old', selector: 'button', label: 'button', text: 'old', htmlHint: '<button>', position: { x: 0, y: 0, width: 100, height: 40 } };
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.useRealTimers(); });
+afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 it('ignores other frames and accepts the requested selector even with a new element ID', async () => {
   const frame = document.createElement('iframe'); document.body.append(frame);
   const post = vi.spyOn(frame.contentWindow!, 'postMessage');
   const result = validateCommentSaveTarget(frame, target);
   const request = post.mock.calls[0]![0] as { requestId: string };
   window.dispatchEvent(new MessageEvent('message', { source: window, data: { type: 'od:comment-location-missing', requestId: request.requestId } }));
-  window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { ...target, elementId: 'replacement', text: 'new', type: 'od:comment-active-target-update', requestId: request.requestId } }));
+  window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { ...target, requestedSelector: target.selector, elementId: 'replacement', text: 'new', type: 'od:comment-active-target-update', requestId: request.requestId } }));
   expect(await result).toMatchObject({ elementId: 'replacement', text: 'new' });
 });
 it('does not save from a frame that navigated during validation', async () => {
@@ -27,5 +27,27 @@ it('times out without treating a refreshing frame as a deleted target', async ()
   const frame = document.createElement('iframe'); document.body.append(frame);
   const result = validateCommentSaveTarget(frame, target);
   await vi.advanceTimersByTimeAsync(3000);
+  expect(await result).toBe('unavailable');
+});
+
+it('saves over plain HTTP when crypto.randomUUID is unavailable', async () => {
+  vi.stubGlobal('crypto', { getRandomValues: (bytes: Uint8Array) => bytes.fill(7) });
+  const frame = document.createElement('iframe'); document.body.append(frame);
+  const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+  const result = validateCommentSaveTarget(frame, target);
+  const request = post.mock.calls[0]![0] as { requestId: string };
+  expect(request.requestId).toMatch(/^comment-save-[0-9a-f-]{36}$/);
+  window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow,
+    data: { ...target, requestedSelector: target.selector, selector: '[data-od-comment-id="new"]', elementId: 'cmt:new',
+      type: 'od:comment-active-target-update', requestId: request.requestId } }));
+  expect(await result).toMatchObject({ elementId: 'cmt:new', selector: '[data-od-comment-id="new"]' });
+});
+it('rejects a response for a different queried selector', async () => {
+  const frame = document.createElement('iframe'); document.body.append(frame);
+  const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+  const result = validateCommentSaveTarget(frame, target);
+  const request = post.mock.calls[0]![0] as { requestId: string };
+  window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow,
+    data: { ...target, requestedSelector: 'other', type: 'od:comment-active-target-update', requestId: request.requestId } }));
   expect(await result).toBe('unavailable');
 });

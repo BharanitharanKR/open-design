@@ -22,7 +22,12 @@ it('save validation follows the current selector across text/replacement changes
     win.document.querySelector('button')!.textContent = 'Changed copy';
     expect(save()).toMatchObject({ type: 'od:comment-active-target-update', text: 'Changed copy' });
     win.document.querySelector('button')!.outerHTML = '<button data-od-id="new">Replacement</button>';
-    expect(save()).toMatchObject({ type: 'od:comment-active-target-update', elementId: 'new', text: 'Replacement', selector: 'body > button:nth-of-type(1)' });
+    expect(save()).toMatchObject({ type: 'od:comment-active-target-update', elementId: 'new', text: 'Replacement', selector: '[data-od-id="new"]', requestedSelector: 'body > button:nth-of-type(1)' });
+    win.dispatchEvent(new win.MessageEvent('message', { data: { type: 'od:comment-mode', enabled: true, mode: 'picker' } }));
+    const uuid = '12345678-1234-4234-8234-123456789abc';
+    win.document.querySelector('button')!.outerHTML = `<button data-od-comment-id="${uuid}">UUID replacement</button>`;
+    expect(save()).toMatchObject({ elementId: `cmt:${uuid}`, selector: `[data-od-comment-id="${uuid}"]`,
+      requestedSelector: 'body > button:nth-of-type(1)' });
     win.document.querySelector('button')!.remove();
     expect(save()).toMatchObject({ type: 'od:comment-location-missing', requestId: 'save' });
   } finally { dom.window.close(); }
