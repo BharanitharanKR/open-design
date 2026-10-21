@@ -113,13 +113,17 @@ Project creation and queue presence are
 diagnostic records, not additional QA requirements. The Project case creates its own local project
 and establishes its Recent entry before testing the real workspace switch.
 
-The positive D case proves only one correctly scoped HTTP 202 submission with
-real cash0/availableDP preconditions. It cancels only its own created run during
-cleanup. It does **not** prove model admission, completion, provider tokens, or
-accounting. A model/Link success oracle and readonly accounting audit are separate.
+The positive D case requires one correctly scoped HTTP 202 submission followed
+by the actual persisted run reaching `succeeded`. It retains the complete run
+events before cleanup and records whether `end_turn` appears, without imposing
+that exact event serialization as a product requirement. Only an unfinished
+test-created run is canceled during cleanup. Provider admission, actual CLI
+completion and the canonical usage/DP-window/zero-cash reconciliation still
+require the environment owner's independent readonly audit.
 These three cases cover VIEW-015 slices; they do not mark the whole QA case passed.
-Project and Home each map to step 1; D maps only to the submission boundary of
-step 2. Attachment preservation is not exercised in this response-order scenario.
+Project and Home each map to step 1; D covers the browser/runtime portion of
+step 2 and requires the separate accounting evidence before whole-case review.
+Attachment preservation is not exercised in this response-order scenario.
 The absence of POST /api/runs proves no new OD run was submitted through this
 page; a separate AMR/provider/ledger audit is needed to rule out model requests
 through every other path. The source cannot turn HTTP 202 into successful DP use.
