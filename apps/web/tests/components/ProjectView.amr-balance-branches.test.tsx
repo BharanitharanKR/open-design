@@ -899,7 +899,7 @@ describe('Link request concurrency rejection preserves the original send', () =>
     await clickSendWhenReady();
     await waitFor(() => expect(mockedStreamViaDaemon).toHaveBeenCalledTimes(2));
   });
-  it.each(['partial', 'disconnect', 'late'] as const)('does not restore or reopen from %s work', async (mode) => {
+  it.each(['partial', 'thinking', 'tool', 'artifact', 'disconnect', 'late'] as const)('does not restore or reopen from %s work', async (mode) => {
     workspaceScopeMocks.ambientContext = callerContext('owner', 'team_max');
     renderProjectView({ project: { ...project(), pendingPrompt: null } as never });
     await clickSendWhenReady();
@@ -908,10 +908,18 @@ describe('Link request concurrency rejection preserves the original send', () =>
     await act(async () => {
       first.onRunCreated?.('first-limit-run');
       if (mode === 'partial') first.handlers.onDelta('already delivered part');
+      if (mode === 'thinking') first.handlers.onAgentEvent({ kind: 'thinking', text: 'Reviewing the current document.' });
+      if (mode === 'tool') first.handlers.onAgentEvent({ kind: 'tool_use', id: 'read-existing', name: 'Read', input: { file_path: 'index.html' } });
+      if (mode === 'artifact') first.handlers.onAgentEvent({ kind: 'artifact_focus', open: 'index.html' });
       if (mode === 'late') first.handlers.onDone('finished');
-      else await first.handlers.onError(mode === 'disconnect' ? new Error('daemon disconnected') : Object.assign(new Error('named request limit'), { failureDetail: 'membership_concurrency_limit' }));
     });
-    if (mode === 'partial') {
+    // Preserve an already committed artifact/event frame just as a real
+    // streamed response would, before the later request-limit rejection.
+    await flushMounts();
+    if (mode !== 'late') await act(async () => {
+      await first.handlers.onError(mode === 'disconnect' ? new Error('daemon disconnected') : Object.assign(new Error('named request limit'), { failureDetail: 'membership_concurrency_limit' }));
+    });
+    if (['partial', 'thinking', 'tool', 'artifact'].includes(mode)) {
       expect(await screen.findByTestId('amr-concurrency-dialog')).toBeTruthy();
       expect(screen.queryByTestId('amr-concurrency-upgrade')).toBeNull();
       expect(chatPaneSpy.mock.calls.at(-1)![0].rejectedComposerSend).toBeUndefined();
@@ -943,6 +951,14 @@ describe('Link request concurrency rejection preserves the original send', () =>
     const options = mockedStreamViaDaemon.mock.calls[0]![0];
     await act(async () => {
       options.onRunCreated?.('real-file-limit-run');
+      // Real daemon /api/runs/:id/events emits this before any model output.
+      // A protocol nonce is not evidence that the original draft was consumed.
+      options.handlers.onAgentEvent({ kind: 'done_key', key: 'server-issued-test-run-key' });
+    });
+    // The nonce frame arrives before the child starts; the later Link refusal
+    // is a separate network turn, after React has stored that event.
+    await flushMounts();
+    await act(async () => {
       await options.handlers.onError(Object.assign(new Error('[code=tier_limit_exceeded] membership concurrency limit exceeded'), { failureDetail: 'membership_concurrency_limit' }));
     });
     expect(await screen.findByTestId('amr-concurrency-dialog')).toBeTruthy();
@@ -977,6 +993,10 @@ describe('Link request concurrency rejection preserves the original send', () =>
     const options = mockedStreamViaDaemon.mock.calls[0]![0];
     await act(async () => {
       options.onRunCreated?.('home-first-request');
+      options.handlers.onAgentEvent({ kind: 'done_key', key: 'server-home-run-key' });
+    });
+    await flushMounts();
+    await act(async () => {
       await options.handlers.onError(Object.assign(new Error('actual request limit'), { failureDetail: 'membership_concurrency_limit' }));
     });
     await flushMounts();

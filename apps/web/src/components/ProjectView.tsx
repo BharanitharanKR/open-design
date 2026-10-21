@@ -10123,7 +10123,9 @@ export function ProjectView({
               // A later model in an active tool workflow can also hit Link's
               // limit. Keep its history, but never re-inject the whole prompt.
               const unstarted = !observedModelWork && !streamedText.trim() && !latestAssistantMsg.content.trim()
-                && !(latestAssistantMsg.events ?? []).some((event) => event.kind !== 'status');
+                // The daemon emits done_key before spawning the child. Its
+                // nonce identifies this run, but is not evidence of model work.
+                && !(latestAssistantMsg.events ?? []).some((event) => event.kind !== 'status' && event.kind !== 'done_key');
               setConcurrencyRejection({
                 conversationId: runConversationId, authorityKey: projectRunAuthorityKey,
                 accountGeneration: sendAccountGeneration,
