@@ -2000,7 +2000,7 @@ export function EntryShell({
           onOpenSearch={() => setProjectSearchOpen(true)}
           open={railOpen}
           topRightSlot={<>
-            <HomeInviteTrigger context={railWorkspaceContext} />
+            <HomeInviteTrigger signedOut={amrLoggedIn === false} context={railWorkspaceContext} />
             {topRightCampaignAudience || (homeCampaignHostsVisible && amrLoggedIn === true) ? (
             <>
               {topRightCampaignAudience ? (
@@ -2089,7 +2089,7 @@ export function EntryShell({
               <HomeView
                 {...homeViewProps}
                 isActive={view === 'home'}
-                inviteSurface={<HomeInviteSurface accountId={amrLoggedIn === true ? amrAccountId : null} context={railWorkspaceContext} active={view === 'home'} />}
+                inviteSurface={<HomeInviteSurface signedOut={amrLoggedIn === false} identityReady={!workspaceContextState.loading && !workspaceContextState.identityChangePending && !workspaceContextState.failure} accountId={amrLoggedIn === true ? amrAccountId : null} context={railWorkspaceContext} active={view === 'home'} />}
                 /* Home is the one composer in the shell and consumes the page
                    handoff. The community view used to dock a second HomeView
                    (`variant="dock"`) with a handoff of its own; that mount
