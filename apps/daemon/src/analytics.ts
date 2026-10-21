@@ -43,7 +43,7 @@ import {
 } from '@open-design/contracts/analytics';
 import { readAppConfig } from './app-config.js';
 import { readTelemetryEnvironment } from './telemetry-environment.js';
-import { normalizeTelemetryAppVersion, readCurrentAppVersionInfo, resolveAppVersionInfo } from './app-version.js';
+import { inferReleaseChannelFromVersion, normalizeTelemetryAppVersion, readCurrentAppVersionInfo, resolveAppVersionInfo } from './app-version.js';
 
 const DEFAULT_HOST = 'https://us.i.posthog.com';
 
@@ -357,9 +357,12 @@ export function createAnalyticsService(args: {
     const current = normalizeTelemetryAppVersion(appVersion)
       ? resolveAppVersionInfo({ env: versionEnv, packageMetadata: { version: appVersion } })
       : await readCurrentAppVersionInfo({ env: versionEnv });
+    // Without an explicit or version-inferred channel, classify by this
+    // service's packaged flag rather than execPath heuristics.
     const channel = !env.OD_RELEASE_CHANNEL?.trim() && !env.OD_APP_CHANNEL?.trim()
-      && current.channel === 'development' && (normalizeTelemetryAppVersion(env.OD_APP_VERSION) || packagedRuntime)
-      ? 'stable' : current.channel;
+      && inferReleaseChannelFromVersion(current.version) === null
+      ? (normalizeTelemetryAppVersion(env.OD_APP_VERSION) || packagedRuntime ? 'stable' : 'development')
+      : current.channel;
     return buildClientTelemetryParams(properties, {
       eventId, deviceId, appSessionId: sessionId, appVersion: current.version,
       ...(preserveUnknownAppVersion ? {} : { channel }), preserveUnknownAppVersion, clientType, captureSource, env: cfg.env,
