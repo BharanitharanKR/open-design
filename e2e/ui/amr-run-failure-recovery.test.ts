@@ -264,9 +264,12 @@ test('[P0] @critical AMR insufficient preflight retains the draft and recovers o
   await expect(page.getByTestId('chat-send')).toBeEnabled();
   const startedAt = Date.now();
   try {
+    const insufficientRead = page.waitForResponse(response => response.url().includes('/api/workspace/billing/preflight?'));
     await input.press('Enter');
     const dialog = page.getByTestId('amr-balance-dialog');
     await expect(dialog).toBeVisible({ timeout: T.long });
+    const insufficientResponse = await insufficientRead;
+    expect((await insufficientResponse.json()).preflight.fundingCheck).toBe('insufficient');
     expect(runForwarded).toBe(false);
     expect(runPosts).toBe(0);
     await testInfo.attach('independent-preflight-timing', { contentType: 'application/json',
@@ -282,9 +285,11 @@ test('[P0] @critical AMR insufficient preflight retains the draft and recovers o
       fundingCheck: { status: 'available', workspaceMemberId: AMR_PERSONAL_WORKSPACE_ITEM.workspaceMemberId, balanceUsd: '20.00' },
       assistantText: 'The gateway admitted this run.', requireLoginConfig: false, requireSetModel: false,
     });
-    const available = page.waitForResponse(response => response.url().includes('/api/workspace/billing/preflight?'));
+    // Project billing invalidation does not promise an eager preflight request.
+    // Read the exact original member/model URL through the real daemon to prove
+    // the external fixture changed, then publish the existing invalidation event.
+    const availableResponse = await page.request.get(insufficientResponse.url());
     await page.evaluate(() => window.dispatchEvent(new Event('od:workspace-billing-refresh')));
-    const availableResponse = await available;
     expect(availableResponse.ok()).toBe(true);
     const availableBody = await availableResponse.json();
     expect(availableBody.preflight.fundingCheck).toBe('available');
