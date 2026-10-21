@@ -57,15 +57,6 @@ export function resolveCommentAnchor(
   currentVersion?: number,
 ): CommentAnchorResolution {
   const exact = snapshots.get(comment.elementId);
-  if (comment.elementId.startsWith('html-id:')) {
-    if (exact && exact.selector === comment.selector && exact.filePath === comment.filePath
-      && (exact.slideIndex ?? -1) === (comment.slideIndex ?? -1) && validPosition(exact.position)
-      && !(typeof currentVersion === 'number' && typeof comment.anchoredVersion === 'number' && comment.anchoredVersion > currentVersion)) {
-      return { state: anchoredOrReanchored(comment, currentVersion), snapshot: exact };
-    }
-    const ghostPos = validPosition(comment.lastGoodPosition) ?? validPosition(comment.position);
-    return { state: 'lost', snapshot: ghostPos ? ghostSnapshotFromComment(comment, ghostPos) : null };
-  }
   if (comment.elementId.startsWith('cmt:') || commentSelectorClaimsIdentity(comment.selector)) {
     const uuid = commentUuidFromElementId(comment.elementId);
     const selector = uuid ? commentIdentitySelector(uuid) : null;

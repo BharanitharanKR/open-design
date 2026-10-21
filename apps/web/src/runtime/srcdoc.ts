@@ -2190,7 +2190,7 @@ function meaningfulDomFallbackTarget(el) {
     return payload;
   }
   function allTargets(){
-    var annotatedNodes = document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id], [id]');
+    var annotatedNodes = document.querySelectorAll('[data-od-id], [data-screen-label], [data-od-comment-id]');
     var includeDomFallback = canUseDomFallback();
     var nodes = includeDomFallback
       ? document.querySelectorAll('body *')
@@ -2263,7 +2263,6 @@ function meaningfulDomFallbackTarget(el) {
     window.parent.postMessage({ type: 'od:preview-scroll-request' }, '*');
   }
   function findCommentTargetByIdentity(elementId, selector){
-    if (String(elementId || '').indexOf('html-id:') === 0) return strictNativeHtmlNode(elementId, selector);
     if (String(elementId || '').indexOf('cmt:') === 0 || commentSelectorClaimsIdentity(selector)) return strictCommentNode(elementId, selector);
     var el = null;
     if (selector) {
@@ -2737,6 +2736,16 @@ function meaningfulDomFallbackTarget(el) {
       if (frame) frame.scrollTo(Number(data.frameLeft || 0), Number(data.frameTop || 0));
       if (el) el.scrollTo(Number(data.canvasLeft || 0), Number(data.canvasTop || 0));
       setTimeout(postPreviewScroll, 0);
+      return;
+    }
+    if (data.type === 'od:comment-active-target' && data.validateForSave && typeof data.requestId === 'string') {
+      var saveNode = null;
+      try { saveNode = document.querySelector(String(data.selector)); } catch (_) {}
+      var saveTarget = saveNode && targetFrom(saveNode, true);
+      if (saveTarget) saveTarget.selector = data.selector;
+      window.parent.postMessage(saveTarget
+        ? Object.assign({}, saveTarget, { type: 'od:comment-active-target-update', requestId: data.requestId })
+        : { type: 'od:comment-location-missing', requestId: data.requestId }, '*');
       return;
     }
     if (data.type === 'od:comment-active-target') {

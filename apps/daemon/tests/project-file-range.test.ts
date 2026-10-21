@@ -1431,30 +1431,26 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     }
   });
 
-  it('URL served complete bridge strictly describes and locates unique native HTML IDs', async () => {
+  it('URL comment save validates the live selector without requiring the old identity', async () => {
     const response = await fetch(`${rawUrl('body.html')}?odPreviewBridge=selection`);
-    expect(response.status).toBe(200);
     const bridge = load(await response.text())('script[data-od-url-selection-bridge]').text();
-    const dom = new JSDOM(`<body><h2 id="title">Target</h2></body>`, {
+    const dom = new JSDOM('<body><button data-od-id="new">Changed copy</button></body>', {
       url: rawUrl('body.html'), runScripts: 'outside-only', pretendToBeVisual: true,
     });
     try {
-      dom.window.eval(`window.CSS={escape:value=>value}; window.posted=[]; window.postMessage=data=>window.posted.push(data);
-        window.requestAnimationFrame=fn=>{ fn(); return 1; };
-        document.querySelector('h2').getBoundingClientRect=()=>new DOMRect(0,0,100,100);
-        document.querySelector('h2').scrollIntoView=()=>{window.scrolled=true;};`);
+      dom.window.eval(`window.posted=[]; window.postMessage=data=>window.posted.push(data);
+        document.querySelector('button').getBoundingClientRect=()=>new DOMRect(0,0,100,40);`);
       dom.window.eval(bridge);
       const result = dom.window.eval(`(()=>{
-        window.dispatchEvent(new MessageEvent('message',{data:{type:'od:comment-mode',enabled:true,mode:'picker'}}));
-        document.querySelector('h2').dispatchEvent(new MouseEvent('click',{bubbles:true}));
-        var selected=window.posted.find(data=>data.type==='od:comment-target');
-        var duplicate=document.createElement('h2'); duplicate.hidden=true; duplicate.id='title'; document.body.appendChild(duplicate);
-        window.posted=[];
-        window.dispatchEvent(new MessageEvent('message',{data:{type:'od:comment-active-target',elementId:'html-id:h2:title',selector:'h2[id="title"]',locate:true,requestId:'hidden-duplicate'}}));
-        return {selected,scrolled:!!window.scrolled,messages:window.posted};
+        var query={type:'od:comment-active-target',validateForSave:true,elementId:'old-id',selector:'body > button:nth-of-type(1)',requestId:'save'};
+        window.dispatchEvent(new MessageEvent('message',{data:query}));
+        var found=window.posted.at(-1);
+        document.querySelector('button').remove();
+        window.dispatchEvent(new MessageEvent('message',{data:query}));
+        return {found,missing:window.posted.at(-1)};
       })()`);
-      expect(result).toMatchObject({ selected: { elementId: `html-id:h2:title`, selector: `h2[id="title"]` }, scrolled: false,
-        messages: expect.arrayContaining([expect.objectContaining({type:'od:comment-location-missing',requestId:'hidden-duplicate'})]) });
+      expect(result).toMatchObject({ found: { type: 'od:comment-active-target-update', elementId: 'new', text: 'Changed copy' },
+        missing: { type: 'od:comment-location-missing', requestId: 'save' } });
     } finally { dom.window.close(); }
   });
 

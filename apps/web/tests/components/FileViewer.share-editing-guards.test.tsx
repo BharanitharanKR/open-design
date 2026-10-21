@@ -26,7 +26,7 @@ const collab: CollabContextValue = { workspaceContext: context, workspaceContext
 const target = { elementId: 'tool', selector: '[data-od-id="tool"]', label: 'h2', text: 'Target', htmlHint: '<h2>', position: { x: 20, y: 30, width: 100, height: 40 } };
 let projectSequence = 0;
 let currentProjectId = '';
-function setup(options: { history?: PreviewComment[]; currentPrepared?: boolean; activePublication?: boolean; stoppedPublication?: boolean } = {}) {
+function setup(options: { history?: PreviewComment[]; currentPrepared?: boolean; activePublication?: boolean; stoppedPublication?: boolean; srcdoc?: boolean } = {}) {
   const projectId = currentProjectId = `barrier-project-${++projectSequence}`;
   let editedSource: string | null = null;
   let publicationCurrent = false;
@@ -57,7 +57,7 @@ function setup(options: { history?: PreviewComment[]; currentPrepared?: boolean;
   });
   vi.stubGlobal('fetch', fetcher); vi.stubGlobal('crypto', webcrypto);
   vi.spyOn(window, 'confirm').mockReturnValue(true);
-  const tree = () => <CollabProvider value={collab}><FileViewer projectId={projectId} projectKind="prototype" filesRefreshKey={filesRefreshKey} file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime }} previewComments={options.history?.map(comment => ({ ...comment, projectId }))} onSavePreviewComment={saveComment} /></CollabProvider>;
+  const tree = () => <CollabProvider value={collab}><FileViewer projectId={projectId} projectKind="prototype" liveHtml={options.srcdoc ? `${currentSource()}<script>localStorage.getItem("test")</script>` : undefined} filesRefreshKey={filesRefreshKey} file={{ name: 'index.html', path: 'index.html', type: 'file', kind: 'html', mime: 'text/html', size: 100, mtime }} previewComments={options.history?.map(comment => ({ ...comment, projectId }))} onSavePreviewComment={saveComment} /></CollabProvider>;
   const view = render(tree());
   const saveB = () => { editedSource = prepared.replace('Target', 'Edited B'); mtime++; view.rerender(tree()); };
   return { writes, saveComment, fetcher, saveB, refreshFiles: () => { filesRefreshKey++; saveB(); }, delayPlan: () => { delayedPlan = true; }, releasePlan };
@@ -78,7 +78,7 @@ async function selectLegacy(override: Partial<typeof target> = {}) {
   return frame;
 }
 afterEach(() => { cleanup(); invalidateHtmlSourceSnapshotProject(currentProjectId); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-it.each(['comment-draft', 'manual-edit'] as const)('R2 delayed first-publication plan must refuse live %s after successful receipt/witness', async change => {
+it.each(['comment-draft', 'manual-edit'] as const)('delayed first publication ignores comment drafts but refuses manual editing (%s)', async change => {
   const { writes, delayPlan, releasePlan } = setup({ currentPrepared: true });
   await acknowledge();
   fireEvent.click(screen.getByTestId('comment-panel-toggle'));
@@ -94,7 +94,7 @@ it.each(['comment-draft', 'manual-edit'] as const)('R2 delayed first-publication
     await waitFor(() => expect(screen.getByTestId('manual-edit-mode-toggle')).toHaveAttribute('aria-pressed', 'true'));
   }
   await act(async () => releasePlan());
-  expect(writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(0);
+  expect(writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(change === 'comment-draft' ? 1 : 0);
   if (change === 'comment-draft') expect(screen.getByTestId('probe-draft')).toHaveValue('New unsaved comment');
 });
 it.each(['pending', 'comment-draft', 'manual-edit', 'ready'] as const)('static Update from current %s requires settled edits but not a comment preview witness', async state => {
@@ -116,12 +116,12 @@ it.each(['pending', 'comment-draft', 'manual-edit', 'ready'] as const)('static U
   const update = await screen.findByRole('button', { name: /update link/i });
   await waitFor(() => expect(update).toBeEnabled());
   await act(async () => fireEvent.click(update));
-  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(state === 'ready' || state === 'pending' ? 1 : 0);
+  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(state !== 'manual-edit' ? 1 : 0);
   if (state === 'comment-draft') expect(screen.getByTestId('probe-draft')).toHaveValue('Already unsettled before Update');
   if (state === 'manual-edit') expect(screen.getByTestId('manual-edit-mode-toggle')).toHaveAttribute('aria-pressed', 'true');
 });
 it.each(['initially-lost', 'saved', 'typed', 'cleared', 'whitespace-edit', 'fresh-image', 'removed-image', 'queued'] as const)(
-  'strict-lost saved row: normal Update distinguishes %s work from persisted prefill', async state => {
+  'Update is independent of comment composer state (%s)', async state => {
   const lost: PreviewComment = { ...target, id: 'lost', projectId: 'p', conversationId: 'c', filePath: 'index.html',
     elementId: `cmt:${uuid}`, selector: `[data-od-comment-id="${uuid}"]`, note: 'Saved feedback', status: 'open', createdAt: 1, updatedAt: 1 };
   const route = setup({ activePublication: true, history: [lost] });
@@ -145,18 +145,19 @@ it.each(['initially-lost', 'saved', 'typed', 'cleared', 'whitespace-edit', 'fres
   if (state === 'queued') fireEvent.click(screen.getByTestId('probe-queue'));
   await dispatch({ type: 'od:comment-targets', targets: [] });
   expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
-  expect(screen.queryByTestId('comment-active-pin')).toBeNull();
+  if (!['typed', 'cleared', 'fresh-image', 'queued'].includes(state)) expect(screen.queryByTestId('comment-active-pin')).toBeNull();
   fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
   const update = await screen.findByRole('button', { name: /update link/i });
   await waitFor(() => expect(update).toBeEnabled());
   await act(async () => fireEvent.click(update));
-  const settled = state === 'initially-lost' || state === 'saved' || state === 'removed-image';
+  const settled = true;
   expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(settled ? 1 : 0);
   expect(screen.queryByTestId('comment-identity-preparation')).toBeNull();
   expect(screen.queryByTestId('comment-identity-revalidate')).toBeNull();
-  expect(screen.queryByTestId('probe-draft')).toBeNull(); // No visible composer after strict loss.
+  if (['typed', 'cleared', 'fresh-image', 'queued'].includes(state)) expect(screen.getByTestId('probe-draft')).toBeInTheDocument();
+  else expect(screen.queryByTestId('probe-draft')).toBeNull();
   expect(screen.getByTestId('comment-location-unavailable')).toHaveTextContent('anchor lost');
-  expect(screen.queryByTestId('comment-active-pin')).toBeNull();
+  if (!['typed', 'cleared', 'fresh-image', 'queued'].includes(state)) expect(screen.queryByTestId('comment-active-pin')).toBeNull();
   expect(route.writes.mock.calls.some(call => String(call[0]).endsWith('/comment-identities/prepare'))).toBe(false);
 });
 
@@ -171,4 +172,80 @@ it('updates a published file after a settled file-watch change while the comment
   await waitFor(() => expect(update).toBeEnabled());
   await act(async () => fireEvent.click(update));
   expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(1);
+});
+
+it('refreshes the preview with an unsaved comment and allows Update without submitting the draft', async () => {
+  const route = setup({ activePublication: true, currentPrepared: true });
+  await acknowledge();
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const frame = await selectLegacy();
+  fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: 'Keep my draft' } });
+  const before = frame.src;
+  await act(async () => route.refreshFiles());
+  await waitFor(() => expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).src).not.toBe(before));
+  await waitFor(() => expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).src).toContain('fr=1'));
+  expect(screen.getByTestId('probe-draft')).toHaveValue('Keep my draft');
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  const update = await screen.findByRole('button', { name: /update link/i });
+  await act(async () => fireEvent.click(update));
+  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(1);
+  expect(route.saveComment).not.toHaveBeenCalled();
+});
+
+it.each(['present', 'missing'] as const)('validates the current selector at save, retaining the draft when %s', async state => {
+  const route = setup({ activePublication: true, currentPrepared: true });
+  await acknowledge();
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const frame = await selectLegacy();
+  fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: 'Keep my draft' } });
+  const post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation((data: unknown) => {
+    const request = data as { validateForSave?: boolean; requestId?: string };
+    if (!request.validateForSave) return;
+    queueMicrotask(() => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: state === 'missing'
+      ? { type: 'od:comment-location-missing', requestId: request.requestId }
+      : { ...target, elementId: 'replacement', text: 'Changed text', type: 'od:comment-active-target-update', requestId: request.requestId } })));
+  });
+  await act(async () => fireEvent.click(screen.getByTestId('probe-save')));
+  if (state === 'present') {
+    expect(route.saveComment).toHaveBeenCalledWith(expect.objectContaining({ elementId: 'replacement', text: 'Changed text', selector: target.selector }), 'Keep my draft', false, [], undefined);
+  } else {
+    expect(route.saveComment).not.toHaveBeenCalled();
+    expect(screen.getByTestId('probe-draft')).toHaveValue('Keep my draft');
+    expect(await screen.findByText(/comment target no longer exists/i)).toBeInTheDocument();
+    await selectLegacy({ elementId: 'another', selector: '[data-od-id="another"]' });
+    expect(screen.getByTestId('probe-draft')).toHaveValue('Keep my draft');
+  }
+  post.mockRestore();
+});
+
+it('refreshes srcdoc while the comment panel is open and retains typed feedback', async () => {
+  const route = setup({ currentPrepared: true, srcdoc: true });
+  const frame = await screen.findByTestId('artifact-preview-frame') as HTMLIFrameElement;
+  expect(frame.getAttribute('data-od-render-mode')).toBe('srcdoc');
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  await selectLegacy();
+  fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: 'Draft during source refresh' } });
+  await act(async () => route.refreshFiles());
+  await waitFor(() => expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).srcdoc).toContain('Edited B'));
+  expect(screen.getByTestId('probe-draft')).toHaveValue('Draft during source refresh');
+});
+
+it('allows Update while a comment save is waiting for the frame', async () => {
+  const route = setup({ activePublication: true, currentPrepared: true });
+  await acknowledge(); fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const frame = await selectLegacy();
+  fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: 'Keep my draft' } });
+  let requestId = '';
+  vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation((data: unknown) => {
+    const request = data as { validateForSave?: boolean; requestId?: string };
+    if (request.validateForSave) requestId = request.requestId!;
+  });
+  fireEvent.click(screen.getByTestId('probe-save'));
+  fireEvent.click(await screen.findByRole('button', { name: /^share$/i }));
+  const update = await screen.findByRole('button', { name: /update link/i });
+  await act(async () => fireEvent.click(update));
+  expect(route.writes.mock.calls.filter(call => String(call[0]).endsWith('/publish-public'))).toHaveLength(1);
+  await act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow,
+    data: { type: 'od:comment-location-missing', requestId } })));
+  expect(route.saveComment).not.toHaveBeenCalled();
 });
