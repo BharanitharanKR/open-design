@@ -21,7 +21,7 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
 }, info) => {
   test.setTimeout(T.xlong * 5);
   const validated = validateApiSecurityFixture();
-  const { fixture: f, fixtureText, actualHeads, verifyOwner } = validated;
+  const { fixture: f, fixtureText, actualHeads, verifyOwner, cliDevice } = validated;
   const dir = process.env.VIEW016_RUNTIME!;
   assert(Array.isArray(f.models) && f.models.length === 3 && new Set(f.models).size === 3,
     "models must be the actual catalog IDs in Flash, value, top category order");
@@ -52,8 +52,8 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
     JSON.stringify({
       profiles: {
         local: {
-          controlKey: actor.controlKey,
-          runtimeKey: A.runtimeKey,
+          controlKey: cliDevice.tokens.controlKey,
+          runtimeKey: cliDevice.tokens.runtimeKey,
           apiUrl: f.cfg.urls.api,
           linkUrl: f.cfg.urls.link,
           user: { id: actor.userId, email: actor.email, name: "VIEW016 QA" },
@@ -83,7 +83,7 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
     OPEN_DESIGN_AMR_PROFILE: "local",
     VELA_API_URL: f.cfg.urls.api,
     VELA_LINK_URL: f.cfg.urls.link,
-    VELA_CONTROL_KEY: actor.controlKey,
+    VELA_CONTROL_KEY: cliDevice.tokens.controlKey,
     OD_WORKSPACE_CONTEXT_SOURCE: "vela",
     OD_VELA_WEB_URL: f.cfg.urls.web,
     OD_COLLAB_TRANSPORT: "off",
@@ -141,6 +141,7 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
     canonicalStatus: validated.canonicalStatus,
     fixtureSha256: createHash("sha256").update(fixtureText).digest("hex"),
     velaSha256,
+    cliDevice: { provenance: cliDevice.provenance, initialSelectedWorkspaceId: cliDevice.initialSelectedWorkspaceId },
     stages: [],
     runtime: {
       namespace,

@@ -1,5 +1,6 @@
 import { defineConfig, type ReporterDescription } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
@@ -69,7 +70,18 @@ export function validateApiSecurityFixture() {
   }
   const verifyOwner = () => execFileSync('python3', ['e2e/helper/e2e_ownership.py', 'verify-inherited'], { cwd: amrRoot, stdio: 'pipe' });
   verifyOwner();
-  return { fixture, fixtureText, actualHeads, canonicalStatus, verifyOwner, sourceRoles: { amr: { productionBase: fixture.sourceTuple.amr, testHead: actualHeads.amr }, od: { productionBase: fixture.sourceTuple['open-design'], testHead: actualHeads.od }, landing: { productionBase: fixture.sourceTuple['od-landing'], execution: 'metadata_only' } } };
+  const deviceBytes = readFileSync(join(process.env.VIEW016_RUNTIME, 'view016-device.private.json'));
+  assert.equal(createHash('sha256').update(deviceBytes).digest('hex'), fixture.runtime?.cliDeviceReceiptSha256, 'exact new production device receipt binding required');
+  const cliDevice = JSON.parse(deviceBytes.toString());
+  assert.equal(cliDevice.caseName, 'view016');
+  assert.equal(cliDevice.provenance?.source, 'cli_device');
+  assert.equal(cliDevice.provenance?.status, 'active');
+  assert.equal(cliDevice.provenance?.user_id, fixture.actors['view016-owner'].userId);
+  assert.equal(cliDevice.initialSelectedWorkspaceId, fixture.spaces['free-a'].workspaceId);
+  assert.equal(cliDevice.targetBinding?.actualHead, actualHeads.amr);
+  assert.deepEqual(cliDevice.targetBinding?.productionTuple, fixture.sourceTuple);
+  assert(cliDevice.tokens?.runtimeKey && cliDevice.tokens?.controlKey, 'real device-issued credentials required');
+  return { fixture, fixtureText, actualHeads, canonicalStatus, verifyOwner, cliDevice, sourceRoles: { amr: { productionBase: fixture.sourceTuple.amr, testHead: actualHeads.amr }, od: { productionBase: fixture.sourceTuple['open-design'], testHead: actualHeads.od }, landing: { productionBase: fixture.sourceTuple['od-landing'], execution: 'metadata_only' } } };
 }
 
 // Explicit real-AMR lane. The private fixture and live ownership are required;
