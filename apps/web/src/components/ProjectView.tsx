@@ -6820,6 +6820,8 @@ export function ProjectView({
           ?? await fetchChatRunStatus(runId, projectRunWorkspaceContext);
         if (cancelled) return;
         if (!physicalStatus) {
+          // A missing status response cannot invalidate persisted success.
+          if (message.runStatus === 'succeeded') continue;
           // A local retry seal is not a daemon terminal verdict. Keep this
           // run's receipts for the existing manual reconnect action.
           // `fetchChatRunStatus` returns null on ANY non-OK response or fetch
