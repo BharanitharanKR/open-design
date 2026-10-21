@@ -13,10 +13,11 @@ import card from './PersonalPlanCard.module.css';
 import quota from './CodingPlanUsage.module.css';
 import styles from './WorkspaceQuotaPopover.module.css';
 
-export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planLabel, onNavigate }: {
+export function WorkspaceQuotaPopover({ view, context, profile, consoleOrigin, badgeTier, planLabel, onNavigate }: {
   view: WorkspaceQuotaView;
   context: WorkspaceCollabContext | null;
   profile?: string | null;
+  consoleOrigin?: string | null;
   /** Keep the host's existing plan-family branding; quota uses the actual tier. */
   badgeTier?: PlanBadgeTier | null;
   planLabel?: string;
@@ -31,11 +32,11 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
     if (workspaceId && memberId) notifyWorkspaceBillingRefresh();
   }, [workspaceId, memberId]);
 
-  const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId);
+  const consoleUrl = quotaPopoverConsoleUrl(profile, workspaceId, 'console', consoleOrigin);
   const max = view.tier === 'max';
   // Preserve base EntryNavRail's locked/past-due recovery priority.
   const actionUrl = context?.billingRecovery?.recoveryUrl?.trim()
-    || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans');
+    || quotaPopoverConsoleUrl(profile, workspaceId, max ? 'console' : 'plans', consoleOrigin);
   const owner = context?.role === 'owner';
   // Preserve the existing contracts billing policy: locked workspaces remain readable.
   const readable = context?.memberStatus === 'active' && isWorkspaceLifecycleReadable(context.lifecycleState);
@@ -94,7 +95,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
               const reset = window?.resetsAt ? new Date(window.resetsAt) : null;
               const resetLabel = reset && Number.isFinite(reset.getTime())
                 ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(reset)
-                : unavailable;
+                : null;
               return <div className={quota.block} key={duration}>
                 <div className={quota.row}>
                   <span className={quota.allowance} title={view.modelRestriction ?? unavailable}>{t('billing.codingPlanDesignPlan')} <small className={quota.period}>
@@ -106,7 +107,7 @@ export function WorkspaceQuotaPopover({ view, context, profile, badgeTier, planL
                   aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
                   <span className={quota.fill} style={{ width: `${percent}%` }} />
                 </div> : null}
-                <div className={styles.details}>{t('workspaceQuota.resetAt', { time: resetLabel })}</div>
+                {resetLabel ? <div className={styles.details}>{t('workspaceQuota.resetAt', { time: resetLabel })}</div> : null}
               </div>;
             })}
           </section>

@@ -62,6 +62,7 @@ import {
   fetchVelaLoginStatus,
   formatVelaBalanceUsd,
   velaLogout,
+  type VelaLoginStatus,
 } from '../providers/daemon';
 import { resetCloudSignInTipDismissal } from './CloudSignInTip';
 import { SignOutConfirmDialog } from './SignOutConfirmDialog';
@@ -317,6 +318,7 @@ interface Props {
   onPriorityAnnouncementPendingChange?: (pending: boolean) => void;
   priorityAnnouncementCurrentPlanId?: string | null;
   priorityAnnouncementAmrProfile?: string | null;
+  workspaceQuotaStatus?: Pick<VelaLoginStatus, 'profile' | 'consoleOrigin'> | null;
   priorityAnnouncementMetricsConsent?: boolean;
 }
 
@@ -990,6 +992,7 @@ interface EntryTopRightClusterProps {
   onPriorityAnnouncementPendingChange?: (pending: boolean) => void;
   priorityAnnouncementCurrentPlanId?: string | null;
   priorityAnnouncementAmrProfile?: string | null;
+  workspaceQuotaStatus?: Pick<VelaLoginStatus, 'profile' | 'consoleOrigin'> | null;
   priorityAnnouncementMetricsConsent?: boolean;
 }
 
@@ -1023,6 +1026,7 @@ export function EntryTopRightCluster({
   onPriorityAnnouncementPendingChange,
   priorityAnnouncementCurrentPlanId,
   priorityAnnouncementAmrProfile,
+  workspaceQuotaStatus,
   priorityAnnouncementMetricsConsent,
 }: EntryTopRightClusterProps) {
   const { t, locale } = useI18n();
@@ -1466,7 +1470,8 @@ export function EntryTopRightCluster({
                   <WorkspaceQuotaPopover
                     view={workspaceQuotaView({ context, response: billingResponse, tier: labelTier, balanceUsd })}
                     context={context}
-                    profile={priorityAnnouncementAmrProfile}
+                    profile={workspaceQuotaStatus?.profile ?? priorityAnnouncementAmrProfile}
+                    consoleOrigin={workspaceQuotaStatus?.consoleOrigin}
                     badgeTier={planTier}
                     planLabel={tierLabel}
                     onNavigate={(action) => {
@@ -1960,6 +1965,7 @@ export function EntryNavRail({
   onPriorityAnnouncementPendingChange,
   priorityAnnouncementCurrentPlanId,
   priorityAnnouncementAmrProfile,
+  workspaceQuotaStatus,
   priorityAnnouncementMetricsConsent,
 }: Props) {
   const { t } = useI18n();
@@ -2718,6 +2724,7 @@ export function EntryNavRail({
         onPriorityAnnouncementPendingChange={onPriorityAnnouncementPendingChange}
         priorityAnnouncementCurrentPlanId={priorityAnnouncementCurrentPlanId}
         priorityAnnouncementAmrProfile={priorityAnnouncementAmrProfile}
+        workspaceQuotaStatus={workspaceQuotaStatus}
         priorityAnnouncementMetricsConsent={priorityAnnouncementMetricsConsent}
       />
     </nav>
