@@ -249,3 +249,16 @@ it('allows Update while a comment save is waiting for the frame', async () => {
     data: { type: 'od:comment-location-missing', requestId } })));
   expect(route.saveComment).not.toHaveBeenCalled();
 });
+
+it('retains the comment draft across an active URL-frame reload with unchanged content', async () => {
+  setup({ activePublication: true, currentPrepared: true });
+  await acknowledge();
+  fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+  const frame = await selectLegacy();
+  fireEvent.change(screen.getByTestId('probe-draft'), { target: { value: 'Draft survives reload' } });
+  await act(async () => window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow,
+    data: { type: 'od:pod-stroke', points: [{ x: 10, y: 10 }, { x: 40, y: 40 }] } })));
+  fireEvent.load(frame);
+  await acknowledge();
+  expect(screen.getByTestId('probe-draft')).toHaveValue('Draft survives reload');
+});

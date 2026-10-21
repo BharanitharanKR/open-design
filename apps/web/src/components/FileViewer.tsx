@@ -17991,7 +17991,11 @@ function HtmlViewer({
                           onLoad={() => {
                             const frame = urlPreviewIframeRef.current;
                             markManualEditUrlStandbyReady(frame);
-                            if (useUrlLoadPreview) iframeRef.current = frame;
+                            if (useUrlLoadPreview) {
+                              iframeRef.current = frame;
+                              // A new document cannot finish the old in-progress lasso.
+                              setStrokePoints([]);
+                            }
                             if (frame) frame.dataset.odLoadedSrc = frame.getAttribute('src') ?? '';
                             if (frame) {
                               frame.dataset.odLoadedPreviewEpoch =
@@ -18038,7 +18042,11 @@ function HtmlViewer({
                           onLoad={() => {
                             const frame = urlPreviewIframeRef.current;
                             markManualEditUrlStandbyReady(frame);
-                            if (useUrlLoadPreview) iframeRef.current = frame;
+                            if (useUrlLoadPreview) {
+                              iframeRef.current = frame;
+                              // A new document cannot finish the old in-progress lasso.
+                              setStrokePoints([]);
+                            }
                             if (frame) frame.dataset.odLoadedSrc = frame.getAttribute('src') ?? '';
                             if (frame) {
                               frame.dataset.odLoadedPreviewEpoch =
