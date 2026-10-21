@@ -1740,6 +1740,7 @@ export function EntryTopRightCluster({
  * authority explicitly; an unbound local project deliberately falls back to
  * the shell's ambient account context. */
 export function WorkspaceTopRightAccountCluster({
+  workspaceQuotaStatus,
   onOpenSettings,
   onSignedOut,
   updaterSlot,
@@ -1751,6 +1752,7 @@ export function WorkspaceTopRightAccountCluster({
   metricsConsent = false,
   installationId,
 }: {
+  workspaceQuotaStatus?: Pick<VelaLoginStatus, 'profile' | 'consoleOrigin'> | null;
   onOpenSettings?: (section?: EntrySettingsSection) => void;
   onSignedOut?: () => void | Promise<void>;
   /** Keep the project-detail account cluster on the same updater surface as Home. */
@@ -1801,6 +1803,7 @@ export function WorkspaceTopRightAccountCluster({
   return (
     <EntryTopRightCluster
       page="project"
+      workspaceQuotaStatus={workspaceQuotaStatus}
       context={context}
       billing={billing}
       billingResponse={billingResponse}

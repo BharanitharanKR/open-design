@@ -5976,6 +5976,7 @@ function AppInner() {
             the routes are mutually exclusive, so exactly one is on screen. */}
         {route.kind === 'project' ? (
           <WorkspaceTopRightAccountCluster
+            workspaceQuotaStatus={amrLoginStatus}
             onOpenSettings={openSettings}
             onSignedOut={handleActiveCloudSignOut}
             updaterSlot={
