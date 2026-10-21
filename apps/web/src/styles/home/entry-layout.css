@@ -9384,3 +9384,7 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+.entry-main--registration-entry { animation: registration-workspace-entry 200ms ease-out; }
+@keyframes registration-workspace-entry { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .entry-main--registration-entry { animation: none; } }

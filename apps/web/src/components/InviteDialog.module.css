@@ -95,3 +95,5 @@
 .onboarding .remove:disabled { background:transparent;color:#c6c6c6;opacity:1; }
 .onboarding .add:disabled { background:transparent;color:#666;opacity:1; }
 .onboarding .skip:disabled { background:transparent;color:#888;opacity:1; }
+
+.onboarding .panel > .submit { width:430px;max-width:100%;align-self:center;box-sizing:border-box;margin-top:24px; }
