@@ -4,7 +4,9 @@ import { expect } from 'vitest';
 import { HOME_APPLY_TEMPLATE_EVENT } from '../../src/components/home-hero/chips';
 
 export function homeTemplateTrigger(): HTMLButtonElement {
-  return screen.getByTestId('home-hero-template-trigger').querySelector('button')!;
+  const selected = screen.queryByTestId('home-hero-template-trigger');
+  return selected?.querySelector('button')
+    ?? screen.getByTestId('home-hero-type-pills-more') as HTMLButtonElement;
 }
 
 export async function pickHomeTemplate(id: string): Promise<void> {

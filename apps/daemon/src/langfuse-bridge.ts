@@ -1,3 +1,4 @@
+import { taskUpdateSink } from './observability/task-telemetry-receipt.js';
 import { discoveryObservationForRun } from './strategies/od-next/discovery-observation.js';
 import { codexTurnUsageFromEvents } from './observability/codex-turn-usage.js';
 import { enqueueObjectEvidence, taskObjectDeliveryEnabled, inheritFrozenAttachments, readObjectEvidence, enqueueFeedbackEvidence, drainEvidence } from './services/evidence-delivery.js';
@@ -41,7 +42,6 @@ import {
   buildSafeRunQualityProjectionV1,
   buildTracePayload,
   readFeedbackTelemetrySinkConfig,
-  readTaskTelemetrySinkConfig,
   readRunTelemetrySinkConfig,
   reportRunCompleted,
   reportRunFeedback,
@@ -1909,7 +1909,7 @@ export async function reportRunFeedbackFromDaemon(
   // configured to ship the score to.
   const configuredAmrEnv = agentCliEnvForAgent(cfg.agentCliEnv, 'amr');
   const sink = opts.traceId
-    ? readTaskTelemetrySinkConfig(process.env)
+    ? taskUpdateSink(opts.dataDir, opts.traceId, process.env, configuredAmrEnv)
     : readFeedbackTelemetrySinkConfig(process.env, configuredAmrEnv);
   if (!sink) {
     return { status: 'skipped_no_sink' };

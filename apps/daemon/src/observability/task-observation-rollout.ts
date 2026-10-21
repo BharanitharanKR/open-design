@@ -1103,13 +1103,13 @@ export function createTaskObservationRolloutService(
       fallbackConfig: effectiveFallbackSink(),
       maxTotalAttempts: 2,
       onAttempt: () => {
-        const trace = (batch as Array<{ type: string; body: { id: string } }>).find(event => event.type === 'trace-create');
-        if (trace) traceReceipts.write({ taskExecutionId: aggregate.root.taskExecutionId,
-          idempotencyKey, traceId: String(trace.body.id), protocol: 'legacy-v1',
-          transport: sink.kind === 'langfuse' ? 'langfuse' : 'relay' });
         attemptCount += 1;
         onAttempt();
       },
+    });
+    if (result.traceReceipt) traceReceipts.write({
+      ...result.traceReceipt, taskExecutionId: aggregate.root.taskExecutionId,
+      idempotencyKey, protocol: 'legacy-v1',
     });
     return { ...result, langfuse_attempt_count: attemptCount };
   };

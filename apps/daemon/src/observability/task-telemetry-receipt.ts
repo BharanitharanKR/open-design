@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readTaskTelemetrySinkConfig, readTelemetrySinkConfig, type RunTelemetrySinkConfig } from '../langfuse-trace.js';
 
 export interface TaskTraceReceipt {
   taskExecutionId: string;
   idempotencyKey: string;
   traceId: string;
   protocol: 'legacy-v1' | 'otlp-v4';
-  transport: 'langfuse' | 'relay';
+  transport: 'langfuse' | 'relay' | 'vela';
 }
 
 /** Small non-secret exporter receipt under the caller's resolved daemon data root.
@@ -27,15 +28,32 @@ export function taskTraceReceipts(dataDir?: string) {
         renameSync(target + '.tmp', target);
       } catch { /* Observability cannot fail task execution or delivery. */ }
     },
-    read(id: string, idempotencyKey: string | null): TaskTraceReceipt | undefined {
+    read(id: string, idempotencyKey?: string | null): TaskTraceReceipt | undefined {
       try {
         const r = memory.get(id) ?? (dataDir ? JSON.parse(readFileSync(file(id), 'utf8')) : undefined);
-        if (r?.taskExecutionId === id && r.idempotencyKey === idempotencyKey
+        if (r?.taskExecutionId === id && (idempotencyKey === undefined || r.idempotencyKey === idempotencyKey)
           && typeof r.traceId === 'string' && r.traceId.length > 0
           && ['legacy-v1', 'otlp-v4'].includes(r.protocol)
-          && ['langfuse', 'relay'].includes(r.transport)) return r;
+          && ['langfuse', 'relay', 'vela'].includes(r.transport)) return r;
       } catch { /* Unknown is preferable to a guessed trace identity. */ }
       return undefined;
     },
   };
+}
+
+/** Never move feedback or manifest updates to another trace after an upgrade.
+ * No receipt means delivery must wait for the Task root, not create an orphan. */
+export function taskUpdateSink(
+  dataDir: string,
+  clientTraceId: string,
+  env: NodeJS.ProcessEnv = process.env,
+  configuredEnv: Record<string, string> = {},
+): RunTelemetrySinkConfig | null {
+  if (!clientTraceId.startsWith('strategy-task:')) return null;
+  const receipt = taskTraceReceipts(dataDir).read(clientTraceId.slice('strategy-task:'.length));
+  if (!receipt) return null;
+  const sink = receipt.transport === 'vela'
+    ? readTaskTelemetrySinkConfig(env, configuredEnv)
+    : readTelemetrySinkConfig(env);
+  return sink?.kind === receipt.transport ? sink : null;
 }

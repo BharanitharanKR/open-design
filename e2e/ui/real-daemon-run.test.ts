@@ -393,7 +393,7 @@ test('[P0] local OD Next public canaries project blocked and canceled terminal m
   });
 });
 
-test('[P0] OD Next app-config switch takes effect immediately and rejects invalid modes atomically', async ({ page }) => {
+test('[P0] OD Next retired app-config preference preserves the active default and rejects invalid modes atomically', async ({ page }) => {
   const readRollout = async () => {
     const response = await page.request.get('/api/strategies/od-next/rollout');
     expect(response.ok(), await response.text()).toBeTruthy();
@@ -412,7 +412,7 @@ test('[P0] OD Next app-config switch takes effect immediately and rejects invali
   expect(activeWrite.ok(), await activeWrite.text()).toBeTruthy();
   await expect.poll(readRollout).toMatchObject({
     requestedMode: 'active',
-    requestedModeSource: 'app_config',
+    requestedModeSource: 'default',
     effectiveMode: 'active',
   });
 
@@ -432,7 +432,7 @@ test('[P0] OD Next app-config switch takes effect immediately and rejects invali
   });
   await expect.poll(readRollout).toMatchObject({
     requestedMode: 'active',
-    requestedModeSource: 'app_config',
+    requestedModeSource: 'default',
     effectiveMode: 'active',
   });
   const afterInvalid = await page.request.get('/api/app-config');
@@ -444,9 +444,9 @@ test('[P0] OD Next app-config switch takes effect immediately and rejects invali
   });
   expect(offWrite.ok(), await offWrite.text()).toBeTruthy();
   await expect.poll(readRollout).toMatchObject({
-    requestedMode: 'off',
-    requestedModeSource: 'app_config',
-    effectiveMode: 'off',
+    requestedMode: 'active',
+    requestedModeSource: 'default',
+    effectiveMode: 'active',
   });
 });
 
