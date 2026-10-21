@@ -78,7 +78,9 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
     expect(file.ok, await file.text()).toBe(true);
     await page.addInitScript(({ config, space, memberId }) => { localStorage.setItem('open-design:config', JSON.stringify(config)); localStorage.setItem('open-design:locale', 'en'); localStorage.setItem('open-design:locale-source', 'manual'); sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({ workspaceId: space.workspaceId, workspaceMemberId: memberId })); }, { config, space: { workspaceId: space.workspaceId }, memberId });
 
-    for (const surface of ['home', 'project'] as const) {
+    const requestedSurface = process.env.F04_SURFACE;
+    if (requestedSurface && !['home', 'project'].includes(requestedSurface)) throw new Error('F04_SURFACE must be home or project');
+    for (const surface of (['home', 'project'] as const).filter(surface => !requestedSurface || surface === requestedSurface)) {
       const attemptDir = join(out, `${role}-${surface}-01`);
       await mkdir(attemptDir, { recursive: true });
       const startIndex = requests.length;
@@ -143,7 +145,9 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
           await expect.soft(currentInput).toBeEditable({timeout:T.short});
         }
         await writeFile(join(attemptDir, 'C-release-ready.json'), JSON.stringify({ at: new Date().toISOString(), reason: 'QA step2 release then manual recovery' }));
-        await expect.poll(async () => { try { return JSON.parse(await readFile(join(attemptDir, 'C-released.json'), 'utf8')).released; } catch { return false; } }, { timeout: T.medium, intervals: [250, 500] }).toBe(true);
+        // This marker includes the owner's HTTP-thread join, Redis readback and
+        // lease postcheck; it is not the product dialog/slot-release timer.
+        await expect.poll(async () => { try { return JSON.parse(await readFile(join(attemptDir, 'C-released.json'), 'utf8')).released; } catch { return false; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);
         const releaseCompleteAt = new Date().toISOString();
         const autoPost = await page.waitForEvent('request', { predicate: r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/runs', timeout: 2000 }).catch(() => null);
         const recovery: Record<string, unknown> = {releaseCompleteAt, negativeObservationMs:2000, automaticallyPosted:!!autoPost, manualAttempted:false};
