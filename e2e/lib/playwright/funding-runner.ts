@@ -1,7 +1,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, open, readFile, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -30,9 +30,9 @@ async function recordOdSource(e2eRoot: string, output: string) {
     trackedDiffSha256: hash(diff.stdout), sourceDigest: hash(JSON.stringify(sources)), sources };
 }
 
-async function runBrowser(args: string[], cwd: string, env: NodeJS.ProcessEnv, logPath: string) {
+export async function runFundingCommand(args: string[], cwd: string, env: NodeJS.ProcessEnv, logPath: string, executable = 'corepack') {
   const log = await open(logPath, 'wx', 0o600);
-  const child = spawn('corepack', args, { cwd, env, detached: process.platform !== 'win32',
+  const child = spawn(executable, args, { cwd, env, detached: process.platform !== 'win32',
     stdio: ['ignore', log.fd, log.fd] });
   let timedOut = false;
   let interrupted = false;
@@ -104,7 +104,7 @@ async function main() {
       }
       receipts.push({ entrypoint: 'lib/playwright/funding-runner.ts',
         command: ['corepack', ...args], ...await recordOdSource(e2eRoot, output) });
-      const child = await runBrowser(args, e2eRoot,
+      const child = await runFundingCommand(args, e2eRoot,
         { ...process.env, ...ownerEnv, OD_FUNDING_OWNER_RUNNER: 'active' },
         join(output, 'playwright.private.log'));
       receipts.push({ browserCommand: child });
@@ -123,7 +123,7 @@ async function main() {
   }
 }
 
-main().catch(() => {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(() => {
   // Child output and capability details remain private; errors never print
   // inherited DB URLs, tokens, or arbitrary command stderr into public logs.
   process.stderr.write('Funding sandbox run failed closed; inspect the private evidence directory.\n');

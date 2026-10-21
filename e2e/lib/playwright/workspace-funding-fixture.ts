@@ -37,6 +37,13 @@ export type FundingFixture = {
   };
   actor: { controlKey: string; userId: string; email: string };
   spaces: { funded: FundingSpace; empty: FundingSpace; dp: FundingSpace };
+  /** Explicit server-owned capacity coordinator for the manual Link lane. */
+  concurrency?: {
+    space: FundingSpace & { actorRole: 'owner'; actorMemberId: string };
+    member: { memberId: string; runtimeKey: string };
+    holdModelId: string;
+    coordinator: { helperPath: string; helperSha256: string; helperSourceSha: string; helperRepoPath: string };
+  };
 };
 
 function requireValue(value: unknown, label: string): asserts value is string {

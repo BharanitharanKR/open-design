@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { clusterTest as test, expect } from '@/playwright/suite';
 import { T } from '@/timeouts';
 import { createToolsDevSuite, e2eWorkspaceRoot } from '@/tools-dev/runtime';
+import { readConcurrencyFixture, assertConcurrencyBinding, assertConcurrencyReceipt, type ConcurrencyBinding } from '@/playwright/workspace-concurrency-fixture';
 import { warmPlaywrightWebRuntime, warmPlaywrightDaemonRuntime, PLAYWRIGHT_TOOLS_DEV_FIXTURE_TIMEOUT_MS } from '@/playwright/runtime-lifecycle';
 
 const out = process.env.YANG_UI_EVIDENCE_DIR!;
@@ -13,10 +14,16 @@ test.use({ video: 'on', viewport: { width: 1280, height: 800 } });
 
 test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retained input', async ({ page }, testInfo) => {
   test.setTimeout(PLAYWRIGHT_TOOLS_DEV_FIXTURE_TIMEOUT_MS);
-  const fixturePath = process.env.YANG_UI_FIXTURE_PATH;
-  if (!fixturePath) throw new Error('YANG_UI_FIXTURE_PATH must point to current server-owned private fixture');
+  const canonical = process.env.OD_CONCURRENCY_OWNER_RUNNER === 'active' ? await readConcurrencyFixture() : null;
+  const fixturePath = canonical ? process.env.OD_FUNDING_FIXTURE : process.env.YANG_UI_FIXTURE_PATH;
+  if (!fixturePath) throw new Error('Explicit current server-owned private fixture required');
   if (((await stat(fixturePath)).mode & 0o077) !== 0) throw new Error('Private fixture0600 required');
-  const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
+  const fixture = canonical ? {
+    runtime: canonical.runtime, owner: canonical.owner, tuple: { AMR: canonical.upstream.amrSha },
+    cfg: { urls: { api: canonical.upstream.apiUrl, link: canonical.upstream.linkUrl, web: canonical.upstream.webUrl } },
+    actors: { od: canonical.actor },
+    spaces: { concurrency: { ...canonical.concurrency!.space, roles: { member: canonical.concurrency!.member } } },
+  } : JSON.parse(await readFile(fixturePath, 'utf8'));
   const realCli = fixture.runtime.velaBin;
   const modelId = fixture.runtime.modelId;
   for (const binary of ['vela', 'openCode'] as const) {
@@ -33,7 +40,8 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
   const runtimeKey = role === 'owner' ? space.runtimeKey : (space.roles?.[role]?.runtimeKey ?? actor.runtimeKey);
   if (!memberId || !runtimeKey) throw new Error('Requested actor requires an exact workspace member and scoped runtime key');
   const urls = fixture.cfg.urls;
-  const namespace = `codex-yang-c20-f04-${role}-${process.pid}`;
+  const namespace = canonical ? `codex-link-${process.env.OD_CONCURRENCY_ATTEMPT_ID}`
+    : `codex-yang-c20-f04-${role}-${process.pid}`;
   const root = join(e2eWorkspaceRoot(), '.tmp', 'e2e', namespace);
   const dataDir = join(root, 'scratch', 'data');
   const amrHome = join(out, 'private', namespace, 'amr-home');
@@ -82,7 +90,29 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
     if (requestedSurface && !['home', 'project'].includes(requestedSurface)) throw new Error('F04_SURFACE must be home or project');
     for (const surface of (['home', 'project'] as const).filter(surface => !requestedSurface || surface === requestedSurface)) {
       const attemptDir = join(out, `${role}-${surface}-01`);
-      await mkdir(attemptDir, { recursive: true });
+      await mkdir(attemptDir, { recursive: false });
+      const binding: ConcurrencyBinding | null = canonical ? {
+        protocol: 'od-link-concurrency-v1', runId: canonical.isolation.runId,
+        attemptId: process.env.OD_CONCURRENCY_ATTEMPT_ID!,
+        tag: `od-concurrency-${process.env.OD_CONCURRENCY_ATTEMPT_ID!}-${surface}`,
+        workspaceId: space.workspaceId, surface,
+        fixtureSha256: createHash('sha256').update(await readFile(fixturePath)).digest('hex'),
+      } : null;
+      if (binding && !/^[a-f0-9-]{36}$/.test(binding.attemptId)) throw new Error('Fresh runner attempt ID required');
+      const readMarker = async (name: string) => {
+        const value = JSON.parse(await readFile(join(attemptDir, name), 'utf8'));
+        if (binding) {
+          assertConcurrencyBinding(value, binding);
+          if (value.receiptPath !== 'server-receipt.safe.json' || !/^[a-f0-9]{64}$/.test(value.receiptSha256 ?? '')) {
+            throw new Error('Exact local coordinator receipt and digest required');
+          }
+          const bytes = await readFile(join(attemptDir, value.receiptPath));
+          assertConcurrencyReceipt(value, binding, bytes, name === 'C-held.json' ? 'held' : 'released');
+        }
+        return value;
+      };
+      const writeMarker = (name: string, value: Record<string, unknown>) => writeFile(
+        join(attemptDir, name), JSON.stringify({ ...value, ...binding }), { mode: 0o600 });
       const startIndex = requests.length;
       try {
         await page.goto(surface === 'home' ? runtime.webUrl! : new URL(`/projects/${projectId}`, runtime.webUrl!).toString(), { waitUntil: 'domcontentloaded', timeout: T.xlong });
@@ -104,9 +134,10 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
         expect(readyContext.context.role).toBe(role);
         expect(Number(readyBilling.preflight.balanceUsd)).toBeGreaterThan(0);
         await writeFile(join(attemptDir, 'before-hold-context-billing.json'), JSON.stringify({readyContext,readyBilling},null,2));
-        await writeFile(join(attemptDir, 'C-ready.json'), JSON.stringify({ at: new Date().toISOString(), workspaceId: space.workspaceId, role, surface, note: 'Warm actual UI; server may hold10 actual Link requests now, no application gate.' }));
-        await expect.poll(async () => { try { return JSON.parse(await readFile(join(attemptDir, 'C-held.json'), 'utf8')).ready; } catch { return false; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);
-        const held = JSON.parse(await readFile(join(attemptDir, 'C-held.json'), 'utf8'));
+        await writeMarker('C-ready.json', { at: new Date().toISOString(), workspaceId: space.workspaceId, role, surface, note: 'Warm actual UI; server may hold10 actual Link requests now, no application gate.' });
+        await expect.poll(async () => { try { return (await readMarker('C-held.json')).ready; } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);
+        const held = await readMarker('C-held.json');
+        if (binding) expect(held.count).toBe(10);
         const post = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/runs', { timeout: T.medium }).catch(() => null);
         const clickedAt = new Date().toISOString();
         await send.click();
@@ -145,10 +176,11 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
           await expect.soft(currentInput).toHaveText(prompt,{timeout:T.short});
           await expect.soft(currentInput).toBeEditable({timeout:T.short});
         }
-        await writeFile(join(attemptDir, 'C-release-ready.json'), JSON.stringify({ at: new Date().toISOString(), reason: 'QA step2 release then manual recovery' }));
+        await writeMarker('C-release-ready.json', { at: new Date().toISOString(), reason: 'QA step2 release then manual recovery' });
         // This marker includes the owner's HTTP-thread join, Redis readback and
         // lease postcheck; it is not the product dialog/slot-release timer.
-        await expect.poll(async () => { try { return JSON.parse(await readFile(join(attemptDir, 'C-released.json'), 'utf8')).released; } catch { return false; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);
+        await expect.poll(async () => { try { return (await readMarker('C-released.json')).released; } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);
+        if (binding) expect((await readMarker('C-released.json')).remaining).toBe(0);
         const releaseCompleteAt = new Date().toISOString();
         const autoPost = await page.waitForEvent('request', { predicate: r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/runs', timeout: 2000 }).catch(() => null);
         const recovery: Record<string, unknown> = {releaseCompleteAt, negativeObservationMs:2000, automaticallyPosted:!!autoPost, manualAttempted:false};
@@ -174,8 +206,8 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
         await writeFile(join(attemptDir, 'attempt-error.json'), JSON.stringify({ error: String(error), at: new Date().toISOString() }));
         expect.soft(false, `${surface}: ${String(error)}`).toBe(true);
       } finally {
-        await writeFile(join(attemptDir, 'C-release-ready.json'), JSON.stringify({ at: new Date().toISOString() }));
-        await expect.poll(async () => { try { return JSON.parse(await readFile(join(attemptDir, 'C-released.json'), 'utf8')).released; } catch { return false; } }, { timeout: T.medium, intervals: [250, 500] }).toBe(true).catch(() => {});
+        await writeMarker('C-release-ready.json', { at: new Date().toISOString() });
+        await expect.poll(async () => { try { return (await readMarker('C-released.json')).released; } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; } }, { timeout: T.medium, intervals: [250, 500] }).toBe(true).catch(() => {});
       }
     }
     await writeFile(join(out, 'surface-results.json'), JSON.stringify({ observations, surfaceFailures, od: process.env.F04_OD_SHA, amr: fixture.tuple.AMR, modelVendor: 'controlled HTTP substitute', wholeQaPasses: 0 }, null, 2));

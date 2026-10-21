@@ -132,3 +132,51 @@ Playwright traces and runtime scratch are local diagnostics and can contain
 sandbox credentials. Review/redact them before any publication. Curated JSON
 attachments omit control/runtime keys and user email. All created runtime
 processes are stopped through the shared lifecycle in finally, after page close.
+
+
+## Owner-coordinated Link capacity lane
+
+The `concurrency-runner.ts` entrypoint borrows the same canonical server-owner
+lease as the funding lane. It requires a fresh evidence directory and starts only
+the repository browser spec plus the fixture's immutable server-owned test
+coordinator. It does not start, stop, or repair AMR, change pricing, recharge funds,
+or introduce application task concurrency.
+
+The private funding fixture adds `concurrency.space` with the exact Owner actor,
+`concurrency.member` with a different real membership/key, `holdModelId`, and
+`coordinator` fields `helperPath`, `helperSha256`, `helperSourceSha`, and
+`helperRepoPath`. The copied coordinator must match both its declared SHA256 and
+the exact Git blob in the server repository. The runtime checkout HEAD and the
+canonical receipt must still match the fixture's AMR source; the coordinator's
+pure-test commit is separately recorded rather than silently changing that HEAD.
+
+From `e2e/`, supply an existing exclusively leased private fixture and a new output
+path, then run:
+
+```sh
+OD_FUNDING_FIXTURE=<absolute-private-fixture> \
+OD_FUNDING_RUN_ID=<exact-fixture-run-id> \
+OD_FUNDING_EVIDENCE_DIR=<new-absolute-output-directory> \
+F04_SURFACE=home \
+corepack pnpm exec tsx lib/playwright/concurrency-runner.ts
+```
+
+Omit `F04_SURFACE` to execute both Home and Project. Missing capability files,
+expired canonical ownership, reused output paths, different principals, or a
+coordinator source mismatch reject the command before browser startup. The
+coordinator receives only the explicit fixture/output paths, run ID, a fresh
+attempt UUID, selected surfaces, and fixture digest. Every hold/release marker
+binds protocol `od-link-concurrency-v1`, run ID, attempt ID, tag, workspace,
+surface, and fixture SHA256. Each surface has its own local
+`server-receipt.safe.json`. The coordinator atomically writes that receipt before
+its marker and only releases request tags created for this exact attempt, even
+on failure; it must never release all provider requests. Each marker hashes its
+receipt; the UI verifies that receipt and requires 10 held requests or 0 remaining. An old `ready: true` file cannot release the browser.
+
+The browser continues to require no run POST on refusal, original draft and real
+attachment retention, no automatic submit after Link capacity release, and a
+successful explicitly submitted run. The failed Project counterexample remains
+an assertion failure. A successful subprocess, helper unit test, or delivered
+commit alone is not whole F04/RUN-003 acceptance; the complete QA role/tier,
+visual, and timing requirements still apply. Preserve original command failures
+and record the actual tested product/test commits on every real execution.
