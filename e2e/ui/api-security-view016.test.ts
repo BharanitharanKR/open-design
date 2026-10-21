@@ -1,12 +1,11 @@
 // Explicit sandbox replay. Private schemaVersion=1 fixture provides actors/spaces,
-// exact workspaceName, models=[Flash,value,top] actual catalog IDs, cfg URLs/sourceRoot,
+// cfg also requires canonical name/database/databaseUrl. Exact workspaceName, models=[Flash,value,top] actual catalog IDs, cfg URLs/sourceRoot,
 // runtime velaBin+sha256, sourceBinding={amr,od} exact checked-out heads, and runtime
-// sourceTuple. Names, paths and versions are inputs; Free/paid permission expectations
+// sourceTuple={amr,open-design,od-landing}. Names, paths and versions are inputs; Free/paid permission expectations
 // below remain fixed. Run only through the live canonical ownership wrapper.
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { clusterTest as test, expect } from "@/playwright/suite";
 import { createToolsDevSuite, e2eWorkspaceRoot } from "@/tools-dev/runtime";
@@ -15,29 +14,17 @@ import {
   warmPlaywrightDaemonRuntime,
 } from "@/playwright/runtime-lifecycle";
 import { T } from "@/timeouts";
+import { validateApiSecurityFixture } from "../lib/playwright/api-security.config.ts";
 
 test("[P1] VIEW-016 real cached model selector A B A", async ({
   page,
 }, info) => {
   test.setTimeout(T.xlong * 5);
-  const dir = process.env.VIEW016_RUNTIME;
-  assert(dir, "VIEW016_RUNTIME must identify the explicit private live fixture");
-  const fixtureText = await readFile(join(dir, "view016-fixture.private.json"), "utf8");
-  const f = JSON.parse(fixtureText);
-  assert.equal(f.schemaVersion, 1);
-  for (const repository of ["amr", "od", "landing"]) assert(typeof f.sourceTuple?.[repository] === "string" && /^[a-f0-9]{40}$/.test(f.sourceTuple[repository]), "Private runtime sourceTuple must name all three frozen product revisions");
-  assert(process.env.VELA_E2E_OWNER_TOKEN, "Live inherited ownership is required");
+  const validated = validateApiSecurityFixture();
+  const { fixture: f, fixtureText, actualHeads, verifyOwner } = validated;
+  const dir = process.env.VIEW016_RUNTIME!;
   assert(Array.isArray(f.models) && f.models.length === 3 && new Set(f.models).size === 3,
     "models must be the actual catalog IDs in Flash, value, top category order");
-  const actualHeads = {
-    amr: execFileSync("git", ["rev-parse", "HEAD"], { cwd: f.cfg.sourceRoot, encoding: "utf8" }).trim(),
-    od: execFileSync("git", ["rev-parse", "HEAD"], { cwd: e2eWorkspaceRoot(), encoding: "utf8" }).trim(),
-  };
-  assert.deepEqual(actualHeads, f.sourceBinding, "Private fixture must bind the exact checked-out AMR/OD heads");
-  for (const expected of Object.values(f.sourceBinding)) assert(typeof expected === "string" && /^[a-f0-9]{40}$/.test(expected));
-  for (const url of Object.values(f.cfg.urls)) assert(typeof url === "string" && ["127.0.0.1", "localhost", "[::1]"].includes(new URL(url).hostname), "Canonical AMR URLs must be local");
-  const verifyOwner = () => execFileSync("python3", ["e2e/helper/e2e_ownership.py", "verify-inherited"], { cwd: f.cfg.sourceRoot, stdio: "pipe" });
-  verifyOwner();
   const actor = f.actors["view016-owner"],
     A = f.spaces["free-a"],
     B = f.spaces["paid-b"];
@@ -150,6 +137,8 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
     at: new Date().toISOString(),
     sourceBinding: actualHeads,
     sourceTuple: f.sourceTuple,
+    sourceRoles: validated.sourceRoles,
+    canonicalStatus: validated.canonicalStatus,
     fixtureSha256: createHash("sha256").update(fixtureText).digest("hex"),
     velaSha256,
     stages: [],
@@ -303,22 +292,18 @@ test("[P1] VIEW-016 real cached model selector A B A", async ({
     out.events = events;
     out.upgradePopups = popups;
     out.finishedAt = new Date().toISOString();
-    await writeFile(
-      join(dir, "view016-od-browser-evidence.private.json"),
-      JSON.stringify(out, null, 2),
-      { mode: 0o600 },
-    );
-    await page
-      .screenshot({ path: info.outputPath("final.png"), fullPage: true })
-      .catch(() => undefined);
-    await page.close();
-    await runtime.stopWeb(env);
-    out.cleanup = await runtime.status(env);
-    verifyOwner();
-    await writeFile(
-      join(dir, "view016-od-browser-evidence.private.json"),
-      JSON.stringify(out, null, 2),
-      { mode: 0o600 },
-    );
+    const cleanupErrors: string[] = [];
+    const persist = () => writeFile(join(dir, "view016-od-browser-evidence.private.json"), JSON.stringify(out, null, 2), { mode: 0o600 });
+    await persist().catch((e) => cleanupErrors.push(`initial evidence: ${String(e)}`));
+    await page.screenshot({ path: info.outputPath("final.png"), fullPage: true }).catch(() => undefined);
+    await page.close().catch((e) => cleanupErrors.push(`page close: ${String(e)}`));
+    await runtime.stopWeb(env).catch((e) => cleanupErrors.push(`tools-dev stop: ${String(e)}`));
+    out.cleanup = await runtime.status(env).catch((e) => { cleanupErrors.push(`tools-dev status: ${String(e)}`); return { error: String(e) }; });
+    try { verifyOwner(); out.postVerify = { exitCode: 0, at: new Date().toISOString() }; }
+    catch (e) { cleanupErrors.push(`ownership verify: ${String(e)}`); out.postVerify = { error: String(e) }; }
+    out.cleanupErrors = cleanupErrors;
+    out.cleanupFinishedAt = new Date().toISOString();
+    await persist();
+    if (cleanupErrors.length && !out.error) throw new Error(`VIEW016 cleanup failed: ${cleanupErrors.join("; ")}`);
   }
 });
