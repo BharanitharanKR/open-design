@@ -26,8 +26,9 @@ it.each(['free', 'go', 'plus', 'pro', 'max'].flatMap((tier) =>
     render(<AmrConcurrencyDialog branch={resolveAmrBalanceBranch({ context })}
       workspaceContext={context} onClose={onClose} />);
     const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveTextContent('Concurrent request limit reached');
-    expect(dialog).toHaveTextContent('manually');
+    expect(dialog).toHaveTextContent(role === 'owner' && tier !== 'max'
+      ? 'Concurrency limit reached' : 'Concurrent request limit reached');
+    if (role !== 'owner' || tier === 'max') expect(dialog).toHaveTextContent('manually');
     expect(dialog.textContent).not.toMatch(/recharge|auto.?recharge/i);
     if (role !== 'owner') expect(dialog).toHaveTextContent('workspace Owner');
     const upgrade = screen.queryByTestId('amr-concurrency-upgrade');
@@ -43,3 +44,19 @@ it.each(['free', 'go', 'plus', 'pro', 'max'].flatMap((tier) =>
     expect(onClose).toHaveBeenCalledOnce();
   },
 );
+
+// Current QA UISTATE-F04-CLIENT: use the original illustration and the four
+// approved Cloud benefits, with manual close/upgrade actions.
+it('renders the complete F04 design for a paid upgradable Owner', () => {
+  const context = workspaceContextFixture({ workspaceId: 'f04-billing-space', workspaceMemberId: 'f04-owner',
+    role: 'owner', planId: 'team_pro',
+    permissions: buildWorkspacePermissions({ role: 'owner', lifecycleState: 'active' }) });
+  render(<AmrConcurrencyDialog branch={resolveAmrBalanceBranch({ context })}
+    workspaceContext={context} onClose={vi.fn()} />);
+  const dialog = screen.getByRole('dialog');
+  expect(dialog.querySelector('img')).toHaveAttribute('src', '/upgrade/cloud-signin-aurora.jpg');
+  expect(screen.getAllByRole('listitem')).toHaveLength(4);
+  expect(dialog).toHaveTextContent('Invite members for free and share allowance');
+  expect(screen.getByTestId('amr-concurrency-close')).toHaveTextContent('Not now');
+  expect(screen.getByTestId('amr-concurrency-upgrade')).toHaveTextContent('Upgrade plan');
+});
