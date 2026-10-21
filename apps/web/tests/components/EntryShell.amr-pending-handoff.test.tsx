@@ -1,15 +1,11 @@
 // @vitest-environment jsdom
 //
-// OPEND-2614 · a Home send hands off to the project frame BEFORE the AMR
-// balance gate is consulted, and the gate's verdict then lands behind that
-// frame: allow → the create reuses the optimistic id; a dismissed hard block or
-// an unreadable wallet → the hand-off is rolled back (with a notice only where
-// no dialog explained the outcome) and nothing is created. The local-agent
-// path never sees the gate but takes the same hand-off.
-//
-// The Playwright case `e2e/ui/home-amr-pending.test.ts` pins the visible
-// behaviour (pending frame within one animation frame of the click); this
-// file pins the contract between EntryShell and App that makes it possible.
+// OPEND-2614's sign-in/retry handoff still belongs to App. gen53/r824
+// (client VIEW-015/RUN-003) adds a separate prerequisite: current scoped
+// funding is confirmed on Home before any project frame is created. Once
+// available, the remaining sign-in gate may run behind that pending frame.
+// Local agents retain their original direct handoff. A display-wallet cache
+// alone is never funding authorization for a Home send.
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -72,6 +68,9 @@ beforeEach(() => {
   testAccountSequence++;
 });
 
+const submitCaptureCleanups: Array<() => void> = [];
+afterEach(() => { for (const cleanup of submitCaptureCleanups.splice(0)) cleanup(); });
+
 const originalFetch = globalThis.fetch;
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -123,6 +122,21 @@ function config(agentId: string): AppConfig {
     skillId: null,
     designSystemId: null,
     theme: 'system',
+  };
+}
+
+// gen53 supersedes wallet-cache-only Home admission. These older sign-in /
+// handoff tests separately prove funds for this exact member and selected model.
+function homeFunding(context: WorkspaceCollabContext, fundingCheck: 'available' | 'insufficient' = 'available') {
+  return {
+    schemaVersion: 1, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
+    modelId: 'default', generatedAt: new Date(Date.now()).toISOString(), balanceUsd: '0', fundingCheck,
+    funding: 'coding_plan', modelCovered: true,
+    codingPlan: { workspaceId: context.workspaceId, generatedAt: new Date(Date.now()).toISOString(),
+      eligible: true, tier: 'pro', windows: [{ policyId: 'fixture-5h', durationSeconds: 18000,
+        resetMode: 'anchored_recurring', usedCredits: fundingCheck === 'available' ? '0' : '100',
+        limitCredits: '100', remainingCredits: fundingCheck === 'available' ? '100' : '0',
+        windowStart: new Date(Date.now() - 1000).toISOString(), resetsAt: new Date(Date.now() + 18000_000).toISOString() }] },
   };
 }
 
@@ -209,7 +223,7 @@ async function submitHome(prompt: string) {
   fireEvent.click(await screen.findByTestId('home-hero-submit'));
 }
 
-describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
+describe('OPEND-2614 · funded Home handoff precedes the remaining AMR sign-in gate', () => {
   beforeEach(() => {
     globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
     window.sessionStorage.clear();
@@ -224,6 +238,7 @@ describe('OPEND-2614 · Home send hands off before the AMR gate', () => {
         return jsonResponse(workspaceDirectoryFixture([workspace]));
       }
       if (url.endsWith('/api/workspace/context')) return jsonResponse({ context: workspace });
+      if (url.includes('/billing/preflight?')) return jsonResponse({ preflight: homeFunding(workspace) });
       if (url.includes('/api/workspace/billing?')) {
         return jsonResponse({ summary: null, workspaceBalance: null });
       }
@@ -411,6 +426,7 @@ describe('Home memory funding gate', () => {
         return jsonResponse(workspaceDirectoryFixture([workspace]));
       }
       if (url.endsWith('/api/workspace/context')) return jsonResponse({ context: workspace });
+      if (url.includes('/billing/preflight?')) return jsonResponse({ preflight: homeFunding(workspace) });
       if (url.includes('/api/workspace/billing?')) {
         billingReads += 1;
         // The projection the rail shows: this member's wallet is at $0.
@@ -459,26 +475,46 @@ describe('Home memory funding gate', () => {
     const context = personalContext();
     const original = globalThis.fetch;
     let reads = 0;
-    let finishConfirmation!: (response: Response | Error) => void;
-    const preflight = {
-      schemaVersion: 1, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
-      modelId: 'default', generatedAt: new Date().toISOString(), balanceUsd: '0', fundingCheck: 'insufficient',
+    let nextExplicitSend = false;
+    let serverVerdict: 'available' | 'insufficient' = 'insufficient';
+    const confirmations: Array<{ resolve: (response: Response) => void; reject: (error: Error) => void }> = [];
+    // A real click determines when this fixture answers the new per-send read.
+    // Background recovery remains explicitly controlled and never sends for us.
+    const captureSend = (event: MouseEvent) => {
+      if ((event.target as Element).closest?.('[data-testid="home-hero-submit"]')) nextExplicitSend = true;
     };
+    document.addEventListener('click', captureSend, true);
+    submitCaptureCleanups.push(() => document.removeEventListener('click', captureSend, true));
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).includes('/api/workspace/billing/preflight?')) {
+        const query = new URL(String(input), 'http://localhost').searchParams;
+        expect(query.get('workspaceId')).toBe(context.workspaceId);
+        expect(query.get('modelId')).toBe('default');
         reads++;
-        if (reads > 1) return new Promise<Response>((resolve, reject) => {
-          finishConfirmation = (response) => response instanceof Error ? reject(response) : resolve(response);
-        });
-        return jsonResponse({ preflight });
+        if (reads === 1 || nextExplicitSend) {
+          nextExplicitSend = false;
+          return jsonResponse({ preflight: homeFunding(context, serverVerdict) });
+        }
+        return new Promise<Response>((resolve, reject) => confirmations.push({ resolve, reject }));
       }
       return original(input, init);
     });
+    invalidateAmrFundingFeedback();
     await checkAmrFundingFeedback(context, 'default');
+    const confirmResponse = (response: Response | Error) => {
+      expect(confirmations.length, 'a real background confirmation must be pending').toBeGreaterThan(0);
+      for (const pending of confirmations.splice(0)) {
+        if (response instanceof Response) pending.resolve(response.clone());
+        else pending.reject(response);
+      }
+    };
     return { ...h,
       fundingReads: () => reads,
-      confirm: (fundingCheck: string) => finishConfirmation(jsonResponse({ preflight: { ...preflight, fundingCheck } })),
-      confirmResponse: (response: Response | Error) => finishConfirmation(response),
+      confirm: (fundingCheck: string) => {
+        if (fundingCheck === 'available' || fundingCheck === 'insufficient') serverVerdict = fundingCheck;
+        confirmResponse(jsonResponse({ preflight: { ...homeFunding(context, serverVerdict), fundingCheck } }));
+      },
+      confirmResponse,
     };
   }
 
@@ -523,7 +559,7 @@ describe('Home memory funding gate', () => {
     } finally { now.mockRestore(); }
   });
 
-  it('restores #8240 from the displayed wallet and plan without an independent hint', async () => {
+  it('keeps #8240 on Home while current funds are loading, then shows actual insufficiency', async () => {
     const context = personalContext();
     memoryPreflight = {
       schemaVersion: 1, workspaceId: context.workspaceId, workspaceMemberId: context.workspaceMemberId,
@@ -539,10 +575,11 @@ describe('Home memory funding gate', () => {
       ? new Promise<Response>((resolve) => { finish = resolve; }) : original(input, init));
     await submitHome('Restore the in-memory Home gate.');
     expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
-    expect(await screen.findByTestId('amr-balance-dialog')).toBeTruthy();
+    expect(screen.queryByTestId('amr-balance-dialog')).toBeNull();
     expect(h.onCreateProject).not.toHaveBeenCalled();
-    await act(async () => { finish(jsonResponse({ preflight: null })); });
-    expect(screen.getByTestId('amr-balance-dialog')).toBeTruthy();
+    await waitFor(() => expect(typeof finish).toBe('function'));
+    await act(async () => { finish(jsonResponse({ preflight: homeFunding(context, 'insufficient') })); });
+    expect(await screen.findByTestId('amr-balance-dialog')).toBeTruthy();
     expect(h.onBeginProjectCreation).not.toHaveBeenCalled();
     expect(h.onCreateProject).not.toHaveBeenCalled();
   });
@@ -806,6 +843,7 @@ describe('OPEND-3300 · local Team authority on a $0 Home send', () => {
             role: headers.get('x-od-workspace-role') === 'admin' ? 'admin' : 'member',
           } });
         }
+        if (url.includes('/billing/preflight?')) return jsonResponse({ preflight: homeFunding(workspace) });
         if (url.includes('/api/workspace/billing?')) {
           billingReads += 1;
           return jsonResponse({
