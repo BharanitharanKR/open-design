@@ -79,6 +79,11 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
     headers['x-od-workspace-type'] = context.context.workspaceType;
     const billing = await (await fetch(new URL(`/api/workspace/billing?scope=workspace&workspaceId=${encodeURIComponent(space.workspaceId)}&includePreflight=1&modelId=${encodeURIComponent(modelId)}`, runtime.webUrl!), { headers })).json();
     expect(Number(billing.preflight.balanceUsd)).toBeGreaterThan(0);
+    if (canonical) {
+      expect(billing.workspaceSnapshot.workspaceId).toBe(space.workspaceId);
+      expect(billing.workspaceSnapshot.workspaceMemberId).toBe(memberId);
+      expect(billing.workspaceSnapshot.billing.planId).toBe('go');
+    }
     await writeFile(join(out, 'actual-context-and-funded-preflight.json'), JSON.stringify({ context, billing }, null, 2));
     const create = await fetch(new URL('/api/projects', runtime.webUrl!), { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ id: projectId, name: `Yang continuation ${role}`, skillId: null, designSystemId: null, pendingPrompt: null, metadata: { kind: 'prototype' } }) });
     expect(create.ok, await create.text()).toBe(true);
@@ -103,7 +108,8 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
         const value = JSON.parse(await readFile(join(attemptDir, name), 'utf8'));
         if (binding) {
           assertConcurrencyBinding(value, binding);
-          if (value.receiptPath !== 'server-receipt.safe.json' || !/^[a-f0-9]{64}$/.test(value.receiptSha256 ?? '')) {
+          const expectedReceipt = name === 'C-held.json' ? 'server-held-receipt.safe.json' : 'server-released-receipt.safe.json';
+          if (value.receiptPath !== expectedReceipt || !/^[a-f0-9]{64}$/.test(value.receiptSha256 ?? '')) {
             throw new Error('Exact local coordinator receipt and digest required');
           }
           const bytes = await readFile(join(attemptDir, value.receiptPath));
@@ -133,6 +139,7 @@ test('[P0] F04 Owner actual Go10 Link full refuses Home and Project with retaine
         expect(readyContext.context.workspaceId).toBe(space.workspaceId);
         expect(readyContext.context.role).toBe(role);
         expect(Number(readyBilling.preflight.balanceUsd)).toBeGreaterThan(0);
+        if (canonical) expect(readyBilling.workspaceSnapshot.billing.planId).toBe('go');
         await writeFile(join(attemptDir, 'before-hold-context-billing.json'), JSON.stringify({readyContext,readyBilling},null,2));
         await writeMarker('C-ready.json', { at: new Date().toISOString(), workspaceId: space.workspaceId, role, surface, note: 'Warm actual UI; server may hold10 actual Link requests now, no application gate.' });
         await expect.poll(async () => { try { return (await readMarker('C-held.json')).ready; } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error; } }, { timeout: T.long, intervals: [250, 500] }).toBe(true);

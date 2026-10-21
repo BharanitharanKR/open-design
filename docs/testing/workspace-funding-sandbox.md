@@ -167,9 +167,9 @@ coordinator source mismatch reject the command before browser startup. The
 coordinator receives only the explicit fixture/output paths, run ID, a fresh
 attempt UUID, selected surfaces, and fixture digest. Every hold/release marker
 binds protocol `od-link-concurrency-v1`, run ID, attempt ID, tag, workspace,
-surface, and fixture SHA256. Each surface has its own local
-`server-receipt.safe.json`. The coordinator atomically writes that receipt before
-its marker and only releases request tags created for this exact attempt, even
+surface, and fixture SHA256. Each surface retains separate immutable
+`server-held-receipt.safe.json` and `server-released-receipt.safe.json` files.
+The coordinator atomically writes each receipt before its matching marker and only releases request tags created for this exact attempt, even
 on failure; it must never release all provider requests. Each marker hashes its
 receipt; the UI verifies that receipt and requires 10 held requests or 0 remaining. An old `ready: true` file cannot release the browser.
 
@@ -180,3 +180,12 @@ an assertion failure. A successful subprocess, helper unit test, or delivered
 commit alone is not whole F04/RUN-003 acceptance; the complete QA role/tier,
 visual, and timing requirements still apply. Preserve original command failures
 and record the actual tested product/test commits on every real execution.
+
+The private `concurrency.serverControl` additionally binds a dedicated controlled
+provider origin, private PID/port state, source file/SHA256, a 0600 plain-text
+control-token file, and the canonical sandbox Redis container/prefix. Provider
+control calls require that token; model calls still go through actual Link with
+the Owner/Member runtime keys. No control token is recorded in receipts or argv.
+The browser verifies the authoritative workspace snapshot is the intended Go
+space before using the Go10 capacity witness; legacy summary fields are not used
+to fabricate that precondition.

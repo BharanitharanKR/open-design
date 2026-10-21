@@ -8,6 +8,9 @@ function capability() {
     space: { workspaceId: 'only-this-disposable-workspace', ownerMemberId: 'owner', actorRole: 'owner', actorMemberId: 'owner', runtimeKey: 'unit-owner-key' },
     member: { memberId: 'member', runtimeKey: 'unit-member-key' },
     holdModelId: 'unit-model', coordinator: { helperPath: '/private/coordinator.py', helperSha256: 'a'.repeat(64), helperSourceSha: 'b'.repeat(40), helperRepoPath: 'e2e/helper/link_concurrency.py' },
+    serverControl: { providerBaseUrl: 'http://127.0.0.1:12345', providerStatePath: '/private/provider.json',
+      providerSourcePath: '/private/provider.py', providerSourceSha256: 'c'.repeat(64),
+      controlTokenPath: '/private/control-token', redisContainer: 'owned-test-redis', redisKeyPrefix: 'owned-test:' },
   } } as FundingFixture;
 }
 const binding: ConcurrencyBinding = { protocol: 'od-link-concurrency-v1', runId: 'only-this-run', attemptId: 'only-this-attempt',
@@ -43,11 +46,11 @@ describe('bound server-owned Link capacity capability', () => {
 
 describe('capacity marker binds actual hashed server receipt', () => {
   const receipt = (extra: Record<string, unknown> = {}) => Buffer.from(JSON.stringify({ ...binding, heldCount: 10, remaining: 0, ...extra }));
-  const marker = (bytes: Buffer) => ({ ...binding, ready: true, count: 10, released: true, remaining: 0,
-    receiptPath: 'server-receipt.safe.json', receiptSha256: createHash('sha256').update(bytes).digest('hex') });
+  const marker = (bytes: Buffer, phase: 'held' | 'released' = 'held') => ({ ...binding, ready: true, count: 10, released: true, remaining: 0,
+    receiptPath: phase === 'held' ? 'server-held-receipt.safe.json' : 'server-released-receipt.safe.json', receiptSha256: createHash('sha256').update(bytes).digest('hex') });
   it('verifies both actual hold and release receipt quantities', () => {
     const bytes = receipt(); expect(() => assertConcurrencyReceipt(marker(bytes), binding, bytes, 'held')).not.toThrow();
-    expect(() => assertConcurrencyReceipt(marker(bytes), binding, bytes, 'released')).not.toThrow();
+    expect(() => assertConcurrencyReceipt(marker(bytes, 'released'), binding, bytes, 'released')).not.toThrow();
   });
   it('rejects a changed receipt even if the ready flag and scope match', () => {
     expect(() => assertConcurrencyReceipt(marker(receipt()), binding, receipt({ heldCount: 9 }), 'held')).toThrow('digest');
@@ -56,9 +59,28 @@ describe('capacity marker binds actual hashed server receipt', () => {
     const bytes = receipt({ heldCount: 9 }); expect(() => assertConcurrencyReceipt(marker(bytes), binding, bytes, 'held')).toThrow('10 held');
   });
   it('rejects a release receipt with remaining actual capacity owners', () => {
-    const bytes = receipt({ remaining: 1 }); expect(() => assertConcurrencyReceipt(marker(bytes), binding, bytes, 'released')).toThrow('zero remaining');
+    const bytes = receipt({ remaining: 1 }); expect(() => assertConcurrencyReceipt(marker(bytes, 'released'), binding, bytes, 'released')).toThrow('zero remaining');
   });
   it('rejects another workspace receipt even with a newly computed matching digest', () => {
     const bytes = receipt({ workspaceId: 'other-workspace' }); expect(() => assertConcurrencyReceipt(marker(bytes), binding, bytes, 'held')).toThrow('workspaceId');
+  });
+});
+
+
+describe('restricted provider control fixture', () => {
+  it.each(['external', 'credentials', 'relative-token', 'source-digest', 'missing-redis'] as const)('rejects %s before launching helper or browser', field => {
+    const f = capability(); const c = f.concurrency!.serverControl;
+    if (field === 'external') c.providerBaseUrl = 'https://example.invalid';
+    if (field === 'credentials') c.providerBaseUrl = 'http://secret@127.0.0.1:1234';
+    if (field === 'relative-token') c.controlTokenPath = 'ambient-token';
+    if (field === 'source-digest') c.providerSourceSha256 = 'latest';
+    if (field === 'missing-redis') c.redisContainer = '';
+    expect(() => requireConcurrencyFixture(f)).toThrow();
+  });
+  it('cannot substitute the released receipt for the held phase', () => {
+    const bytes = Buffer.from(JSON.stringify({ ...binding, heldCount: 10, remaining: 0 }));
+    const marker = { ...binding, ready: true, count: 10, receiptPath: 'server-released-receipt.safe.json',
+      receiptSha256: createHash('sha256').update(bytes).digest('hex') };
+    expect(() => assertConcurrencyReceipt(marker, binding, bytes, 'held')).toThrow('path');
   });
 });

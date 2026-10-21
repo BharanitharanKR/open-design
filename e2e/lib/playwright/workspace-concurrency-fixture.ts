@@ -35,6 +35,17 @@ export function requireConcurrencyFixture(fixture: FundingFixture) {
     || c.coordinator.helperRepoPath.split(/[\\/]/).includes('..')) {
     throw new Error('Requires an explicit immutable repository coordinator source');
   }
+  const control = c.serverControl;
+  if (!control || !control.redisContainer || !control.redisKeyPrefix
+    || !/^[a-f0-9]{64}$/.test(control.providerSourceSha256)) throw new Error('Explicit server control capability required');
+  const origin = new URL(control.providerBaseUrl);
+  if (origin.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname)
+    || !origin.port || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) {
+    throw new Error('Provider control must be a credential-free loopback origin');
+  }
+  if (![control.providerStatePath, control.providerSourcePath, control.controlTokenPath].every(path => typeof path === 'string' && isAbsolute(path))) {
+    throw new Error('Explicit private server capability file paths required');
+  }
   return c;
 }
 
@@ -50,7 +61,8 @@ export function assertConcurrencyReceipt(
   marker: Record<string, unknown>, binding: ConcurrencyBinding, bytes: Buffer, phase: 'held' | 'released',
 ) {
   assertConcurrencyBinding(marker, binding);
-  if (marker.receiptPath !== 'server-receipt.safe.json'
+  const expectedName = phase === 'held' ? 'server-held-receipt.safe.json' : 'server-released-receipt.safe.json';
+  if (marker.receiptPath !== expectedName
     || createHash('sha256').update(bytes).digest('hex') !== marker.receiptSha256) {
     throw new Error('Coordinator receipt path or content digest mismatch');
   }

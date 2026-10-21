@@ -43,6 +43,11 @@ export type FundingFixture = {
     member: { memberId: string; runtimeKey: string };
     holdModelId: string;
     coordinator: { helperPath: string; helperSha256: string; helperSourceSha: string; helperRepoPath: string };
+    serverControl: {
+      providerBaseUrl: string; providerStatePath: string; providerSourcePath: string;
+      providerSourceSha256: string; controlTokenPath: string;
+      redisContainer: string; redisKeyPrefix: string;
+    };
   };
 };
 
