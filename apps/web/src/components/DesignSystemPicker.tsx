@@ -40,6 +40,9 @@ interface PopoverAnchor {
   left: number;
   width: number;
   maxHeight: number;
+  /** True when the popover hangs off the Home composer tray rather than the
+   *  trigger; the only surface that gets the Home sheet styling. */
+  tray: boolean;
   // Vertical placement: when the trigger sits near the bottom of the
   // viewport (e.g. the composer-top picker) the popover opens upward,
   // anchored by `bottom`; otherwise it opens downward, anchored by `top`.
@@ -55,10 +58,12 @@ interface Props {
   disabled?: boolean;
   onChange: (id: string | null) => void;
   /**
-   * Trigger styling, plus one placement rule: on Home the popover hangs off
-   * the composer tray instead of the pill (see `updateAnchor`) and carries a
-   * `data-variant` hook for that surface's styling. The popover markup is
-   * shared by every variant.
+   * Trigger styling, plus one placement rule: when the 'home' variant sits
+   * inside the Home composer tray the popover hangs off that tray instead of
+   * the pill (see `updateAnchor`) and carries a `data-surface="home-tray"`
+   * hook for that surface's styling. The same variant mounted elsewhere (the
+   * project chat composer) keeps the pill anchor and the base styling. The
+   * popover markup is shared by every variant.
    *   - 'project' (default): the chrome-header pill (`project-ds-picker-*`).
    *   - 'footer': the home composer input-card footer pill.
    *   - 'home': the home composer's persistent picker, sitting directly after
@@ -173,6 +178,7 @@ export function DesignSystemPicker({
           left,
           width: popoverWidth,
           maxHeight: Math.max(220, Math.min(420, spaceAbove)),
+          tray: tray !== null,
         });
       } else {
         setAnchor({
@@ -180,6 +186,7 @@ export function DesignSystemPicker({
           left,
           width: popoverWidth,
           maxHeight: Math.max(220, Math.min(420, spaceBelow)),
+          tray: tray !== null,
         });
       }
     }
@@ -321,7 +328,7 @@ export function DesignSystemPicker({
             ref={popoverRef}
             className="project-ds-picker-popover"
             data-testid="project-ds-picker-popover"
-            data-variant={variant}
+            data-surface={anchor.tray ? 'home-tray' : undefined}
             data-placement={anchor.bottom !== undefined ? 'up' : 'down'}
             style={{
               top: anchor.top,
