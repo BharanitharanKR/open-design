@@ -55,7 +55,10 @@ interface Props {
   disabled?: boolean;
   onChange: (id: string | null) => void;
   /**
-   * Trigger styling only; the popover is identical across variants.
+   * Trigger styling, plus one placement rule: on Home the popover hangs off
+   * the composer tray instead of the pill (see `updateAnchor`) and carries a
+   * `data-variant` hook for that surface's styling. The popover markup is
+   * shared by every variant.
    *   - 'project' (default): the chrome-header pill (`project-ds-picker-*`).
    *   - 'footer': the home composer input-card footer pill.
    *   - 'home': the home composer's persistent picker, sitting directly after
@@ -137,11 +140,27 @@ export function DesignSystemPicker({
     function updateAnchor() {
       const trigger = triggerRef.current;
       if (!trigger) return;
-      const rect = trigger.getBoundingClientRect();
+      // On Home the pill sits inside the composer tray's foot row, so a
+      // popover hung from the pill lands on the tray's working-directory row
+      // and, when it flips upward, on the prompt itself (#2981). Anchor the
+      // sheet to the tray there instead: it opens below the whole card (or
+      // above it), aligned to the card's inner edge and never wider than it.
+      // The project chat composer hosts the same variant without a tray and
+      // keeps the pill anchor.
+      const tray = variant === 'home'
+        ? trigger.closest<HTMLElement>('.home-hero__composer-card')
+        : null;
+      const rect = (tray ?? trigger).getBoundingClientRect();
       const viewport = window.innerWidth;
-      const popoverWidth = Math.min(640, Math.max(320, viewport - 24));
-      const left = Math.max(8, Math.min(viewport - popoverWidth - 8, rect.left));
-      const gap = 6;
+      const trayInset = 4;
+      const popoverWidth = tray
+        ? Math.min(640, Math.max(320, Math.min(rect.width - trayInset * 2, viewport - 24)))
+        : Math.min(640, Math.max(320, viewport - 24));
+      const left = Math.max(
+        8,
+        Math.min(viewport - popoverWidth - 8, tray ? rect.left + trayInset : rect.left),
+      );
+      const gap = tray ? 8 : 6;
       const margin = 12;
       const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
       const spaceAbove = rect.top - gap - margin;
@@ -171,7 +190,7 @@ export function DesignSystemPicker({
       window.removeEventListener('resize', updateAnchor);
       window.removeEventListener('scroll', updateAnchor, true);
     };
-  }, [open]);
+  }, [open, variant]);
 
   useEffect(() => {
     if (open) {
@@ -302,6 +321,7 @@ export function DesignSystemPicker({
             ref={popoverRef}
             className="project-ds-picker-popover"
             data-testid="project-ds-picker-popover"
+            data-variant={variant}
             data-placement={anchor.bottom !== undefined ? 'up' : 'down'}
             style={{
               top: anchor.top,
